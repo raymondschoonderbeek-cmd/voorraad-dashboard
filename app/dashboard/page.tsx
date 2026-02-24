@@ -28,6 +28,9 @@ const COLUMN_CONFIG: Record<
   GROUP_DESCRIPTION_1: { label: 'Groep 1', order: 80, format: 'text' },
   GROUP_DESCRIPTION_2: { label: 'Groep 2', order: 90, format: 'text' },
   SUPPLIER_NAME: { label: 'Leverancier', order: 100, format: 'text' },
+
+  // Voorbeeld: verberg interne velden als ze ooit komen
+  // INTERNAL_ID: { hidden: true },
 }
 
 function columnLabel(key: string) {
@@ -139,6 +142,7 @@ export default function Dashboard() {
 
     setKolommen(dynamicCols)
 
+    // behoud bestaande selectie waar mogelijk
     setZichtbareKolommen(prev => {
       if (prev.length === 0) return dynamicCols
       const allowed = new Set(dynamicCols)
@@ -543,22 +547,26 @@ export default function Dashboard() {
           {/* Table */}
           {geselecteerdeWinkel && (
             <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="overflow-auto">
-                <table className="w-full text-sm">
+              {/* ✅ relative helpt stacking context bij sticky */}
+              <div className="overflow-auto relative">
+                <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
                   <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                     <tr className="text-xs uppercase tracking-wide text-gray-700">
                       {zichtbareKolommen.map(k => {
                         const active = sortKey === k
                         const arrow = active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'
                         const sticky = stickyEnabled && stickyKey === k
+
                         return (
                           <th
                             key={k}
                             className={[
                               'px-4 py-3 text-left whitespace-nowrap font-semibold',
-                              sticky ? 'sticky left-0 bg-gray-50' : '',
+                              sticky
+                                ? 'sticky left-0 bg-gray-50 shadow-[2px_0_0_0_rgba(229,231,235,1)]'
+                                : '',
                             ].join(' ')}
-                            style={sticky ? { zIndex: 30 } : undefined}
+                            style={sticky ? { zIndex: 60 } : undefined}
                           >
                             <button
                               type="button"
@@ -587,8 +595,11 @@ export default function Dashboard() {
                             return (
                               <td
                                 key={k}
-                                className={['px-4 py-3', sticky ? 'sticky left-0 bg-white' : ''].join(' ')}
-                                style={sticky ? { zIndex: 10 } : undefined}
+                                className={[
+                                  'px-4 py-3',
+                                  sticky ? 'sticky left-0 bg-white shadow-[2px_0_0_0_rgba(229,231,235,1)]' : '',
+                                ].join(' ')}
+                                style={sticky ? { zIndex: 40 } : undefined}
                               >
                                 <div className="h-3 w-32 bg-gray-200 rounded" />
                               </td>
@@ -617,9 +628,11 @@ export default function Dashboard() {
                                 key={k}
                                 className={[
                                   'px-4 py-3 whitespace-nowrap align-top',
-                                  sticky ? `sticky left-0 ${stickyBg}` : '',
+                                  sticky
+                                    ? `sticky left-0 ${stickyBg} shadow-[2px_0_0_0_rgba(229,231,235,1)]`
+                                    : '',
                                 ].join(' ')}
-                                style={sticky ? { zIndex: 10 } : undefined}
+                                style={sticky ? { zIndex: 40 } : undefined}
                               >
                                 {formatValue(k, p[k])}
                               </td>
