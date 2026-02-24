@@ -41,7 +41,18 @@ export default function Dashboard() {
     const items = Array.isArray(data) ? data : data.products ?? []
     setProducten(items)
     if (items.length > 0) {
-      setKolommen(Object.keys(items[0]).slice(0, 8))
+      setKolommen([
+        'PRODUCT_DESCRIPTION',
+        'BRAND_NAME',
+        'BARCODE',
+        'SUPPLIER_PRODUCT_NUMBER',
+        'STOCK',
+        'AVAILABLE_STOCK',
+        'SALES_PRICE_INC',
+        'GROUP_DESCRIPTION_1',
+        'GROUP_DESCRIPTION_2',
+        'SUPPLIER_NAME',
+      ])
     }
     setLoading(false)
   }, [])
@@ -184,7 +195,7 @@ export default function Dashboard() {
                 placeholder="Zoek op naam, SKU, merk..."
                 value={zoekterm}
                 onChange={e => setZoekterm(e.target.value)}
-                className="w-full border rounded-xl p-4 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-xl p-4 text-lg shadow-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
 
               {loading ? (
@@ -192,10 +203,10 @@ export default function Dashboard() {
               ) : (
                 <div className="bg-white rounded-xl shadow overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                    <thead className="bg-gray-100 text-gray-900 uppercase text-xs font-bold">
                       <tr>
                         {kolommen.map(k => (
-                          <th key={k} className="px-4 py-3 text-left">{k}</th>
+                          <th key={k} className="px-4 py-3 text-left whitespace-nowrap">{k.replace(/_/g, ' ')}</th>
                         ))}
                       </tr>
                     </thead>
@@ -203,7 +214,7 @@ export default function Dashboard() {
                       {producten.map((p, i) => (
                         <tr key={i} className="hover:bg-gray-50">
                           {kolommen.map(k => (
-                            <td key={k} className="px-4 py-3">{String(p[k] ?? '')}</td>
+                            <td key={k} className="px-4 py-3 text-gray-900">{String(p[k] ?? '')}</td>
                           ))}
                         </tr>
                       ))}
