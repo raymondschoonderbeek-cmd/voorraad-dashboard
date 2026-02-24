@@ -106,7 +106,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800">📦 Voorraad Dashboard</h1>
         <button onClick={uitloggen} className="text-sm text-gray-500 hover:text-red-500">
@@ -115,7 +114,6 @@ export default function Dashboard() {
       </header>
 
       <div className="flex flex-1">
-        {/* Sidebar winkels */}
         <aside className="w-64 bg-white shadow-sm p-4 space-y-3">
           <div className="flex justify-between items-center">
             <h2 className="font-semibold text-gray-700">Winkels</h2>
@@ -125,21 +123,20 @@ export default function Dashboard() {
             >+</button>
           </div>
 
-          {/* Winkel toevoegen form */}
           {toonWinkelForm && (
             <form onSubmit={voegWinkelToe} className="space-y-2 bg-gray-50 p-3 rounded-lg">
               <input
                 placeholder="Naam winkel"
                 value={nieuweNaam}
                 onChange={e => setNieuweNaam(e.target.value)}
-                className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded p-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
               <input
                 placeholder="Dealer nummer"
                 value={nieuwDealer}
                 onChange={e => setNieuwDealer(e.target.value)}
-                className="w-full border rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded p-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
               <button
@@ -152,7 +149,6 @@ export default function Dashboard() {
             </form>
           )}
 
-          {/* Winkellijst */}
           {winkels.map(winkel => (
             <div
               key={winkel.id}
@@ -167,7 +163,11 @@ export default function Dashboard() {
               </span>
               <button
                 onClick={() => verwijderWinkel(winkel.id)}
-                className={`text-xs ml-2 ${geselecteerdeWinkel?.id === winkel.id ? 'text-white' : 'text-red-400'} hover:text-red-600`}
+                className={`text-xs ml-2 ${
+                  geselecteerdeWinkel?.id === winkel.id
+                    ? 'text-white'
+                    : 'text-red-400 hover:text-red-600'
+                }`}
               >✕</button>
             </div>
           ))}
@@ -177,7 +177,6 @@ export default function Dashboard() {
           )}
         </aside>
 
-        {/* Hoofdinhoud */}
         <main className="flex-1 p-6 space-y-4">
           {!geselecteerdeWinkel ? (
             <div className="flex items-center justify-center h-full text-gray-400">
@@ -195,7 +194,7 @@ export default function Dashboard() {
                 placeholder="Zoek op naam, SKU, merk..."
                 value={zoekterm}
                 onChange={e => setZoekterm(e.target.value)}
-                className="w-full border rounded-xl p-4 text-lg shadow-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl p-4 text-lg bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
 
               {loading ? (
@@ -206,7 +205,9 @@ export default function Dashboard() {
                     <thead className="bg-gray-100 text-gray-900 uppercase text-xs font-bold">
                       <tr>
                         {kolommen.map(k => (
-                          <th key={k} className="px-4 py-3 text-left whitespace-nowrap">{k.replace(/_/g, ' ')}</th>
+                          <th key={k} className="px-4 py-3 text-left whitespace-nowrap">
+                            {k.replace(/_/g, ' ')}
+                          </th>
                         ))}
                       </tr>
                     </thead>
@@ -214,17 +215,23 @@ export default function Dashboard() {
                       {producten.map((p, i) => (
                         <tr key={i} className="hover:bg-gray-50">
                           {kolommen.map(k => (
-                            <td key={k} className="px-4 py-3 text-gray-900">{String(p[k] ?? '')}</td>
+                            <td key={k} className="px-4 py-3 text-gray-900">
+                              {String(p[k] ?? '')}
+                            </td>
                           ))}
                         </tr>
                       ))}
                     </tbody>
                   </table>
+
                   {producten.length === 0 && (
                     <p className="text-center py-8 text-gray-400">Geen producten gevonden</p>
                   )}
+
                   {producten.length > 0 && (
-                    <p className="text-xs text-gray-400 p-4">{producten.length} producten gevonden</p>
+                    <p className="text-xs text-gray-400 p-4">
+                      {producten.length} producten gevonden
+                    </p>
                   )}
                 </div>
               )}
