@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 /* =========================
    COLUMN CONFIG (BEST PRACTICE)
@@ -28,9 +29,6 @@ const COLUMN_CONFIG: Record<
   GROUP_DESCRIPTION_1: { label: 'Groep 1', order: 80, format: 'text' },
   GROUP_DESCRIPTION_2: { label: 'Groep 2', order: 90, format: 'text' },
   SUPPLIER_NAME: { label: 'Leverancier', order: 100, format: 'text' },
-
-  // Voorbeeld: verberg interne velden als ze ooit komen
-  // INTERNAL_ID: { hidden: true },
 }
 
 function columnLabel(key: string) {
@@ -301,9 +299,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <button onClick={uitloggen} className="text-sm font-medium text-gray-600 hover:text-red-600">
-            Uitloggen
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/brand-groep"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
+              Pivot merk/groep
+            </Link>
+
+            <button onClick={uitloggen} className="text-sm font-medium text-gray-600 hover:text-red-600">
+              Uitloggen
+            </button>
+          </div>
         </div>
       </header>
 
@@ -547,7 +554,6 @@ export default function Dashboard() {
           {/* Table */}
           {geselecteerdeWinkel && (
             <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-              {/* ✅ relative helpt stacking context bij sticky */}
               <div className="overflow-auto relative">
                 <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
                   <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
@@ -556,7 +562,6 @@ export default function Dashboard() {
                         const active = sortKey === k
                         const arrow = active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'
                         const sticky = stickyEnabled && stickyKey === k
-
                         return (
                           <th
                             key={k}
