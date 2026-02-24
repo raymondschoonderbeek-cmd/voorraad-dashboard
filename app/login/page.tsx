@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
   const router = useRouter()
@@ -18,9 +19,13 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setMessage('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
     if (error) {
       setError(error.message)
@@ -28,6 +33,29 @@ export default function LoginPage() {
     } else {
       router.push('/dashboard')
     }
+  }
+
+  async function handleResetPassword() {
+    if (!email) {
+      setError('Vul eerst je e-mailadres in.')
+      return
+    }
+
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    })
+
+    if (error) {
+      setError(error.message)
+    } else {
+      setMessage('Reset e-mail verstuurd. Controleer je inbox.')
+    }
+
+    setLoading(false)
   }
 
   return (
@@ -49,6 +77,12 @@ export default function LoginPage() {
           </div>
         )}
 
+        {message && (
+          <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg p-3">
+            {message}
+          </div>
+        )}
+
         <div className="space-y-4">
           <input
             type="email"
@@ -59,7 +93,6 @@ export default function LoginPage() {
             className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          {/* Password with toggle */}
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -74,10 +107,18 @@ export default function LoginPage() {
               type="button"
               onClick={() => setShowPassword(v => !v)}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-              aria-label={showPassword ? 'Wachtwoord verbergen' : 'Wachtwoord tonen'}
-              title={showPassword ? 'Verbergen' : 'Tonen'}
             >
               {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
+
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Wachtwoord vergeten?
             </button>
           </div>
         </div>
@@ -87,7 +128,7 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
         >
-          {loading ? 'Bezig met inloggen...' : 'Inloggen'}
+          {loading ? 'Bezig...' : 'Inloggen'}
         </button>
       </form>
     </div>
