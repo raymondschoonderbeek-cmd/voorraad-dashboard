@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 
 type Winkel = {
   id: number
@@ -10,31 +11,49 @@ type Winkel = {
 
 type Product = { [key: string]: any }
 
-type Pivot = {
-  brands: string[]
-  groups: string[]
-  matrix: Record<string, Record<string, number>>
-  rowTotals: Record<string, number>
-  colTotals: Record<string, number>
-  grandTotal: number
-}
-
 function norm(v: any, fallback: string) {
   const s = String(v ?? '').trim()
   return s ? s : fallback
 }
 
-export default function BrandGroepPivotPage() {
+function toNumber(v: any) {
+  const n = Number(String(v ?? 0).replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
+function formatInt(n: number) {
+  return new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 0 }).format(Math.round(n))
+}
+
+type GroupRow = {
+  group1: string
+  availableTotal: number
+  itemsCount: number
+  brandsCount: number
+}
+
+type BrandRow = {
+  brand: string
+  availableTotal: number
+  itemsCount: number
+}
+
+export default function GroupToBrandAvailablePage() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
 
   const [producten, setProducten] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
 
-  const [filter, setFilter] = useState('') // filter op merk/groep
-  const [minCount, setMinCount] = useState<number>(1) // verberg hele kleine combinaties
-  const [sortRows, setSortRows] = useState<'name' | 'total'>('total')
-  const [sortCols, setSortCols] = useState<'name' | 'total'>('total')
+  const [groupSearch, setGroupSearch] = useState('')
+  const [brandSearch, setBrandSearch] = useState('')
+
+  const [selectedGroup, setSelectedGroup] = useState<string>('') // gekozen group_description_1
+
+  const [sortGroupsBy, setSortGroupsBy] = useState<'available' | 'name'>('available')
+  const [sortBrandsBy, setSortBrandsBy] = useState<'available' | 'name'>('available')
+
+  const [minAvailable, setMinAvailable] = useState<number>(0) // filter op minimale beschikbaarheid in merkenlijst
 
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
@@ -59,60 +78,108 @@ export default function BrandGroepPivotPage() {
     const winkel = winkels.find(w => w.id === id) ?? null
     setGeselecteerdeWinkel(winkel)
     setProducten([])
+    setSelectedGroup('')
+    setGroupSearch('')
+    setBrandSearch('')
+    setMinAvailable(0)
     if (winkel) await haalVoorraadOp(winkel.dealer_nummer)
   }
 
-  const pivot: Pivot = useMemo(() => {
-    const matrix: Record<string, Record<string, number>> = {}
-    const rowTotals: Record<string, number> = {}
-    const colTotals: Record<string, number> = {}
-
-    let grandTotal = 0
-
-    const needle = filter.trim().toLowerCase()
+  // 1) Bouw groeps-overzicht (links)
+  const groupRows: GroupRow[] = useMemo(() => {
+    const groupTotals = new Map<string, { available: number; items: number; brands: Set<string> }>()
 
     for (const p of producten) {
+      const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
       const brand = norm(p.BRAND_NAME, '(Geen merk)')
-      const group = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
+      const available = toNumber(p.AVAILABLE_STOCK)
 
-      // filter op merk/groep
-      if (needle) {
-        const hay = `${brand} ${group}`.toLowerCase()
-        if (!hay.includes(needle)) continue
-      }
-
-      matrix[brand] ??= {}
-      matrix[brand][group] = (matrix[brand][group] ?? 0) + 1
-
-      rowTotals[brand] = (rowTotals[brand] ?? 0) + 1
-      colTotals[group] = (colTotals[group] ?? 0) + 1
-      grandTotal += 1
+      const entry = groupTotals.get(group1) ?? { available: 0, items: 0, brands: new Set<string>() }
+      entry.available += available
+      entry.items += 1
+      entry.brands.add(brand)
+      groupTotals.set(group1, entry)
     }
 
-    // determine brand & group lists
-    let brands = Object.keys(rowTotals)
-    let groups = Object.keys(colTotals)
+    let rows: GroupRow[] = Array.from(groupTotals.entries()).map(([group1, v]) => ({
+      group1,
+      availableTotal: v.available,
+      itemsCount: v.items,
+      brandsCount: v.brands.size,
+    }))
 
-    // sort columns
-    groups.sort((a, b) => {
-      if (sortCols === 'name') return a.localeCompare(b)
-      return (colTotals[b] ?? 0) - (colTotals[a] ?? 0) || a.localeCompare(b)
-    })
-
-    // sort rows
-    brands.sort((a, b) => {
-      if (sortRows === 'name') return a.localeCompare(b)
-      return (rowTotals[b] ?? 0) - (rowTotals[a] ?? 0) || a.localeCompare(b)
-    })
-
-    // optionally drop cols that are always below minCount
-    if (minCount > 1) {
-      groups = groups.filter(g => (colTotals[g] ?? 0) >= minCount)
-      brands = brands.filter(b => (rowTotals[b] ?? 0) >= minCount)
+    const needle = groupSearch.trim().toLowerCase()
+    if (needle) {
+      rows = rows.filter(r => r.group1.toLowerCase().includes(needle))
     }
 
-    return { brands, groups, matrix, rowTotals, colTotals, grandTotal }
-  }, [producten, filter, minCount, sortRows, sortCols])
+    rows.sort((a, b) => {
+      if (sortGroupsBy === 'name') return a.group1.localeCompare(b.group1)
+      // default: available desc
+      return (b.availableTotal - a.availableTotal) || a.group1.localeCompare(b.group1)
+    })
+
+    return rows
+  }, [producten, groupSearch, sortGroupsBy])
+
+  // auto-selecteer de grootste groep zodra data binnen is (handig UX)
+  useEffect(() => {
+    if (!selectedGroup && groupRows.length > 0) {
+      setSelectedGroup(groupRows[0].group1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupRows.length])
+
+  // 2) Bouw merken-overzicht (rechts) op basis van gekozen groep
+  const brandRows: BrandRow[] = useMemo(() => {
+    if (!selectedGroup) return []
+
+    const brandTotals = new Map<string, { available: number; items: number }>()
+
+    for (const p of producten) {
+      const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
+      if (group1 !== selectedGroup) continue
+
+      const brand = norm(p.BRAND_NAME, '(Geen merk)')
+      const available = toNumber(p.AVAILABLE_STOCK)
+
+      const entry = brandTotals.get(brand) ?? { available: 0, items: 0 }
+      entry.available += available
+      entry.items += 1
+      brandTotals.set(brand, entry)
+    }
+
+    let rows: BrandRow[] = Array.from(brandTotals.entries()).map(([brand, v]) => ({
+      brand,
+      availableTotal: v.available,
+      itemsCount: v.items,
+    }))
+
+    const needle = brandSearch.trim().toLowerCase()
+    if (needle) {
+      rows = rows.filter(r => r.brand.toLowerCase().includes(needle))
+    }
+
+    if (minAvailable > 0) {
+      rows = rows.filter(r => r.availableTotal >= minAvailable)
+    }
+
+    rows.sort((a, b) => {
+      if (sortBrandsBy === 'name') return a.brand.localeCompare(b.brand)
+      return (b.availableTotal - a.availableTotal) || a.brand.localeCompare(b.brand)
+    })
+
+    return rows
+  }, [producten, selectedGroup, brandSearch, sortBrandsBy, minAvailable])
+
+  const selectedGroupMeta = useMemo(() => {
+    const row = groupRows.find(r => r.group1 === selectedGroup)
+    return row ?? null
+  }, [groupRows, selectedGroup])
+
+  const maxBrandValue = useMemo(() => {
+    return brandRows.reduce((m, r) => Math.max(m, r.availableTotal), 0)
+  }, [brandRows])
 
   const winkelLabel = geselecteerdeWinkel
     ? `${geselecteerdeWinkel.naam} (#${geselecteerdeWinkel.dealer_nummer})`
@@ -120,214 +187,274 @@ export default function BrandGroepPivotPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-4 sm:p-6 space-y-4">
+      {/* Header */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 space-y-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold">Pivot: Merk × Groep 1</h1>
-          <p className="text-sm text-gray-500">
-            Rijen = merken, kolommen = groep 1, cellen = aantallen. {winkelLabel ? `(${winkelLabel})` : ''}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr_140px_180px_180px] gap-3 items-center">
-          <select
-            value={geselecteerdeWinkel?.id ?? ''}
-            onChange={e => selecteerWinkel(Number(e.target.value))}
-            className="w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Selecteer winkel…</option>
-            {winkels.map(w => (
-              <option key={w.id} value={w.id}>
-                {w.naam} (#{w.dealer_nummer})
-              </option>
-            ))}
-          </select>
-
-          <input
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            placeholder="Filter (merk of groep 1)…"
-            className="w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 whitespace-nowrap">Min totaal</span>
-            <input
-              type="number"
-              min={1}
-              value={minCount}
-              onChange={e => setMinCount(Math.max(1, Number(e.target.value) || 1))}
-              className="w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Verberg rijen/kolommen met lagere totalen"
-            />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold">Beschikbare voorraad per merk</h1>
+            <p className="text-sm text-gray-500">
+              Selecteer eerst een <span className="font-medium">groep 1</span>. Daarna zie je per merk de som van{' '}
+              <span className="font-medium">AVAILABLE_STOCK</span>.
+              {winkelLabel ? ` (${winkelLabel})` : ''}
+            </p>
           </div>
 
-          <select
-            value={sortRows}
-            onChange={e => setSortRows(e.target.value as any)}
-            className="w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title="Sorteer rijen"
-          >
-            <option value="total">Sorteer merken: op totaal</option>
-            <option value="name">Sorteer merken: op naam</option>
-          </select>
-
-          <select
-            value={sortCols}
-            onChange={e => setSortCols(e.target.value as any)}
-            className="w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title="Sorteer kolommen"
-          >
-            <option value="total">Sorteer groepen: op totaal</option>
-            <option value="name">Sorteer groepen: op naam</option>
-          </select>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+              ← Terug naar dashboard
+            </Link>
+          </div>
         </div>
 
-        <div className="text-xs text-gray-500 flex items-center justify-between">
-          <span>
-            {loading
-              ? 'Laden…'
-              : geselecteerdeWinkel
-                ? `${pivot.grandTotal} items • ${pivot.brands.length} merken • ${pivot.groups.length} groepen`
-                : 'Selecteer een winkel om te starten'}
-          </span>
-          {filter && (
-            <button
-              type="button"
-              onClick={() => setFilter('')}
-              className="text-blue-600 hover:text-blue-800 font-medium"
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-3 items-end">
+          <div>
+            <label className="text-xs font-semibold text-gray-600">Winkel</label>
+            <select
+              value={geselecteerdeWinkel?.id ?? ''}
+              onChange={e => selecteerWinkel(Number(e.target.value))}
+              className="mt-1 w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Filter wissen
-            </button>
-          )}
+              <option value="">Selecteer winkel…</option>
+              {winkels.map(w => (
+                <option key={w.id} value={w.id}>
+                  {w.naam} (#{w.dealer_nummer})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="text-sm text-gray-600 flex items-center justify-end">
+            {loading ? 'Laden…' : geselecteerdeWinkel ? `${producten.length} regels geladen` : ''}
+          </div>
         </div>
       </div>
 
+      {/* Content */}
       {!geselecteerdeWinkel ? (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 text-gray-500">
-          Selecteer een winkel om de pivot te zien.
+          Kies een winkel om te starten.
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-auto relative">
-            <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
-              <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
-                <tr className="text-xs uppercase tracking-wide text-gray-700">
-                  {/* Sticky first column header */}
-                  <th
-                    className="px-4 py-3 text-left font-semibold sticky left-0 bg-gray-50 z-[60] shadow-[2px_0_0_0_rgba(229,231,235,1)]"
-                    style={{ minWidth: 220 }}
-                  >
-                    Merk
-                  </th>
+        <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4">
+          {/* LEFT: group selection table */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold text-gray-800">1) Kies groep 1</div>
+                  <div className="text-xs text-gray-500">Klik op een rij om te selecteren.</div>
+                </div>
 
-                  {pivot.groups.map(g => (
-                    <th key={g} className="px-4 py-3 text-right font-semibold whitespace-nowrap">
-                      {g}
-                      <div className="text-[10px] text-gray-400 normal-case">
-                        {pivot.colTotals[g] ?? 0}
-                      </div>
-                    </th>
-                  ))}
+                <select
+                  value={sortGroupsBy}
+                  onChange={e => setSortGroupsBy(e.target.value as any)}
+                  className="rounded-xl px-3 py-2 text-xs bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Sortering groepen"
+                >
+                  <option value="available">Sort: beschikbaar</option>
+                  <option value="name">Sort: naam</option>
+                </select>
+              </div>
 
-                  {/* Total column */}
-                  <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">
-                    Totaal
-                    <div className="text-[10px] text-gray-400 normal-case">{pivot.grandTotal}</div>
-                  </th>
-                </tr>
-              </thead>
+              <input
+                value={groupSearch}
+                onChange={e => setGroupSearch(e.target.value)}
+                placeholder="Zoek groep 1…"
+                className="mt-3 w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
-              <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="px-4 py-3 sticky left-0 bg-white z-[40] shadow-[2px_0_0_0_rgba(229,231,235,1)]">
-                        <div className="h-3 w-40 bg-gray-200 rounded" />
-                      </td>
-                      {Array.from({ length: Math.min(6, pivot.groups.length) }).map((__, j) => (
-                        <td key={j} className="px-4 py-3 text-right">
-                          <div className="h-3 w-10 bg-gray-200 rounded ml-auto" />
+            <div className="overflow-auto relative" style={{ maxHeight: 520 }}>
+              <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 z-10">
+                  <tr className="text-xs uppercase tracking-wide text-gray-700">
+                    <th className="px-4 py-3 text-left font-semibold">Groep 1</th>
+                    <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Beschikbaar</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td className="px-4 py-3">
+                          <div className="h-3 w-48 bg-gray-200 rounded" />
                         </td>
-                      ))}
-                      <td className="px-4 py-3 text-right">
-                        <div className="h-3 w-10 bg-gray-200 rounded ml-auto" />
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-3 w-16 bg-gray-200 rounded ml-auto" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : groupRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-10 text-center text-gray-500">
+                        Geen groepen gevonden.
                       </td>
                     </tr>
-                  ))
-                ) : pivot.brands.length === 0 || pivot.groups.length === 0 ? (
-                  <tr>
-                    <td colSpan={pivot.groups.length + 2} className="px-6 py-10 text-center text-gray-500">
-                      Geen resultaten (filter te streng?).
-                    </td>
-                  </tr>
-                ) : (
-                  pivot.brands.map((b, i) => {
-                    const rowTotal = pivot.rowTotals[b] ?? 0
-                    const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-
-                    return (
-                      <tr key={b} className={rowBg}>
-                        {/* Sticky row header */}
-                        <td
+                  ) : (
+                    groupRows.map((r, i) => {
+                      const selected = r.group1 === selectedGroup
+                      return (
+                        <tr
+                          key={`${r.group1}-${i}`}
                           className={[
-                            'px-4 py-3 font-semibold whitespace-nowrap',
-                            'sticky left-0 z-[40] shadow-[2px_0_0_0_rgba(229,231,235,1)]',
-                            rowBg,
+                            'cursor-pointer',
+                            selected ? 'bg-blue-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50',
+                            'hover:bg-blue-50/60',
                           ].join(' ')}
+                          onClick={() => setSelectedGroup(r.group1)}
+                          title="Selecteer groep"
                         >
-                          {b}
-                          <div className="text-[11px] text-gray-500 font-normal">{rowTotal}</div>
-                        </td>
-
-                        {pivot.groups.map(g => {
-                          const v = pivot.matrix[b]?.[g] ?? 0
-                          const isZero = v === 0
-                          return (
-                            <td
-                              key={g}
-                              className={[
-                                'px-4 py-3 text-right whitespace-nowrap',
-                                isZero ? 'text-gray-300' : 'text-gray-900',
-                              ].join(' ')}
-                              title={`${b} × ${g}`}
-                            >
-                              {v === 0 ? '–' : v}
-                            </td>
-                          )
-                        })}
-
-                        {/* Row total */}
-                        <td className="px-4 py-3 text-right font-bold whitespace-nowrap">{rowTotal}</td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-
-              {/* Column totals footer */}
-              {!loading && pivot.groups.length > 0 && pivot.brands.length > 0 && (
-                <tfoot className="sticky bottom-0 bg-white border-t border-gray-200">
-                  <tr className="text-xs uppercase tracking-wide text-gray-700">
-                    <td className="px-4 py-3 font-semibold sticky left-0 bg-white z-[60] shadow-[2px_0_0_0_rgba(229,231,235,1)]">
-                      Totaal
-                    </td>
-                    {pivot.groups.map(g => (
-                      <td key={g} className="px-4 py-3 text-right font-semibold">
-                        {pivot.colTotals[g] ?? 0}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 text-right font-bold">{pivot.grandTotal}</td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={[
+                                  'inline-flex w-2 h-2 rounded-full',
+                                  selected ? 'bg-blue-600' : 'bg-gray-300',
+                                ].join(' ')}
+                              />
+                              <div className="min-w-0">
+                                <div className="font-semibold text-gray-900 truncate">{r.group1}</div>
+                                <div className="text-xs text-gray-500">
+                                  {r.brandsCount} merken • {r.itemsCount} regels
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold whitespace-nowrap">
+                            {formatInt(r.availableTotal)}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {!loading && pivot.groups.length > 0 && pivot.brands.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-500">
-              Tip: gebruik filter om snel een merk of groep te vinden. “Min totaal” verbergt kleine rijen/kolommen.
+          {/* RIGHT: brand overview for selected group */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-gray-800">
+                      2) Overzicht per merk
+                    </div>
+                    <div className="text-sm text-gray-600 truncate">
+                      Geselecteerde groep: <span className="font-semibold text-gray-900">{selectedGroup || '—'}</span>
+                    </div>
+                    {selectedGroupMeta && (
+                      <div className="text-xs text-gray-500">
+                        Totaal beschikbaar: <span className="font-semibold">{formatInt(selectedGroupMeta.availableTotal)}</span>{' '}
+                        • {selectedGroupMeta.brandsCount} merken • {selectedGroupMeta.itemsCount} regels
+                      </div>
+                    )}
+                  </div>
+
+                  <select
+                    value={sortBrandsBy}
+                    onChange={e => setSortBrandsBy(e.target.value as any)}
+                    className="rounded-xl px-3 py-2 text-xs bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    title="Sortering merken"
+                  >
+                    <option value="available">Sort: beschikbaar</option>
+                    <option value="name">Sort: merknaam</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_160px] gap-3">
+                  <input
+                    value={brandSearch}
+                    onChange={e => setBrandSearch(e.target.value)}
+                    placeholder="Zoek merk…"
+                    className="w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={!selectedGroup}
+                  />
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">Min beschikbaar</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={minAvailable}
+                      onChange={e => setMinAvailable(Math.max(0, Number(e.target.value) || 0))}
+                      className="mt-1 w-full rounded-xl px-3 py-3 text-sm bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!selectedGroup}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+
+            <div className="overflow-auto relative" style={{ maxHeight: 520 }}>
+              <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 z-10">
+                  <tr className="text-xs uppercase tracking-wide text-gray-700">
+                    <th className="px-4 py-3 text-left font-semibold">Merk</th>
+                    <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Beschikbaar</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td className="px-4 py-3">
+                          <div className="h-3 w-48 bg-gray-200 rounded" />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="h-3 w-16 bg-gray-200 rounded ml-auto" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : !selectedGroup ? (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-10 text-center text-gray-500">
+                        Selecteer links een groep om merken te tonen.
+                      </td>
+                    </tr>
+                  ) : brandRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-10 text-center text-gray-500">
+                        Geen merken gevonden (filter te streng?).
+                      </td>
+                    </tr>
+                  ) : (
+                    brandRows.map((r, i) => {
+                      const bg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      const pct = maxBrandValue > 0 ? Math.round((r.availableTotal / maxBrandValue) * 100) : 0
+
+                      return (
+                        <tr key={`${r.brand}-${i}`} className={bg}>
+                          <td className="px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-gray-900 truncate">{r.brand}</div>
+                              <div className="mt-1 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-600" style={{ width: `${pct}%` }} />
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">{r.itemsCount} regels</div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold whitespace-nowrap">
+                            {formatInt(r.availableTotal)}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {!loading && selectedGroup && brandRows.length > 0 && (
+              <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
+                <span>{brandRows.length} merken</span>
+                <span>Tip: gebruik “Min beschikbaar” om ruis weg te filteren</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
