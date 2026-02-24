@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -6,35 +7,87 @@ import { useRouter } from 'next/navigation'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
   const router = useRouter()
   const supabase = createClient()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    setError('')
+    setLoading(true)
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    else router.push('/dashboard')
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow w-96 space-y-4">
-        <h1 className="text-2xl font-bold">Inloggen</h1>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <input
-          type="email" placeholder="E-mailadres" value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          type="password" placeholder="Wachtwoord" value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button type="submit"
-          className="w-full bg-blue-600 text-white rounded-lg p-3 font-semibold hover:bg-blue-700">
-          Inloggen
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-200 space-y-5"
+      >
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Inloggen</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Log in om je voorraad dashboard te beheren.
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <input
+            type="email"
+            placeholder="E-mailadres"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          {/* Password with toggle */}
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Wachtwoord"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              className="w-full rounded-xl pl-4 pr-12 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              aria-label={showPassword ? 'Wachtwoord verbergen' : 'Wachtwoord tonen'}
+              title={showPassword ? 'Verbergen' : 'Tonen'}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+        >
+          {loading ? 'Bezig met inloggen...' : 'Inloggen'}
         </button>
       </form>
     </div>
