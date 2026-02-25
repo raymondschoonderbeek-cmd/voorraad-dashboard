@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 /* =========================
-   COLUMN CONFIG (BEST PRACTICE)
+   COLUMN CONFIG
 ========================= */
 
 const COLUMN_CONFIG: Record<
@@ -86,6 +86,12 @@ type Winkel = {
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
+type AuthRequiredState = null | {
+  message: string
+  instructions?: string[]
+  upstream?: { error_message?: string | null }
+}
+
 export default function Dashboard() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
@@ -112,6 +118,9 @@ export default function Dashboard() {
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
+  // ✅ Autorisatie state
+  const [authRequired, setAuthRequired] = useState<AuthRequiredState>(null)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -123,8 +132,38 @@ export default function Dashboard() {
 
   const haalVoorraadOp = useCallback(async (dealer: string, q: string) => {
     setLoading(true)
+    setAuthRequired(null)
+
     const res = await fetch(`/api/voorraad?dealer=${dealer}&q=${encodeURIComponent(q)}`)
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+
+    // ✅ Autorisatie ontbreekt
+    if (res.status === 403 && data?.error === 'AUTH_REQUIRED') {
+      setProducten([])
+      setKolommen([])
+      setZichtbareKolommen([])
+      setAuthRequired({
+        message: data?.message ?? 'Deze winkel moet nog toestemming geven.',
+        instructions: Array.isArray(data?.instructions) ? data.instructions : undefined,
+        upstream: data?.upstream,
+      })
+      setLoading(false)
+      return
+    }
+
+    // ❌ andere fout
+    if (!res.ok) {
+      setProducten([])
+      setKolommen([])
+      setZichtbareKolommen([])
+      setAuthRequired({
+        message: data?.message ?? 'Voorraad ophalen mislukt.',
+        upstream: data?.upstream,
+      })
+      setLoading(false)
+      return
+    }
+
     const items = Array.isArray(data) ? data : data.products ?? []
     setProducten(items)
 
@@ -170,10 +209,13 @@ export default function Dashboard() {
     setZoekterm('')
     setDebouncedZoekterm('')
     setProducten([])
+    setKolommen([])
+    setZichtbareKolommen([])
     setSortKey('')
     setSortDir('asc')
     setZoekKolom('ALL')
     setKolomPanelOpen(false)
+    setAuthRequired(null)
     await haalVoorraadOp(winkel.dealer_nummer, '')
   }
 
@@ -201,8 +243,11 @@ export default function Dashboard() {
     if (geselecteerdeWinkel?.id === id) {
       setGeselecteerdeWinkel(null)
       setProducten([])
+      setKolommen([])
+      setZichtbareKolommen([])
       setZoekterm('')
       setDebouncedZoekterm('')
+      setAuthRequired(null)
     }
 
     await haalWinkelsOp()
@@ -261,7 +306,7 @@ export default function Dashboard() {
     setZichtbareKolommen([...kolommen])
   }
 
-  const stickyKey = kolommen.find(isSticky) // eerste sticky veld uit config
+  const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
 
@@ -300,10 +345,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/brand-groep"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
-            >
+            <Link href="/dashboard/brand-groep" className="text-sm font-medium text-gray-600 hover:text-gray-900">
               Pivot merk/groep
             </Link>
 
@@ -551,6 +593,48 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* ✅ Autorisatie melding */}
+          {geselecteerdeWinkel && authRequired && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl shadow-sm p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-amber-900">Toestemming vereist</div>
+                  <div className="text-sm text-amber-900/90 mt-1">{authRequired.message}</div>
+
+                  {authRequired.upstream?.error_message && (
+                    <div className="text-xs text-amber-900/70 mt-1">
+                      CycleSoftware: {authRequired.upstream.error_message}
+                    </div>
+                  )}
+
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold text-amber-900">Instructie voor de winkel</div>
+                    <ol className="mt-1 list-decimal ml-5 text-sm text-amber-900/90 space-y-1">
+                      {(authRequired.instructions?.length
+                        ? authRequired.instructions
+                        : [
+                            'Log in bij CycleSoftware met het account van de winkel.',
+                            'Activeer/controleer API-toegang of autorisatie voor “voorraad uitlezen”.',
+                            'Sla op en probeer daarna opnieuw in dit dashboard.',
+                          ]
+                      ).map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => haalVoorraadOp(geselecteerdeWinkel.dealer_nummer, debouncedZoekterm)}
+                  className="rounded-xl px-3 py-2 text-sm font-semibold bg-white border border-amber-300 hover:bg-amber-50"
+                >
+                  Opnieuw proberen
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           {geselecteerdeWinkel && (
             <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -567,9 +651,7 @@ export default function Dashboard() {
                             key={k}
                             className={[
                               'px-4 py-3 text-left whitespace-nowrap font-semibold',
-                              sticky
-                                ? 'sticky left-0 bg-gray-50 shadow-[2px_0_0_0_rgba(229,231,235,1)]'
-                                : '',
+                              sticky ? 'sticky left-0 bg-gray-50 shadow-[2px_0_0_0_rgba(229,231,235,1)]' : '',
                             ].join(' ')}
                             style={sticky ? { zIndex: 60 } : undefined}
                           >
@@ -612,13 +694,17 @@ export default function Dashboard() {
                           })}
                         </tr>
                       ))
+                    ) : authRequired ? (
+                      <tr>
+                        <td colSpan={Math.max(zichtbareKolommen.length, 1)} className="px-6 py-10 text-center text-gray-500">
+                          Autorisatie vereist — zie melding hierboven.
+                        </td>
+                      </tr>
                     ) : gefilterdEnGesorteerd.length === 0 ? (
                       <tr>
-                        <td colSpan={zichtbareKolommen.length} className="px-6 py-10 text-center">
+                        <td colSpan={Math.max(zichtbareKolommen.length, 1)} className="px-6 py-10 text-center">
                           <div className="text-sm font-semibold text-gray-800">Geen producten gevonden</div>
-                          <div className="text-sm text-gray-500">
-                            Probeer een andere zoekterm, of leeg de zoekbalk.
-                          </div>
+                          <div className="text-sm text-gray-500">Probeer een andere zoekterm, of leeg de zoekbalk.</div>
                         </td>
                       </tr>
                     ) : (
@@ -627,15 +713,12 @@ export default function Dashboard() {
                           {zichtbareKolommen.map(k => {
                             const sticky = stickyEnabled && stickyKey === k
                             const stickyBg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-
                             return (
                               <td
                                 key={k}
                                 className={[
                                   'px-4 py-3 whitespace-nowrap align-top',
-                                  sticky
-                                    ? `sticky left-0 ${stickyBg} shadow-[2px_0_0_0_rgba(229,231,235,1)]`
-                                    : '',
+                                  sticky ? `sticky left-0 ${stickyBg} shadow-[2px_0_0_0_rgba(229,231,235,1)]` : '',
                                 ].join(' ')}
                                 style={sticky ? { zIndex: 40 } : undefined}
                               >
@@ -650,7 +733,7 @@ export default function Dashboard() {
                 </table>
               </div>
 
-              {!loading && gefilterdEnGesorteerd.length > 0 && (
+              {!loading && !authRequired && gefilterdEnGesorteerd.length > 0 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 text-xs text-gray-500">
                   <span>{gefilterdEnGesorteerd.length} producten gevonden</span>
                   <span>Tip: klik op een kolomheader om te sorteren</span>

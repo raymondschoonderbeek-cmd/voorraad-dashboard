@@ -2,14 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 function isAuthBodyError(data: any) {
-  const msg = String(data?.error_message ?? '').toLowerCase()
-  return data?.error === true && (msg.includes('unauthorized') || msg.includes('authorised') || msg.includes('forbidden'))
+  if (!data || typeof data !== 'object') return false
+  if (data?.error !== true) return false
+
+  const msg =
+    String(data?.error_message ?? data?.message ?? data?.msg ?? '')
+      .toLowerCase()
+      .trim()
+
+  return msg.includes('unauthorized') || msg.includes('forbidden') || msg.includes('not authorized') || msg.includes('not authorised')
 }
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
@@ -29,13 +39,12 @@ export async function GET(request: NextRequest) {
       next: { revalidate: 60 },
     })
 
-    // 1) Als de HTTP status al auth-probleem is
+    // 1) HTTP auth-probleem
     if (response.status === 401 || response.status === 403) {
       return NextResponse.json(
         {
           error: 'AUTH_REQUIRED',
-          message:
-            'Deze winkel heeft nog geen toestemming gegeven om voorraad uit te lezen via CycleSoftware.',
+          message: 'Deze winkel heeft nog geen toestemming gegeven om voorraad uit te lezen via CycleSoftware.',
           instructions: [
             'Log in bij CycleSoftware met het account van de winkel.',
             'Controleer/activeer API-toegang (koppeling/autorisatie voor voorraad).',
@@ -56,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json().catch(() => null)
 
-    // 3) CycleSoftware “Unauthorized” in JSON-body (ook als status 200 is)
+    // 3) Body auth-probleem (status 200 maar error true)
     if (isAuthBodyError(data)) {
       return NextResponse.json(
         {
@@ -68,7 +77,9 @@ export async function GET(request: NextRequest) {
             'Activeer/controleer de API-toestemming voor voorraad (autorisatie/koppeling).',
             'Probeer daarna opnieuw in het dashboard.',
           ],
-          upstream: { error_message: data?.error_message ?? null },
+          upstream: {
+            error_message: data?.error_message ?? data?.message ?? data?.msg ?? null,
+          },
         },
         { status: 403 }
       )
