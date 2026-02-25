@@ -344,9 +344,15 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* ✅ Links (met 4: Instellingen erbij) */}
           <div className="flex items-center gap-3">
             <Link href="/dashboard/brand-groep" className="text-sm font-medium text-gray-600 hover:text-gray-900">
               Overzicht merk/groep
+            </Link>
+
+            {/* ✅ (4) Instellingen / tandwiel */}
+            <Link href="/dashboard/instellingen" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+              ⚙ Instellingen
             </Link>
 
             <button onClick={uitloggen} className="text-sm font-medium text-gray-600 hover:text-red-600">
@@ -651,7 +657,9 @@ export default function Dashboard() {
                             key={k}
                             className={[
                               'px-4 py-3 text-left whitespace-nowrap font-semibold',
-                              sticky ? 'sticky left-0 bg-gray-50 shadow-[2px_0_0_0_rgba(229,231,235,1)]' : '',
+                              sticky
+                                ? 'sticky left-0 bg-gray-50 shadow-[2px_0_0_0_rgba(229,231,235,1)]'
+                                : '',
                             ].join(' ')}
                             style={sticky ? { zIndex: 60 } : undefined}
                           >
@@ -696,7 +704,10 @@ export default function Dashboard() {
                       ))
                     ) : authRequired ? (
                       <tr>
-                        <td colSpan={Math.max(zichtbareKolommen.length, 1)} className="px-6 py-10 text-center text-gray-500">
+                        <td
+                          colSpan={Math.max(zichtbareKolommen.length, 1)}
+                          className="px-6 py-10 text-center text-gray-500"
+                        >
                           Autorisatie vereist — zie melding hierboven.
                         </td>
                       </tr>
@@ -704,7 +715,9 @@ export default function Dashboard() {
                       <tr>
                         <td colSpan={Math.max(zichtbareKolommen.length, 1)} className="px-6 py-10 text-center">
                           <div className="text-sm font-semibold text-gray-800">Geen producten gevonden</div>
-                          <div className="text-sm text-gray-500">Probeer een andere zoekterm, of leeg de zoekbalk.</div>
+                          <div className="text-sm text-gray-500">
+                            Probeer een andere zoekterm, of leeg de zoekbalk.
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -718,7 +731,9 @@ export default function Dashboard() {
                                 key={k}
                                 className={[
                                   'px-4 py-3 whitespace-nowrap align-top',
-                                  sticky ? `sticky left-0 ${stickyBg} shadow-[2px_0_0_0_rgba(229,231,235,1)]` : '',
+                                  sticky
+                                    ? `sticky left-0 ${stickyBg} shadow-[2px_0_0_0_rgba(229,231,235,1)]`
+                                    : '',
                                 ].join(' ')}
                                 style={sticky ? { zIndex: 40 } : undefined}
                               >
