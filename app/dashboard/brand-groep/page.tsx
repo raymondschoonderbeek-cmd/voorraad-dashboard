@@ -11,10 +11,48 @@ type Winkel = {
 
 type Product = { [key: string]: any }
 
-function norm(v: any, fallback: string) {
-  const s = String(v ?? '').trim()
-  return s ? s : fallback
+/** =========================
+ *  ENTERPRISE NORMALIZER
+ *  - case-insensitive
+ *  - trims + collapses spaces
+ *  - removes accents
+ *  - treats -, _ as spaces
+ *  - removes weird punctuation
+ ========================= */
+
+function normalizeKey(input: any, fallbackKey = '(onbekend)') {
+  const raw = String(input ?? '').trim()
+  if (!raw) return fallbackKey
+
+  let cleaned = raw.toLowerCase()
+
+  // accenten weg (ü -> u)
+  cleaned = cleaned.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  // - en _ naar spatie
+  cleaned = cleaned.replace(/[-_]+/g, ' ')
+
+  // alles wat geen letter/cijfer/spatie is -> spatie
+  cleaned = cleaned.replace(/[^\p{L}\p{N}\s]/gu, ' ')
+
+  // meerdere spaties samenvoegen
+  cleaned = cleaned.replace(/\s+/g, ' ').trim()
+
+  return cleaned || fallbackKey
 }
+
+function toTitleCase(s: string) {
+  return s.replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function normalizeLabel(input: any, fallbackLabel = '(Onbekend)') {
+  const fallbackKey = fallbackLabel.toLowerCase()
+  const key = normalizeKey(input, fallbackKey)
+  if (key === fallbackKey) return fallbackLabel
+  return toTitleCase(key)
+}
+
+/** ========================= */
 
 function toNumber(v: any) {
   const n = Number(String(v ?? 0).replace(',', '.'))
@@ -32,14 +70,16 @@ function formatMoney(v: any) {
 }
 
 type GroupRow = {
-  group1: string
+  groupKey: string
+  groupLabel: string
   availableTotal: number
   itemsCount: number
   brandsCount: number
 }
 
 type BrandRow = {
-  brand: string
+  brandKey: string
+  brandLabel: string
   availableTotal: number
   itemsCount: number
 }
@@ -48,7 +88,7 @@ type ProductRow = {
   description: string
   supplierSku: string
   barcode: string
-  supplierName: string
+  supplierNameLabel: string
   available: number
   stock: number
   priceInc: any
@@ -65,9 +105,10 @@ export default function GroupToBrandAvailablePage() {
   const [groupSearch, setGroupSearch] = useState('')
   const [brandSearch, setBrandSearch] = useState('')
 
-  const [selectedGroup, setSelectedGroup] = useState<string>('') // gekozen group_description_1
-  const [selectedBrand, setSelectedBrand] = useState<string>('') // drilldown merk
-  const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null) // product detail
+  // ✅ nu keys i.p.v. labels
+  const [selectedGroup, setSelectedGroup] = useState<string>('') // groupKey
+  const [selectedBrand, setSelectedBrand] = useState<string>('') // brandKey
+  const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null)
 
   const [sortGroupsBy, setSortGroupsBy] = useState<'available' | 'name'>('available')
   const [sortBrandsBy, setSortBrandsBy] = useState<'available' | 'name'>('available')
@@ -97,6 +138,7 @@ export default function GroupToBrandAvailablePage() {
   async function selecteerWinkel(id: number) {
     const winkel = winkels.find(w => w.id === id) ?? null
     setGeselecteerdeWinkel(winkel)
+
     setProducten([])
     setSelectedGroup('')
     setSelectedBrand('')
@@ -105,38 +147,50 @@ export default function GroupToBrandAvailablePage() {
     setBrandSearch('')
     setMinAvailable(0)
     setTop10Brands(false)
+
     if (winkel) await haalVoorraadOp(winkel.dealer_nummer)
   }
 
-  // 1) Groepen (links)
+  // 1) Groepen (links) — gegroepeerd op groupKey
   const groupRows: GroupRow[] = useMemo(() => {
-    const groupTotals = new Map<string, { available: number; items: number; brands: Set<string> }>()
+    const groupTotals = new Map<
+      string,
+      { label: string; available: number; items: number; brands: Set<string> }
+    >()
 
     for (const p of producten) {
-      const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
-      const brand = norm(p.BRAND_NAME, '(Geen merk)')
+      const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
+      const groupLabel = normalizeLabel(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
+
+      const brandKey = normalizeKey(p.BRAND_NAME, '(geen merk)')
       const available = toNumber(p.AVAILABLE_STOCK)
 
-      const entry = groupTotals.get(group1) ?? { available: 0, items: 0, brands: new Set<string>() }
+      const entry =
+        groupTotals.get(groupKey) ?? { label: groupLabel, available: 0, items: 0, brands: new Set<string>() }
+
+      // label “vastzetten” (eerste nette versie)
+      if (!entry.label) entry.label = groupLabel
+
       entry.available += available
       entry.items += 1
-      entry.brands.add(brand)
-      groupTotals.set(group1, entry)
+      entry.brands.add(brandKey)
+      groupTotals.set(groupKey, entry)
     }
 
-    let rows: GroupRow[] = Array.from(groupTotals.entries()).map(([group1, v]) => ({
-      group1,
+    let rows: GroupRow[] = Array.from(groupTotals.entries()).map(([groupKey, v]) => ({
+      groupKey,
+      groupLabel: v.label,
       availableTotal: v.available,
       itemsCount: v.items,
       brandsCount: v.brands.size,
     }))
 
     const needle = groupSearch.trim().toLowerCase()
-    if (needle) rows = rows.filter(r => r.group1.toLowerCase().includes(needle))
+    if (needle) rows = rows.filter(r => r.groupLabel.toLowerCase().includes(needle))
 
     rows.sort((a, b) => {
-      if (sortGroupsBy === 'name') return a.group1.localeCompare(b.group1)
-      return (b.availableTotal - a.availableTotal) || a.group1.localeCompare(b.group1)
+      if (sortGroupsBy === 'name') return a.groupLabel.localeCompare(b.groupLabel)
+      return (b.availableTotal - a.availableTotal) || a.groupLabel.localeCompare(b.groupLabel)
     })
 
     return rows
@@ -145,46 +199,50 @@ export default function GroupToBrandAvailablePage() {
   // auto-selecteer grootste groep bij binnenkomen data
   useEffect(() => {
     if (!selectedGroup && groupRows.length > 0) {
-      setSelectedGroup(groupRows[0].group1)
+      setSelectedGroup(groupRows[0].groupKey)
       setSelectedBrand('')
       setSelectedProduct(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupRows.length])
 
-  // 2) Merken (rechts) op basis van group
+  // 2) Merken (rechts) op basis van selectedGroup (key)
   const brandRows: BrandRow[] = useMemo(() => {
     if (!selectedGroup) return []
 
-    const brandTotals = new Map<string, { available: number; items: number }>()
+    const brandTotals = new Map<string, { label: string; available: number; items: number }>()
 
     for (const p of producten) {
-      const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
-      if (group1 !== selectedGroup) continue
+      const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
+      if (groupKey !== selectedGroup) continue
 
-      const brand = norm(p.BRAND_NAME, '(Geen merk)')
+      const brandKey = normalizeKey(p.BRAND_NAME, '(geen merk)')
+      const brandLabel = normalizeLabel(p.BRAND_NAME, '(Geen merk)')
       const available = toNumber(p.AVAILABLE_STOCK)
 
-      const entry = brandTotals.get(brand) ?? { available: 0, items: 0 }
+      const entry = brandTotals.get(brandKey) ?? { label: brandLabel, available: 0, items: 0 }
+      if (!entry.label) entry.label = brandLabel
+
       entry.available += available
       entry.items += 1
-      brandTotals.set(brand, entry)
+      brandTotals.set(brandKey, entry)
     }
 
-    let rows: BrandRow[] = Array.from(brandTotals.entries()).map(([brand, v]) => ({
-      brand,
+    let rows: BrandRow[] = Array.from(brandTotals.entries()).map(([brandKey, v]) => ({
+      brandKey,
+      brandLabel: v.label,
       availableTotal: v.available,
       itemsCount: v.items,
     }))
 
     const needle = brandSearch.trim().toLowerCase()
-    if (needle) rows = rows.filter(r => r.brand.toLowerCase().includes(needle))
+    if (needle) rows = rows.filter(r => r.brandLabel.toLowerCase().includes(needle))
 
     if (minAvailable > 0) rows = rows.filter(r => r.availableTotal >= minAvailable)
 
     rows.sort((a, b) => {
-      if (sortBrandsBy === 'name') return a.brand.localeCompare(b.brand)
-      return (b.availableTotal - a.availableTotal) || a.brand.localeCompare(b.brand)
+      if (sortBrandsBy === 'name') return a.brandLabel.localeCompare(b.brandLabel)
+      return (b.availableTotal - a.availableTotal) || a.brandLabel.localeCompare(b.brandLabel)
     })
 
     if (top10Brands) rows = rows.slice(0, 10)
@@ -193,31 +251,35 @@ export default function GroupToBrandAvailablePage() {
   }, [producten, selectedGroup, brandSearch, sortBrandsBy, minAvailable, top10Brands])
 
   const selectedGroupMeta = useMemo(() => {
-    return groupRows.find(r => r.group1 === selectedGroup) ?? null
+    return groupRows.find(r => r.groupKey === selectedGroup) ?? null
   }, [groupRows, selectedGroup])
+
+  const selectedBrandMeta = useMemo(() => {
+    return brandRows.find(r => r.brandKey === selectedBrand) ?? null
+  }, [brandRows, selectedBrand])
 
   const maxBrandValue = useMemo(() => {
     return brandRows.reduce((m, r) => Math.max(m, r.availableTotal), 0)
   }, [brandRows])
 
-  // 3) Drilldown producten: geselecteerde group + merk
+  // 3) Drilldown producten: selectedGroup + selectedBrand (keys)
   const productRows: ProductRow[] = useMemo(() => {
     if (!selectedGroup || !selectedBrand) return []
 
     const rows: ProductRow[] = []
 
     for (const p of producten) {
-      const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
-      if (group1 !== selectedGroup) continue
+      const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
+      if (groupKey !== selectedGroup) continue
 
-      const brand = norm(p.BRAND_NAME, '(Geen merk)')
-      if (brand !== selectedBrand) continue
+      const brandKey = normalizeKey(p.BRAND_NAME, '(geen merk)')
+      if (brandKey !== selectedBrand) continue
 
       rows.push({
-        description: norm(p.PRODUCT_DESCRIPTION, ''),
-        supplierSku: norm(p.SUPPLIER_PRODUCT_NUMBER, ''),
-        barcode: norm(p.BARCODE, ''),
-        supplierName: norm(p.SUPPLIER_NAME, ''),
+        description: String(p.PRODUCT_DESCRIPTION ?? '').trim(),
+        supplierSku: String(p.SUPPLIER_PRODUCT_NUMBER ?? '').trim(),
+        barcode: String(p.BARCODE ?? '').trim(),
+        supplierNameLabel: normalizeLabel(p.SUPPLIER_NAME, '(Geen leverancier)'),
         available: toNumber(p.AVAILABLE_STOCK),
         stock: toNumber(p.STOCK),
         priceInc: p.SALES_PRICE_INC,
@@ -351,26 +413,31 @@ export default function GroupToBrandAvailablePage() {
                       </tr>
                     ) : (
                       groupRows.map((r, i) => {
-                        const selected = r.group1 === selectedGroup
+                        const selected = r.groupKey === selectedGroup
                         return (
                           <tr
-                            key={`${r.group1}-${i}`}
+                            key={r.groupKey}
                             className={[
                               'cursor-pointer',
                               selected ? 'bg-blue-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50',
                               'hover:bg-blue-50/60',
                             ].join(' ')}
                             onClick={() => {
-                              setSelectedGroup(r.group1)
+                              setSelectedGroup(r.groupKey)
                               setSelectedBrand('')
                               setSelectedProduct(null)
                             }}
                           >
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className={['inline-flex w-2 h-2 rounded-full', selected ? 'bg-blue-600' : 'bg-gray-300'].join(' ')} />
+                                <span
+                                  className={[
+                                    'inline-flex w-2 h-2 rounded-full',
+                                    selected ? 'bg-blue-600' : 'bg-gray-300',
+                                  ].join(' ')}
+                                />
                                 <div className="min-w-0">
-                                  <div className="font-semibold text-gray-900 truncate">{r.group1}</div>
+                                  <div className="font-semibold text-gray-900 truncate">{r.groupLabel}</div>
                                   <div className="text-xs text-gray-500">
                                     {r.brandsCount} merken • {r.itemsCount} regels
                                   </div>
@@ -395,7 +462,10 @@ export default function GroupToBrandAvailablePage() {
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-gray-800">2) Overzicht per merk</div>
                       <div className="text-sm text-gray-600 truncate">
-                        Groep: <span className="font-semibold text-gray-900">{selectedGroup || '—'}</span>
+                        Groep:{' '}
+                        <span className="font-semibold text-gray-900">
+                          {selectedGroupMeta?.groupLabel ?? '—'}
+                        </span>
                       </div>
                       {selectedGroupMeta && (
                         <div className="text-xs text-gray-500">
@@ -406,7 +476,10 @@ export default function GroupToBrandAvailablePage() {
                       )}
                       {selectedBrand && (
                         <div className="text-xs text-gray-500 mt-1">
-                          Geselecteerd merk: <span className="font-semibold text-gray-900">{selectedBrand}</span>
+                          Geselecteerd merk:{' '}
+                          <span className="font-semibold text-gray-900">
+                            {selectedBrandMeta?.brandLabel ?? '—'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -492,14 +565,14 @@ export default function GroupToBrandAvailablePage() {
                       brandRows.map((r, i) => {
                         const bg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                         const pct = maxBrandValue > 0 ? Math.round((r.availableTotal / maxBrandValue) * 100) : 0
-                        const isSelected = r.brand === selectedBrand
+                        const isSelected = r.brandKey === selectedBrand
 
                         return (
                           <tr
-                            key={`${r.brand}-${i}`}
+                            key={r.brandKey}
                             className={[bg, 'cursor-pointer hover:bg-blue-50/60', isSelected ? 'bg-blue-50' : ''].join(' ')}
                             onClick={() => {
-                              setSelectedBrand(r.brand)
+                              setSelectedBrand(r.brandKey)
                               setSelectedProduct(null)
                             }}
                             title="Klik voor producten"
@@ -507,8 +580,13 @@ export default function GroupToBrandAvailablePage() {
                             <td className="px-4 py-3">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className={['inline-flex w-2 h-2 rounded-full', isSelected ? 'bg-blue-600' : 'bg-gray-300'].join(' ')} />
-                                  <div className="font-semibold text-gray-900 truncate">{r.brand}</div>
+                                  <span
+                                    className={[
+                                      'inline-flex w-2 h-2 rounded-full',
+                                      isSelected ? 'bg-blue-600' : 'bg-gray-300',
+                                    ].join(' ')}
+                                  />
+                                  <div className="font-semibold text-gray-900 truncate">{r.brandLabel}</div>
                                 </div>
                                 <div className="mt-1 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                                   <div className="h-full bg-blue-600" style={{ width: `${pct}%` }} />
@@ -535,13 +613,20 @@ export default function GroupToBrandAvailablePage() {
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-gray-800">3) Producten (drilldown)</div>
                   <div className="text-sm text-gray-600 truncate">
-                    Groep: <span className="font-semibold text-gray-900">{selectedGroup || '—'}</span> • Merk:{' '}
-                    <span className="font-semibold text-gray-900">{selectedBrand || '—'}</span>
+                    Groep:{' '}
+                    <span className="font-semibold text-gray-900">
+                      {selectedGroupMeta?.groupLabel ?? '—'}
+                    </span>{' '}
+                    • Merk:{' '}
+                    <span className="font-semibold text-gray-900">
+                      {selectedBrandMeta?.brandLabel ?? '—'}
+                    </span>
                   </div>
                   {selectedBrand && (
                     <div className="text-xs text-gray-500">
-                      Som beschikbaar in selectie: <span className="font-semibold">{formatInt(drilldownAvailableTotal)}</span> •{' '}
-                      {productRows.length} regels
+                      Som beschikbaar in selectie:{' '}
+                      <span className="font-semibold">{formatInt(drilldownAvailableTotal)}</span> • {productRows.length}{' '}
+                      regels
                     </div>
                   )}
                 </div>
@@ -625,7 +710,7 @@ export default function GroupToBrandAvailablePage() {
                                 SKU: {r.supplierSku || '—'} • Barcode: {r.barcode || '—'}
                               </div>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">{r.supplierName || '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{r.supplierNameLabel || '—'}</td>
                             <td className="px-4 py-3 text-right font-bold whitespace-nowrap">{formatInt(r.available)}</td>
                             <td className="px-4 py-3 text-right whitespace-nowrap">{formatInt(r.stock)}</td>
                           </tr>
@@ -657,9 +742,7 @@ export default function GroupToBrandAvailablePage() {
               </div>
 
               {!selectedProduct ? (
-                <div className="p-6 text-sm text-gray-500">
-                  Geen product geselecteerd.
-                </div>
+                <div className="p-6 text-sm text-gray-500">Geen product geselecteerd.</div>
               ) : (
                 <div className="p-4 space-y-4">
                   <div>
@@ -667,7 +750,7 @@ export default function GroupToBrandAvailablePage() {
                       {selectedProduct.description || '(Geen omschrijving)'}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {selectedBrand} • {selectedGroup}
+                      {selectedBrandMeta?.brandLabel ?? '—'} • {selectedGroupMeta?.groupLabel ?? '—'}
                     </div>
                   </div>
 
@@ -679,11 +762,13 @@ export default function GroupToBrandAvailablePage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
-                    <InfoCard label="Leverancier" value={selectedProduct.supplierName || '—'} />
+                    <InfoCard label="Leverancier" value={selectedProduct.supplierNameLabel || '—'} />
                     <InfoCard
                       label="Prijs incl."
                       value={
-                        selectedProduct.priceInc === null || selectedProduct.priceInc === undefined || selectedProduct.priceInc === ''
+                        selectedProduct.priceInc === null ||
+                        selectedProduct.priceInc === undefined ||
+                        selectedProduct.priceInc === ''
                           ? '—'
                           : formatMoney(selectedProduct.priceInc)
                       }
