@@ -346,7 +346,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-3">
             <Link href="/dashboard/brand-groep" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-              Pivot merk/groep
+              Overzicht merk/groep
             </Link>
 
             <button onClick={uitloggen} className="text-sm font-medium text-gray-600 hover:text-red-600">
