@@ -7,6 +7,7 @@ import Link from 'next/link'
 
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
+const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 
 const WINKEL_KLEUREN = [
   '#2563eb', '#16a34a', '#dc2626', '#9333ea',
@@ -66,11 +67,15 @@ function getDatum() {
   return new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function isFiets(p: any) {
+  const g = String(p.GROUP_DESCRIPTION_1 ?? '').toLowerCase()
+  return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
+}
+
 type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number }
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
-// SVG Iconen
 const IconBox = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -117,7 +122,6 @@ const IconPin = () => (
   </svg>
 )
 
-// Kaart component met Leaflet
 function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer: (w: Winkel) => void }) {
   const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
 
@@ -125,7 +129,6 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
     if (winkelsMetCoords.length === 0) return
     if (typeof window === 'undefined') return
 
-    // Laad Leaflet dynamisch
     const link = document.createElement('link')
     link.rel = 'stylesheet'
     link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
@@ -139,53 +142,23 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
       if (!mapEl || (mapEl as any)._leaflet_id) return
 
       const map = L.map('winkel-kaart', { zoomControl: true, scrollWheelZoom: false })
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-      }).addTo(map)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map)
 
       const bounds: [number, number][] = []
 
       winkelsMetCoords.forEach((w, i) => {
         const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
         const icon = L.divIcon({
-          html: `<div style="
-            background:${kleur};
-            width:32px;height:32px;
-            border-radius:50% 50% 50% 0;
-            transform:rotate(-45deg);
-            border:3px solid white;
-            box-shadow:0 2px 8px rgba(0,0,0,0.3);
-            display:flex;align-items:center;justify-content:center;
-          "><div style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;text-align:center;line-height:26px;">${w.naam.charAt(0)}</div></div>`,
-          className: '',
-          iconSize: [32, 32],
-          iconAnchor: [16, 32],
+          html: `<div style="background:${kleur};width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;text-align:center;line-height:26px;">${w.naam.charAt(0)}</div></div>`,
+          className: '', iconSize: [32, 32], iconAnchor: [16, 32],
         })
-
         const marker = L.marker([w.lat!, w.lng!], { icon })
         marker.addTo(map)
-        marker.bindPopup(`
-          <div style="font-family:sans-serif;min-width:140px">
-            <div style="font-weight:bold;color:${DYNAMO_BLUE};font-size:13px">${w.naam}</div>
-            <div style="color:#6b7280;font-size:11px;margin-top:2px">${w.stad || w.postcode || ''}</div>
-            <button onclick="window._selectWinkel(${w.id})" style="
-              margin-top:8px;width:100%;
-              background:${DYNAMO_BLUE};color:white;
-              border:none;border-radius:6px;
-              padding:6px;font-size:12px;
-              cursor:pointer;font-weight:bold;
-            ">Bekijk voorraad →</button>
-          </div>
-        `)
+        marker.bindPopup(`<div style="font-family:sans-serif;min-width:140px"><div style="font-weight:bold;color:${DYNAMO_BLUE};font-size:13px">${w.naam}</div><div style="color:#6b7280;font-size:11px;margin-top:2px">${w.stad || w.postcode || ''}</div><button onclick="window._selectWinkel(${w.id})" style="margin-top:8px;width:100%;background:${DYNAMO_BLUE};color:white;border:none;border-radius:6px;padding:6px;font-size:12px;cursor:pointer;font-weight:bold;">Bekijk voorraad →</button></div>`)
         bounds.push([w.lat!, w.lng!])
       })
 
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [40, 40] })
-      }
-
-      // Global callback voor popup knop
+      if (bounds.length > 0) map.fitBounds(bounds, { padding: [40, 40] })
       ;(window as any)._selectWinkel = (id: number) => {
         const winkel = winkels.find(w => w.id === id)
         if (winkel) onSelecteer(winkel)
@@ -226,10 +199,10 @@ export default function Dashboard() {
   const [producten, setProducten] = useState<Product[]>([])
   const [kolommen, setKolommen] = useState<string[]>([])
   const [zichtbareKolommen, setZichtbareKolommen] = useState<string[]>([])
+  const [kolommenGeladen, setKolommenGeladen] = useState(false)
   const [zoekterm, setZoekterm] = useState('')
   const [debouncedZoekterm, setDebouncedZoekterm] = useState('')
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
-  const [laagVoorraad, setLaagVoorraad] = useState(false)
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [toonWinkelForm, setToonWinkelForm] = useState(false)
@@ -237,7 +210,7 @@ export default function Dashboard() {
   const [nieuweNaam, setNieuweNaam] = useState('')
   const [nieuwDealer, setNieuwDealer] = useState('')
   const [nieuwePostcode, setNieuwePostcode] = useState('')
-const [nieuweStad, setNieuweStad] = useState('')
+  const [nieuweStad, setNieuweStad] = useState('')
   const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
   const [bewerkLoading, setBewerkLoading] = useState(false)
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
@@ -248,6 +221,28 @@ const [nieuweStad, setNieuweStad] = useState('')
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Laad opgeslagen kolomvoorkeur
+  useEffect(() => {
+    try {
+      const opgeslagen = localStorage.getItem(KOLOMMEN_STORAGE_KEY)
+      if (opgeslagen) {
+        const parsed = JSON.parse(opgeslagen)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setZichtbareKolommen(parsed)
+        }
+      }
+    } catch {}
+    setKolommenGeladen(true)
+  }, [])
+
+  // Sla kolomvoorkeur op als ze wijzigen
+  useEffect(() => {
+    if (!kolommenGeladen || zichtbareKolommen.length === 0) return
+    try {
+      localStorage.setItem(KOLOMMEN_STORAGE_KEY, JSON.stringify(zichtbareKolommen))
+    } catch {}
+  }, [zichtbareKolommen, kolommenGeladen])
 
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
@@ -263,32 +258,45 @@ const [nieuweStad, setNieuweStad] = useState('')
     if (!res.ok) {
       setProducten([])
       setKolommen([])
-      setZichtbareKolommen([])
       setAuthRequired({ message: data?.message ?? 'Voorraad ophalen mislukt.' })
       setLoading(false)
       return
     }
     const items = Array.isArray(data) ? data : data.products ?? []
-
-    // Bewaar vorige stats voor trend
-    setVorigeStats(prev => {
-      if (items.length > 0 && prev) return prev
-      return null
-    })
-
+    setVorigeStats(prev => (items.length > 0 && prev) ? prev : null)
     setProducten(items)
+
     const keys = items.length > 0 ? Object.keys(items[0]) : []
     const dynamicCols = keys.filter(k => !isHidden(k)).sort((a, b) => {
       const oa = columnOrder(a), ob = columnOrder(b)
       return oa !== ob ? oa - ob : a.localeCompare(b)
     })
     setKolommen(dynamicCols)
+
+    // Pas opgeslagen voorkeur toe, anders alles tonen
     setZichtbareKolommen(prev => {
-      if (prev.length === 0) return dynamicCols
-      const allowed = new Set(dynamicCols)
-      const kept = prev.filter(k => allowed.has(k))
-      return kept.length > 0 ? kept : dynamicCols
+      const opgeslagen = (() => {
+        try {
+          const s = localStorage.getItem(KOLOMMEN_STORAGE_KEY)
+          return s ? JSON.parse(s) : null
+        } catch { return null }
+      })()
+
+      if (opgeslagen && Array.isArray(opgeslagen) && opgeslagen.length > 0) {
+        const allowed = new Set(dynamicCols)
+        const kept = opgeslagen.filter((k: string) => allowed.has(k))
+        if (kept.length > 0) return kept
+      }
+
+      if (prev.length > 0) {
+        const allowed = new Set(dynamicCols)
+        const kept = prev.filter(k => allowed.has(k))
+        if (kept.length > 0) return kept
+      }
+
+      return dynamicCols
     })
+
     setLoading(false)
   }, [])
 
@@ -317,10 +325,8 @@ const [nieuweStad, setNieuweStad] = useState('')
     setDebouncedZoekterm('')
     setProducten([])
     setKolommen([])
-    setZichtbareKolommen([])
     setSortKey('')
     setZoekKolom('ALL')
-    setLaagVoorraad(false)
     setKolomPanelOpen(false)
     setAuthRequired(null)
     await haalVoorraadOp(winkel.dealer_nummer, '')
@@ -334,15 +340,13 @@ const [nieuweStad, setNieuweStad] = useState('')
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer, postcode: nieuwePostcode, stad: nieuweStad }),
     })
-    setNieuweNaam('')
-    setNieuwDealer('')
-    setNieuwePostcode('')
-    setNieuweStad('')
+    setNieuweNaam(''); setNieuwDealer(''); setNieuwePostcode(''); setNieuweStad('')
     setToonWinkelForm(false)
     setWinkelLoading(false)
     await haalWinkelsOp()
   }
-async function slaWinkelOp(e: React.FormEvent) {
+
+  async function slaWinkelOp(e: React.FormEvent) {
     e.preventDefault()
     if (!bewerkWinkel) return
     setBewerkLoading(true)
@@ -361,6 +365,7 @@ async function slaWinkelOp(e: React.FormEvent) {
     setBewerkWinkel(null)
     await haalWinkelsOp()
   }
+
   async function verwijderWinkel(id: number) {
     if (!confirm('Winkel verwijderen?')) return
     await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
@@ -368,7 +373,6 @@ async function slaWinkelOp(e: React.FormEvent) {
       setGeselecteerdeWinkel(null)
       setProducten([])
       setKolommen([])
-      setZichtbareKolommen([])
       setZoekterm('')
       setAuthRequired(null)
     }
@@ -404,9 +408,6 @@ async function slaWinkelOp(e: React.FormEvent) {
       const needle = debouncedZoekterm.toLowerCase()
       arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
     }
-    if (laagVoorraad) {
-      arr = arr.filter(p => Number(p.STOCK) > 0 && Number(p.STOCK) <= 3)
-    }
     if (sortKey) {
       arr.sort((a, b) => {
         const av = asSortable(a[sortKey]), bv = asSortable(b[sortKey])
@@ -416,13 +417,12 @@ async function slaWinkelOp(e: React.FormEvent) {
       })
     }
     return arr
-  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir, laagVoorraad])
+  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
 
   const stats = useMemo(() => ({
     producten: gefilterdEnGesorteerd.length,
     voorraad: gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
-    uitverkocht: gefilterdEnGesorteerd.filter(p => Number(p.STOCK) === 0).length,
-    laagVoorraad: gefilterdEnGesorteerd.filter(p => Number(p.STOCK) > 0 && Number(p.STOCK) <= 3).length,
+    fietsen: gefilterdEnGesorteerd.filter(p => isFiets(p) && Number(p.STOCK) > 0).reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     merken: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
   }), [gefilterdEnGesorteerd])
 
@@ -471,17 +471,14 @@ async function slaWinkelOp(e: React.FormEvent) {
           <div className="flex-1" />
 
           <div className="flex items-center gap-3 pl-5">
-            <button
-              onClick={() => setSidebarOpen(v => !v)}
-              className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/20 hover:bg-white/10 transition"
-            >
+            <button onClick={() => setSidebarOpen(v => !v)} className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/20 hover:bg-white/10 transition">
               <span className="flex flex-col gap-1 w-4">
                 <span className="block h-0.5 bg-white rounded" />
                 <span className="block h-0.5 bg-white rounded" />
                 <span className="block h-0.5 bg-white rounded" />
               </span>
             </button>
- <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
+            <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
             <Link href="/dashboard/beheer" className="rounded-lg px-3 py-2 text-xs font-semibold border border-white/20 text-white hover:bg-white/10 transition hidden md:flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -500,18 +497,11 @@ async function slaWinkelOp(e: React.FormEvent) {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Sidebar */}
-        <aside
-          className="bg-white border-r border-gray-200 flex flex-col transition-all duration-200 overflow-hidden"
-          style={{ width: sidebarOpen ? '260px' : '0px', minWidth: sidebarOpen ? '260px' : '0px' }}
-        >
+        <aside className="bg-white border-r border-gray-200 flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '260px' : '0px', minWidth: sidebarOpen ? '260px' : '0px' }}>
           <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE }}>Winkels</span>
-              <button
-                onClick={() => setToonWinkelForm(v => !v)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-lg transition hover:opacity-80"
-                style={{ background: DYNAMO_BLUE }}
-              >+</button>
+              <button onClick={() => setToonWinkelForm(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-lg transition hover:opacity-80" style={{ background: DYNAMO_BLUE }}>+</button>
             </div>
 
             {toonWinkelForm && (
@@ -529,63 +519,29 @@ async function slaWinkelOp(e: React.FormEvent) {
                 </div>
               </form>
             )}
-{bewerkWinkel && (
+
+            {bewerkWinkel && (
               <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2 border-2 bg-gray-50" style={{ borderColor: DYNAMO_BLUE }}>
                 <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>✏️ Winkel bewerken</p>
-                <input
-                  placeholder="Naam winkel"
-                  value={bewerkWinkel.naam}
-                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })}
-                  className={inputClass + ' w-full'}
-                  required
-                />
-                <input
-                  placeholder="Dealer nummer"
-                  value={bewerkWinkel.dealer_nummer}
-                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })}
-                  className={inputClass + ' w-full'}
-                  required
-                />
-                <input
-                  placeholder="Postcode (bijv. 1234AB)"
-                  value={bewerkWinkel.postcode ?? ''}
-                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })}
-                  className={inputClass + ' w-full'}
-                />
-                <input
-                  placeholder="Stad"
-                  value={bewerkWinkel.stad ?? ''}
-                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })}
-                  className={inputClass + ' w-full'}
-                />
+                <input placeholder="Naam winkel" value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass + ' w-full'} required />
+                <input placeholder="Dealer nummer" value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass + ' w-full'} required />
+                <input placeholder="Postcode (bijv. 1234AB)" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass + ' w-full'} />
+                <input placeholder="Stad" value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass + ' w-full'} />
                 <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={bewerkLoading}
-                    className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50"
-                    style={{ background: DYNAMO_BLUE }}
-                  >
+                  <button type="submit" disabled={bewerkLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
                     {bewerkLoading ? 'Opslaan...' : 'Opslaan'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setBewerkWinkel(null)}
-                    className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50"
-                  >✕</button>
+                  <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
                 </div>
               </form>
             )}
+
             <div className="flex-1 overflow-y-auto space-y-1">
               {winkels.map((w, i) => {
                 const active = geselecteerdeWinkel?.id === w.id
                 const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
                 return (
-                  <div
-                    key={w.id}
-                    onClick={() => selecteerWinkel(w)}
-                    className="group flex items-center gap-2 rounded-xl px-3 py-2.5 cursor-pointer transition border"
-                    style={active ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE } : { background: 'white', borderColor: '#e5e7eb' }}
-                  >
+                  <div key={w.id} onClick={() => selecteerWinkel(w)} className="group flex items-center gap-2 rounded-xl px-3 py-2.5 cursor-pointer transition border" style={active ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE } : { background: 'white', borderColor: '#e5e7eb' }}>
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.2)' : kleur }}>
                       {w.naam.charAt(0)}
                     </div>
@@ -596,18 +552,8 @@ async function slaWinkelOp(e: React.FormEvent) {
                       </div>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                      <button
-                        onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }}
-                        className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20"
-                        style={{ color: active ? 'white' : DYNAMO_BLUE }}
-                        title="Bewerken"
-                      >✏️</button>
-                      <button
-                        onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }}
-                        className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20"
-                        style={{ color: active ? 'white' : '#ef4444' }}
-                        title="Verwijderen"
-                      >✕</button>
+                      <button onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }} className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20" style={{ color: active ? 'white' : DYNAMO_BLUE }} title="Bewerken">✏️</button>
+                      <button onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }} className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20" style={{ color: active ? 'white' : '#ef4444' }} title="Verwijderen">✕</button>
                     </div>
                   </div>
                 )
@@ -626,7 +572,6 @@ async function slaWinkelOp(e: React.FormEvent) {
 
           {!geselecteerdeWinkel ? (
             <div className="space-y-5">
-
               {/* Hero */}
               <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 200 }}>
                 <div className="absolute -top-12 -right-12 w-72 h-72 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
@@ -634,21 +579,11 @@ async function slaWinkelOp(e: React.FormEvent) {
                 <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full opacity-5" style={{ background: 'white' }} />
                 <div className="relative p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div>
-                    <div style={{ color: DYNAMO_GOLD }} className="text-sm font-bold uppercase tracking-widest mb-1">
-                      {getDagdeel()}
-                    </div>
-                    <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight">
-                      Voorraad Dashboard
-                    </h1>
+                    <div style={{ color: DYNAMO_GOLD }} className="text-sm font-bold uppercase tracking-widest mb-1">{getDagdeel()}</div>
+                    <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight">Voorraad Dashboard</h1>
                     <p className="mt-1 text-white/60 text-sm capitalize">{getDatum()}</p>
-                    <p className="mt-3 text-white/70 text-sm max-w-md">
-                      Selecteer een winkel om de voorraad te bekijken en te doorzoeken.
-                    </p>
-                    <button
-                      onClick={() => setSidebarOpen(true)}
-                      className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2"
-                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-                    >
+                    <p className="mt-3 text-white/70 text-sm max-w-md">Selecteer een winkel om de voorraad te bekijken en te doorzoeken.</p>
+                    <button onClick={() => setSidebarOpen(true)} className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
                       <IconStore /> Kies een winkel
                     </button>
                   </div>
@@ -664,12 +599,7 @@ async function slaWinkelOp(e: React.FormEvent) {
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Modules</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                  <div
-                    className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200"
-                    style={{ borderColor: DYNAMO_BLUE }}
-                    onClick={() => setSidebarOpen(true)}
-                  >
+                  <div className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200" style={{ borderColor: DYNAMO_BLUE }} onClick={() => setSidebarOpen(true)}>
                     <div className="p-5" style={{ background: DYNAMO_BLUE }}>
                       <div className="text-white mb-3"><IconBox /></div>
                       <div className="text-white font-bold text-lg">Voorraad</div>
@@ -708,9 +638,7 @@ async function slaWinkelOp(e: React.FormEvent) {
 
               {/* Kaart */}
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>
-                  Winkels op de kaart
-                </h2>
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Winkels op de kaart</h2>
                 <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
               </div>
 
@@ -722,30 +650,20 @@ async function slaWinkelOp(e: React.FormEvent) {
                     {winkels.map((w, i) => {
                       const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
                       return (
-                        <div
-                          key={w.id}
-                          onClick={() => selecteerWinkel(w)}
-                          className="bg-white rounded-2xl border border-gray-200 overflow-hidden cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200"
-                        >
-                          {/* Kleurband */}
+                        <div key={w.id} onClick={() => selecteerWinkel(w)} className="bg-white rounded-2xl border border-gray-200 overflow-hidden cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200">
                           <div className="h-2" style={{ background: kleur }} />
                           <div className="p-4">
                             <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black" style={{ background: kleur }}>
-                                {w.naam.charAt(0)}
-                              </div>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black" style={{ background: kleur }}>{w.naam.charAt(0)}</div>
                               <div className="min-w-0">
                                 <div className="font-bold text-sm truncate" style={{ color: DYNAMO_BLUE }}>{w.naam}</div>
                                 <div className="text-xs text-gray-400">#{w.dealer_nummer}</div>
                               </div>
                             </div>
                             {(w.stad || w.postcode) && (
-                              <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-                                <IconPin />
-                                <span>{w.stad}{w.stad && w.postcode ? ' · ' : ''}{w.postcode}</span>
-                              </div>
+                              <div className="flex items-center gap-1 text-xs text-gray-500 mb-3"><IconPin /><span>{w.stad}{w.stad && w.postcode ? ' · ' : ''}{w.postcode}</span></div>
                             )}
-                            <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                            <div className="pt-3 border-t border-gray-100">
                               <span className="text-xs font-semibold" style={{ color: kleur }}>Bekijk voorraad →</span>
                             </div>
                           </div>
@@ -759,21 +677,17 @@ async function slaWinkelOp(e: React.FormEvent) {
           ) : (
             <>
               {/* Terugknop */}
-              <button
-                onClick={() => setGeselecteerdeWinkel(null)}
-                className="flex items-center gap-2 text-sm font-semibold hover:underline transition"
-                style={{ color: DYNAMO_BLUE }}
-              >
+              <button onClick={() => setGeselecteerdeWinkel(null)} className="flex items-center gap-2 text-sm font-semibold hover:underline transition" style={{ color: DYNAMO_BLUE }}>
                 <IconArrowLeft /> Terug naar startscherm
               </button>
 
-              {/* Stats */}
+              {/* Stats — zonder uitverkocht/lage voorraad, met fietsen */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Producten', value: stats.producten, vorig: vorigeStats?.producten, color: DYNAMO_BLUE },
                   { label: 'Totaal voorraad', value: stats.voorraad, vorig: vorigeStats?.voorraad, color: DYNAMO_BLUE },
-                  { label: 'Uitverkocht', value: stats.uitverkocht, color: '#dc2626' },
-                  { label: 'Lage voorraad', value: stats.laagVoorraad, color: '#f59e0b' },
+                  { label: 'Fietsen op voorraad', value: stats.fietsen, color: '#16a34a' },
+                  { label: 'Merken', value: stats.merken, color: DYNAMO_BLUE },
                 ].map(s => (
                   <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 py-3 shadow-sm">
                     <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</div>
@@ -792,16 +706,10 @@ async function slaWinkelOp(e: React.FormEvent) {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-gray-400 text-sm">#{dealer}</span>
-                      {geselecteerdeWinkel.stad && (
-                        <span className="flex items-center gap-1 text-xs text-gray-400"><IconPin />{geselecteerdeWinkel.stad}</span>
-                      )}
+                      {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs text-gray-400"><IconPin />{geselecteerdeWinkel.stad}</span>}
                     </div>
                     <div className="flex items-center gap-3">
-                      <Link
-                        href="/dashboard/brand-groep"
-                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border transition hover:shadow-sm"
-                        style={{ borderColor: DYNAMO_GOLD, color: DYNAMO_BLUE, background: '#fffbeb' }}
-                      >
+                      <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border transition hover:shadow-sm" style={{ borderColor: DYNAMO_GOLD, color: DYNAMO_BLUE, background: '#fffbeb' }}>
                         <IconChart /> Merk/Groep
                       </Link>
                       <span className="text-xs text-gray-400">
@@ -813,13 +721,7 @@ async function slaWinkelOp(e: React.FormEvent) {
                   <div className="flex flex-wrap gap-2 items-center">
                     <div className="relative flex-1 min-w-[200px]">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">⌕</span>
-                      <input
-                        type="text"
-                        placeholder="Zoek op product, merk, barcode..."
-                        value={zoekterm}
-                        onChange={e => setZoekterm(e.target.value)}
-                        className={inputClass + ' w-full pl-9'}
-                      />
+                      <input type="text" placeholder="Zoek op product, merk, barcode..." value={zoekterm} onChange={e => setZoekterm(e.target.value)} className={inputClass + ' w-full pl-9'} />
                     </div>
 
                     <select value={zoekKolom} onChange={e => setZoekKolom(e.target.value)} className={inputClass}>
@@ -827,25 +729,9 @@ async function slaWinkelOp(e: React.FormEvent) {
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
 
-                    {/* Lage voorraad filter */}
-                    <button
-                      onClick={() => setLaagVoorraad(v => !v)}
-                      className="rounded-lg px-4 py-2 text-sm font-semibold border transition flex items-center gap-2"
-                      style={laagVoorraad
-                        ? { background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }
-                        : { background: 'white', borderColor: '#d1d5db', color: '#374151' }
-                      }
-                    >
-                      ⚠️ Lage voorraad {laagVoorraad && `(${stats.laagVoorraad})`}
-                    </button>
-
                     {/* Kolommen */}
                     <div className="relative">
-                      <button
-                        onClick={() => setKolomPanelOpen(v => !v)}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-2"
-                        style={{ color: DYNAMO_BLUE }}
-                      >
+                      <button onClick={() => setKolomPanelOpen(v => !v)} className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-2" style={{ color: DYNAMO_BLUE }}>
                         ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
@@ -854,6 +740,7 @@ async function slaWinkelOp(e: React.FormEvent) {
                             <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Kolommen instellen</span>
                             <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
                           </div>
+                          <p className="text-xs text-gray-400 mb-3">Jouw voorkeur wordt automatisch onthouden.</p>
                           <div className="flex gap-2 mb-3">
                             <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles aan</button>
                             <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles uit</button>
@@ -871,8 +758,8 @@ async function slaWinkelOp(e: React.FormEvent) {
                       )}
                     </div>
 
-                    {(zoekterm || zoekKolom !== 'ALL' || laagVoorraad) && (
-                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL'); setLaagVoorraad(false) }} className="text-sm text-red-400 hover:text-red-600 font-medium">✕ Wis filters</button>
+                    {(zoekterm || zoekKolom !== 'ALL') && (
+                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="text-sm text-red-400 hover:text-red-600 font-medium">✕ Wis filters</button>
                     )}
                   </div>
                 </div>
@@ -895,16 +782,10 @@ async function slaWinkelOp(e: React.FormEvent) {
                           const active = sortKey === k
                           const sticky = stickyEnabled && stickyKey === k
                           return (
-                            <th
-                              key={k}
-                              className="px-4 py-3 text-left whitespace-nowrap text-xs font-bold uppercase tracking-wide"
-                              style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.85)', background: DYNAMO_BLUE, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}
-                            >
+                            <th key={k} className="px-4 py-3 text-left whitespace-nowrap text-xs font-bold uppercase tracking-wide" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.85)', background: DYNAMO_BLUE, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}>
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
-                                <span style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.3)' }}>
-                                  {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
-                                </span>
+                                <span style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.3)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
                               </button>
                             </th>
                           )
@@ -929,42 +810,29 @@ async function slaWinkelOp(e: React.FormEvent) {
                           </td>
                         </tr>
                       ) : (
-                        gefilterdEnGesorteerd.map((p, i) => {
-                          const stock = Number(p.STOCK)
-                          const isLaag = stock > 0 && stock <= 3
-                          const isUit = stock === 0
-                          return (
-                            <tr
-                              key={i}
-                              className="transition hover:bg-yellow-50"
-                              style={isUit ? { background: '#fff7f7' } : isLaag ? { background: '#fffbeb' } : i % 2 === 1 ? { background: '#fafafa' } : {}}
-                            >
-                              {zichtbareKolommen.map(k => {
-                                const sticky = stickyEnabled && stickyKey === k
-                                const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
-                                const stockVal = Number(p[k])
-                                return (
-                                  <td
-                                    key={k}
-                                    className="px-4 py-2.5 whitespace-nowrap align-middle"
-                                    style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}
-                                  >
-                                    <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : stockVal <= 3 ? 'text-amber-500 font-semibold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
-                                      {formatValue(k, p[k])}
-                                    </span>
-                                  </td>
-                                )
-                              })}
-                            </tr>
-                          )
-                        })
+                        gefilterdEnGesorteerd.map((p, i) => (
+                          <tr key={i} className="transition hover:bg-yellow-50" style={i % 2 === 1 ? { background: '#fafafa' } : {}}>
+                            {zichtbareKolommen.map(k => {
+                              const sticky = stickyEnabled && stickyKey === k
+                              const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
+                              const stockVal = Number(p[k])
+                              return (
+                                <td key={k} className="px-4 py-2.5 whitespace-nowrap align-middle" style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}>
+                                  <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : stockVal <= 3 ? 'text-amber-500 font-semibold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
+                                    {formatValue(k, p[k])}
+                                  </span>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
                 </div>
                 {!loading && gefilterdEnGesorteerd.length > 0 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
-                    <span>{gefilterdEnGesorteerd.length} producten · <span className="text-amber-500">geel = lage voorraad</span> · <span className="text-red-400">rood = uitverkocht</span></span>
+                    <span>{gefilterdEnGesorteerd.length} producten</span>
                     <span>Klik op een kolomheader om te sorteren</span>
                   </div>
                 )}
