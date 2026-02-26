@@ -461,7 +461,14 @@ export default function Dashboard() {
                 <span className="block h-0.5 bg-white rounded" />
               </span>
             </button>
-            <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
+ <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
+            <Link href="/dashboard/beheer" className="rounded-lg px-3 py-2 text-xs font-semibold border border-white/20 text-white hover:bg-white/10 transition hidden md:flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              Beheer
+            </Link>
             <button onClick={uitloggen} className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
               Uitloggen
             </button>
