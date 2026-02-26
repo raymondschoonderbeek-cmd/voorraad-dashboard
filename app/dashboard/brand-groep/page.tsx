@@ -72,6 +72,24 @@ type ProductRow = {
   raw: Product
 }
 
+type BrandIndex = {
+  brandKey: string
+  brandLabel: string
+  availableTotal: number
+  itemsCount: number
+  // al gefilterd op voorraad >= 1
+  products: ProductRow[]
+}
+
+type GroupIndex = {
+  groupKey: string
+  groupLabel: string
+  availableTotal: number
+  itemsCount: number
+  brandsCount: number
+  brandMap: Map<string, BrandIndex>
+}
+
 export default function BrandGroepPage() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
@@ -124,33 +142,91 @@ export default function BrandGroepPage() {
     if (winkel) await haalVoorraadOp(winkel.dealer_nummer)
   }
 
-  // ✅ Alleen producten met voorraad >= 1 voor álle aggregaties
+  // ✅ Filter alvast 0-voorraad weg (basis voor alles)
   const productenMetVoorraad = useMemo(() => {
     return producten.filter(p => toNumber(p.STOCK) >= 1)
   }, [producten])
 
-  const groupRows: GroupRow[] = useMemo(() => {
-    const groupTotals = new Map<string, { label: string; available: number; items: number; brands: Set<string> }>()
+  /**
+   * 🚀 INDEX: 1x bouwen per voorraad-load
+   * groupKey -> { totals + brandMap }
+   * brandKey -> { totals + products[] }
+   */
+  const groupIndexMap = useMemo(() => {
+    const gMap = new Map<string, GroupIndex>()
 
     for (const p of productenMetVoorraad) {
       const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
       const groupLabel = normalizeLabel(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
-      const brandKey = normalizeBrandKey(p.BRAND_NAME)
-      const available = toNumber(p.AVAILABLE_STOCK)
 
-      const entry = groupTotals.get(groupKey) ?? { label: groupLabel, available: 0, items: 0, brands: new Set<string>() }
-      entry.available += available
-      entry.items += 1
-      entry.brands.add(brandKey)
-      groupTotals.set(groupKey, entry)
+      const brandKey = normalizeBrandKey(p.BRAND_NAME)
+      const brandLabel = normalizeBrandLabel(p.BRAND_NAME)
+
+      const available = toNumber(p.AVAILABLE_STOCK)
+      const stock = toNumber(p.STOCK)
+      if (stock < 1) continue // dubbele zekerheid
+
+      let g = gMap.get(groupKey)
+      if (!g) {
+        g = {
+          groupKey,
+          groupLabel,
+          availableTotal: 0,
+          itemsCount: 0,
+          brandsCount: 0,
+          brandMap: new Map<string, BrandIndex>(),
+        }
+        gMap.set(groupKey, g)
+      }
+
+      g.availableTotal += available
+      g.itemsCount += 1
+
+      let b = g.brandMap.get(brandKey)
+      if (!b) {
+        b = {
+          brandKey,
+          brandLabel,
+          availableTotal: 0,
+          itemsCount: 0,
+          products: [],
+        }
+        g.brandMap.set(brandKey, b)
+      }
+
+      b.availableTotal += available
+      b.itemsCount += 1
+
+      b.products.push({
+        description: String(p.PRODUCT_DESCRIPTION ?? '').trim(),
+        supplierSku: String(p.SUPPLIER_PRODUCT_NUMBER ?? '').trim(),
+        barcode: String(p.BARCODE ?? '').trim(),
+        supplierNameLabel: normalizeLabel(p.SUPPLIER_NAME, '(Geen leverancier)'),
+        available,
+        stock,
+        priceInc: p.SALES_PRICE_INC,
+        raw: p,
+      })
     }
 
-    let rows: GroupRow[] = Array.from(groupTotals.entries()).map(([groupKey, v]) => ({
-      groupKey,
-      groupLabel: v.label,
-      availableTotal: v.available,
-      itemsCount: v.items,
-      brandsCount: v.brands.size,
+    // brandsCount & sort product arrays alvast 1x
+    for (const g of gMap.values()) {
+      g.brandsCount = g.brandMap.size
+      for (const b of g.brandMap.values()) {
+        b.products.sort((a, b2) => (b2.stock - a.stock) || a.description.localeCompare(b2.description))
+      }
+    }
+
+    return gMap
+  }, [productenMetVoorraad])
+
+  const groupRows: GroupRow[] = useMemo(() => {
+    let rows: GroupRow[] = Array.from(groupIndexMap.values()).map(g => ({
+      groupKey: g.groupKey,
+      groupLabel: g.groupLabel,
+      availableTotal: g.availableTotal,
+      itemsCount: g.itemsCount,
+      brandsCount: g.brandsCount,
     }))
 
     const needle = deferredGroupSearch.trim().toLowerCase()
@@ -161,9 +237,8 @@ export default function BrandGroepPage() {
         ? a.groupLabel.localeCompare(b.groupLabel)
         : (b.availableTotal - a.availableTotal) || a.groupLabel.localeCompare(b.groupLabel)
     )
-
     return rows
-  }, [productenMetVoorraad, deferredGroupSearch, sortGroupsBy])
+  }, [groupIndexMap, deferredGroupSearch, sortGroupsBy])
 
   useEffect(() => {
     if (!selectedGroup && groupRows.length > 0) {
@@ -175,28 +250,14 @@ export default function BrandGroepPage() {
 
   const brandRows: BrandRow[] = useMemo(() => {
     if (!selectedGroup) return []
+    const g = groupIndexMap.get(selectedGroup)
+    if (!g) return []
 
-    const brandTotals = new Map<string, { label: string; available: number; items: number }>()
-
-    for (const p of productenMetVoorraad) {
-      const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
-      if (groupKey !== selectedGroup) continue
-
-      const brandKey = normalizeBrandKey(p.BRAND_NAME)
-      const brandLabel = normalizeBrandLabel(p.BRAND_NAME)
-      const available = toNumber(p.AVAILABLE_STOCK)
-
-      const entry = brandTotals.get(brandKey) ?? { label: brandLabel, available: 0, items: 0 }
-      entry.available += available
-      entry.items += 1
-      brandTotals.set(brandKey, entry)
-    }
-
-    let rows: BrandRow[] = Array.from(brandTotals.entries()).map(([brandKey, v]) => ({
-      brandKey,
-      brandLabel: v.label,
-      availableTotal: v.available,
-      itemsCount: v.items,
+    let rows: BrandRow[] = Array.from(g.brandMap.values()).map(b => ({
+      brandKey: b.brandKey,
+      brandLabel: b.brandLabel,
+      availableTotal: b.availableTotal,
+      itemsCount: b.itemsCount,
     }))
 
     const needle = deferredBrandSearch.trim().toLowerCase()
@@ -211,9 +272,8 @@ export default function BrandGroepPage() {
     )
 
     if (top10Brands) rows = rows.slice(0, 10)
-
     return rows
-  }, [productenMetVoorraad, selectedGroup, deferredBrandSearch, sortBrandsBy, minAvailable, top10Brands])
+  }, [groupIndexMap, selectedGroup, deferredBrandSearch, sortBrandsBy, minAvailable, top10Brands])
 
   const selectedGroupMeta = useMemo(() => groupRows.find(r => r.groupKey === selectedGroup) ?? null, [groupRows, selectedGroup])
   const selectedBrandMeta = useMemo(() => brandRows.find(r => r.brandKey === selectedBrand) ?? null, [brandRows, selectedBrand])
@@ -221,35 +281,17 @@ export default function BrandGroepPage() {
 
   const productRows: ProductRow[] = useMemo(() => {
     if (!selectedGroup || !selectedBrand) return []
-    const rows: ProductRow[] = []
+    const g = groupIndexMap.get(selectedGroup)
+    if (!g) return []
+    const b = g.brandMap.get(selectedBrand)
+    if (!b) return []
+    return b.products
+  }, [groupIndexMap, selectedGroup, selectedBrand])
 
-    for (const p of productenMetVoorraad) {
-      const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
-      if (groupKey !== selectedGroup) continue
-
-      const brandKey = normalizeBrandKey(p.BRAND_NAME)
-      if (brandKey !== selectedBrand) continue
-
-      const stock = toNumber(p.STOCK)
-      if (stock < 1) continue
-
-      rows.push({
-        description: String(p.PRODUCT_DESCRIPTION ?? '').trim(),
-        supplierSku: String(p.SUPPLIER_PRODUCT_NUMBER ?? '').trim(),
-        barcode: String(p.BARCODE ?? '').trim(),
-        supplierNameLabel: normalizeLabel(p.SUPPLIER_NAME, '(Geen leverancier)'),
-        available: toNumber(p.AVAILABLE_STOCK),
-        stock,
-        priceInc: p.SALES_PRICE_INC,
-        raw: p,
-      })
-    }
-
-    rows.sort((a, b) => (b.stock - a.stock) || a.description.localeCompare(b.description))
-    return rows
-  }, [productenMetVoorraad, selectedGroup, selectedBrand])
-
-  const drilldownAvailableTotal = useMemo(() => productRows.reduce((sum, r) => sum + (r.available || 0), 0), [productRows])
+  const drilldownAvailableTotal = useMemo(
+    () => productRows.reduce((sum, r) => sum + (r.available || 0), 0),
+    [productRows]
+  )
 
   useEffect(() => { setSelectedProduct(null) }, [selectedGroup, selectedBrand])
 
@@ -323,7 +365,7 @@ export default function BrandGroepPage() {
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div>
                       <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>1) Kies groep</div>
-                      <div className="text-xs text-gray-500">Alleen producten met voorraad ≥ 1</div>
+                      <div className="text-xs text-gray-500">Sneller door index · voorraad ≥ 1</div>
                     </div>
                     <select
                       value={sortGroupsBy}
@@ -550,7 +592,9 @@ export default function BrandGroepPage() {
                                 <div className="text-xs text-gray-400">SKU: {r.supplierSku || '—'} · Barcode: {r.barcode || '—'}</div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-gray-700">{r.supplierNameLabel || '—'}</td>
-                              <td className="px-4 py-3 text-right font-bold" style={{ color: r.available === 0 ? '#dc2626' : '#16a34a' }}>{formatInt(r.available)}</td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: r.available === 0 ? '#dc2626' : '#16a34a' }}>
+                                {formatInt(r.available)}
+                              </td>
                               <td className="px-4 py-3 text-right text-gray-700">{formatInt(r.stock)}</td>
                             </tr>
                           )
@@ -634,3 +678,4 @@ export default function BrandGroepPage() {
       </main>
     </div>
   )
+}
