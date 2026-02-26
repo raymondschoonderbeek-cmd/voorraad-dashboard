@@ -237,7 +237,9 @@ export default function Dashboard() {
   const [nieuweNaam, setNieuweNaam] = useState('')
   const [nieuwDealer, setNieuwDealer] = useState('')
   const [nieuwePostcode, setNieuwePostcode] = useState('')
-  const [nieuweStad, setNieuweStad] = useState('')
+const [nieuweStad, setNieuweStad] = useState('')
+  const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
+  const [bewerkLoading, setBewerkLoading] = useState(false)
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -340,7 +342,25 @@ export default function Dashboard() {
     setWinkelLoading(false)
     await haalWinkelsOp()
   }
-
+async function slaWinkelOp(e: React.FormEvent) {
+    e.preventDefault()
+    if (!bewerkWinkel) return
+    setBewerkLoading(true)
+    await fetch('/api/winkels', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: bewerkWinkel.id,
+        naam: bewerkWinkel.naam,
+        dealer_nummer: bewerkWinkel.dealer_nummer,
+        postcode: bewerkWinkel.postcode,
+        stad: bewerkWinkel.stad,
+      }),
+    })
+    setBewerkLoading(false)
+    setBewerkWinkel(null)
+    await haalWinkelsOp()
+  }
   async function verwijderWinkel(id: number) {
     if (!confirm('Winkel verwijderen?')) return
     await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
@@ -509,7 +529,52 @@ export default function Dashboard() {
                 </div>
               </form>
             )}
-
+{bewerkWinkel && (
+              <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2 border-2 bg-gray-50" style={{ borderColor: DYNAMO_BLUE }}>
+                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>✏️ Winkel bewerken</p>
+                <input
+                  placeholder="Naam winkel"
+                  value={bewerkWinkel.naam}
+                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })}
+                  className={inputClass + ' w-full'}
+                  required
+                />
+                <input
+                  placeholder="Dealer nummer"
+                  value={bewerkWinkel.dealer_nummer}
+                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })}
+                  className={inputClass + ' w-full'}
+                  required
+                />
+                <input
+                  placeholder="Postcode (bijv. 1234AB)"
+                  value={bewerkWinkel.postcode ?? ''}
+                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })}
+                  className={inputClass + ' w-full'}
+                />
+                <input
+                  placeholder="Stad"
+                  value={bewerkWinkel.stad ?? ''}
+                  onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })}
+                  className={inputClass + ' w-full'}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={bewerkLoading}
+                    className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50"
+                    style={{ background: DYNAMO_BLUE }}
+                  >
+                    {bewerkLoading ? 'Opslaan...' : 'Opslaan'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBewerkWinkel(null)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50"
+                  >✕</button>
+                </div>
+              </form>
+            )}
             <div className="flex-1 overflow-y-auto space-y-1">
               {winkels.map((w, i) => {
                 const active = geselecteerdeWinkel?.id === w.id
@@ -530,11 +595,20 @@ export default function Dashboard() {
                         {w.stad ? <><IconPin />{w.stad}</> : `#${w.dealer_nummer}`}
                       </div>
                     </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }}
-                      className="opacity-0 group-hover:opacity-100 transition text-xs rounded px-1.5 py-0.5"
-                      style={{ color: active ? 'white' : '#ef4444' }}
-                    >✕</button>
+                    <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
+                      <button
+                        onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }}
+                        className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20"
+                        style={{ color: active ? 'white' : DYNAMO_BLUE }}
+                        title="Bewerken"
+                      >✏️</button>
+                      <button
+                        onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }}
+                        className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20"
+                        style={{ color: active ? 'white' : '#ef4444' }}
+                        title="Verwijderen"
+                      >✕</button>
+                    </div>
                   </div>
                 )
               })}
