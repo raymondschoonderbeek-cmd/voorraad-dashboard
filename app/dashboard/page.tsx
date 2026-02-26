@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
@@ -71,7 +72,7 @@ export default function Dashboard() {
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [gebruiker, setGebruiker] = useState('')
-  const [authRequired, setAuthRequired] = useState<null | { message: string; instructions?: string[] }>(null)
+  const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -214,10 +215,9 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
 
-      {/* ── NAVIGATIE ── */}
+      {/* Navigatie */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
         <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
-
           {/* Logo */}
           <div className="flex items-center gap-3 pr-6 border-r border-white/10">
             <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
@@ -238,7 +238,7 @@ export default function Dashboard() {
                 const w = winkels.find(w => w.id === Number(e.target.value))
                 if (w) selecteerWinkel(w)
               }}
-              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 cursor-pointer min-w-[170px]"
+              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none cursor-pointer min-w-[170px]"
             >
               <option value="" disabled className="text-gray-900">Kies winkel...</option>
               {winkels.map(w => (
@@ -247,10 +247,9 @@ export default function Dashboard() {
             </select>
           </div>
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Rechts: sidebar toggle + gebruiker + uitloggen */}
+          {/* Rechts */}
           <div className="flex items-center gap-3 pl-5">
             <button
               onClick={() => setSidebarOpen(v => !v)}
@@ -264,17 +263,14 @@ export default function Dashboard() {
               </span>
             </button>
             <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
-            <button
-              onClick={uitloggen}
-              className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-            >Uitloggen</button>
+            <button onClick={uitloggen} className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
+              Uitloggen
+            </button>
           </div>
         </div>
         <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
-      {/* ── LAYOUT ── */}
       <div className="flex flex-1 overflow-hidden">
 
         {/* Sidebar */}
@@ -289,22 +285,18 @@ export default function Dashboard() {
                 onClick={() => setToonWinkelForm(v => !v)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-lg transition hover:opacity-80"
                 style={{ background: DYNAMO_BLUE }}
-                title="Winkel toevoegen"
               >+</button>
             </div>
 
             {toonWinkelForm && (
               <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2 border border-gray-200 bg-gray-50">
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Nieuwe winkel toevoegen</p>
+                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Nieuwe winkel</p>
                 <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} required />
                 <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} required />
                 <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={winkelLoading}
-                    className="flex-1 rounded-lg py-2 text-sm font-bold transition hover:opacity-90 disabled:opacity-50 text-white"
-                    style={{ background: DYNAMO_BLUE }}
-                  >{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
+                  <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
+                    {winkelLoading ? 'Bezig...' : 'Toevoegen'}
+                  </button>
                   <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
                 </div>
               </form>
@@ -345,15 +337,102 @@ export default function Dashboard() {
         <main className="flex-1 min-w-0 p-5 space-y-4 overflow-auto">
 
           {!geselecteerdeWinkel ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-24">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>🏪</div>
-              <div>
-                <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Geen winkel geselecteerd</p>
-                <p className="text-sm text-gray-500 mt-1">Kies een winkel via de navigatie of de sidebar</p>
+            /* ── STARTSCHERM ── */
+            <div className="space-y-6">
+              {/* Hero */}
+              <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 180 }}>
+                {/* Decoratieve cirkels */}
+                <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
+                <div className="absolute -bottom-16 -left-10 w-48 h-48 rounded-full opacity-5" style={{ background: 'white' }} />
+                <div className="relative p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                  <div>
+                    <div className="text-white/60 text-sm font-semibold uppercase tracking-widest mb-1">Welkom terug</div>
+                    <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight">
+                      Voorraad Dashboard
+                    </h1>
+                    <p className="mt-2 text-white/70 text-sm max-w-md">
+                      Kies een winkel via de sidebar of de navigatie bovenin om de voorraad te bekijken en te doorzoeken.
+                    </p>
+                    <button
+                      onClick={() => setSidebarOpen(true)}
+                      className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90"
+                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+                    >
+                      🏪 Kies een winkel
+                    </button>
+                  </div>
+                  <div className="text-8xl opacity-20 select-none hidden sm:block">📦</div>
+                </div>
               </div>
-              <button onClick={() => setSidebarOpen(true)} className="rounded-xl px-5 py-2.5 text-sm font-bold text-white" style={{ background: DYNAMO_BLUE }}>
-                Sidebar openen
-              </button>
+
+              {/* Module kaarten */}
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Modules</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                  {/* Voorraad kaart */}
+                  <div
+                    className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-md hover:-translate-y-0.5"
+                    style={{ borderColor: DYNAMO_BLUE }}
+                    onClick={() => setSidebarOpen(true)}
+                  >
+                    <div className="p-5" style={{ background: DYNAMO_BLUE }}>
+                      <div className="text-4xl mb-2">📦</div>
+                      <div className="text-white font-bold text-lg">Voorraad</div>
+                      <div className="text-white/70 text-sm mt-1">Doorzoek en filter de complete voorraad per winkel</div>
+                    </div>
+                    <div className="px-5 py-3 bg-white flex items-center justify-between">
+                      <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Kies een winkel →</span>
+                      <span className="text-xs text-gray-400">{winkels.length} winkels</span>
+                    </div>
+                  </div>
+
+                  {/* Merk/Groep kaart */}
+                  <Link href="/dashboard/brand-groep" className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 block" style={{ borderColor: DYNAMO_GOLD }}>
+                    <div className="p-5" style={{ background: 'linear-gradient(135deg, #0d1f4e 60%, #1a3a7a)' }}>
+                      <div className="text-4xl mb-2">📊</div>
+                      <div className="text-white font-bold text-lg">Merk / Groep</div>
+                      <div className="text-white/70 text-sm mt-1">Bekijk beschikbare voorraad per merk en productgroep</div>
+                    </div>
+                    <div className="px-5 py-3 bg-white flex items-center justify-between">
+                      <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Ga naar overzicht →</span>
+                      <span className="text-2xl">📈</span>
+                    </div>
+                  </Link>
+
+                  {/* Binnenkort kaart */}
+                  <div className="rounded-2xl border-2 border-dashed border-gray-300 overflow-hidden shadow-sm opacity-60">
+                    <div className="p-5 bg-gray-50">
+                      <div className="text-4xl mb-2">🔜</div>
+                      <div className="text-gray-500 font-bold text-lg">Meer komt eraan</div>
+                      <div className="text-gray-400 text-sm mt-1">Export, vergelijk winkels, lage voorraad alerts en meer</div>
+                    </div>
+                    <div className="px-5 py-3 bg-white flex items-center justify-between">
+                      <span className="text-xs font-semibold text-gray-400">Binnenkort beschikbaar</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Winkel overzicht */}
+              {winkels.length > 0 && (
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Jouw winkels</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {winkels.map(w => (
+                      <div
+                        key={w.id}
+                        onClick={() => selecteerWinkel(w)}
+                        className="bg-white rounded-xl border border-gray-200 px-4 py-3 cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300"
+                      >
+                        <div className="text-lg mb-1">🏪</div>
+                        <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE }}>{w.naam}</div>
+                        <div className="text-xs text-gray-400">#{w.dealer_nummer}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -372,23 +451,29 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* Zoek + filters balk */}
+              {/* Zoek + filters */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
                 <div className="flex flex-col gap-3">
-                  {/* Winkel info */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-gray-400 text-sm">#{dealer}</span>
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href="/dashboard/brand-groep"
+                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border transition hover:shadow-sm"
+                        style={{ borderColor: DYNAMO_GOLD, color: DYNAMO_BLUE, background: '#fffbeb' }}
+                      >
+                        <span>📊</span> Merk/Groep
+                      </Link>
+                      <span className="text-xs text-gray-400">
+                        {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Zoekbalk + kolom selector + kolommen knop */}
                   <div className="flex flex-wrap gap-2 items-center">
-                    {/* Zoekbalk */}
                     <div className="relative flex-1 min-w-[200px]">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">⌕</span>
                       <input
@@ -400,17 +485,12 @@ export default function Dashboard() {
                       />
                     </div>
 
-                    {/* Zoek in specifieke kolom */}
-                    <select
-                      value={zoekKolom}
-                      onChange={e => setZoekKolom(e.target.value)}
-                      className={inputClass}
-                    >
+                    <select value={zoekKolom} onChange={e => setZoekKolom(e.target.value)} className={inputClass}>
                       <option value="ALL">Alle kolommen</option>
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
 
-                    {/* Kolommen instellen */}
+                    {/* Kolommen */}
                     <div className="relative">
                       <button
                         onClick={() => setKolomPanelOpen(v => !v)}
@@ -419,7 +499,6 @@ export default function Dashboard() {
                       >
                         <span>⚙</span> Kolommen ({zichtbareKolommen.length})
                       </button>
-
                       {kolomPanelOpen && (
                         <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl p-4 z-30">
                           <div className="flex items-center justify-between mb-3">
@@ -427,25 +506,13 @@ export default function Dashboard() {
                             <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
                           </div>
                           <div className="flex gap-2 mb-3">
-                            <button
-                              onClick={() => setZichtbareKolommen([...kolommen])}
-                              className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50"
-                            >Alles aan</button>
-                            <button
-                              onClick={() => setZichtbareKolommen(zichtbareKolommen.length > 1 ? [zichtbareKolommen[0]] : zichtbareKolommen)}
-                              className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50"
-                            >Alles uit</button>
+                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles aan</button>
+                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles uit</button>
                           </div>
                           <div className="space-y-2 max-h-64 overflow-auto">
                             {kolommen.map(k => (
                               <label key={k} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1">
-                                <input
-                                  type="checkbox"
-                                  checked={zichtbareKolommen.includes(k)}
-                                  onChange={() => toggleKolom(k)}
-                                  disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1}
-                                  className="accent-blue-600"
-                                />
+                                <input type="checkbox" checked={zichtbareKolommen.includes(k)} onChange={() => toggleKolom(k)} disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1} className="accent-blue-600" />
                                 <span className="text-gray-800">{columnLabel(k)}</span>
                                 {isSticky(k) && <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Vast</span>}
                               </label>
@@ -455,18 +522,13 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {/* Wis filters knop */}
                     {(zoekterm || zoekKolom !== 'ALL') && (
-                      <button
-                        onClick={() => { setZoekterm(''); setZoekKolom('ALL') }}
-                        className="text-sm text-red-400 hover:text-red-600 font-medium"
-                      >✕ Wis filters</button>
+                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="text-sm text-red-400 hover:text-red-600 font-medium">✕ Wis filters</button>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Auth fout */}
               {authRequired && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   <p className="font-semibold">Toestemming vereist</p>
@@ -505,9 +567,7 @@ export default function Dashboard() {
                         Array.from({ length: 12 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
                             {zichtbareKolommen.map(k => (
-                              <td key={k} className="px-4 py-3">
-                                <div className="h-3 bg-gray-200 rounded w-24" />
-                              </td>
+                              <td key={k} className="px-4 py-3"><div className="h-3 bg-gray-200 rounded w-24" /></td>
                             ))}
                           </tr>
                         ))
@@ -548,7 +608,6 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
-
                 {!loading && gefilterdEnGesorteerd.length > 0 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
                     <span>{gefilterdEnGesorteerd.length} producten</span>
