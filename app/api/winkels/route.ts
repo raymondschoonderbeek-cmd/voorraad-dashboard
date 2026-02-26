@@ -15,6 +15,22 @@ export async function GET() {
   return NextResponse.json(data)
 }
 
+async function haalCoordsOp(postcode: string) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(postcode)}&country=NL&format=json&limit=1`,
+      { headers: { 'User-Agent': 'DynamoRetailDashboard/1.0' } }
+    )
+    const data = await res.json()
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+    }
+  } catch (e) {
+    console.error('Geocoding mislukt:', e)
+  }
+  return { lat: null, lng: null }
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,25 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
   }
 
-  // Coördinaten ophalen via postcode
-  let lat = null
-  let lng = null
-
-  if (postcode) {
-    try {
-      const geo = await fetch(
-        `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(postcode)}&country=NL&format=json&limit=1`,
-        { headers: { 'User-Agent': 'DynamoRetailDashboard/1.0' } }
-      )
-      const geoData = await geo.json()
-      if (geoData.length > 0) {
-        lat = parseFloat(geoData[0].lat)
-        lng = parseFloat(geoData[0].lon)
-      }
-    } catch (e) {
-      console.error('Geocoding mislukt:', e)
-    }
-  }
+  const { lat, lng } = postcode ? await haalCoordsOp(postcode) : { lat: null, lng: null }
 
   const { data, error } = await supabase
     .from('winkels')
@@ -64,31 +62,23 @@ export async function PUT(request: NextRequest) {
   const body = await request.json()
   const { id, naam, dealer_nummer, postcode, stad } = body
 
-  // Coördinaten opnieuw ophalen als postcode gewijzigd
-  let lat = null
-  let lng = null
+  console.log('PUT winkels:', { id, naam, dealer_nummer, postcode, stad })
 
-  if (postcode) {
-    try {
-      const geo = await fetch(
-        `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(postcode)}&country=NL&format=json&limit=1`,
-        { headers: { 'User-Agent': 'DynamoRetailDashboard/1.0' } }
-      )
-      const geoData = await geo.json()
-      if (geoData.length > 0) {
-        lat = parseFloat(geoData[0].lat)
-        lng = parseFloat(geoData[0].lon)
-      }
-    } catch (e) {
-      console.error('Geocoding mislukt:', e)
-    }
-  }
+  if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
+
+  const { lat, lng } = postcode ? await haalCoordsOp(postcode) : { lat: null, lng: null }
+
+  const updateData: any = { naam, dealer_nummer, stad: stad || null, postcode: postcode || null, lat, lng }
+
+  console.log('Update data:', updateData)
 
   const { data, error } = await supabase
     .from('winkels')
-    .update({ naam, dealer_nummer, postcode: postcode ?? null, stad: stad ?? null, lat, lng })
+    .update(updateData)
     .eq('id', id)
     .select()
+
+  console.log('Supabase result:', { data, error })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data[0])
