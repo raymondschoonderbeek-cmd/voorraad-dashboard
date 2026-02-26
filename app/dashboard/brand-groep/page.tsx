@@ -168,7 +168,37 @@ export default function BrandGroepPage() {
   const selectedBrandMeta = useMemo(() => brandRows.find(r => r.brandKey === selectedBrand) ?? null, [brandRows, selectedBrand])
   const maxBrandValue = useMemo(() => brandRows.reduce((m, r) => Math.max(m, r.availableTotal), 0), [brandRows])
 
-  const productRows: ProductRow[] = useMemo(() => {
+const productRows: ProductRow[] = useMemo(() => {
+  if (!selectedGroup || !selectedBrand) return []
+
+  const rows: ProductRow[] = []
+
+  for (const p of producten) {
+    const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
+    if (group1 !== selectedGroup) continue
+
+    const brand = norm(p.BRAND_NAME, '(Geen merk)')
+    if (brand !== selectedBrand) continue
+
+    // ✅ Alleen voorraad >= 1 (dus 0 en negatief weg)
+    const stock = toNumber(p.STOCK)
+    if (stock < 1) continue
+
+    rows.push({
+      description: norm(p.PRODUCT_DESCRIPTION, ''),
+      supplierSku: norm(p.SUPPLIER_PRODUCT_NUMBER, ''),
+      barcode: norm(p.BARCODE, ''),
+      supplierName: norm(p.SUPPLIER_NAME, ''),
+      available: toNumber(p.AVAILABLE_STOCK),
+      stock,
+      priceInc: p.SALES_PRICE_INC,
+      raw: p,
+    })
+  }
+
+  rows.sort((a, b) => (b.stock - a.stock) || a.description.localeCompare(b.description))
+  return rows
+}, [producten, selectedGroup, selectedBrand])
     if (!selectedGroup || !selectedBrand) return []
     const rows: ProductRow[] = []
     for (const p of producten) {

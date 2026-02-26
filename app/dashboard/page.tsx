@@ -402,7 +402,28 @@ export default function Dashboard() {
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
 
-  const gefilterdEnGesorteerd = useMemo(() => {
+const gefilterdEnGesorteerd = useMemo(() => {
+  // ✅ Alleen voorraad >= 1 (dus 0 en negatief weg)
+  let arr = producten.filter(p => Number(p?.STOCK) >= 1)
+
+  // extra lokale filter (bovenop API) als je specifiek in 1 kolom zoekt
+  if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
+    const needle = debouncedZoekterm.toLowerCase()
+    arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
+  }
+
+  if (sortKey) {
+    arr.sort((a, b) => {
+      const av = asSortable(a[sortKey])
+      const bv = asSortable(b[sortKey])
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }
+
+  return arr
+}, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
     let arr = [...producten]
     if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
       const needle = debouncedZoekterm.toLowerCase()
