@@ -439,31 +439,27 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
 
       {/* Navigatie */}
-      <header style={{ background: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif" }} className="sticky top-0 z-30">
-        <div className="px-5 flex items-stretch gap-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-
-          {/* Logo */}
-          <div className="flex items-center gap-3 pr-6" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base" style={{ background: DYNAMO_GOLD }}>
-              <span style={{ color: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}>D</span>
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
+        <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
+          <div className="flex items-center gap-3 pr-6 border-r border-white/10">
+            <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
+              <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
             <div>
-              <div className="text-white font-bold text-sm leading-tight" style={{ letterSpacing: '0.06em', fontFamily: "'Outfit', sans-serif" }}>DYNAMO</div>
-              <div className="text-xs font-semibold leading-tight" style={{ color: DYNAMO_GOLD, letterSpacing: '0.12em', fontFamily: "'Outfit', sans-serif", opacity: 0.9 }}>RETAIL GROUP</div>
+              <div className="text-white font-bold text-sm leading-tight tracking-wide">DYNAMO</div>
+              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">RETAIL GROUP</div>
             </div>
           </div>
 
-          {/* Winkel switcher */}
-          <div className="flex items-center px-5 gap-2" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <span className="text-xs font-semibold uppercase hidden sm:block" style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: "'Outfit', sans-serif" }}>Winkel</span>
+          <div className="flex items-center px-5 border-r border-white/10 gap-2">
+            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block">Winkel</span>
             <select
               value={geselecteerdeWinkel?.id ?? ''}
               onChange={e => {
                 const w = winkels.find(w => w.id === Number(e.target.value))
                 if (w) selecteerWinkel(w)
               }}
-              className="text-sm rounded-lg px-3 py-1.5 cursor-pointer min-w-[170px]"
-              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Outfit', sans-serif", outline: 'none' }}
+              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none cursor-pointer min-w-[170px]"
             >
               <option value="" disabled className="text-gray-900">Kies winkel...</option>
               {winkels.map(w => (
@@ -474,132 +470,97 @@ export default function Dashboard() {
 
           <div className="flex-1" />
 
-          {/* Rechts */}
-          <div className="flex items-center gap-2 pl-5">
-            <button
-              onClick={() => setSidebarOpen(v => !v)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition hover:opacity-70"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
-            >
-              <span className="flex flex-col gap-1 w-3.5">
-                <span className="block h-px bg-white rounded" />
-                <span className="block h-px bg-white rounded" />
-                <span className="block h-px bg-white rounded" />
+          <div className="flex items-center gap-3 pl-5">
+            <button onClick={() => setSidebarOpen(v => !v)} className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/20 hover:bg-white/10 transition">
+              <span className="flex flex-col gap-1 w-4">
+                <span className="block h-0.5 bg-white rounded" />
+                <span className="block h-0.5 bg-white rounded" />
+                <span className="block h-0.5 bg-white rounded" />
               </span>
             </button>
-
-            <span className="text-xs hidden md:block px-3" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: "'Outfit', sans-serif" }}>{gebruiker}</span>
-
-            <Link
-              href="/dashboard/beheer"
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 hidden md:flex items-center gap-1.5"
-              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Outfit', sans-serif" }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
+            <Link href="/dashboard/beheer" className="rounded-lg px-3 py-2 text-xs font-semibold border border-white/20 text-white hover:bg-white/10 transition hidden md:flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
               Beheer
             </Link>
-
-            <button
-              onClick={uitloggen}
-              className="rounded-lg px-4 py-1.5 text-xs font-bold transition hover:opacity-90"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif", letterSpacing: '0.02em' }}
-            >
+            <button onClick={uitloggen} className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
               Uitloggen
             </button>
           </div>
         </div>
+        <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
 
         {/* Sidebar */}
-        <aside
-          className="flex flex-col transition-all duration-200 overflow-hidden"
-          style={{ width: sidebarOpen ? '256px' : '0px', minWidth: sidebarOpen ? '256px' : '0px', background: '#f8f9fc', borderRight: '1px solid rgba(13,31,78,0.07)', fontFamily: "'Outfit', sans-serif" }}
-        >
+        <aside className="bg-white border-r border-gray-200 flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '260px' : '0px', minWidth: sidebarOpen ? '260px' : '0px' }}>
           <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
-
-            {/* Header */}
-            <div className="flex items-center justify-between py-2">
-              <span className="text-xs font-bold uppercase" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: "'Outfit', sans-serif" }}>Winkels</span>
-              <button
-                onClick={() => setToonWinkelForm(v => !v)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-base transition hover:opacity-80"
-                style={{ background: DYNAMO_BLUE }}
-              >+</button>
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE }}>Winkels</span>
+              <button onClick={() => setToonWinkelForm(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-lg transition hover:opacity-80" style={{ background: DYNAMO_BLUE }}>+</button>
             </div>
 
-            {/* Nieuw winkel form */}
             {toonWinkelForm && (
-              <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)' }}>
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif" }}>Nieuwe winkel</p>
+              <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2 border border-gray-200 bg-gray-50">
+                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Nieuwe winkel</p>
                 <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} required />
                 <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} required />
-                <input placeholder="Postcode" value={nieuwePostcode} onChange={e => setNieuwePostcode(e.target.value)} className={inputClass + ' w-full'} />
+                <input placeholder="Postcode (bijv. 1234AB)" value={nieuwePostcode} onChange={e => setNieuwePostcode(e.target.value)} className={inputClass + ' w-full'} />
                 <input placeholder="Stad" value={nieuweStad} onChange={e => setNieuweStad(e.target.value)} className={inputClass + ' w-full'} />
                 <div className="flex gap-2">
-                  <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif" }}>
+                  <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
                     {winkelLoading ? 'Bezig...' : 'Toevoegen'}
                   </button>
-                  <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border px-3 text-sm hover:bg-gray-50" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>✕</button>
+                  <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
                 </div>
               </form>
             )}
 
-            {/* Bewerk form */}
             {bewerkWinkel && (
-              <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}` }}>
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif" }}>✏️ Bewerken</p>
+              <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2 border-2 bg-gray-50" style={{ borderColor: DYNAMO_BLUE }}>
+                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>✏️ Winkel bewerken</p>
                 <input placeholder="Naam winkel" value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass + ' w-full'} required />
                 <input placeholder="Dealer nummer" value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass + ' w-full'} required />
-                <input placeholder="Postcode" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass + ' w-full'} />
+                <input placeholder="Postcode (bijv. 1234AB)" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass + ' w-full'} />
                 <input placeholder="Stad" value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass + ' w-full'} />
                 <div className="flex gap-2">
-                  <button type="submit" disabled={bewerkLoading} className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif" }}>
+                  <button type="submit" disabled={bewerkLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
                     {bewerkLoading ? 'Opslaan...' : 'Opslaan'}
                   </button>
-                  <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-lg border px-3 text-sm hover:bg-gray-50" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>✕</button>
+                  <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
                 </div>
               </form>
             )}
 
-            {/* Winkellijst */}
             <div className="flex-1 overflow-y-auto space-y-1">
               {winkels.map((w, i) => {
                 const active = geselecteerdeWinkel?.id === w.id
                 const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
                 return (
-                  <div
-                    key={w.id}
-                    onClick={() => selecteerWinkel(w)}
-                    className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer transition-all"
-                    style={active
-                      ? { background: DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(13,31,78,0.2)' }
-                      : { background: 'white', border: '1px solid rgba(13,31,78,0.07)' }
-                    }
-                  >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.15)' : kleur }}>
+                  <div key={w.id} onClick={() => selecteerWinkel(w)} className="group flex items-center gap-2 rounded-xl px-3 py-2.5 cursor-pointer transition border" style={active ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE } : { background: 'white', borderColor: '#e5e7eb' }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.2)' : kleur }}>
                       {w.naam.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE, fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.01em' }}>{w.naam}</div>
-                      <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.45)' : 'rgba(13,31,78,0.35)', fontFamily: "'Outfit', sans-serif" }}>
+                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE }}>{w.naam}</div>
+                      <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>
                         {w.stad ? <><IconPin />{w.stad}</> : `#${w.dealer_nummer}`}
                       </div>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                      <button onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }} className="text-xs rounded px-1 py-0.5 transition" style={{ color: active ? 'rgba(255,255,255,0.6)' : 'rgba(13,31,78,0.4)' }} title="Bewerken">✏️</button>
-                      <button onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }} className="text-xs rounded px-1 py-0.5 transition" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#ef4444' }} title="Verwijderen">✕</button>
+                      <button onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }} className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20" style={{ color: active ? 'white' : DYNAMO_BLUE }} title="Bewerken">✏️</button>
+                      <button onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }} className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20" style={{ color: active ? 'white' : '#ef4444' }} title="Verwijderen">✕</button>
                     </div>
                   </div>
                 )
               })}
               {winkels.length === 0 && (
-                <div className="rounded-xl p-4 text-center" style={{ border: '1px dashed rgba(13,31,78,0.15)' }}>
-                  <p className="text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: "'Outfit', sans-serif" }}>Nog geen winkels.<br />Klik op <strong>+</strong> om toe te voegen.</p>
+                <div className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-400 text-center">
+                  Nog geen winkels.<br />Klik op <strong>+</strong> om toe te voegen.
                 </div>
               )}
             </div>
