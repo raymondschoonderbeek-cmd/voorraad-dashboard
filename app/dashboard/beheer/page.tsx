@@ -398,12 +398,3 @@ export default function BeheerPage() {
     </div>
   )
 }
-```
-
-Sla op met **Cmd+S**.
-
-## Stap 4 — Link toevoegen aan dashboard
-
-We moeten nog een link naar de beheerpagina toevoegen. Open `app/dashboard/page.tsx` en zoek (**Cmd+F**) naar:
-```
-Uitloggen
