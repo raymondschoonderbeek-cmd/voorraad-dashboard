@@ -62,39 +62,20 @@ export async function PUT(request: NextRequest) {
   const body = await request.json()
   const { id, naam, dealer_nummer, postcode, stad } = body
 
-  console.log('PUT winkels:', { id, naam, dealer_nummer, postcode, stad })
-
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
   const { lat, lng } = postcode ? await haalCoordsOp(postcode) : { lat: null, lng: null }
 
-  const updateData: any = { naam, dealer_nummer, stad: stad || null, postcode: postcode || null, lat, lng }
-
-  console.log('Update data:', updateData)
-
-  const { data, error } = await supabase
-    .from('winkels')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-
-  console.log('Supabase result:', { data, error })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data[0])
-}
-
-export async function DELETE(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { searchParams } = new URL(request.url)
-  const id = searchParams.get('id')
-
   const { error } = await supabase
     .from('winkels')
-    .delete()
+    .update({
+      naam,
+      dealer_nummer,
+      postcode: postcode || null,
+      stad: stad || null,
+      lat,
+      lng,
+    })
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
