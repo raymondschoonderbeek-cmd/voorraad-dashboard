@@ -86,7 +86,6 @@ export default function Dashboard() {
     setAuthRequired(null)
     const res = await fetch(`/api/voorraad?dealer=${dealer}&q=${encodeURIComponent(q)}`)
     const data = await res.json().catch(() => ({}))
-
     if (!res.ok) {
       setProducten([])
       setKolommen([])
@@ -95,7 +94,6 @@ export default function Dashboard() {
       setLoading(false)
       return
     }
-
     const items = Array.isArray(data) ? data : data.products ?? []
     setProducten(items)
     const keys = items.length > 0 ? Object.keys(items[0]) : []
@@ -211,18 +209,18 @@ export default function Dashboard() {
     return arr
   }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
 
-  const inputClass = "w-full rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+  const inputClass = "rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
 
       {/* ── NAVIGATIE ── */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
-        <div className="px-5 py-0 flex items-stretch gap-0 min-h-[56px]">
+        <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
 
           {/* Logo */}
           <div className="flex items-center gap-3 pr-6 border-r border-white/10">
-            <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base" >
+            <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
             <div>
@@ -233,7 +231,7 @@ export default function Dashboard() {
 
           {/* Winkel switcher */}
           <div className="flex items-center px-5 border-r border-white/10 gap-2">
-            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold">Winkel</span>
+            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block">Winkel</span>
             <select
               value={geselecteerdeWinkel?.id ?? ''}
               onChange={e => {
@@ -249,21 +247,10 @@ export default function Dashboard() {
             </select>
           </div>
 
-          {/* Zoekbalk */}
-          <div className="flex items-center flex-1 px-5 border-r border-white/10">
-            <div className="relative w-full max-w-lg">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-base">⌕</span>
-              <input
-                type="text"
-                placeholder="Zoek op product, merk, barcode..."
-                value={zoekterm}
-                onChange={e => setZoekterm(e.target.value)}
-                className="w-full bg-white/10 text-white placeholder:text-white/40 rounded-lg pl-9 pr-4 py-2 text-sm border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
-              />
-            </div>
-          </div>
+          {/* Spacer */}
+          <div className="flex-1" />
 
-          {/* Sidebar toggle + gebruiker + uitloggen */}
+          {/* Rechts: sidebar toggle + gebruiker + uitloggen */}
           <div className="flex items-center gap-3 pl-5">
             <button
               onClick={() => setSidebarOpen(v => !v)}
@@ -276,20 +263,14 @@ export default function Dashboard() {
                 <span className="block h-0.5 bg-white rounded" />
               </span>
             </button>
-
             <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
-
             <button
               onClick={uitloggen}
-              className="rounded-lg px-4 py-2 text-sm font-bold transition"
+              className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90"
               style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-            >
-              Uitloggen
-            </button>
+            >Uitloggen</button>
           </div>
         </div>
-
-        {/* Subtiele gouden lijn */}
         <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
@@ -302,8 +283,6 @@ export default function Dashboard() {
           style={{ width: sidebarOpen ? '260px' : '0px', minWidth: sidebarOpen ? '260px' : '0px' }}
         >
           <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
-
-            {/* Header sidebar */}
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE }}>Winkels</span>
               <button
@@ -314,25 +293,23 @@ export default function Dashboard() {
               >+</button>
             </div>
 
-            {/* Winkel form */}
             {toonWinkelForm && (
               <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2 border border-gray-200 bg-gray-50">
                 <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Nieuwe winkel toevoegen</p>
-                <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass} required />
-                <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass} required />
+                <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} required />
+                <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} required />
                 <div className="flex gap-2">
                   <button
                     type="submit"
                     disabled={winkelLoading}
-                    className="flex-1 rounded-lg py-2 text-sm font-bold transition hover:opacity-90 disabled:opacity-50"
-                    style={{ background: DYNAMO_BLUE, color: 'white' }}
+                    className="flex-1 rounded-lg py-2 text-sm font-bold transition hover:opacity-90 disabled:opacity-50 text-white"
+                    style={{ background: DYNAMO_BLUE }}
                   >{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
                   <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
                 </div>
               </form>
             )}
 
-            {/* Winkellijst */}
             <div className="flex-1 overflow-y-auto space-y-1">
               {winkels.map(w => {
                 const active = geselecteerdeWinkel?.id === w.id
@@ -341,24 +318,16 @@ export default function Dashboard() {
                     key={w.id}
                     onClick={() => selecteerWinkel(w)}
                     className="group flex items-center gap-2 rounded-xl px-3 py-2.5 cursor-pointer transition border"
-                    style={active
-                      ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE }
-                      : { background: 'white', borderColor: '#e5e7eb' }
-                    }
+                    style={active ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE } : { background: 'white', borderColor: '#e5e7eb' }}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE }}>
-                        🏪 {w.naam}
-                      </div>
-                      <div className="text-xs" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>
-                        #{w.dealer_nummer}
-                      </div>
+                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE }}>🏪 {w.naam}</div>
+                      <div className="text-xs" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>#{w.dealer_nummer}</div>
                     </div>
                     <button
                       onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }}
                       className="opacity-0 group-hover:opacity-100 transition text-xs rounded px-1.5 py-0.5"
                       style={{ color: active ? 'white' : '#ef4444' }}
-                      title="Verwijderen"
                     >✕</button>
                   </div>
                 )
@@ -382,15 +351,13 @@ export default function Dashboard() {
                 <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Geen winkel geselecteerd</p>
                 <p className="text-sm text-gray-500 mt-1">Kies een winkel via de navigatie of de sidebar</p>
               </div>
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
-                style={{ background: DYNAMO_BLUE }}
-              >Sidebar openen</button>
+              <button onClick={() => setSidebarOpen(true)} className="rounded-xl px-5 py-2.5 text-sm font-bold text-white" style={{ background: DYNAMO_BLUE }}>
+                Sidebar openen
+              </button>
             </div>
           ) : (
             <>
-              {/* Stats balk */}
+              {/* Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Producten', value: gefilterdEnGesorteerd.length, color: DYNAMO_BLUE },
@@ -407,40 +374,80 @@ export default function Dashboard() {
 
               {/* Zoek + filters balk */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
-                    {geselecteerdeWinkel.naam}
-                    <span className="text-gray-400 font-normal">#{dealer}</span>
+                <div className="flex flex-col gap-3">
+                  {/* Winkel info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE }}>{geselecteerdeWinkel.naam}</span>
+                      <span className="text-gray-400 text-sm">#{dealer}</span>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
+                    </div>
                   </div>
 
-                  <div className="ml-auto flex items-center gap-2 flex-wrap">
+                  {/* Zoekbalk + kolom selector + kolommen knop */}
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {/* Zoekbalk */}
+                    <div className="relative flex-1 min-w-[200px]">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">⌕</span>
+                      <input
+                        type="text"
+                        placeholder="Zoek op product, merk, barcode..."
+                        value={zoekterm}
+                        onChange={e => setZoekterm(e.target.value)}
+                        className={inputClass + ' w-full pl-9'}
+                      />
+                    </div>
+
+                    {/* Zoek in specifieke kolom */}
                     <select
                       value={zoekKolom}
                       onChange={e => setZoekKolom(e.target.value)}
-                      className={inputClass + ' w-auto'}
+                      className={inputClass}
                     >
                       <option value="ALL">Alle kolommen</option>
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
 
-                    {/* Kolommen toggle */}
+                    {/* Kolommen instellen */}
                     <div className="relative">
                       <button
                         onClick={() => setKolomPanelOpen(v => !v)}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
-                      >Kolommen ({zichtbareKolommen.length})</button>
+                        className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-2"
+                        style={{ color: DYNAMO_BLUE }}
+                      >
+                        <span>⚙</span> Kolommen ({zichtbareKolommen.length})
+                      </button>
+
                       {kolomPanelOpen && (
                         <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl p-4 z-30">
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Kolommen</span>
-                            <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+                            <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Kolommen instellen</span>
+                            <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
                           </div>
-                          <button onClick={() => setZichtbareKolommen([...kolommen])} className="w-full mb-2 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles selecteren</button>
+                          <div className="flex gap-2 mb-3">
+                            <button
+                              onClick={() => setZichtbareKolommen([...kolommen])}
+                              className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50"
+                            >Alles aan</button>
+                            <button
+                              onClick={() => setZichtbareKolommen(zichtbareKolommen.length > 1 ? [zichtbareKolommen[0]] : zichtbareKolommen)}
+                              className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50"
+                            >Alles uit</button>
+                          </div>
                           <div className="space-y-2 max-h-64 overflow-auto">
                             {kolommen.map(k => (
-                              <label key={k} className="flex items-center gap-2 text-sm cursor-pointer">
-                                <input type="checkbox" checked={zichtbareKolommen.includes(k)} onChange={() => toggleKolom(k)} disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1} />
+                              <label key={k} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1">
+                                <input
+                                  type="checkbox"
+                                  checked={zichtbareKolommen.includes(k)}
+                                  onChange={() => toggleKolom(k)}
+                                  disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1}
+                                  className="accent-blue-600"
+                                />
                                 <span className="text-gray-800">{columnLabel(k)}</span>
+                                {isSticky(k) && <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Vast</span>}
                               </label>
                             ))}
                           </div>
@@ -448,9 +455,13 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    <div className="text-xs text-gray-400">
-                      {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
-                    </div>
+                    {/* Wis filters knop */}
+                    {(zoekterm || zoekKolom !== 'ALL') && (
+                      <button
+                        onClick={() => { setZoekterm(''); setZoekKolom('ALL') }}
+                        className="text-sm text-red-400 hover:text-red-600 font-medium"
+                      >✕ Wis filters</button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -475,8 +486,8 @@ export default function Dashboard() {
                           return (
                             <th
                               key={k}
-                              className={`px-4 py-3 text-left whitespace-nowrap text-xs font-bold uppercase tracking-wide ${sticky ? 'sticky left-0' : ''}`}
-                              style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.85)', background: DYNAMO_BLUE, zIndex: sticky ? 60 : undefined }}
+                              className="px-4 py-3 text-left whitespace-nowrap text-xs font-bold uppercase tracking-wide"
+                              style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.85)', background: DYNAMO_BLUE, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}
                             >
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
@@ -509,33 +520,30 @@ export default function Dashboard() {
                           </td>
                         </tr>
                       ) : (
-                        gefilterdEnGesorteerd.map((p, i) => {
-                          const uitverkocht = Number(p.STOCK) === 0
-                          return (
-                            <tr
-                              key={i}
-                              className="transition hover:bg-yellow-50"
-                              style={uitverkocht ? { background: '#fff7f7' } : i % 2 === 1 ? { background: '#fafafa' } : {}}
-                            >
-                              {zichtbareKolommen.map(k => {
-                                const sticky = stickyEnabled && stickyKey === k
-                                const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
-                                const stockVal = Number(p[k])
-                                return (
-                                  <td
-                                    key={k}
-                                    className={`px-4 py-2.5 whitespace-nowrap align-middle ${sticky ? 'sticky left-0 bg-white shadow-[2px_0_0_0_rgba(229,231,235,1)]' : ''}`}
-                                    style={sticky ? { zIndex: 40 } : undefined}
-                                  >
-                                    <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
-                                      {formatValue(k, p[k])}
-                                    </span>
-                                  </td>
-                                )
-                              })}
-                            </tr>
-                          )
-                        })
+                        gefilterdEnGesorteerd.map((p, i) => (
+                          <tr
+                            key={i}
+                            className="transition hover:bg-yellow-50"
+                            style={Number(p.STOCK) === 0 ? { background: '#fff7f7' } : i % 2 === 1 ? { background: '#fafafa' } : {}}
+                          >
+                            {zichtbareKolommen.map(k => {
+                              const sticky = stickyEnabled && stickyKey === k
+                              const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
+                              const stockVal = Number(p[k])
+                              return (
+                                <td
+                                  key={k}
+                                  className="px-4 py-2.5 whitespace-nowrap align-middle"
+                                  style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}
+                                >
+                                  <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
+                                    {formatValue(k, p[k])}
+                                  </span>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
