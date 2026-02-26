@@ -8,6 +8,11 @@ import Link from 'next/link'
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
 
+const WINKEL_KLEUREN = [
+  '#2563eb', '#16a34a', '#dc2626', '#9333ea',
+  '#ea580c', '#0891b2', '#65a30d', '#db2777',
+]
+
 const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: number; sticky?: boolean; format?: 'money' | 'int' | 'text' }> = {
   PRODUCT_DESCRIPTION: { label: 'Product', order: 10, sticky: true, format: 'text' },
   BRAND_NAME: { label: 'Merk', order: 20, format: 'text' },
@@ -49,9 +54,171 @@ function asSortable(v: any) {
   return s.toLowerCase()
 }
 
-type Winkel = { id: number; naam: string; dealer_nummer: string; actief?: boolean }
+function getDagdeel() {
+  const h = new Date().getHours()
+  if (h < 6) return 'Goedenacht'
+  if (h < 12) return 'Goedemorgen'
+  if (h < 18) return 'Goedemiddag'
+  return 'Goedenavond'
+}
+
+function getDatum() {
+  return new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number }
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
+
+// SVG Iconen
+const IconBox = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+)
+
+const IconChart = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10" />
+    <line x1="12" y1="20" x2="12" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="14" />
+    <line x1="2" y1="20" x2="22" y2="20" />
+  </svg>
+)
+
+const IconMap = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+    <line x1="9" y1="3" x2="9" y2="18" />
+    <line x1="15" y1="6" x2="15" y2="21" />
+  </svg>
+)
+
+const IconStore = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+)
+
+const IconArrowLeft = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+)
+
+const IconPin = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+)
+
+// Kaart component met Leaflet
+function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer: (w: Winkel) => void }) {
+  const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
+
+  useEffect(() => {
+    if (winkelsMetCoords.length === 0) return
+    if (typeof window === 'undefined') return
+
+    // Laad Leaflet dynamisch
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    document.head.appendChild(link)
+
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    script.onload = () => {
+      const L = (window as any).L
+      const mapEl = document.getElementById('winkel-kaart')
+      if (!mapEl || (mapEl as any)._leaflet_id) return
+
+      const map = L.map('winkel-kaart', { zoomControl: true, scrollWheelZoom: false })
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map)
+
+      const bounds: [number, number][] = []
+
+      winkelsMetCoords.forEach((w, i) => {
+        const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
+        const icon = L.divIcon({
+          html: `<div style="
+            background:${kleur};
+            width:32px;height:32px;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            border:3px solid white;
+            box-shadow:0 2px 8px rgba(0,0,0,0.3);
+            display:flex;align-items:center;justify-content:center;
+          "><div style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;text-align:center;line-height:26px;">${w.naam.charAt(0)}</div></div>`,
+          className: '',
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        })
+
+        const marker = L.marker([w.lat!, w.lng!], { icon })
+        marker.addTo(map)
+        marker.bindPopup(`
+          <div style="font-family:sans-serif;min-width:140px">
+            <div style="font-weight:bold;color:${DYNAMO_BLUE};font-size:13px">${w.naam}</div>
+            <div style="color:#6b7280;font-size:11px;margin-top:2px">${w.stad || w.postcode || ''}</div>
+            <button onclick="window._selectWinkel(${w.id})" style="
+              margin-top:8px;width:100%;
+              background:${DYNAMO_BLUE};color:white;
+              border:none;border-radius:6px;
+              padding:6px;font-size:12px;
+              cursor:pointer;font-weight:bold;
+            ">Bekijk voorraad →</button>
+          </div>
+        `)
+        bounds.push([w.lat!, w.lng!])
+      })
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [40, 40] })
+      }
+
+      // Global callback voor popup knop
+      ;(window as any)._selectWinkel = (id: number) => {
+        const winkel = winkels.find(w => w.id === id)
+        if (winkel) onSelecteer(winkel)
+      }
+    }
+    document.head.appendChild(script)
+
+    return () => {
+      const mapEl = document.getElementById('winkel-kaart')
+      if (mapEl && (mapEl as any)._leaflet_id) {
+        ;(window as any).L?.map(mapEl)?.remove?.()
+      }
+    }
+  }, [winkelsMetCoords.length])
+
+  if (winkelsMetCoords.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center" style={{ height: 280 }}>
+        <div className="text-center text-gray-400 p-6">
+          <div className="flex justify-center mb-2 opacity-40"><IconMap /></div>
+          <p className="text-sm font-medium">Geen kaart beschikbaar</p>
+          <p className="text-xs mt-1">Voeg postcodes toe aan je winkels om de kaart te zien</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm" style={{ height: 320 }}>
+      <div id="winkel-kaart" style={{ height: '100%', width: '100%' }} />
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
@@ -62,17 +229,21 @@ export default function Dashboard() {
   const [zoekterm, setZoekterm] = useState('')
   const [debouncedZoekterm, setDebouncedZoekterm] = useState('')
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
+  const [laagVoorraad, setLaagVoorraad] = useState(false)
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [toonWinkelForm, setToonWinkelForm] = useState(false)
   const [winkelLoading, setWinkelLoading] = useState(false)
   const [nieuweNaam, setNieuweNaam] = useState('')
   const [nieuwDealer, setNieuwDealer] = useState('')
+  const [nieuwePostcode, setNieuwePostcode] = useState('')
+  const [nieuweStad, setNieuweStad] = useState('')
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [gebruiker, setGebruiker] = useState('')
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
+  const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -96,6 +267,13 @@ export default function Dashboard() {
       return
     }
     const items = Array.isArray(data) ? data : data.products ?? []
+
+    // Bewaar vorige stats voor trend
+    setVorigeStats(prev => {
+      if (items.length > 0 && prev) return prev
+      return null
+    })
+
     setProducten(items)
     const keys = items.length > 0 ? Object.keys(items[0]) : []
     const dynamicCols = keys.filter(k => !isHidden(k)).sort((a, b) => {
@@ -128,6 +306,10 @@ export default function Dashboard() {
   }, [debouncedZoekterm, geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
+    setVorigeStats(producten.length > 0 ? {
+      producten: producten.length,
+      voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0)
+    } : null)
     setGeselecteerdeWinkel(winkel)
     setZoekterm('')
     setDebouncedZoekterm('')
@@ -136,6 +318,7 @@ export default function Dashboard() {
     setZichtbareKolommen([])
     setSortKey('')
     setZoekKolom('ALL')
+    setLaagVoorraad(false)
     setKolomPanelOpen(false)
     setAuthRequired(null)
     await haalVoorraadOp(winkel.dealer_nummer, '')
@@ -147,10 +330,12 @@ export default function Dashboard() {
     await fetch('/api/winkels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer }),
+      body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer, postcode: nieuwePostcode, stad: nieuweStad }),
     })
     setNieuweNaam('')
     setNieuwDealer('')
+    setNieuwePostcode('')
+    setNieuweStad('')
     setToonWinkelForm(false)
     setWinkelLoading(false)
     await haalWinkelsOp()
@@ -199,6 +384,9 @@ export default function Dashboard() {
       const needle = debouncedZoekterm.toLowerCase()
       arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
     }
+    if (laagVoorraad) {
+      arr = arr.filter(p => Number(p.STOCK) > 0 && Number(p.STOCK) <= 3)
+    }
     if (sortKey) {
       arr.sort((a, b) => {
         const av = asSortable(a[sortKey]), bv = asSortable(b[sortKey])
@@ -208,7 +396,22 @@ export default function Dashboard() {
       })
     }
     return arr
-  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
+  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir, laagVoorraad])
+
+  const stats = useMemo(() => ({
+    producten: gefilterdEnGesorteerd.length,
+    voorraad: gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
+    uitverkocht: gefilterdEnGesorteerd.filter(p => Number(p.STOCK) === 0).length,
+    laagVoorraad: gefilterdEnGesorteerd.filter(p => Number(p.STOCK) > 0 && Number(p.STOCK) <= 3).length,
+    merken: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
+  }), [gefilterdEnGesorteerd])
+
+  function trendPijl(huidig: number, vorig: number | undefined) {
+    if (vorig === undefined || vorig === null) return null
+    if (huidig > vorig) return <span className="text-green-500 text-xs font-bold ml-1">↑</span>
+    if (huidig < vorig) return <span className="text-red-400 text-xs font-bold ml-1">↓</span>
+    return <span className="text-gray-400 text-xs ml-1">→</span>
+  }
 
   const inputClass = "rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
 
@@ -218,7 +421,6 @@ export default function Dashboard() {
       {/* Navigatie */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
         <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
-          {/* Logo */}
           <div className="flex items-center gap-3 pr-6 border-r border-white/10">
             <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
@@ -229,7 +431,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Winkel switcher */}
           <div className="flex items-center px-5 border-r border-white/10 gap-2">
             <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block">Winkel</span>
             <select
@@ -249,12 +450,10 @@ export default function Dashboard() {
 
           <div className="flex-1" />
 
-          {/* Rechts */}
           <div className="flex items-center gap-3 pl-5">
             <button
               onClick={() => setSidebarOpen(v => !v)}
               className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/20 hover:bg-white/10 transition"
-              title="Sidebar"
             >
               <span className="flex flex-col gap-1 w-4">
                 <span className="block h-0.5 bg-white rounded" />
@@ -293,6 +492,8 @@ export default function Dashboard() {
                 <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Nieuwe winkel</p>
                 <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} required />
                 <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} required />
+                <input placeholder="Postcode (bijv. 1234AB)" value={nieuwePostcode} onChange={e => setNieuwePostcode(e.target.value)} className={inputClass + ' w-full'} />
+                <input placeholder="Stad" value={nieuweStad} onChange={e => setNieuweStad(e.target.value)} className={inputClass + ' w-full'} />
                 <div className="flex gap-2">
                   <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
                     {winkelLoading ? 'Bezig...' : 'Toevoegen'}
@@ -303,8 +504,9 @@ export default function Dashboard() {
             )}
 
             <div className="flex-1 overflow-y-auto space-y-1">
-              {winkels.map(w => {
+              {winkels.map((w, i) => {
                 const active = geselecteerdeWinkel?.id === w.id
+                const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
                 return (
                   <div
                     key={w.id}
@@ -312,9 +514,14 @@ export default function Dashboard() {
                     className="group flex items-center gap-2 rounded-xl px-3 py-2.5 cursor-pointer transition border"
                     style={active ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE } : { background: 'white', borderColor: '#e5e7eb' }}
                   >
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.2)' : kleur }}>
+                      {w.naam.charAt(0)}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE }}>🏪 {w.naam}</div>
-                      <div className="text-xs" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>#{w.dealer_nummer}</div>
+                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE }}>{w.naam}</div>
+                      <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>
+                        {w.stad ? <><IconPin />{w.stad}</> : `#${w.dealer_nummer}`}
+                      </div>
                     </div>
                     <button
                       onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }}
@@ -337,49 +544,55 @@ export default function Dashboard() {
         <main className="flex-1 min-w-0 p-5 space-y-4 overflow-auto">
 
           {!geselecteerdeWinkel ? (
-            /* ── STARTSCHERM ── */
-            <div className="space-y-6">
+            <div className="space-y-5">
+
               {/* Hero */}
-              <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 180 }}>
-                {/* Decoratieve cirkels */}
-                <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
-                <div className="absolute -bottom-16 -left-10 w-48 h-48 rounded-full opacity-5" style={{ background: 'white' }} />
+              <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 200 }}>
+                <div className="absolute -top-12 -right-12 w-72 h-72 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
+                <div className="absolute top-8 right-8 w-32 h-32 rounded-full opacity-5" style={{ background: 'white' }} />
+                <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full opacity-5" style={{ background: 'white' }} />
                 <div className="relative p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div>
-                    <div className="text-white/60 text-sm font-semibold uppercase tracking-widest mb-1">Welkom terug</div>
+                    <div style={{ color: DYNAMO_GOLD }} className="text-sm font-bold uppercase tracking-widest mb-1">
+                      {getDagdeel()}
+                    </div>
                     <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight">
                       Voorraad Dashboard
                     </h1>
-                    <p className="mt-2 text-white/70 text-sm max-w-md">
-                      Kies een winkel via de sidebar of de navigatie bovenin om de voorraad te bekijken en te doorzoeken.
+                    <p className="mt-1 text-white/60 text-sm capitalize">{getDatum()}</p>
+                    <p className="mt-3 text-white/70 text-sm max-w-md">
+                      Selecteer een winkel om de voorraad te bekijken en te doorzoeken.
                     </p>
                     <button
                       onClick={() => setSidebarOpen(true)}
-                      className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90"
+                      className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2"
                       style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
                     >
-                      🏪 Kies een winkel
+                      <IconStore /> Kies een winkel
                     </button>
                   </div>
-                  <div className="text-8xl opacity-20 select-none hidden sm:block">📦</div>
+                  <div className="hidden sm:flex items-center justify-center opacity-10" style={{ color: 'white' }}>
+                    <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              {/* Module kaarten */}
+              {/* Modules */}
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Modules</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-                  {/* Voorraad kaart */}
                   <div
-                    className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-md hover:-translate-y-0.5"
+                    className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200"
                     style={{ borderColor: DYNAMO_BLUE }}
                     onClick={() => setSidebarOpen(true)}
                   >
                     <div className="p-5" style={{ background: DYNAMO_BLUE }}>
-                      <div className="text-4xl mb-2">📦</div>
+                      <div className="text-white mb-3"><IconBox /></div>
                       <div className="text-white font-bold text-lg">Voorraad</div>
-                      <div className="text-white/70 text-sm mt-1">Doorzoek en filter de complete voorraad per winkel</div>
+                      <div className="text-white/60 text-sm mt-1">Doorzoek en filter de volledige voorraad per winkel</div>
                     </div>
                     <div className="px-5 py-3 bg-white flex items-center justify-between">
                       <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Kies een winkel →</span>
@@ -387,66 +600,106 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Merk/Groep kaart */}
-                  <Link href="/dashboard/brand-groep" className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 block" style={{ borderColor: DYNAMO_GOLD }}>
-                    <div className="p-5" style={{ background: 'linear-gradient(135deg, #0d1f4e 60%, #1a3a7a)' }}>
-                      <div className="text-4xl mb-2">📊</div>
+                  <Link href="/dashboard/brand-groep" className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200 block" style={{ borderColor: DYNAMO_GOLD }}>
+                    <div className="p-5" style={{ background: 'linear-gradient(135deg, #0d1f4e 60%, #162d5e)' }}>
+                      <div className="text-white mb-3"><IconChart /></div>
                       <div className="text-white font-bold text-lg">Merk / Groep</div>
-                      <div className="text-white/70 text-sm mt-1">Bekijk beschikbare voorraad per merk en productgroep</div>
+                      <div className="text-white/60 text-sm mt-1">Bekijk beschikbare voorraad per merk en productgroep</div>
                     </div>
                     <div className="px-5 py-3 bg-white flex items-center justify-between">
                       <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Ga naar overzicht →</span>
-                      <span className="text-2xl">📈</span>
+                      <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
                     </div>
                   </Link>
 
-                  {/* Binnenkort kaart */}
-                  <div className="rounded-2xl border-2 border-dashed border-gray-300 overflow-hidden shadow-sm opacity-60">
+                  <div className="rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden shadow-sm opacity-50">
                     <div className="p-5 bg-gray-50">
-                      <div className="text-4xl mb-2">🔜</div>
+                      <div className="text-gray-400 mb-3"><IconMap /></div>
                       <div className="text-gray-500 font-bold text-lg">Meer komt eraan</div>
                       <div className="text-gray-400 text-sm mt-1">Export, vergelijk winkels, lage voorraad alerts en meer</div>
                     </div>
-                    <div className="px-5 py-3 bg-white flex items-center justify-between">
+                    <div className="px-5 py-3 bg-white">
                       <span className="text-xs font-semibold text-gray-400">Binnenkort beschikbaar</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Winkel overzicht */}
+              {/* Kaart */}
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>
+                  Winkels op de kaart
+                </h2>
+                <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
+              </div>
+
+              {/* Winkelkaarten */}
               {winkels.length > 0 && (
                 <div>
                   <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Jouw winkels</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {winkels.map(w => (
-                      <div
-                        key={w.id}
-                        onClick={() => selecteerWinkel(w)}
-                        className="bg-white rounded-xl border border-gray-200 px-4 py-3 cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300"
-                      >
-                        <div className="text-lg mb-1">🏪</div>
-                        <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE }}>{w.naam}</div>
-                        <div className="text-xs text-gray-400">#{w.dealer_nummer}</div>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {winkels.map((w, i) => {
+                      const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
+                      return (
+                        <div
+                          key={w.id}
+                          onClick={() => selecteerWinkel(w)}
+                          className="bg-white rounded-2xl border border-gray-200 overflow-hidden cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200"
+                        >
+                          {/* Kleurband */}
+                          <div className="h-2" style={{ background: kleur }} />
+                          <div className="p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black" style={{ background: kleur }}>
+                                {w.naam.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-sm truncate" style={{ color: DYNAMO_BLUE }}>{w.naam}</div>
+                                <div className="text-xs text-gray-400">#{w.dealer_nummer}</div>
+                              </div>
+                            </div>
+                            {(w.stad || w.postcode) && (
+                              <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                                <IconPin />
+                                <span>{w.stad}{w.stad && w.postcode ? ' · ' : ''}{w.postcode}</span>
+                              </div>
+                            )}
+                            <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                              <span className="text-xs font-semibold" style={{ color: kleur }}>Bekijk voorraad →</span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
             </div>
           ) : (
             <>
+              {/* Terugknop */}
+              <button
+                onClick={() => setGeselecteerdeWinkel(null)}
+                className="flex items-center gap-2 text-sm font-semibold hover:underline transition"
+                style={{ color: DYNAMO_BLUE }}
+              >
+                <IconArrowLeft /> Terug naar startscherm
+              </button>
+
               {/* Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Producten', value: gefilterdEnGesorteerd.length, color: DYNAMO_BLUE },
-                  { label: 'Totaal voorraad', value: gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.STOCK) || 0), 0), color: DYNAMO_BLUE },
-                  { label: 'Uitverkocht', value: gefilterdEnGesorteerd.filter(p => Number(p.STOCK) === 0).length, color: '#dc2626' },
-                  { label: 'Merken', value: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size, color: DYNAMO_BLUE },
+                  { label: 'Producten', value: stats.producten, vorig: vorigeStats?.producten, color: DYNAMO_BLUE },
+                  { label: 'Totaal voorraad', value: stats.voorraad, vorig: vorigeStats?.voorraad, color: DYNAMO_BLUE },
+                  { label: 'Uitverkocht', value: stats.uitverkocht, color: '#dc2626' },
+                  { label: 'Lage voorraad', value: stats.laagVoorraad, color: '#f59e0b' },
                 ].map(s => (
                   <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 py-3 shadow-sm">
                     <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</div>
-                    <div className="text-2xl font-black mt-0.5" style={{ color: s.color }}>{s.value.toLocaleString('nl-NL')}</div>
+                    <div className="flex items-baseline mt-0.5">
+                      <div className="text-2xl font-black" style={{ color: s.color }}>{s.value.toLocaleString('nl-NL')}</div>
+                      {trendPijl(s.value, (s as any).vorig)}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -458,6 +711,9 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-gray-400 text-sm">#{dealer}</span>
+                      {geselecteerdeWinkel.stad && (
+                        <span className="flex items-center gap-1 text-xs text-gray-400"><IconPin />{geselecteerdeWinkel.stad}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <Link
@@ -465,7 +721,7 @@ export default function Dashboard() {
                         className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border transition hover:shadow-sm"
                         style={{ borderColor: DYNAMO_GOLD, color: DYNAMO_BLUE, background: '#fffbeb' }}
                       >
-                        <span>📊</span> Merk/Groep
+                        <IconChart /> Merk/Groep
                       </Link>
                       <span className="text-xs text-gray-400">
                         {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
@@ -490,6 +746,18 @@ export default function Dashboard() {
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
 
+                    {/* Lage voorraad filter */}
+                    <button
+                      onClick={() => setLaagVoorraad(v => !v)}
+                      className="rounded-lg px-4 py-2 text-sm font-semibold border transition flex items-center gap-2"
+                      style={laagVoorraad
+                        ? { background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }
+                        : { background: 'white', borderColor: '#d1d5db', color: '#374151' }
+                      }
+                    >
+                      ⚠️ Lage voorraad {laagVoorraad && `(${stats.laagVoorraad})`}
+                    </button>
+
                     {/* Kolommen */}
                     <div className="relative">
                       <button
@@ -497,7 +765,7 @@ export default function Dashboard() {
                         className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-2"
                         style={{ color: DYNAMO_BLUE }}
                       >
-                        <span>⚙</span> Kolommen ({zichtbareKolommen.length})
+                        ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
                         <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl p-4 z-30">
@@ -522,8 +790,8 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {(zoekterm || zoekKolom !== 'ALL') && (
-                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="text-sm text-red-400 hover:text-red-600 font-medium">✕ Wis filters</button>
+                    {(zoekterm || zoekKolom !== 'ALL' || laagVoorraad) && (
+                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL'); setLaagVoorraad(false) }} className="text-sm text-red-400 hover:text-red-600 font-medium">✕ Wis filters</button>
                     )}
                   </div>
                 </div>
@@ -580,37 +848,42 @@ export default function Dashboard() {
                           </td>
                         </tr>
                       ) : (
-                        gefilterdEnGesorteerd.map((p, i) => (
-                          <tr
-                            key={i}
-                            className="transition hover:bg-yellow-50"
-                            style={Number(p.STOCK) === 0 ? { background: '#fff7f7' } : i % 2 === 1 ? { background: '#fafafa' } : {}}
-                          >
-                            {zichtbareKolommen.map(k => {
-                              const sticky = stickyEnabled && stickyKey === k
-                              const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
-                              const stockVal = Number(p[k])
-                              return (
-                                <td
-                                  key={k}
-                                  className="px-4 py-2.5 whitespace-nowrap align-middle"
-                                  style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}
-                                >
-                                  <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
-                                    {formatValue(k, p[k])}
-                                  </span>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))
+                        gefilterdEnGesorteerd.map((p, i) => {
+                          const stock = Number(p.STOCK)
+                          const isLaag = stock > 0 && stock <= 3
+                          const isUit = stock === 0
+                          return (
+                            <tr
+                              key={i}
+                              className="transition hover:bg-yellow-50"
+                              style={isUit ? { background: '#fff7f7' } : isLaag ? { background: '#fffbeb' } : i % 2 === 1 ? { background: '#fafafa' } : {}}
+                            >
+                              {zichtbareKolommen.map(k => {
+                                const sticky = stickyEnabled && stickyKey === k
+                                const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
+                                const stockVal = Number(p[k])
+                                return (
+                                  <td
+                                    key={k}
+                                    className="px-4 py-2.5 whitespace-nowrap align-middle"
+                                    style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}
+                                  >
+                                    <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : stockVal <= 3 ? 'text-amber-500 font-semibold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
+                                      {formatValue(k, p[k])}
+                                    </span>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })
                       )}
                     </tbody>
                   </table>
                 </div>
                 {!loading && gefilterdEnGesorteerd.length > 0 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
-                    <span>{gefilterdEnGesorteerd.length} producten</span>
+                    <span>{gefilterdEnGesorteerd.length} producten · <span className="text-amber-500">geel = lage voorraad</span> · <span className="text-red-400">rood = uitverkocht</span></span>
                     <span>Klik op een kolomheader om te sorteren</span>
                   </div>
                 )}
