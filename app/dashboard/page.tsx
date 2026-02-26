@@ -72,10 +72,16 @@ function isFiets(p: any) {
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
+/* =========================
+   TYPES (maar 1x!)
+========================= */
 type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number }
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
+/* =========================
+   ICONS
+========================= */
 const IconBox = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -172,6 +178,7 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
         ;(window as any).L?.map(mapEl)?.remove?.()
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winkelsMetCoords.length])
 
   if (winkelsMetCoords.length === 0) {
@@ -196,29 +203,38 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
 export default function Dashboard() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
+
   const [producten, setProducten] = useState<Product[]>([])
   const [kolommen, setKolommen] = useState<string[]>([])
   const [zichtbareKolommen, setZichtbareKolommen] = useState<string[]>([])
   const [kolommenGeladen, setKolommenGeladen] = useState(false)
+
   const [zoekterm, setZoekterm] = useState('')
   const [debouncedZoekterm, setDebouncedZoekterm] = useState('')
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
+
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+
   const [toonWinkelForm, setToonWinkelForm] = useState(false)
   const [winkelLoading, setWinkelLoading] = useState(false)
   const [nieuweNaam, setNieuweNaam] = useState('')
   const [nieuwDealer, setNieuwDealer] = useState('')
   const [nieuwePostcode, setNieuwePostcode] = useState('')
   const [nieuweStad, setNieuweStad] = useState('')
+
   const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
   const [bewerkLoading, setBewerkLoading] = useState(false)
+
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
+
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+
   const [gebruiker, setGebruiker] = useState('')
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -228,9 +244,7 @@ export default function Dashboard() {
       const opgeslagen = localStorage.getItem(KOLOMMEN_STORAGE_KEY)
       if (opgeslagen) {
         const parsed = JSON.parse(opgeslagen)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setZichtbareKolommen(parsed)
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) setZichtbareKolommen(parsed)
       }
     } catch {}
     setKolommenGeladen(true)
@@ -253,8 +267,10 @@ export default function Dashboard() {
   const haalVoorraadOp = useCallback(async (dealer: string, q: string) => {
     setLoading(true)
     setAuthRequired(null)
+
     const res = await fetch(`/api/voorraad?dealer=${dealer}&q=${encodeURIComponent(q)}`)
     const data = await res.json().catch(() => ({}))
+
     if (!res.ok) {
       setProducten([])
       setKolommen([])
@@ -262,15 +278,18 @@ export default function Dashboard() {
       setLoading(false)
       return
     }
+
     const items = Array.isArray(data) ? data : data.products ?? []
-    setVorigeStats(prev => (items.length > 0 && prev) ? prev : null)
     setProducten(items)
 
     const keys = items.length > 0 ? Object.keys(items[0]) : []
-    const dynamicCols = keys.filter(k => !isHidden(k)).sort((a, b) => {
-      const oa = columnOrder(a), ob = columnOrder(b)
-      return oa !== ob ? oa - ob : a.localeCompare(b)
-    })
+    const dynamicCols = keys
+      .filter(k => !isHidden(k))
+      .sort((a, b) => {
+        const oa = columnOrder(a), ob = columnOrder(b)
+        return oa !== ob ? oa - ob : a.localeCompare(b)
+      })
+
     setKolommen(dynamicCols)
 
     // Pas opgeslagen voorkeur toe, anders alles tonen
@@ -303,7 +322,7 @@ export default function Dashboard() {
   useEffect(() => {
     haalWinkelsOp()
     supabase.auth.getUser().then(({ data }) => setGebruiker(data.user?.email ?? ''))
-  }, [haalWinkelsOp])
+  }, [haalWinkelsOp, supabase.auth])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedZoekterm(zoekterm), 400)
@@ -318,8 +337,9 @@ export default function Dashboard() {
   async function selecteerWinkel(winkel: Winkel) {
     setVorigeStats(producten.length > 0 ? {
       producten: producten.length,
-      voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0)
+      voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     } : null)
+
     setGeselecteerdeWinkel(winkel)
     setZoekterm('')
     setDebouncedZoekterm('')
@@ -329,18 +349,24 @@ export default function Dashboard() {
     setZoekKolom('ALL')
     setKolomPanelOpen(false)
     setAuthRequired(null)
+
     await haalVoorraadOp(winkel.dealer_nummer, '')
   }
 
   async function voegWinkelToe(e: React.FormEvent) {
     e.preventDefault()
     setWinkelLoading(true)
+
     await fetch('/api/winkels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer, postcode: nieuwePostcode, stad: nieuweStad }),
     })
-    setNieuweNaam(''); setNieuwDealer(''); setNieuwePostcode(''); setNieuweStad('')
+
+    setNieuweNaam('')
+    setNieuwDealer('')
+    setNieuwePostcode('')
+    setNieuweStad('')
     setToonWinkelForm(false)
     setWinkelLoading(false)
     await haalWinkelsOp()
@@ -349,7 +375,9 @@ export default function Dashboard() {
   async function slaWinkelOp(e: React.FormEvent) {
     e.preventDefault()
     if (!bewerkWinkel) return
+
     setBewerkLoading(true)
+
     await fetch('/api/winkels', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -361,6 +389,7 @@ export default function Dashboard() {
         stad: bewerkWinkel.stad,
       }),
     })
+
     setBewerkLoading(false)
     setBewerkWinkel(null)
     await haalWinkelsOp()
@@ -369,6 +398,7 @@ export default function Dashboard() {
   async function verwijderWinkel(id: number) {
     if (!confirm('Winkel verwijderen?')) return
     await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
+
     if (geselecteerdeWinkel?.id === id) {
       setGeselecteerdeWinkel(null)
       setProducten([])
@@ -376,6 +406,7 @@ export default function Dashboard() {
       setZoekterm('')
       setAuthRequired(null)
     }
+
     await haalWinkelsOp()
   }
 
@@ -391,7 +422,10 @@ export default function Dashboard() {
 
   function toggleKolom(k: string) {
     setZichtbareKolommen(prev => {
-      if (prev.includes(k)) { if (prev.length === 1) return prev; return prev.filter(x => x !== k) }
+      if (prev.includes(k)) {
+        if (prev.length === 1) return prev
+        return prev.filter(x => x !== k)
+      }
       const set = new Set([...prev, k])
       return kolommen.filter(x => set.has(x))
     })
@@ -402,48 +436,36 @@ export default function Dashboard() {
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
 
-const gefilterdEnGesorteerd = useMemo(() => {
-  // ✅ Alleen voorraad >= 1 (dus 0 en negatief weg)
-  let arr = producten.filter(p => Number(p?.STOCK) >= 1)
+  // ✅ HIER: filter op voorraad >= 1 (dus geen 0/negatief)
+  const gefilterdEnGesorteerd = useMemo(() => {
+    // eerst: alleen voorraad >= 1
+    let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
 
-  // extra lokale filter (bovenop API) als je specifiek in 1 kolom zoekt
-  if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
-    const needle = debouncedZoekterm.toLowerCase()
-    arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
-  }
-
-  if (sortKey) {
-    arr.sort((a, b) => {
-      const av = asSortable(a[sortKey])
-      const bv = asSortable(b[sortKey])
-      if (av < bv) return sortDir === 'asc' ? -1 : 1
-      if (av > bv) return sortDir === 'asc' ? 1 : -1
-      return 0
-    })
-  }
-
-  return arr
-}, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
-    let arr = [...producten]
+    // extra lokale filter als je specifiek in 1 kolom zoekt
     if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
       const needle = debouncedZoekterm.toLowerCase()
       arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
     }
+
     if (sortKey) {
       arr.sort((a, b) => {
-        const av = asSortable(a[sortKey]), bv = asSortable(b[sortKey])
+        const av = asSortable(a[sortKey])
+        const bv = asSortable(b[sortKey])
         if (av < bv) return sortDir === 'asc' ? -1 : 1
         if (av > bv) return sortDir === 'asc' ? 1 : -1
         return 0
       })
     }
+
     return arr
   }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
 
   const stats = useMemo(() => ({
     producten: gefilterdEnGesorteerd.length,
     voorraad: gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
-    fietsen: gefilterdEnGesorteerd.filter(p => isFiets(p) && Number(p.STOCK) > 0).reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
+    fietsen: gefilterdEnGesorteerd
+      .filter(p => isFiets(p) && (Number(p.STOCK) || 0) > 0)
+      .reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     merken: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
   }), [gefilterdEnGesorteerd])
 
@@ -454,11 +476,11 @@ const gefilterdEnGesorteerd = useMemo(() => {
     return <span className="text-gray-400 text-xs ml-1">→</span>
   }
 
-  const inputClass = "rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+  const inputClass =
+    "rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
-
       {/* Navigatie */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
         <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
@@ -502,8 +524,8 @@ const gefilterdEnGesorteerd = useMemo(() => {
             <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
             <Link href="/dashboard/beheer" className="rounded-lg px-3 py-2 text-xs font-semibold border border-white/20 text-white hover:bg-white/10 transition hidden md:flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
               Beheer
             </Link>
@@ -516,7 +538,6 @@ const gefilterdEnGesorteerd = useMemo(() => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-
         {/* Sidebar */}
         <aside className="bg-white border-r border-gray-200 flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '260px' : '0px', minWidth: sidebarOpen ? '260px' : '0px' }}>
           <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
@@ -590,10 +611,8 @@ const gefilterdEnGesorteerd = useMemo(() => {
 
         {/* Main */}
         <main className="flex-1 min-w-0 p-5 space-y-4 overflow-auto">
-
           {!geselecteerdeWinkel ? (
             <div className="space-y-5">
-              {/* Hero */}
               <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 200 }}>
                 <div className="absolute -top-12 -right-12 w-72 h-72 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
                 <div className="absolute top-8 right-8 w-32 h-32 rounded-full opacity-5" style={{ background: 'white' }} />
@@ -616,7 +635,6 @@ const gefilterdEnGesorteerd = useMemo(() => {
                 </div>
               </div>
 
-              {/* Modules */}
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Modules</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -657,52 +675,17 @@ const gefilterdEnGesorteerd = useMemo(() => {
                 </div>
               </div>
 
-              {/* Kaart */}
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Winkels op de kaart</h2>
                 <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
               </div>
-
-              {/* Winkelkaarten */}
-              {winkels.length > 0 && (
-                <div>
-                  <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Jouw winkels</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {winkels.map((w, i) => {
-                      const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
-                      return (
-                        <div key={w.id} onClick={() => selecteerWinkel(w)} className="bg-white rounded-2xl border border-gray-200 overflow-hidden cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200">
-                          <div className="h-2" style={{ background: kleur }} />
-                          <div className="p-4">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black" style={{ background: kleur }}>{w.naam.charAt(0)}</div>
-                              <div className="min-w-0">
-                                <div className="font-bold text-sm truncate" style={{ color: DYNAMO_BLUE }}>{w.naam}</div>
-                                <div className="text-xs text-gray-400">#{w.dealer_nummer}</div>
-                              </div>
-                            </div>
-                            {(w.stad || w.postcode) && (
-                              <div className="flex items-center gap-1 text-xs text-gray-500 mb-3"><IconPin /><span>{w.stad}{w.stad && w.postcode ? ' · ' : ''}{w.postcode}</span></div>
-                            )}
-                            <div className="pt-3 border-t border-gray-100">
-                              <span className="text-xs font-semibold" style={{ color: kleur }}>Bekijk voorraad →</span>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <>
-              {/* Terugknop */}
               <button onClick={() => setGeselecteerdeWinkel(null)} className="flex items-center gap-2 text-sm font-semibold hover:underline transition" style={{ color: DYNAMO_BLUE }}>
                 <IconArrowLeft /> Terug naar startscherm
               </button>
 
-              {/* Stats — zonder uitverkocht/lage voorraad, met fietsen */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Producten', value: stats.producten, vorig: vorigeStats?.producten, color: DYNAMO_BLUE },
@@ -720,7 +703,6 @@ const gefilterdEnGesorteerd = useMemo(() => {
                 ))}
               </div>
 
-              {/* Zoek + filters */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -750,7 +732,6 @@ const gefilterdEnGesorteerd = useMemo(() => {
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
 
-                    {/* Kolommen */}
                     <div className="relative">
                       <button onClick={() => setKolomPanelOpen(v => !v)} className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-2" style={{ color: DYNAMO_BLUE }}>
                         ⚙ Kolommen ({zichtbareKolommen.length})
@@ -793,7 +774,6 @@ const gefilterdEnGesorteerd = useMemo(() => {
                 </div>
               )}
 
-              {/* Tabel */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="overflow-auto">
                   <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
@@ -813,6 +793,7 @@ const gefilterdEnGesorteerd = useMemo(() => {
                         })}
                       </tr>
                     </thead>
+
                     <tbody className="divide-y divide-gray-100">
                       {loading ? (
                         Array.from({ length: 12 }).map((_, i) => (
@@ -827,7 +808,7 @@ const gefilterdEnGesorteerd = useMemo(() => {
                           <td colSpan={zichtbareKolommen.length} className="px-6 py-12 text-center">
                             <div className="text-4xl mb-2">🔍</div>
                             <div className="font-semibold text-gray-700">Geen producten gevonden</div>
-                            <div className="text-sm text-gray-400 mt-1">Probeer een andere zoekterm</div>
+                            <div className="text-sm text-gray-400 mt-1">Let op: we tonen alleen voorraad ≥ 1</div>
                           </td>
                         </tr>
                       ) : (
@@ -839,7 +820,7 @@ const gefilterdEnGesorteerd = useMemo(() => {
                               const stockVal = Number(p[k])
                               return (
                                 <td key={k} className="px-4 py-2.5 whitespace-nowrap align-middle" style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}>
-                                  <span className={isStock ? (stockVal === 0 ? 'text-red-500 font-bold' : stockVal <= 3 ? 'text-amber-500 font-semibold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
+                                  <span className={isStock ? (stockVal <= 3 ? 'text-amber-600 font-semibold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
                                     {formatValue(k, p[k])}
                                   </span>
                                 </td>
@@ -851,9 +832,10 @@ const gefilterdEnGesorteerd = useMemo(() => {
                     </tbody>
                   </table>
                 </div>
+
                 {!loading && gefilterdEnGesorteerd.length > 0 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
-                    <span>{gefilterdEnGesorteerd.length} producten</span>
+                    <span>{gefilterdEnGesorteerd.length} producten (voorraad ≥ 1)</span>
                     <span>Klik op een kolomheader om te sorteren</span>
                   </div>
                 )}

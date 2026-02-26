@@ -13,6 +13,19 @@ const BRAND_ALIASES: Record<string, string> = {
   vanraam: 'vanraam',
 }
 
+type GroupRow = { groupKey: string; groupLabel: string; availableTotal: number; itemsCount: number; brandsCount: number }
+type BrandRow = { brandKey: string; brandLabel: string; availableTotal: number; itemsCount: number }
+type ProductRow = {
+  description: string
+  supplierSku: string
+  barcode: string
+  supplierNameLabel: string
+  available: number
+  stock: number
+  priceInc: any
+  raw: Product
+}
+
 function normalizeKey(input: any, fallbackKey = '(onbekend)') {
   const raw = String(input ?? '').trim()
   if (!raw) return fallbackKey
@@ -59,41 +72,45 @@ function formatMoney(v: any) {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n)
 }
 
-type GroupRow = { groupKey: string; groupLabel: string; availableTotal: number; itemsCount: number; brandsCount: number }
-type BrandRow = { brandKey: string; brandLabel: string; availableTotal: number; itemsCount: number }
-type ProductRow = { description: string; supplierSku: string; barcode: string; supplierNameLabel: string; available: number; stock: number; priceInc: any; raw: Product }
-
 export default function BrandGroepPage() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
   const [producten, setProducten] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
+
   const [groupSearch, setGroupSearch] = useState('')
   const [brandSearch, setBrandSearch] = useState('')
   const [selectedGroup, setSelectedGroup] = useState<string>('')
   const [selectedBrand, setSelectedBrand] = useState<string>('')
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null)
+
   const [sortGroupsBy, setSortGroupsBy] = useState<'available' | 'name'>('available')
   const [sortBrandsBy, setSortBrandsBy] = useState<'available' | 'name'>('available')
+
   const [minAvailable, setMinAvailable] = useState<number>(0)
   const [top10Brands, setTop10Brands] = useState<boolean>(false)
 
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
     const data = await res.json()
-    setWinkels(data)
+    setWinkels(Array.isArray(data) ? data : [])
   }, [])
 
   const haalVoorraadOp = useCallback(async (dealer: string) => {
     setLoading(true)
-    const res = await fetch(`/api/voorraad?dealer=${dealer}&q=`)
-    const data = await res.json()
-    const items = Array.isArray(data) ? data : data.products ?? []
-    setProducten(items)
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/voorraad?dealer=${dealer}&q=`)
+      const data = await res.json()
+      const items = Array.isArray(data) ? data : data?.products ?? []
+      setProducten(Array.isArray(items) ? items : [])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  useEffect(() => { haalWinkelsOp() }, [haalWinkelsOp])
+  useEffect(() => {
+    haalWinkelsOp()
+  }, [haalWinkelsOp])
 
   async function selecteerWinkel(id: number) {
     const winkel = winkels.find(w => w.id === id) ?? null
@@ -116,18 +133,31 @@ export default function BrandGroepPage() {
       const groupLabel = normalizeLabel(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
       const brandKey = normalizeBrandKey(p.BRAND_NAME)
       const available = toNumber(p.AVAILABLE_STOCK)
+
       const entry = groupTotals.get(groupKey) ?? { label: groupLabel, available: 0, items: 0, brands: new Set<string>() }
       entry.available += available
       entry.items += 1
       entry.brands.add(brandKey)
       groupTotals.set(groupKey, entry)
     }
+
     let rows: GroupRow[] = Array.from(groupTotals.entries()).map(([groupKey, v]) => ({
-      groupKey, groupLabel: v.label, availableTotal: v.available, itemsCount: v.items, brandsCount: v.brands.size,
+      groupKey,
+      groupLabel: v.label,
+      availableTotal: v.available,
+      itemsCount: v.items,
+      brandsCount: v.brands.size,
     }))
+
     const needle = groupSearch.trim().toLowerCase()
     if (needle) rows = rows.filter(r => r.groupLabel.toLowerCase().includes(needle))
-    rows.sort((a, b) => sortGroupsBy === 'name' ? a.groupLabel.localeCompare(b.groupLabel) : (b.availableTotal - a.availableTotal) || a.groupLabel.localeCompare(b.groupLabel))
+
+    rows.sort((a, b) =>
+      sortGroupsBy === 'name'
+        ? a.groupLabel.localeCompare(b.groupLabel)
+        : (b.availableTotal - a.availableTotal) || a.groupLabel.localeCompare(b.groupLabel)
+    )
+
     return rows
   }, [producten, groupSearch, sortGroupsBy])
 
@@ -137,29 +167,44 @@ export default function BrandGroepPage() {
       setSelectedBrand('')
       setSelectedProduct(null)
     }
-  }, [groupRows.length])
+  }, [groupRows, selectedGroup])
 
   const brandRows: BrandRow[] = useMemo(() => {
     if (!selectedGroup) return []
+
     const brandTotals = new Map<string, { label: string; available: number; items: number }>()
     for (const p of producten) {
       const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
       if (groupKey !== selectedGroup) continue
+
       const brandKey = normalizeBrandKey(p.BRAND_NAME)
       const brandLabel = normalizeBrandLabel(p.BRAND_NAME)
       const available = toNumber(p.AVAILABLE_STOCK)
+
       const entry = brandTotals.get(brandKey) ?? { label: brandLabel, available: 0, items: 0 }
       entry.available += available
       entry.items += 1
       brandTotals.set(brandKey, entry)
     }
+
     let rows: BrandRow[] = Array.from(brandTotals.entries()).map(([brandKey, v]) => ({
-      brandKey, brandLabel: v.label, availableTotal: v.available, itemsCount: v.items,
+      brandKey,
+      brandLabel: v.label,
+      availableTotal: v.available,
+      itemsCount: v.items,
     }))
+
     const needle = brandSearch.trim().toLowerCase()
     if (needle) rows = rows.filter(r => r.brandLabel.toLowerCase().includes(needle))
+
     if (minAvailable > 0) rows = rows.filter(r => r.availableTotal >= minAvailable)
-    rows.sort((a, b) => sortBrandsBy === 'name' ? a.brandLabel.localeCompare(b.brandLabel) : (b.availableTotal - a.availableTotal) || a.brandLabel.localeCompare(b.brandLabel))
+
+    rows.sort((a, b) =>
+      sortBrandsBy === 'name'
+        ? a.brandLabel.localeCompare(b.brandLabel)
+        : (b.availableTotal - a.availableTotal) || a.brandLabel.localeCompare(b.brandLabel)
+    )
+
     if (top10Brands) rows = rows.slice(0, 10)
     return rows
   }, [producten, selectedGroup, brandSearch, sortBrandsBy, minAvailable, top10Brands])
@@ -168,68 +213,51 @@ export default function BrandGroepPage() {
   const selectedBrandMeta = useMemo(() => brandRows.find(r => r.brandKey === selectedBrand) ?? null, [brandRows, selectedBrand])
   const maxBrandValue = useMemo(() => brandRows.reduce((m, r) => Math.max(m, r.availableTotal), 0), [brandRows])
 
-const productRows: ProductRow[] = useMemo(() => {
-  if (!selectedGroup || !selectedBrand) return []
-
-  const rows: ProductRow[] = []
-
-  for (const p of producten) {
-    const group1 = norm(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
-    if (group1 !== selectedGroup) continue
-
-    const brand = norm(p.BRAND_NAME, '(Geen merk)')
-    if (brand !== selectedBrand) continue
-
-    // ✅ Alleen voorraad >= 1 (dus 0 en negatief weg)
-    const stock = toNumber(p.STOCK)
-    if (stock < 1) continue
-
-    rows.push({
-      description: norm(p.PRODUCT_DESCRIPTION, ''),
-      supplierSku: norm(p.SUPPLIER_PRODUCT_NUMBER, ''),
-      barcode: norm(p.BARCODE, ''),
-      supplierName: norm(p.SUPPLIER_NAME, ''),
-      available: toNumber(p.AVAILABLE_STOCK),
-      stock,
-      priceInc: p.SALES_PRICE_INC,
-      raw: p,
-    })
-  }
-
-  rows.sort((a, b) => (b.stock - a.stock) || a.description.localeCompare(b.description))
-  return rows
-}, [producten, selectedGroup, selectedBrand])
+  // ✅ Producten: alleen voorraad (STOCK) >= 1
+  const productRows: ProductRow[] = useMemo(() => {
     if (!selectedGroup || !selectedBrand) return []
+
     const rows: ProductRow[] = []
     for (const p of producten) {
       const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
       if (groupKey !== selectedGroup) continue
+
       const brandKey = normalizeBrandKey(p.BRAND_NAME)
       if (brandKey !== selectedBrand) continue
+
+      const stock = toNumber(p.STOCK)
+      if (stock < 1) continue // 👈 hier filter je de 0-voorraad weg
+
       rows.push({
         description: String(p.PRODUCT_DESCRIPTION ?? '').trim(),
         supplierSku: String(p.SUPPLIER_PRODUCT_NUMBER ?? '').trim(),
         barcode: String(p.BARCODE ?? '').trim(),
         supplierNameLabel: normalizeLabel(p.SUPPLIER_NAME, '(Geen leverancier)'),
         available: toNumber(p.AVAILABLE_STOCK),
-        stock: toNumber(p.STOCK),
+        stock,
         priceInc: p.SALES_PRICE_INC,
         raw: p,
       })
     }
-    rows.sort((a, b) => (b.available - a.available) || a.description.localeCompare(b.description))
+
+    rows.sort((a, b) => (b.stock - a.stock) || a.description.localeCompare(b.description))
     return rows
   }, [producten, selectedGroup, selectedBrand])
 
-  const drilldownAvailableTotal = useMemo(() => productRows.reduce((sum, r) => sum + (r.available || 0), 0), [productRows])
+  const drilldownAvailableTotal = useMemo(
+    () => productRows.reduce((sum, r) => sum + (r.available || 0), 0),
+    [productRows]
+  )
 
-  useEffect(() => { setSelectedProduct(null) }, [selectedGroup, selectedBrand])
+  useEffect(() => {
+    setSelectedProduct(null)
+  }, [selectedGroup, selectedBrand])
 
-  const inputClass = "w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+  const inputClass =
+    'w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200'
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
-
       {/* Navigatie */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
         <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
@@ -240,7 +268,9 @@ const productRows: ProductRow[] = useMemo(() => {
             </div>
             <div>
               <div className="text-white font-bold text-sm leading-tight tracking-wide">DYNAMO</div>
-              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">RETAIL GROUP</div>
+              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">
+                RETAIL GROUP
+              </div>
             </div>
           </div>
 
@@ -252,9 +282,13 @@ const productRows: ProductRow[] = useMemo(() => {
               onChange={e => selecteerWinkel(Number(e.target.value))}
               className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 cursor-pointer min-w-[170px]"
             >
-              <option value="" disabled className="text-gray-900">Kies winkel...</option>
+              <option value="" disabled className="text-gray-900">
+                Kies winkel...
+              </option>
               {winkels.map(w => (
-                <option key={w.id} value={w.id} className="text-gray-900">{w.naam}</option>
+                <option key={w.id} value={w.id} className="text-gray-900">
+                  {w.naam}
+                </option>
               ))}
             </select>
           </div>
@@ -274,43 +308,53 @@ const productRows: ProductRow[] = useMemo(() => {
             <Link
               href="/dashboard"
               className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90 border border-white/20 text-white hover:bg-white/10"
-            >← Dashboard</Link>
+            >
+              ← Dashboard
+            </Link>
           </div>
         </div>
         <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
       <main className="flex-1 p-5 space-y-4">
-
         {!geselecteerdeWinkel ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>📊</div>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>
+              📊
+            </div>
             <div>
-              <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Kies een winkel</p>
+              <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>
+                Kies een winkel
+              </p>
               <p className="text-sm text-gray-500 mt-1">Selecteer een winkel via de navigatie bovenin</p>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-
             {/* 2-koloms overzicht */}
             <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-4">
-
               {/* LEFT: Groepen */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div>
-                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>1) Kies groep</div>
+                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
+                        1) Kies groep
+                      </div>
                       <div className="text-xs text-gray-500">Klik op een rij om te selecteren</div>
                     </div>
-                    <select value={sortGroupsBy} onChange={e => setSortGroupsBy(e.target.value as any)} className="rounded-lg px-2 py-1.5 text-xs bg-white text-gray-900 border border-gray-300 focus:outline-none">
+                    <select
+                      value={sortGroupsBy}
+                      onChange={e => setSortGroupsBy(e.target.value as any)}
+                      className="rounded-lg px-2 py-1.5 text-xs bg-white text-gray-900 border border-gray-300 focus:outline-none"
+                    >
                       <option value="available">Beschikbaar ↓</option>
                       <option value="name">Naam A-Z</option>
                     </select>
                   </div>
                   <input value={groupSearch} onChange={e => setGroupSearch(e.target.value)} placeholder="Zoek groep..." className={inputClass} />
                 </div>
+
                 <div className="overflow-auto flex-1" style={{ maxHeight: 480 }}>
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
@@ -323,19 +367,31 @@ const productRows: ProductRow[] = useMemo(() => {
                       {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
-                            <td className="px-4 py-3"><div className="h-3 w-40 bg-gray-200 rounded" /></td>
-                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
+                            <td className="px-4 py-3">
+                              <div className="h-3 w-40 bg-gray-200 rounded" />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
+                            </td>
                           </tr>
                         ))
                       ) : groupRows.length === 0 ? (
-                        <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400">Geen groepen gevonden</td></tr>
+                        <tr>
+                          <td colSpan={2} className="px-6 py-10 text-center text-gray-400">
+                            Geen groepen gevonden
+                          </td>
+                        </tr>
                       ) : (
                         groupRows.map((r, i) => {
                           const active = r.groupKey === selectedGroup
                           return (
                             <tr
                               key={r.groupKey}
-                              onClick={() => { setSelectedGroup(r.groupKey); setSelectedBrand(''); setSelectedProduct(null) }}
+                              onClick={() => {
+                                setSelectedGroup(r.groupKey)
+                                setSelectedBrand('')
+                                setSelectedProduct(null)
+                              }}
                               className="cursor-pointer transition"
                               style={active ? { background: '#eef2ff' } : i % 2 === 0 ? { background: 'white' } : { background: '#fafafa' }}
                             >
@@ -344,11 +400,15 @@ const productRows: ProductRow[] = useMemo(() => {
                                   <span className="w-2 h-2 rounded-full inline-block" style={{ background: active ? DYNAMO_BLUE : '#d1d5db' }} />
                                   <div>
                                     <div className="font-semibold text-gray-900">{r.groupLabel}</div>
-                                    <div className="text-xs text-gray-400">{r.brandsCount} merken · {r.itemsCount} regels</div>
+                                    <div className="text-xs text-gray-400">
+                                      {r.brandsCount} merken · {r.itemsCount} regels
+                                    </div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right font-bold" style={{ color: active ? DYNAMO_BLUE : '#374151' }}>{formatInt(r.availableTotal)}</td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: active ? DYNAMO_BLUE : '#374151' }}>
+                                {formatInt(r.availableTotal)}
+                              </td>
                             </tr>
                           )
                         })
@@ -363,27 +423,56 @@ const productRows: ProductRow[] = useMemo(() => {
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_GOLD}` }}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>2) Merken in groep</div>
+                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
+                        2) Merken in groep
+                      </div>
                       <div className="text-sm text-gray-600">
                         {selectedGroupMeta ? (
-                          <><span className="font-semibold text-gray-900">{selectedGroupMeta.groupLabel}</span> · {formatInt(selectedGroupMeta.availableTotal)} beschikbaar · {selectedGroupMeta.brandsCount} merken</>
-                        ) : '—'}
+                          <>
+                            <span className="font-semibold text-gray-900">{selectedGroupMeta.groupLabel}</span> · {formatInt(selectedGroupMeta.availableTotal)} beschikbaar ·{' '}
+                            {selectedGroupMeta.brandsCount} merken
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </div>
                     </div>
-                    <select value={sortBrandsBy} onChange={e => setSortBrandsBy(e.target.value as any)} className="rounded-lg px-2 py-1.5 text-xs bg-white text-gray-900 border border-gray-300 focus:outline-none" disabled={!selectedGroup}>
+                    <select
+                      value={sortBrandsBy}
+                      onChange={e => setSortBrandsBy(e.target.value as any)}
+                      className="rounded-lg px-2 py-1.5 text-xs bg-white text-gray-900 border border-gray-300 focus:outline-none"
+                      disabled={!selectedGroup}
+                    >
                       <option value="available">Beschikbaar ↓</option>
                       <option value="name">Naam A-Z</option>
                     </select>
                   </div>
+
                   <div className="flex flex-wrap gap-2">
-                    <input value={brandSearch} onChange={e => setBrandSearch(e.target.value)} placeholder="Zoek merk..." className={inputClass + ' flex-1 min-w-[140px]'} disabled={!selectedGroup} />
-                    <input type="number" min={0} value={minAvailable} onChange={e => setMinAvailable(Math.max(0, Number(e.target.value) || 0))} placeholder="Min beschikbaar" className={inputClass + ' w-36'} disabled={!selectedGroup} />
+                    <input
+                      value={brandSearch}
+                      onChange={e => setBrandSearch(e.target.value)}
+                      placeholder="Zoek merk..."
+                      className={inputClass + ' flex-1 min-w-[140px]'}
+                      disabled={!selectedGroup}
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={minAvailable}
+                      onChange={e => setMinAvailable(Math.max(0, Number(e.target.value) || 0))}
+                      placeholder="Min beschikbaar"
+                      className={inputClass + ' w-36'}
+                      disabled={!selectedGroup}
+                    />
                   </div>
+
                   <label className="flex items-center gap-2 text-sm text-gray-700 mt-2 cursor-pointer">
                     <input type="checkbox" checked={top10Brands} onChange={e => setTop10Brands(e.target.checked)} disabled={!selectedGroup} className="accent-blue-600" />
                     <span>Toon alleen Top 10 merken</span>
                   </label>
                 </div>
+
                 <div className="overflow-auto flex-1" style={{ maxHeight: 480 }}>
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
@@ -396,14 +485,26 @@ const productRows: ProductRow[] = useMemo(() => {
                       {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
-                            <td className="px-4 py-3"><div className="h-3 w-40 bg-gray-200 rounded" /></td>
-                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
+                            <td className="px-4 py-3">
+                              <div className="h-3 w-40 bg-gray-200 rounded" />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
+                            </td>
                           </tr>
                         ))
                       ) : !selectedGroup ? (
-                        <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400">Selecteer een groep</td></tr>
+                        <tr>
+                          <td colSpan={2} className="px-6 py-10 text-center text-gray-400">
+                            Selecteer een groep
+                          </td>
+                        </tr>
                       ) : brandRows.length === 0 ? (
-                        <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400">Geen merken gevonden</td></tr>
+                        <tr>
+                          <td colSpan={2} className="px-6 py-10 text-center text-gray-400">
+                            Geen merken gevonden
+                          </td>
+                        </tr>
                       ) : (
                         brandRows.map((r, i) => {
                           const active = r.brandKey === selectedBrand
@@ -411,7 +512,10 @@ const productRows: ProductRow[] = useMemo(() => {
                           return (
                             <tr
                               key={r.brandKey}
-                              onClick={() => { setSelectedBrand(r.brandKey); setSelectedProduct(null) }}
+                              onClick={() => {
+                                setSelectedBrand(r.brandKey)
+                                setSelectedProduct(null)
+                              }}
                               className="cursor-pointer transition"
                               style={active ? { background: '#eef2ff' } : i % 2 === 0 ? { background: 'white' } : { background: '#fafafa' }}
                             >
@@ -427,7 +531,9 @@ const productRows: ProductRow[] = useMemo(() => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-right font-bold" style={{ color: active ? DYNAMO_BLUE : '#374151' }}>{formatInt(r.availableTotal)}</td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: active ? DYNAMO_BLUE : '#374151' }}>
+                                {formatInt(r.availableTotal)}
+                              </td>
                             </tr>
                           )
                         })
@@ -440,21 +546,31 @@ const productRows: ProductRow[] = useMemo(() => {
 
             {/* Drilldown + details */}
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4">
-
               {/* Producten */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>3) Producten</div>
+                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
+                      3) Producten (voorraad ≥ 1)
+                    </div>
                     <div className="text-sm text-gray-600">
                       {selectedGroupMeta?.groupLabel ?? '—'} · <span className="font-semibold">{selectedBrandMeta?.brandLabel ?? '—'}</span>
                       {selectedBrand && <span className="text-gray-400"> · {formatInt(drilldownAvailableTotal)} beschikbaar · {productRows.length} regels</span>}
                     </div>
                   </div>
                   {selectedBrand && (
-                    <button onClick={() => { setSelectedBrand(''); setSelectedProduct(null) }} className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50">Sluit</button>
+                    <button
+                      onClick={() => {
+                        setSelectedBrand('')
+                        setSelectedProduct(null)
+                      }}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50"
+                    >
+                      Sluit
+                    </button>
                   )}
                 </div>
+
                 <div className="overflow-auto" style={{ maxHeight: 480 }}>
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
@@ -469,19 +585,38 @@ const productRows: ProductRow[] = useMemo(() => {
                       {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
-                            <td className="px-4 py-3"><div className="h-3 w-64 bg-gray-200 rounded" /></td>
-                            <td className="px-4 py-3"><div className="h-3 w-28 bg-gray-200 rounded" /></td>
-                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
-                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
+                            <td className="px-4 py-3">
+                              <div className="h-3 w-64 bg-gray-200 rounded" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="h-3 w-28 bg-gray-200 rounded" />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
+                            </td>
                           </tr>
                         ))
                       ) : !selectedGroup || !selectedBrand ? (
-                        <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-400">Kies een groep en merk om producten te zien</td></tr>
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-gray-400">
+                            Kies een groep en merk om producten te zien
+                          </td>
+                        </tr>
                       ) : productRows.length === 0 ? (
-                        <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-400">Geen producten gevonden</td></tr>
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-gray-400">
+                            Geen producten gevonden (met voorraad ≥ 1)
+                          </td>
+                        </tr>
                       ) : (
                         productRows.map((r, i) => {
-                          const isSel = selectedProduct?.supplierSku === r.supplierSku && selectedProduct?.barcode === r.barcode && selectedProduct?.description === r.description
+                          const isSel =
+                            selectedProduct?.supplierSku === r.supplierSku &&
+                            selectedProduct?.barcode === r.barcode &&
+                            selectedProduct?.description === r.description
                           return (
                             <tr
                               key={`${r.supplierSku}-${r.barcode}-${i}`}
@@ -491,10 +626,14 @@ const productRows: ProductRow[] = useMemo(() => {
                             >
                               <td className="px-4 py-3 min-w-[280px]">
                                 <div className="font-semibold text-gray-900">{r.description || '(Geen omschrijving)'}</div>
-                                <div className="text-xs text-gray-400">SKU: {r.supplierSku || '—'} · Barcode: {r.barcode || '—'}</div>
+                                <div className="text-xs text-gray-400">
+                                  SKU: {r.supplierSku || '—'} · Barcode: {r.barcode || '—'}
+                                </div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-gray-700">{r.supplierNameLabel || '—'}</td>
-                              <td className="px-4 py-3 text-right font-bold" style={{ color: r.available === 0 ? '#dc2626' : '#16a34a' }}>{formatInt(r.available)}</td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: r.available === 0 ? '#dc2626' : '#16a34a' }}>
+                                {formatInt(r.available)}
+                              </td>
                               <td className="px-4 py-3 text-right text-gray-700">{formatInt(r.stock)}</td>
                             </tr>
                           )
@@ -509,11 +648,15 @@ const productRows: ProductRow[] = useMemo(() => {
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_GOLD}` }}>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Product details</div>
+                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
+                      Product details
+                    </div>
                     <div className="text-xs text-gray-400">Klik op een product voor details</div>
                   </div>
                   {selectedProduct && (
-                    <button onClick={() => setSelectedProduct(null)} className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50">Sluiten</button>
+                    <button onClick={() => setSelectedProduct(null)} className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50">
+                      Sluiten
+                    </button>
                   )}
                 </div>
 
@@ -526,7 +669,9 @@ const productRows: ProductRow[] = useMemo(() => {
                   <div className="p-4 space-y-4">
                     <div>
                       <div className="text-sm font-bold text-gray-900">{selectedProduct.description || '(Geen omschrijving)'}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{selectedBrandMeta?.brandLabel ?? '—'} · {selectedGroupMeta?.groupLabel ?? '—'}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {selectedBrandMeta?.brandLabel ?? '—'} · {selectedGroupMeta?.groupLabel ?? '—'}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
@@ -538,7 +683,9 @@ const productRows: ProductRow[] = useMemo(() => {
                       ].map(c => (
                         <div key={c.label} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                           <div className="text-xs text-gray-500">{c.label}</div>
-                          <div className="mt-0.5 font-bold text-lg" style={{ color: c.color ?? DYNAMO_BLUE }}>{c.value}</div>
+                          <div className="mt-0.5 font-bold text-lg" style={{ color: c.color ?? DYNAMO_BLUE }}>
+                            {c.value}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -548,6 +695,7 @@ const productRows: ProductRow[] = useMemo(() => {
                         <div className="text-xs text-gray-500">Leverancier</div>
                         <div className="mt-0.5 font-semibold text-gray-900">{selectedProduct.supplierNameLabel || '—'}</div>
                       </div>
+
                       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                         <div className="text-xs text-gray-500">Prijs incl. BTW</div>
                         <div className="mt-0.5 font-bold text-lg" style={{ color: DYNAMO_BLUE }}>
@@ -558,9 +706,11 @@ const productRows: ProductRow[] = useMemo(() => {
 
                     {/* Raw velden */}
                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                      <div className="text-xs font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Alle velden</div>
+                      <div className="text-xs font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
+                        Alle velden
+                      </div>
                       <div className="space-y-1.5 text-xs text-gray-700">
-                        {['BRAND_NAME','GROUP_DESCRIPTION_1','GROUP_DESCRIPTION_2','SUPPLIER_PRODUCT_NUMBER','BARCODE','AVAILABLE_STOCK','STOCK','SALES_PRICE_INC','SUPPLIER_NAME'].map(k => (
+                        {['BRAND_NAME', 'GROUP_DESCRIPTION_1', 'GROUP_DESCRIPTION_2', 'SUPPLIER_PRODUCT_NUMBER', 'BARCODE', 'AVAILABLE_STOCK', 'STOCK', 'SALES_PRICE_INC', 'SUPPLIER_NAME'].map(k => (
                           <div key={k} className="flex items-start justify-between gap-2">
                             <span className="font-mono text-gray-400 shrink-0">{k}</span>
                             <span className="text-right break-all">{String(selectedProduct.raw?.[k] ?? '—')}</span>
