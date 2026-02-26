@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 
 const DYNAMO_BLUE = '#0d1f4e'
@@ -11,19 +11,6 @@ type Product = { [key: string]: any }
 
 const BRAND_ALIASES: Record<string, string> = {
   vanraam: 'vanraam',
-}
-
-type GroupRow = { groupKey: string; groupLabel: string; availableTotal: number; itemsCount: number; brandsCount: number }
-type BrandRow = { brandKey: string; brandLabel: string; availableTotal: number; itemsCount: number }
-type ProductRow = {
-  description: string
-  supplierSku: string
-  barcode: string
-  supplierNameLabel: string
-  available: number
-  stock: number
-  priceInc: any
-  raw: Product
 }
 
 function normalizeKey(input: any, fallbackKey = '(onbekend)') {
@@ -72,6 +59,19 @@ function formatMoney(v: any) {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n)
 }
 
+type GroupRow = { groupKey: string; groupLabel: string; availableTotal: number; itemsCount: number; brandsCount: number }
+type BrandRow = { brandKey: string; brandLabel: string; availableTotal: number; itemsCount: number }
+type ProductRow = {
+  description: string
+  supplierSku: string
+  barcode: string
+  supplierNameLabel: string
+  available: number
+  stock: number
+  priceInc: any
+  raw: Product
+}
+
 export default function BrandGroepPage() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
@@ -80,6 +80,9 @@ export default function BrandGroepPage() {
 
   const [groupSearch, setGroupSearch] = useState('')
   const [brandSearch, setBrandSearch] = useState('')
+  const deferredGroupSearch = useDeferredValue(groupSearch)
+  const deferredBrandSearch = useDeferredValue(brandSearch)
+
   const [selectedGroup, setSelectedGroup] = useState<string>('')
   const [selectedBrand, setSelectedBrand] = useState<string>('')
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null)
@@ -93,24 +96,19 @@ export default function BrandGroepPage() {
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
     const data = await res.json()
-    setWinkels(Array.isArray(data) ? data : [])
+    setWinkels(data)
   }, [])
 
   const haalVoorraadOp = useCallback(async (dealer: string) => {
     setLoading(true)
-    try {
-      const res = await fetch(`/api/voorraad?dealer=${dealer}&q=`)
-      const data = await res.json()
-      const items = Array.isArray(data) ? data : data?.products ?? []
-      setProducten(Array.isArray(items) ? items : [])
-    } finally {
-      setLoading(false)
-    }
+    const res = await fetch(`/api/voorraad?dealer=${dealer}&q=`)
+    const data = await res.json()
+    const items = Array.isArray(data) ? data : data.products ?? []
+    setProducten(items)
+    setLoading(false)
   }, [])
 
-  useEffect(() => {
-    haalWinkelsOp()
-  }, [haalWinkelsOp])
+  useEffect(() => { haalWinkelsOp() }, [haalWinkelsOp])
 
   async function selecteerWinkel(id: number) {
     const winkel = winkels.find(w => w.id === id) ?? null
@@ -126,9 +124,15 @@ export default function BrandGroepPage() {
     if (winkel) await haalVoorraadOp(winkel.dealer_nummer)
   }
 
+  // ✅ Alleen producten met voorraad >= 1 voor álle aggregaties
+  const productenMetVoorraad = useMemo(() => {
+    return producten.filter(p => toNumber(p.STOCK) >= 1)
+  }, [producten])
+
   const groupRows: GroupRow[] = useMemo(() => {
     const groupTotals = new Map<string, { label: string; available: number; items: number; brands: Set<string> }>()
-    for (const p of producten) {
+
+    for (const p of productenMetVoorraad) {
       const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
       const groupLabel = normalizeLabel(p.GROUP_DESCRIPTION_1, '(Geen groep 1)')
       const brandKey = normalizeBrandKey(p.BRAND_NAME)
@@ -149,7 +153,7 @@ export default function BrandGroepPage() {
       brandsCount: v.brands.size,
     }))
 
-    const needle = groupSearch.trim().toLowerCase()
+    const needle = deferredGroupSearch.trim().toLowerCase()
     if (needle) rows = rows.filter(r => r.groupLabel.toLowerCase().includes(needle))
 
     rows.sort((a, b) =>
@@ -159,7 +163,7 @@ export default function BrandGroepPage() {
     )
 
     return rows
-  }, [producten, groupSearch, sortGroupsBy])
+  }, [productenMetVoorraad, deferredGroupSearch, sortGroupsBy])
 
   useEffect(() => {
     if (!selectedGroup && groupRows.length > 0) {
@@ -173,7 +177,8 @@ export default function BrandGroepPage() {
     if (!selectedGroup) return []
 
     const brandTotals = new Map<string, { label: string; available: number; items: number }>()
-    for (const p of producten) {
+
+    for (const p of productenMetVoorraad) {
       const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
       if (groupKey !== selectedGroup) continue
 
@@ -194,7 +199,7 @@ export default function BrandGroepPage() {
       itemsCount: v.items,
     }))
 
-    const needle = brandSearch.trim().toLowerCase()
+    const needle = deferredBrandSearch.trim().toLowerCase()
     if (needle) rows = rows.filter(r => r.brandLabel.toLowerCase().includes(needle))
 
     if (minAvailable > 0) rows = rows.filter(r => r.availableTotal >= minAvailable)
@@ -206,19 +211,19 @@ export default function BrandGroepPage() {
     )
 
     if (top10Brands) rows = rows.slice(0, 10)
+
     return rows
-  }, [producten, selectedGroup, brandSearch, sortBrandsBy, minAvailable, top10Brands])
+  }, [productenMetVoorraad, selectedGroup, deferredBrandSearch, sortBrandsBy, minAvailable, top10Brands])
 
   const selectedGroupMeta = useMemo(() => groupRows.find(r => r.groupKey === selectedGroup) ?? null, [groupRows, selectedGroup])
   const selectedBrandMeta = useMemo(() => brandRows.find(r => r.brandKey === selectedBrand) ?? null, [brandRows, selectedBrand])
   const maxBrandValue = useMemo(() => brandRows.reduce((m, r) => Math.max(m, r.availableTotal), 0), [brandRows])
 
-  // ✅ Producten: alleen voorraad (STOCK) >= 1
   const productRows: ProductRow[] = useMemo(() => {
     if (!selectedGroup || !selectedBrand) return []
-
     const rows: ProductRow[] = []
-    for (const p of producten) {
+
+    for (const p of productenMetVoorraad) {
       const groupKey = normalizeKey(p.GROUP_DESCRIPTION_1, '(geen groep 1)')
       if (groupKey !== selectedGroup) continue
 
@@ -226,7 +231,7 @@ export default function BrandGroepPage() {
       if (brandKey !== selectedBrand) continue
 
       const stock = toNumber(p.STOCK)
-      if (stock < 1) continue // 👈 hier filter je de 0-voorraad weg
+      if (stock < 1) continue
 
       rows.push({
         description: String(p.PRODUCT_DESCRIPTION ?? '').trim(),
@@ -242,39 +247,29 @@ export default function BrandGroepPage() {
 
     rows.sort((a, b) => (b.stock - a.stock) || a.description.localeCompare(b.description))
     return rows
-  }, [producten, selectedGroup, selectedBrand])
+  }, [productenMetVoorraad, selectedGroup, selectedBrand])
 
-  const drilldownAvailableTotal = useMemo(
-    () => productRows.reduce((sum, r) => sum + (r.available || 0), 0),
-    [productRows]
-  )
+  const drilldownAvailableTotal = useMemo(() => productRows.reduce((sum, r) => sum + (r.available || 0), 0), [productRows])
 
-  useEffect(() => {
-    setSelectedProduct(null)
-  }, [selectedGroup, selectedBrand])
+  useEffect(() => { setSelectedProduct(null) }, [selectedGroup, selectedBrand])
 
   const inputClass =
     'w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200'
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
-      {/* Navigatie */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
         <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
-          {/* Logo */}
           <div className="flex items-center gap-3 pr-6 border-r border-white/10">
             <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
             <div>
               <div className="text-white font-bold text-sm leading-tight tracking-wide">DYNAMO</div>
-              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">
-                RETAIL GROUP
-              </div>
+              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">RETAIL GROUP</div>
             </div>
           </div>
 
-          {/* Winkel switcher */}
           <div className="flex items-center px-5 border-r border-white/10 gap-2">
             <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block">Winkel</span>
             <select
@@ -282,28 +277,22 @@ export default function BrandGroepPage() {
               onChange={e => selecteerWinkel(Number(e.target.value))}
               className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 cursor-pointer min-w-[170px]"
             >
-              <option value="" disabled className="text-gray-900">
-                Kies winkel...
-              </option>
+              <option value="" disabled className="text-gray-900">Kies winkel...</option>
               {winkels.map(w => (
-                <option key={w.id} value={w.id} className="text-gray-900">
-                  {w.naam}
-                </option>
+                <option key={w.id} value={w.id} className="text-gray-900">{w.naam}</option>
               ))}
             </select>
           </div>
 
-          {/* Paginatitel */}
           <div className="flex items-center px-5">
             <span className="text-white/80 text-sm font-semibold">Merk / Groep overzicht</span>
           </div>
 
           <div className="flex-1" />
 
-          {/* Terug + status */}
           <div className="flex items-center gap-4 pl-5">
             <span className="text-white/50 text-xs hidden md:block">
-              {loading ? 'Laden...' : geselecteerdeWinkel ? `${producten.length} producten` : ''}
+              {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten (voorraad ≥ 1)` : ''}
             </span>
             <Link
               href="/dashboard"
@@ -319,29 +308,22 @@ export default function BrandGroepPage() {
       <main className="flex-1 p-5 space-y-4">
         {!geselecteerdeWinkel ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>
-              📊
-            </div>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>📊</div>
             <div>
-              <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>
-                Kies een winkel
-              </p>
+              <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Kies een winkel</p>
               <p className="text-sm text-gray-500 mt-1">Selecteer een winkel via de navigatie bovenin</p>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* 2-koloms overzicht */}
             <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-4">
-              {/* LEFT: Groepen */}
+              {/* Groepen */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div>
-                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
-                        1) Kies groep
-                      </div>
-                      <div className="text-xs text-gray-500">Klik op een rij om te selecteren</div>
+                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>1) Kies groep</div>
+                      <div className="text-xs text-gray-500">Alleen producten met voorraad ≥ 1</div>
                     </div>
                     <select
                       value={sortGroupsBy}
@@ -367,31 +349,19 @@ export default function BrandGroepPage() {
                       {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
-                            <td className="px-4 py-3">
-                              <div className="h-3 w-40 bg-gray-200 rounded" />
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
-                            </td>
+                            <td className="px-4 py-3"><div className="h-3 w-40 bg-gray-200 rounded" /></td>
+                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
                           </tr>
                         ))
                       ) : groupRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={2} className="px-6 py-10 text-center text-gray-400">
-                            Geen groepen gevonden
-                          </td>
-                        </tr>
+                        <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400">Geen groepen gevonden</td></tr>
                       ) : (
                         groupRows.map((r, i) => {
                           const active = r.groupKey === selectedGroup
                           return (
                             <tr
                               key={r.groupKey}
-                              onClick={() => {
-                                setSelectedGroup(r.groupKey)
-                                setSelectedBrand('')
-                                setSelectedProduct(null)
-                              }}
+                              onClick={() => { setSelectedGroup(r.groupKey); setSelectedBrand(''); setSelectedProduct(null) }}
                               className="cursor-pointer transition"
                               style={active ? { background: '#eef2ff' } : i % 2 === 0 ? { background: 'white' } : { background: '#fafafa' }}
                             >
@@ -400,9 +370,7 @@ export default function BrandGroepPage() {
                                   <span className="w-2 h-2 rounded-full inline-block" style={{ background: active ? DYNAMO_BLUE : '#d1d5db' }} />
                                   <div>
                                     <div className="font-semibold text-gray-900">{r.groupLabel}</div>
-                                    <div className="text-xs text-gray-400">
-                                      {r.brandsCount} merken · {r.itemsCount} regels
-                                    </div>
+                                    <div className="text-xs text-gray-400">{r.brandsCount} merken · {r.itemsCount} regels</div>
                                   </div>
                                 </div>
                               </td>
@@ -418,23 +386,16 @@ export default function BrandGroepPage() {
                 </div>
               </div>
 
-              {/* RIGHT: Merken */}
+              {/* Merken */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_GOLD}` }}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
-                        2) Merken in groep
-                      </div>
+                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>2) Merken in groep</div>
                       <div className="text-sm text-gray-600">
                         {selectedGroupMeta ? (
-                          <>
-                            <span className="font-semibold text-gray-900">{selectedGroupMeta.groupLabel}</span> · {formatInt(selectedGroupMeta.availableTotal)} beschikbaar ·{' '}
-                            {selectedGroupMeta.brandsCount} merken
-                          </>
-                        ) : (
-                          '—'
-                        )}
+                          <><span className="font-semibold text-gray-900">{selectedGroupMeta.groupLabel}</span> · {formatInt(selectedGroupMeta.availableTotal)} beschikbaar · {selectedGroupMeta.brandsCount} merken</>
+                        ) : '—'}
                       </div>
                     </div>
                     <select
@@ -485,26 +446,14 @@ export default function BrandGroepPage() {
                       {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
-                            <td className="px-4 py-3">
-                              <div className="h-3 w-40 bg-gray-200 rounded" />
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
-                            </td>
+                            <td className="px-4 py-3"><div className="h-3 w-40 bg-gray-200 rounded" /></td>
+                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
                           </tr>
                         ))
                       ) : !selectedGroup ? (
-                        <tr>
-                          <td colSpan={2} className="px-6 py-10 text-center text-gray-400">
-                            Selecteer een groep
-                          </td>
-                        </tr>
+                        <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400">Selecteer een groep</td></tr>
                       ) : brandRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={2} className="px-6 py-10 text-center text-gray-400">
-                            Geen merken gevonden
-                          </td>
-                        </tr>
+                        <tr><td colSpan={2} className="px-6 py-10 text-center text-gray-400">Geen merken gevonden</td></tr>
                       ) : (
                         brandRows.map((r, i) => {
                           const active = r.brandKey === selectedBrand
@@ -512,10 +461,7 @@ export default function BrandGroepPage() {
                           return (
                             <tr
                               key={r.brandKey}
-                              onClick={() => {
-                                setSelectedBrand(r.brandKey)
-                                setSelectedProduct(null)
-                              }}
+                              onClick={() => { setSelectedBrand(r.brandKey); setSelectedProduct(null) }}
                               className="cursor-pointer transition"
                               style={active ? { background: '#eef2ff' } : i % 2 === 0 ? { background: 'white' } : { background: '#fafafa' }}
                             >
@@ -544,28 +490,19 @@ export default function BrandGroepPage() {
               </div>
             </div>
 
-            {/* Drilldown + details */}
+            {/* Producten + details */}
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4">
-              {/* Producten */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
-                      3) Producten (voorraad ≥ 1)
-                    </div>
+                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>3) Producten</div>
                     <div className="text-sm text-gray-600">
                       {selectedGroupMeta?.groupLabel ?? '—'} · <span className="font-semibold">{selectedBrandMeta?.brandLabel ?? '—'}</span>
-                      {selectedBrand && <span className="text-gray-400"> · {formatInt(drilldownAvailableTotal)} beschikbaar · {productRows.length} regels</span>}
+                      {selectedBrand && <span className="text-gray-400"> · {formatInt(drilldownAvailableTotal)} beschikbaar · {productRows.length} regels · voorraad ≥ 1</span>}
                     </div>
                   </div>
                   {selectedBrand && (
-                    <button
-                      onClick={() => {
-                        setSelectedBrand('')
-                        setSelectedProduct(null)
-                      }}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50"
-                    >
+                    <button onClick={() => { setSelectedBrand(''); setSelectedProduct(null) }} className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50">
                       Sluit
                     </button>
                   )}
@@ -585,32 +522,16 @@ export default function BrandGroepPage() {
                       {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                           <tr key={i} className="animate-pulse">
-                            <td className="px-4 py-3">
-                              <div className="h-3 w-64 bg-gray-200 rounded" />
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="h-3 w-28 bg-gray-200 rounded" />
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="h-3 w-12 bg-gray-200 rounded ml-auto" />
-                            </td>
+                            <td className="px-4 py-3"><div className="h-3 w-64 bg-gray-200 rounded" /></td>
+                            <td className="px-4 py-3"><div className="h-3 w-28 bg-gray-200 rounded" /></td>
+                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
+                            <td className="px-4 py-3 text-right"><div className="h-3 w-12 bg-gray-200 rounded ml-auto" /></td>
                           </tr>
                         ))
                       ) : !selectedGroup || !selectedBrand ? (
-                        <tr>
-                          <td colSpan={4} className="px-6 py-10 text-center text-gray-400">
-                            Kies een groep en merk om producten te zien
-                          </td>
-                        </tr>
+                        <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-400">Kies een groep en merk om producten te zien</td></tr>
                       ) : productRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-6 py-10 text-center text-gray-400">
-                            Geen producten gevonden (met voorraad ≥ 1)
-                          </td>
-                        </tr>
+                        <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-400">Geen producten gevonden (voorraad ≥ 1)</td></tr>
                       ) : (
                         productRows.map((r, i) => {
                           const isSel =
@@ -626,14 +547,10 @@ export default function BrandGroepPage() {
                             >
                               <td className="px-4 py-3 min-w-[280px]">
                                 <div className="font-semibold text-gray-900">{r.description || '(Geen omschrijving)'}</div>
-                                <div className="text-xs text-gray-400">
-                                  SKU: {r.supplierSku || '—'} · Barcode: {r.barcode || '—'}
-                                </div>
+                                <div className="text-xs text-gray-400">SKU: {r.supplierSku || '—'} · Barcode: {r.barcode || '—'}</div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-gray-700">{r.supplierNameLabel || '—'}</td>
-                              <td className="px-4 py-3 text-right font-bold" style={{ color: r.available === 0 ? '#dc2626' : '#16a34a' }}>
-                                {formatInt(r.available)}
-                              </td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: r.available === 0 ? '#dc2626' : '#16a34a' }}>{formatInt(r.available)}</td>
                               <td className="px-4 py-3 text-right text-gray-700">{formatInt(r.stock)}</td>
                             </tr>
                           )
@@ -644,13 +561,11 @@ export default function BrandGroepPage() {
                 </div>
               </div>
 
-              {/* Product details */}
+              {/* Details */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_GOLD}` }}>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>
-                      Product details
-                    </div>
+                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Product details</div>
                     <div className="text-xs text-gray-400">Klik op een product voor details</div>
                   </div>
                   {selectedProduct && (
@@ -669,23 +584,19 @@ export default function BrandGroepPage() {
                   <div className="p-4 space-y-4">
                     <div>
                       <div className="text-sm font-bold text-gray-900">{selectedProduct.description || '(Geen omschrijving)'}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {selectedBrandMeta?.brandLabel ?? '—'} · {selectedGroupMeta?.groupLabel ?? '—'}
-                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{selectedBrandMeta?.brandLabel ?? '—'} · {selectedGroupMeta?.groupLabel ?? '—'}</div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { label: 'Beschikbaar', value: formatInt(selectedProduct.available), strong: true, color: selectedProduct.available === 0 ? '#dc2626' : '#16a34a' },
-                        { label: 'Voorraad', value: formatInt(selectedProduct.stock), strong: false },
-                        { label: 'Barcode', value: selectedProduct.barcode || '—', strong: false },
-                        { label: 'Art. nummer', value: selectedProduct.supplierSku || '—', strong: false },
+                        { label: 'Beschikbaar', value: formatInt(selectedProduct.available), color: selectedProduct.available === 0 ? '#dc2626' : '#16a34a' },
+                        { label: 'Voorraad', value: formatInt(selectedProduct.stock), color: undefined },
+                        { label: 'Barcode', value: selectedProduct.barcode || '—', color: undefined },
+                        { label: 'Art. nummer', value: selectedProduct.supplierSku || '—', color: undefined },
                       ].map(c => (
                         <div key={c.label} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                           <div className="text-xs text-gray-500">{c.label}</div>
-                          <div className="mt-0.5 font-bold text-lg" style={{ color: c.color ?? DYNAMO_BLUE }}>
-                            {c.value}
-                          </div>
+                          <div className="mt-0.5 font-bold text-lg" style={{ color: c.color ?? DYNAMO_BLUE }}>{c.value}</div>
                         </div>
                       ))}
                     </div>
@@ -695,7 +606,6 @@ export default function BrandGroepPage() {
                         <div className="text-xs text-gray-500">Leverancier</div>
                         <div className="mt-0.5 font-semibold text-gray-900">{selectedProduct.supplierNameLabel || '—'}</div>
                       </div>
-
                       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                         <div className="text-xs text-gray-500">Prijs incl. BTW</div>
                         <div className="mt-0.5 font-bold text-lg" style={{ color: DYNAMO_BLUE }}>
@@ -704,13 +614,10 @@ export default function BrandGroepPage() {
                       </div>
                     </div>
 
-                    {/* Raw velden */}
                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                      <div className="text-xs font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
-                        Alle velden
-                      </div>
+                      <div className="text-xs font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Alle velden</div>
                       <div className="space-y-1.5 text-xs text-gray-700">
-                        {['BRAND_NAME', 'GROUP_DESCRIPTION_1', 'GROUP_DESCRIPTION_2', 'SUPPLIER_PRODUCT_NUMBER', 'BARCODE', 'AVAILABLE_STOCK', 'STOCK', 'SALES_PRICE_INC', 'SUPPLIER_NAME'].map(k => (
+                        {['BRAND_NAME','GROUP_DESCRIPTION_1','GROUP_DESCRIPTION_2','SUPPLIER_PRODUCT_NUMBER','BARCODE','AVAILABLE_STOCK','STOCK','SALES_PRICE_INC','SUPPLIER_NAME'].map(k => (
                           <div key={k} className="flex items-start justify-between gap-2">
                             <span className="font-mono text-gray-400 shrink-0">{k}</span>
                             <span className="text-right break-all">{String(selectedProduct.raw?.[k] ?? '—')}</span>
@@ -727,4 +634,3 @@ export default function BrandGroepPage() {
       </main>
     </div>
   )
-}
