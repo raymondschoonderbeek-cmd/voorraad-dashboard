@@ -571,238 +571,100 @@ export default function Dashboard() {
         <main className="flex-1 min-w-0 p-5 space-y-4 overflow-auto">
 
           {!geselecteerdeWinkel ? (
-            <div className="space-y-6" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-
-              {/* Google Font laden */}
-              <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=DM+Serif+Display:ital@0;1&display=swap');
-
-                @keyframes fadeUp {
-                  from { opacity: 0; transform: translateY(24px); }
-                  to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes fadeIn {
-                  from { opacity: 0; }
-                  to { opacity: 1; }
-                }
-                @keyframes shimmer {
-                  0% { background-position: -200% center; }
-                  100% { background-position: 200% center; }
-                }
-                @keyframes floatA {
-                  0%, 100% { transform: translateY(0px) rotate(0deg); }
-                  50% { transform: translateY(-18px) rotate(3deg); }
-                }
-                @keyframes floatB {
-                  0%, 100% { transform: translateY(0px) rotate(0deg); }
-                  50% { transform: translateY(-12px) rotate(-2deg); }
-                }
-                @keyframes pulse-ring {
-                  0% { transform: scale(0.95); opacity: 0.6; }
-                  70% { transform: scale(1.1); opacity: 0; }
-                  100% { transform: scale(0.95); opacity: 0; }
-                }
-                .anim-1 { animation: fadeUp 0.6s ease forwards; opacity: 0; }
-                .anim-2 { animation: fadeUp 0.6s 0.1s ease forwards; opacity: 0; }
-                .anim-3 { animation: fadeUp 0.6s 0.2s ease forwards; opacity: 0; }
-                .anim-4 { animation: fadeUp 0.6s 0.3s ease forwards; opacity: 0; }
-                .anim-5 { animation: fadeUp 0.6s 0.4s ease forwards; opacity: 0; }
-                .anim-6 { animation: fadeUp 0.6s 0.5s ease forwards; opacity: 0; }
-
-                .glass-card {
-                  background: rgba(255,255,255,0.7);
-                  backdrop-filter: blur(20px);
-                  -webkit-backdrop-filter: blur(20px);
-                  border: 1px solid rgba(255,255,255,0.9);
-                  box-shadow: 0 8px 32px rgba(13,31,78,0.08), 0 1px 0 rgba(255,255,255,0.8) inset;
-                }
-                .glass-card:hover {
-                  background: rgba(255,255,255,0.85);
-                  box-shadow: 0 20px 60px rgba(13,31,78,0.15), 0 1px 0 rgba(255,255,255,0.9) inset;
-                  transform: translateY(-4px);
-                  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-                }
-                .module-card {
-                  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-                }
-                .module-card:hover {
-                  transform: translateY(-6px) scale(1.01);
-                }
-                .winkel-card {
-                  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-                }
-                .winkel-card:hover {
-                  transform: translateY(-5px);
-                }
-                .gold-shimmer {
-                  background: linear-gradient(90deg, #f0c040 0%, #fde68a 40%, #f0c040 60%, #d4a017 100%);
-                  background-size: 200% auto;
-                  animation: shimmer 3s linear infinite;
-                  -webkit-background-clip: text;
-                  -webkit-text-fill-color: transparent;
-                  background-clip: text;
-                }
-              `}</style>
-
-              {/* HERO */}
-              <div className="anim-1 relative rounded-3xl overflow-hidden" style={{ minHeight: 240, background: DYNAMO_BLUE }}>
-                {/* Achtergrond lagen */}
-                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 80% 50%, rgba(240,192,64,0.15) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255,255,255,0.05) 0%, transparent 50%)' }} />
-
-                {/* Drijvende cirkels */}
-                <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '280px', height: '280px', borderRadius: '50%', border: '1px solid rgba(240,192,64,0.2)', animation: 'floatA 8s ease-in-out infinite' }} />
-                <div style={{ position: 'absolute', top: '20px', right: '60px', width: '160px', height: '160px', borderRadius: '50%', border: '1px solid rgba(240,192,64,0.15)', animation: 'floatB 6s ease-in-out infinite' }} />
-                <div style={{ position: 'absolute', bottom: '-60px', left: '30%', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(240,192,64,0.04)', animation: 'floatA 10s ease-in-out infinite reverse' }} />
-
-                {/* Glassmorphism overlay rechts */}
-                <div style={{ position: 'absolute', top: '50%', right: '48px', transform: 'translateY(-50%)', width: '120px', height: '120px', borderRadius: '28px', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="hidden sm:flex">
-                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(240,192,64,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                    <line x1="12" y1="22.08" x2="12" y2="12" />
-                  </svg>
-                </div>
-
-                {/* Content */}
-                <div className="relative p-8 sm:p-10">
-                  <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 mb-4" style={{ background: 'rgba(240,192,64,0.15)', border: '1px solid rgba(240,192,64,0.3)' }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: DYNAMO_GOLD }} />
-                    <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: DYNAMO_GOLD }}>{getDagdeel()}</span>
+            <div className="space-y-5">
+              {/* Hero */}
+              <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 200 }}>
+                <div className="absolute -top-12 -right-12 w-72 h-72 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
+                <div className="absolute top-8 right-8 w-32 h-32 rounded-full opacity-5" style={{ background: 'white' }} />
+                <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full opacity-5" style={{ background: 'white' }} />
+                <div className="relative p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                  <div>
+                    <div style={{ color: DYNAMO_GOLD }} className="text-sm font-bold uppercase tracking-widest mb-1">{getDagdeel()}</div>
+                    <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight">Voorraad Dashboard</h1>
+                    <p className="mt-1 text-white/60 text-sm capitalize">{getDatum()}</p>
+                    <p className="mt-3 text-white/70 text-sm max-w-md">Selecteer een winkel om de voorraad te bekijken en te doorzoeken.</p>
+                    <button onClick={() => setSidebarOpen(true)} className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
+                      <IconStore /> Kies een winkel
+                    </button>
                   </div>
-
-                  <h1 style={{ fontFamily: "'DM Serif Display', serif", color: 'white', fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.1, fontWeight: 400, letterSpacing: '-0.02em' }}>
-                    Voorraad<br />
-                    <span className="gold-shimmer">Dashboard</span>
-                  </h1>
-
-                  <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', marginTop: '12px', maxWidth: '360px', lineHeight: 1.6 }}>
-                    {getDatum()} — Selecteer een winkel om de voorraad te bekijken.
-                  </p>
-
-                  <button
-                    onClick={() => setSidebarOpen(true)}
-                    className="mt-6 flex items-center gap-2 font-semibold text-sm rounded-xl px-5 py-2.5 transition-all"
-                    style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, boxShadow: '0 4px 20px rgba(240,192,64,0.4)' }}
-                  >
-                    <IconStore /> Kies een winkel
-                  </button>
+                  <div className="hidden sm:flex items-center justify-center opacity-10" style={{ color: 'white' }}>
+                    <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              {/* MODULES */}
-              <div className="anim-2">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE, opacity: 0.5 }}>Modules</span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(13,31,78,0.1), transparent)' }} />
-                </div>
-
+              {/* Modules */}
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Modules</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                  {/* Voorraad module */}
-                  <div className="module-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 8px 32px rgba(13,31,78,0.25)' }} onClick={() => setSidebarOpen(true)}>
-                    <div className="p-6 relative overflow-hidden">
-                      <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(240,192,64,0.08)' }} />
-                      <div className="relative">
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: 'rgba(240,192,64,0.15)', border: '1px solid rgba(240,192,64,0.3)' }}>
-                          <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
-                        </div>
-                        <div style={{ fontFamily: "'DM Serif Display', serif", color: 'white', fontSize: '22px', fontWeight: 400 }}>Voorraad</div>
-                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.5 }}>Doorzoek en filter de volledige voorraad per winkel</div>
-                      </div>
+                  <div className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200" style={{ borderColor: DYNAMO_BLUE }} onClick={() => setSidebarOpen(true)}>
+                    <div className="p-5" style={{ background: DYNAMO_BLUE }}>
+                      <div className="text-white mb-3"><IconBox /></div>
+                      <div className="text-white font-bold text-lg">Voorraad</div>
+                      <div className="text-white/60 text-sm mt-1">Doorzoek en filter de volledige voorraad per winkel</div>
                     </div>
-                    <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <span style={{ color: DYNAMO_GOLD, fontSize: '12px', fontWeight: 600 }}>Kies een winkel →</span>
-                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>{winkels.length} winkels</span>
+                    <div className="px-5 py-3 bg-white flex items-center justify-between">
+                      <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Kies een winkel →</span>
+                      <span className="text-xs text-gray-400">{winkels.length} winkels</span>
                     </div>
                   </div>
 
-                  {/* Merk/Groep module */}
-                  <Link href="/dashboard/brand-groep" className="module-card block rounded-2xl overflow-hidden cursor-pointer" style={{ background: 'linear-gradient(135deg, #0d1f4e 0%, #162d6e 100%)', boxShadow: '0 8px 32px rgba(13,31,78,0.2)', border: `2px solid ${DYNAMO_GOLD}` }}>
-                    <div className="p-6 relative overflow-hidden">
-                      <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(240,192,64,0.1)' }} />
-                      <div className="relative">
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: 'rgba(240,192,64,0.2)', border: `1px solid ${DYNAMO_GOLD}` }}>
-                          <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
-                        </div>
-                        <div style={{ fontFamily: "'DM Serif Display', serif", color: 'white', fontSize: '22px', fontWeight: 400 }}>Merk / Groep</div>
-                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.5 }}>Bekijk beschikbare voorraad per merk en productgroep</div>
-                      </div>
+                  <Link href="/dashboard/brand-groep" className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200 block" style={{ borderColor: DYNAMO_GOLD }}>
+                    <div className="p-5" style={{ background: 'linear-gradient(135deg, #0d1f4e 60%, #162d5e)' }}>
+                      <div className="text-white mb-3"><IconChart /></div>
+                      <div className="text-white font-bold text-lg">Merk / Groep</div>
+                      <div className="text-white/60 text-sm mt-1">Bekijk beschikbare voorraad per merk en productgroep</div>
                     </div>
-                    <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(240,192,64,0.1)', borderTop: `1px solid rgba(240,192,64,0.2)` }}>
-                      <span style={{ color: DYNAMO_GOLD, fontSize: '12px', fontWeight: 600 }}>Ga naar overzicht →</span>
+                    <div className="px-5 py-3 bg-white flex items-center justify-between">
+                      <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Ga naar overzicht →</span>
                       <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
                     </div>
                   </Link>
 
-                  {/* Binnenkort */}
-                  <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(13,31,78,0.08)', opacity: 0.6 }}>
-                    <div className="p-6">
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: 'rgba(13,31,78,0.06)' }}>
-                        <div style={{ color: 'rgba(13,31,78,0.3)' }}><IconMap /></div>
-                      </div>
-                      <div style={{ fontFamily: "'DM Serif Display', serif", color: DYNAMO_BLUE, fontSize: '22px', fontWeight: 400, opacity: 0.5 }}>Meer komt eraan</div>
-                      <div style={{ color: 'rgba(13,31,78,0.4)', fontSize: '13px', marginTop: '6px', lineHeight: 1.5 }}>Export, vergelijk winkels, alerts en meer</div>
+                  <div className="rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden shadow-sm opacity-50">
+                    <div className="p-5 bg-gray-50">
+                      <div className="text-gray-400 mb-3"><IconMap /></div>
+                      <div className="text-gray-500 font-bold text-lg">Meer komt eraan</div>
+                      <div className="text-gray-400 text-sm mt-1">Export, vergelijk winkels, lage voorraad alerts en meer</div>
                     </div>
-                    <div className="px-6 py-3" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.06)' }}>
-                      <span style={{ color: 'rgba(13,31,78,0.3)', fontSize: '12px', fontWeight: 600 }}>Binnenkort beschikbaar</span>
+                    <div className="px-5 py-3 bg-white">
+                      <span className="text-xs font-semibold text-gray-400">Binnenkort beschikbaar</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* KAART */}
-              <div className="anim-3">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE, opacity: 0.5 }}>Winkels op de kaart</span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(13,31,78,0.1), transparent)' }} />
-                </div>
-                <div className="rounded-3xl overflow-hidden" style={{ boxShadow: '0 8px 32px rgba(13,31,78,0.1)', border: '1px solid rgba(13,31,78,0.08)' }}>
-                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
-                </div>
+              {/* Kaart */}
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Winkels op de kaart</h2>
+                <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
               </div>
 
-              {/* WINKELKAARTEN */}
+              {/* Winkelkaarten */}
               {winkels.length > 0 && (
-                <div className="anim-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE, opacity: 0.5 }}>Jouw winkels</span>
-                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(13,31,78,0.1), transparent)' }} />
-                    <span className="text-xs font-semibold" style={{ color: 'rgba(13,31,78,0.35)' }}>{winkels.length} locaties</span>
-                  </div>
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Jouw winkels</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {winkels.map((w, i) => {
                       const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
                       return (
-                        <div
-                          key={w.id}
-                          onClick={() => selecteerWinkel(w)}
-                          className="winkel-card cursor-pointer rounded-2xl overflow-hidden glass-card"
-                        >
-                          {/* Gekleurde top accent */}
-                          <div style={{ height: '3px', background: `linear-gradient(to right, ${kleur}, ${kleur}88)` }} />
+                        <div key={w.id} onClick={() => selecteerWinkel(w)} className="bg-white rounded-2xl border border-gray-200 overflow-hidden cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200">
+                          <div className="h-2" style={{ background: kleur }} />
                           <div className="p-4">
                             <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black shrink-0 relative" style={{ background: kleur }}>
-                                {w.naam.charAt(0)}
-                                {/* Pulse ring */}
-                                <div style={{ position: 'absolute', inset: 0, borderRadius: '12px', border: `2px solid ${kleur}`, animation: 'pulse-ring 2.5s ease-out infinite' }} />
-                              </div>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-black" style={{ background: kleur }}>{w.naam.charAt(0)}</div>
                               <div className="min-w-0">
-                                <div className="font-bold text-sm truncate" style={{ color: DYNAMO_BLUE, fontFamily: "'DM Sans', sans-serif" }}>{w.naam}</div>
-                                <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}>#{w.dealer_nummer}</div>
+                                <div className="font-bold text-sm truncate" style={{ color: DYNAMO_BLUE }}>{w.naam}</div>
+                                <div className="text-xs text-gray-400">#{w.dealer_nummer}</div>
                               </div>
                             </div>
                             {(w.stad || w.postcode) && (
-                              <div className="flex items-center gap-1.5 text-xs mb-3 px-2 py-1 rounded-lg" style={{ color: 'rgba(13,31,78,0.5)', background: 'rgba(13,31,78,0.04)' }}>
-                                <IconPin />
-                                <span>{w.stad}{w.stad && w.postcode ? ' · ' : ''}{w.postcode}</span>
-                              </div>
+                              <div className="flex items-center gap-1 text-xs text-gray-500 mb-3"><IconPin /><span>{w.stad}{w.stad && w.postcode ? ' · ' : ''}{w.postcode}</span></div>
                             )}
-                            <div className="pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(13,31,78,0.06)' }}>
+                            <div className="pt-3 border-t border-gray-100">
                               <span className="text-xs font-semibold" style={{ color: kleur }}>Bekijk voorraad →</span>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={kleur} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-                              </svg>
                             </div>
                           </div>
                         </div>
