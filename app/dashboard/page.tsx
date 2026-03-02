@@ -8,6 +8,7 @@ import Link from 'next/link'
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
 const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
+const F = "'Outfit', sans-serif"
 
 const WINKEL_KLEUREN = [
   '#2563eb', '#16a34a', '#dc2626', '#9333ea',
