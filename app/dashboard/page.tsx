@@ -73,18 +73,12 @@ function isFiets(p: any) {
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
-/* =========================
-   TYPES (maar 1x!)
-========================= */
 type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number }
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
-/* =========================
-   ICONS
-========================= */
 const IconBox = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
     <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
     <line x1="12" y1="22.08" x2="12" y2="12" />
@@ -92,7 +86,7 @@ const IconBox = () => (
 )
 
 const IconChart = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="18" y1="20" x2="18" y2="10" />
     <line x1="12" y1="20" x2="12" y2="4" />
     <line x1="6" y1="20" x2="6" y2="14" />
@@ -101,7 +95,7 @@ const IconChart = () => (
 )
 
 const IconMap = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
     <line x1="9" y1="3" x2="9" y2="18" />
     <line x1="15" y1="6" x2="15" y2="21" />
@@ -109,7 +103,7 @@ const IconMap = () => (
 )
 
 const IconStore = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     <polyline points="9 22 9 12 15 12 15 22" />
   </svg>
@@ -123,11 +117,56 @@ const IconArrowLeft = () => (
 )
 
 const IconPin = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
     <circle cx="12" cy="10" r="3" />
   </svg>
 )
+
+function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: {
+  w: Winkel; kleur: string; favoriet: boolean
+  onSelecteer: (w: Winkel) => void
+  onToggleFavoriet: (id: number) => void
+}) {
+  return (
+    <div className="wink-card cursor-pointer rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 2px 12px rgba(13,31,78,0.07)', border: favoriet ? `1.5px solid ${DYNAMO_GOLD}` : '1px solid rgba(13,31,78,0.07)' }}>
+      <div style={{ height: '4px', background: kleur }} />
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: kleur }} onClick={() => onSelecteer(w)}>
+            {w.naam.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1" onClick={() => onSelecteer(w)}>
+            <div className="font-semibold text-sm truncate" style={{ color: DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
+            <div style={{ color: 'rgba(13,31,78,0.35)', fontSize: '11px', fontFamily: F }}>#{w.dealer_nummer}</div>
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); onToggleFavoriet(w.id) }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70 shrink-0"
+            style={{ background: favoriet ? `${DYNAMO_GOLD}20` : 'rgba(13,31,78,0.04)', border: favoriet ? `1px solid ${DYNAMO_GOLD}60` : '1px solid rgba(13,31,78,0.08)' }}
+            title={favoriet ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
+          >
+            <span style={{ color: favoriet ? DYNAMO_GOLD : 'rgba(13,31,78,0.25)', fontSize: '14px', lineHeight: '1' }}>★</span>
+          </button>
+        </div>
+        {(w.stad || w.postcode) ? (
+          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 mb-4" style={{ background: 'rgba(13,31,78,0.04)' }} onClick={() => onSelecteer(w)}>
+            <IconPin />
+            <span style={{ color: 'rgba(13,31,78,0.5)', fontSize: '12px', fontFamily: F }}>{w.stad || ''}{w.stad && w.postcode ? ' · ' : ''}{w.postcode || ''}</span>
+          </div>
+        ) : <div className="mb-4" style={{ height: '32px' }} onClick={() => onSelecteer(w)} />}
+        <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(13,31,78,0.06)' }} onClick={() => onSelecteer(w)}>
+          <span style={{ color: kleur, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk voorraad</span>
+          <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: `${kleur}15` }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={kleur} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer: (w: Winkel) => void }) {
   const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
@@ -152,7 +191,6 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map)
 
       const bounds: [number, number][] = []
-
       winkelsMetCoords.forEach((w, i) => {
         const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
         const icon = L.divIcon({
@@ -184,18 +222,18 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
 
   if (winkelsMetCoords.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center" style={{ height: 280 }}>
-        <div className="text-center text-gray-400 p-6">
-          <div className="flex justify-center mb-2 opacity-40"><IconMap /></div>
-          <p className="text-sm font-medium">Geen kaart beschikbaar</p>
-          <p className="text-xs mt-1">Voeg postcodes toe aan je winkels om de kaart te zien</p>
+      <div className="flex items-center justify-center" style={{ height: 280, background: 'rgba(13,31,78,0.03)', borderRadius: '16px', border: '1px dashed rgba(13,31,78,0.15)' }}>
+        <div className="text-center p-6">
+          <div className="flex justify-center mb-2" style={{ color: 'rgba(13,31,78,0.2)' }}><IconMap /></div>
+          <p className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Geen kaart beschikbaar</p>
+          <p className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }}>Voeg postcodes toe aan je winkels</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm" style={{ height: 320 }}>
+    <div style={{ height: 320, borderRadius: '16px', overflow: 'hidden' }}>
       <div id="winkel-kaart" style={{ height: '100%', width: '100%' }} />
     </div>
   )
@@ -204,42 +242,34 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
 export default function Dashboard() {
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
-
   const [producten, setProducten] = useState<Product[]>([])
   const [kolommen, setKolommen] = useState<string[]>([])
   const [zichtbareKolommen, setZichtbareKolommen] = useState<string[]>([])
   const [kolommenGeladen, setKolommenGeladen] = useState(false)
-
   const [zoekterm, setZoekterm] = useState('')
   const [debouncedZoekterm, setDebouncedZoekterm] = useState('')
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
-
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-
   const [toonWinkelForm, setToonWinkelForm] = useState(false)
   const [winkelLoading, setWinkelLoading] = useState(false)
   const [nieuweNaam, setNieuweNaam] = useState('')
   const [nieuwDealer, setNieuwDealer] = useState('')
   const [nieuwePostcode, setNieuwePostcode] = useState('')
   const [nieuweStad, setNieuweStad] = useState('')
-
   const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
   const [bewerkLoading, setBewerkLoading] = useState(false)
-
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
-
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-
   const [gebruiker, setGebruiker] = useState('')
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
+  const [favorieten, setFavorieten] = useState<number[]>([])
 
   const router = useRouter()
   const supabase = createClient()
 
-  // Laad opgeslagen kolomvoorkeur
   useEffect(() => {
     try {
       const opgeslagen = localStorage.getItem(KOLOMMEN_STORAGE_KEY)
@@ -249,14 +279,16 @@ export default function Dashboard() {
       }
     } catch {}
     setKolommenGeladen(true)
+
+    try {
+      const fav = localStorage.getItem('dynamo_favorieten')
+      if (fav) setFavorieten(JSON.parse(fav))
+    } catch {}
   }, [])
 
-  // Sla kolomvoorkeur op als ze wijzigen
   useEffect(() => {
     if (!kolommenGeladen || zichtbareKolommen.length === 0) return
-    try {
-      localStorage.setItem(KOLOMMEN_STORAGE_KEY, JSON.stringify(zichtbareKolommen))
-    } catch {}
+    try { localStorage.setItem(KOLOMMEN_STORAGE_KEY, JSON.stringify(zichtbareKolommen)) } catch {}
   }, [zichtbareKolommen, kolommenGeladen])
 
   const haalWinkelsOp = useCallback(async () => {
@@ -268,62 +300,45 @@ export default function Dashboard() {
   const haalVoorraadOp = useCallback(async (dealer: string, q: string) => {
     setLoading(true)
     setAuthRequired(null)
-
     const res = await fetch(`/api/voorraad?dealer=${dealer}&q=${encodeURIComponent(q)}`)
     const data = await res.json().catch(() => ({}))
-
     if (!res.ok) {
-      setProducten([])
-      setKolommen([])
+      setProducten([]); setKolommen([])
       setAuthRequired({ message: data?.message ?? 'Voorraad ophalen mislukt.' })
       setLoading(false)
       return
     }
-
     const items = Array.isArray(data) ? data : data.products ?? []
     setProducten(items)
-
     const keys = items.length > 0 ? Object.keys(items[0]) : []
-    const dynamicCols = keys
-      .filter(k => !isHidden(k))
-      .sort((a, b) => {
-        const oa = columnOrder(a), ob = columnOrder(b)
-        return oa !== ob ? oa - ob : a.localeCompare(b)
-      })
-
+    const dynamicCols = keys.filter(k => !isHidden(k)).sort((a, b) => {
+      const oa = columnOrder(a), ob = columnOrder(b)
+      return oa !== ob ? oa - ob : a.localeCompare(b)
+    })
     setKolommen(dynamicCols)
-
-    // Pas opgeslagen voorkeur toe, anders alles tonen
     setZichtbareKolommen(prev => {
       const opgeslagen = (() => {
-        try {
-          const s = localStorage.getItem(KOLOMMEN_STORAGE_KEY)
-          return s ? JSON.parse(s) : null
-        } catch { return null }
+        try { const s = localStorage.getItem(KOLOMMEN_STORAGE_KEY); return s ? JSON.parse(s) : null } catch { return null }
       })()
-
       if (opgeslagen && Array.isArray(opgeslagen) && opgeslagen.length > 0) {
         const allowed = new Set(dynamicCols)
         const kept = opgeslagen.filter((k: string) => allowed.has(k))
         if (kept.length > 0) return kept
       }
-
       if (prev.length > 0) {
         const allowed = new Set(dynamicCols)
         const kept = prev.filter(k => allowed.has(k))
         if (kept.length > 0) return kept
       }
-
       return dynamicCols
     })
-
     setLoading(false)
   }, [])
 
   useEffect(() => {
     haalWinkelsOp()
     supabase.auth.getUser().then(({ data }) => setGebruiker(data.user?.email ?? ''))
-  }, [haalWinkelsOp, supabase.auth])
+  }, [haalWinkelsOp])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedZoekterm(zoekterm), 400)
@@ -340,81 +355,38 @@ export default function Dashboard() {
       producten: producten.length,
       voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     } : null)
-
     setGeselecteerdeWinkel(winkel)
-    setZoekterm('')
-    setDebouncedZoekterm('')
-    setProducten([])
-    setKolommen([])
-    setSortKey('')
-    setZoekKolom('ALL')
-    setKolomPanelOpen(false)
-    setAuthRequired(null)
-
+    setZoekterm(''); setDebouncedZoekterm(''); setProducten([]); setKolommen([])
+    setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setAuthRequired(null)
     await haalVoorraadOp(winkel.dealer_nummer, '')
   }
 
   async function voegWinkelToe(e: React.FormEvent) {
     e.preventDefault()
     setWinkelLoading(true)
-
-    await fetch('/api/winkels', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer, postcode: nieuwePostcode, stad: nieuweStad }),
-    })
-
-    setNieuweNaam('')
-    setNieuwDealer('')
-    setNieuwePostcode('')
-    setNieuweStad('')
-    setToonWinkelForm(false)
-    setWinkelLoading(false)
+    await fetch('/api/winkels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer, postcode: nieuwePostcode, stad: nieuweStad }) })
+    setNieuweNaam(''); setNieuwDealer(''); setNieuwePostcode(''); setNieuweStad('')
+    setToonWinkelForm(false); setWinkelLoading(false)
     await haalWinkelsOp()
   }
 
   async function slaWinkelOp(e: React.FormEvent) {
     e.preventDefault()
     if (!bewerkWinkel) return
-
     setBewerkLoading(true)
-
-    await fetch('/api/winkels', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: bewerkWinkel.id,
-        naam: bewerkWinkel.naam,
-        dealer_nummer: bewerkWinkel.dealer_nummer,
-        postcode: bewerkWinkel.postcode,
-        stad: bewerkWinkel.stad,
-      }),
-    })
-
-    setBewerkLoading(false)
-    setBewerkWinkel(null)
+    await fetch('/api/winkels', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: bewerkWinkel.id, naam: bewerkWinkel.naam, dealer_nummer: bewerkWinkel.dealer_nummer, postcode: bewerkWinkel.postcode, stad: bewerkWinkel.stad }) })
+    setBewerkLoading(false); setBewerkWinkel(null)
     await haalWinkelsOp()
   }
 
   async function verwijderWinkel(id: number) {
     if (!confirm('Winkel verwijderen?')) return
     await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
-
-    if (geselecteerdeWinkel?.id === id) {
-      setGeselecteerdeWinkel(null)
-      setProducten([])
-      setKolommen([])
-      setZoekterm('')
-      setAuthRequired(null)
-    }
-
+    if (geselecteerdeWinkel?.id === id) { setGeselecteerdeWinkel(null); setProducten([]); setKolommen([]); setZoekterm(''); setAuthRequired(null) }
     await haalWinkelsOp()
   }
 
-  async function uitloggen() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
+  async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
 
   function toggleSort(k: string) {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -423,12 +395,17 @@ export default function Dashboard() {
 
   function toggleKolom(k: string) {
     setZichtbareKolommen(prev => {
-      if (prev.includes(k)) {
-        if (prev.length === 1) return prev
-        return prev.filter(x => x !== k)
-      }
+      if (prev.includes(k)) { if (prev.length === 1) return prev; return prev.filter(x => x !== k) }
       const set = new Set([...prev, k])
       return kolommen.filter(x => set.has(x))
+    })
+  }
+
+  function toggleFavoriet(id: number) {
+    setFavorieten(prev => {
+      const nieuw = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      try { localStorage.setItem('dynamo_favorieten', JSON.stringify(nieuw)) } catch {}
+      return nieuw
     })
   }
 
@@ -437,144 +414,137 @@ export default function Dashboard() {
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
 
-  // ✅ HIER: filter op voorraad >= 1 (dus geen 0/negatief)
   const gefilterdEnGesorteerd = useMemo(() => {
-    // eerst: alleen voorraad >= 1
     let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
-
-    // extra lokale filter als je specifiek in 1 kolom zoekt
     if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
       const needle = debouncedZoekterm.toLowerCase()
       arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
     }
-
     if (sortKey) {
       arr.sort((a, b) => {
-        const av = asSortable(a[sortKey])
-        const bv = asSortable(b[sortKey])
+        const av = asSortable(a[sortKey]), bv = asSortable(b[sortKey])
         if (av < bv) return sortDir === 'asc' ? -1 : 1
         if (av > bv) return sortDir === 'asc' ? 1 : -1
         return 0
       })
     }
-
     return arr
   }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
 
   const stats = useMemo(() => ({
     producten: gefilterdEnGesorteerd.length,
     voorraad: gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
-    fietsen: gefilterdEnGesorteerd
-      .filter(p => isFiets(p) && (Number(p.STOCK) || 0) > 0)
-      .reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
+    fietsen: gefilterdEnGesorteerd.filter(p => isFiets(p) && (Number(p.STOCK) || 0) > 0).reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     merken: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
   }), [gefilterdEnGesorteerd])
 
   function trendPijl(huidig: number, vorig: number | undefined) {
     if (vorig === undefined || vorig === null) return null
-    if (huidig > vorig) return <span className="text-green-500 text-xs font-bold ml-1">↑</span>
-    if (huidig < vorig) return <span className="text-red-400 text-xs font-bold ml-1">↓</span>
-    return <span className="text-gray-400 text-xs ml-1">→</span>
+    if (huidig > vorig) return <span style={{ color: '#16a34a', fontSize: '12px', fontWeight: 700, marginLeft: '2px' }}>↑</span>
+    if (huidig < vorig) return <span style={{ color: '#ef4444', fontSize: '12px', fontWeight: 700, marginLeft: '2px' }}>↓</span>
+    return <span style={{ color: 'rgba(13,31,78,0.3)', fontSize: '12px', marginLeft: '2px' }}>→</span>
   }
 
-  const inputClass =
-    "rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+  const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
+  const inputClass = "rounded-xl px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none"
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
-      {/* Navigatie */}
-  <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-30">
+    <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb', fontFamily: F }}>
+
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+        .s1{animation:fadeUp .5s ease forwards;opacity:0}
+        .s2{animation:fadeUp .5s .08s ease forwards;opacity:0}
+        .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
+        .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
+        .mod-card{transition:transform .2s ease,box-shadow .2s ease}
+        .mod-card:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(13,31,78,.18)!important}
+        .wink-card{transition:transform .2s ease,box-shadow .2s ease}
+        .wink-card:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(13,31,78,.14)!important}
+      `}</style>
+
+      {/* NAVIGATIE */}
+      <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-30">
         <div className="px-5 flex items-stretch" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="flex items-center gap-3 pr-6 border-r border-white/10">
-            <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
-              <span style={{ color: DYNAMO_BLUE }}>D</span>
+          <div className="flex items-center gap-3 pr-6" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black" style={{ background: DYNAMO_GOLD }}>
+              <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '15px' }}>D</span>
             </div>
             <div>
-              <div className="text-white font-bold text-sm leading-tight tracking-wide">DYNAMO</div>
-              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">RETAIL GROUP</div>
+              <div className="font-bold text-sm text-white leading-tight" style={{ letterSpacing: '0.06em', fontFamily: F }}>DYNAMO</div>
+              <div className="text-xs font-semibold leading-tight" style={{ color: DYNAMO_GOLD, letterSpacing: '0.12em', fontFamily: F }}>RETAIL GROUP</div>
             </div>
           </div>
-
-          <div className="flex items-center px-5 border-r border-white/10 gap-2">
-            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block">Winkel</span>
+          <div className="flex items-center px-5 gap-2" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+            <span className="text-xs font-semibold uppercase hidden sm:block" style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: F }}>Winkel</span>
             <select
               value={geselecteerdeWinkel?.id ?? ''}
-              onChange={e => {
-                const w = winkels.find(w => w.id === Number(e.target.value))
-                if (w) selecteerWinkel(w)
-              }}
-              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none cursor-pointer min-w-[170px]"
+              onChange={e => { const w = winkels.find(w => w.id === Number(e.target.value)); if (w) selecteerWinkel(w) }}
+              className="text-sm rounded-lg px-3 py-1.5 cursor-pointer min-w-[170px]"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F, outline: 'none' }}
             >
               <option value="" disabled className="text-gray-900">Kies winkel...</option>
-              {winkels.map(w => (
-                <option key={w.id} value={w.id} className="text-gray-900">{w.naam}</option>
-              ))}
+              {winkels.map(w => <option key={w.id} value={w.id} className="text-gray-900">{w.naam}</option>)}
             </select>
           </div>
-
           <div className="flex-1" />
-
-          <div className="flex items-center gap-3 pl-5">
-            <button onClick={() => setSidebarOpen(v => !v)} className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/20 hover:bg-white/10 transition">
-              <span className="flex flex-col gap-1 w-4">
-                <span className="block h-0.5 bg-white rounded" />
-                <span className="block h-0.5 bg-white rounded" />
-                <span className="block h-0.5 bg-white rounded" />
+          <div className="flex items-center gap-2 pl-4">
+            <button onClick={() => setSidebarOpen(v => !v)} className="w-8 h-8 rounded-lg flex items-center justify-center transition hover:opacity-70" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="flex flex-col gap-1 w-3.5">
+                <span className="block h-px bg-white rounded" />
+                <span className="block h-px bg-white rounded" />
+                <span className="block h-px bg-white rounded" />
               </span>
             </button>
-            <span className="text-white/60 text-xs hidden md:block truncate max-w-[160px]">👤 {gebruiker}</span>
-            <Link href="/dashboard/beheer" className="rounded-lg px-3 py-2 text-xs font-semibold border border-white/20 text-white hover:bg-white/10 transition hidden md:flex items-center gap-1.5">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            <span className="text-xs hidden md:block px-2" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{gebruiker}</span>
+            <Link href="/dashboard/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 hidden md:flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
               Beheer
             </Link>
-            <button onClick={uitloggen} className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
+            <button onClick={uitloggen} className="rounded-lg px-4 py-1.5 text-xs font-bold transition hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F }}>
               Uitloggen
             </button>
           </div>
         </div>
-     <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-<aside className="flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '256px' : '0px', minWidth: sidebarOpen ? '256px' : '0px', background: '#f8f9fc', borderRight: '1px solid rgba(13,31,78,0.07)', fontFamily: F }}>
+
+        {/* SIDEBAR */}
+        <aside className="flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '256px' : '0px', minWidth: sidebarOpen ? '256px' : '0px', background: '#f8f9fc', borderRight: '1px solid rgba(13,31,78,0.07)', fontFamily: F }}>
           <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE }}>Winkels</span>
-              <button onClick={() => setToonWinkelForm(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-lg transition hover:opacity-80" style={{ background: DYNAMO_BLUE }}>+</button>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-xs font-bold uppercase" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Winkels</span>
+              <button onClick={() => setToonWinkelForm(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold transition hover:opacity-80" style={{ background: DYNAMO_BLUE, fontSize: '18px' }}>+</button>
             </div>
 
             {toonWinkelForm && (
-              <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2 border border-gray-200 bg-gray-50">
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Nieuwe winkel</p>
-                <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} required />
-                <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} required />
-                <input placeholder="Postcode (bijv. 1234AB)" value={nieuwePostcode} onChange={e => setNieuwePostcode(e.target.value)} className={inputClass + ' w-full'} />
-                <input placeholder="Stad" value={nieuweStad} onChange={e => setNieuweStad(e.target.value)} className={inputClass + ' w-full'} />
+              <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)' }}>
+                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</p>
+                <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} required />
+                <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} required />
+                <input placeholder="Postcode" value={nieuwePostcode} onChange={e => setNieuwePostcode(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} />
+                <input placeholder="Stad" value={nieuweStad} onChange={e => setNieuweStad(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} />
                 <div className="flex gap-2">
-                  <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
-                    {winkelLoading ? 'Bezig...' : 'Toevoegen'}
-                  </button>
-                  <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
+                  <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
+                  <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border px-3 text-sm hover:bg-gray-50" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>✕</button>
                 </div>
               </form>
             )}
 
             {bewerkWinkel && (
-              <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2 border-2 bg-gray-50" style={{ borderColor: DYNAMO_BLUE }}>
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>✏️ Winkel bewerken</p>
-                <input placeholder="Naam winkel" value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass + ' w-full'} required />
-                <input placeholder="Dealer nummer" value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass + ' w-full'} required />
-                <input placeholder="Postcode (bijv. 1234AB)" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass + ' w-full'} />
-                <input placeholder="Stad" value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass + ' w-full'} />
+              <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}` }}>
+                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ Bewerken</p>
+                <input placeholder="Naam winkel" value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} required />
+                <input placeholder="Dealer nummer" value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} required />
+                <input placeholder="Postcode" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} />
+                <input placeholder="Stad" value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} />
                 <div className="flex gap-2">
-                  <button type="submit" disabled={bewerkLoading} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE }}>
-                    {bewerkLoading ? 'Opslaan...' : 'Opslaan'}
-                  </button>
-                  <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-lg border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50">✕</button>
+                  <button type="submit" disabled={bewerkLoading} className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{bewerkLoading ? 'Opslaan...' : 'Opslaan'}</button>
+                  <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-lg border px-3 text-sm hover:bg-gray-50" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>✕</button>
                 </div>
               </form>
             )}
@@ -584,109 +554,181 @@ export default function Dashboard() {
                 const active = geselecteerdeWinkel?.id === w.id
                 const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
                 return (
-                  <div key={w.id} onClick={() => selecteerWinkel(w)} className="group flex items-center gap-2 rounded-xl px-3 py-2.5 cursor-pointer transition border" style={active ? { background: DYNAMO_BLUE, borderColor: DYNAMO_BLUE } : { background: 'white', borderColor: '#e5e7eb' }}>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.2)' : kleur }}>
-                      {w.naam.charAt(0)}
-                    </div>
+                  <div key={w.id} onClick={() => selecteerWinkel(w)} className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer transition-all" style={active ? { background: DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(13,31,78,0.2)' } : { background: 'white', border: '1px solid rgba(13,31,78,0.07)' }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.15)' : kleur }}>{w.naam.charAt(0)}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE }}>{w.naam}</div>
-                      <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>
+                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
+                      <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.45)' : 'rgba(13,31,78,0.35)', fontFamily: F }}>
                         {w.stad ? <><IconPin />{w.stad}</> : `#${w.dealer_nummer}`}
                       </div>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                      <button onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }} className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20" style={{ color: active ? 'white' : DYNAMO_BLUE }} title="Bewerken">✏️</button>
-                      <button onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }} className="text-xs rounded px-1.5 py-0.5 hover:bg-white/20" style={{ color: active ? 'white' : '#ef4444' }} title="Verwijderen">✕</button>
+                      <button onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }} className="text-xs rounded px-1 py-0.5" style={{ color: active ? 'rgba(255,255,255,0.6)' : 'rgba(13,31,78,0.4)' }}>✏️</button>
+                      <button onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }} className="text-xs rounded px-1 py-0.5" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#ef4444' }}>✕</button>
                     </div>
                   </div>
                 )
               })}
               {winkels.length === 0 && (
-                <div className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-400 text-center">
-                  Nog geen winkels.<br />Klik op <strong>+</strong> om toe te voegen.
+                <div className="rounded-xl p-4 text-center" style={{ border: '1px dashed rgba(13,31,78,0.15)' }}>
+                  <p className="text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Nog geen winkels.<br />Klik op <strong>+</strong> om toe te voegen.</p>
                 </div>
               )}
             </div>
           </div>
         </aside>
 
-        {/* Main */}
-        <main className="flex-1 min-w-0 p-5 space-y-4 overflow-auto">
+        {/* MAIN */}
+        <main className="flex-1 min-w-0 p-5 space-y-6 overflow-auto">
           {!geselecteerdeWinkel ? (
-            <div className="space-y-5">
-              <div className="rounded-2xl overflow-hidden shadow-sm relative" style={{ background: DYNAMO_BLUE, minHeight: 200 }}>
-                <div className="absolute -top-12 -right-12 w-72 h-72 rounded-full opacity-10" style={{ background: DYNAMO_GOLD }} />
-                <div className="absolute top-8 right-8 w-32 h-32 rounded-full opacity-5" style={{ background: 'white' }} />
-                <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full opacity-5" style={{ background: 'white' }} />
-                <div className="relative p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                  <div>
-                    <div style={{ color: DYNAMO_GOLD }} className="text-sm font-bold uppercase tracking-widest mb-1">{getDagdeel()}</div>
-                    <h1 className="text-white text-2xl sm:text-3xl font-black leading-tight">Voorraad Dashboard</h1>
-                    <p className="mt-1 text-white/60 text-sm capitalize">{getDatum()}</p>
-                    <p className="mt-3 text-white/70 text-sm max-w-md">Selecteer een winkel om de voorraad te bekijken en te doorzoeken.</p>
-                    <button onClick={() => setSidebarOpen(true)} className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
+            <div className="space-y-8">
+
+              {/* HERO */}
+              <div className="s1 relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 220 }}>
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(240,192,64,0.12) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: DYNAMO_GOLD }} />
+                <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '280px', background: 'rgba(255,255,255,0.025)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.07 }}>
+                    <svg width="100" height="100" viewBox="0 0 24 24" fill="white"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                  </div>
+                </div>
+                <div className="relative p-8 sm:p-10 sm:pr-72">
+                  <div className="inline-flex items-center gap-2 mb-5 rounded-full px-3 py-1" style={{ background: 'rgba(240,192,64,0.12)', border: '1px solid rgba(240,192,64,0.25)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: DYNAMO_GOLD }} />
+                    <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{getDagdeel()}</span>
+                  </div>
+                  <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>Voorraad Dashboard</h1>
+                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '8px', fontFamily: F }}>{getDatum()}</p>
+                  <div className="flex items-center gap-3 mt-6">
+                    <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}>
                       <IconStore /> Kies een winkel
                     </button>
+                    <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
+                      <IconChart /> Analyse
+                    </Link>
                   </div>
-                  <div className="hidden sm:flex items-center justify-center opacity-10" style={{ color: 'white' }}>
-                    <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    </svg>
-                  </div>
+                  {winkels.length > 0 && (
+                    <div className="flex items-center gap-6 mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                      {[{ label: 'Winkels', value: winkels.length, color: 'white' }, { label: 'Locaties', value: winkels.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: DYNAMO_GOLD }].map((s, i) => (
+                        <div key={s.label} className="flex items-center gap-6">
+                          {i > 0 && <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />}
+                          <div>
+                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                            <div style={{ color: s.color, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Modules</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200" style={{ borderColor: DYNAMO_BLUE }} onClick={() => setSidebarOpen(true)}>
-                    <div className="p-5" style={{ background: DYNAMO_BLUE }}>
-                      <div className="text-white mb-3"><IconBox /></div>
-                      <div className="text-white font-bold text-lg">Voorraad</div>
-                      <div className="text-white/60 text-sm mt-1">Doorzoek en filter de volledige voorraad per winkel</div>
+              {/* MODULES */}
+              <div className="s2">
+                <div className="flex items-center gap-3 mb-4">
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Modules</span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={() => setSidebarOpen(true)}>
+                    <div className="p-6">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
+                        <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
+                      </div>
+                      <div style={{ fontFamily: F, color: 'white', fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Voorraad</div>
+                      <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Zoek en filter producten per winkel</div>
                     </div>
-                    <div className="px-5 py-3 bg-white flex items-center justify-between">
-                      <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Kies een winkel →</span>
-                      <span className="text-xs text-gray-400">{winkels.length} winkels</span>
+                    <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                      <span style={{ color: DYNAMO_GOLD, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Selecteer winkel →</span>
+                      <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkels.length} locaties</span>
                     </div>
                   </div>
 
-                  <Link href="/dashboard/brand-groep" className="rounded-2xl border-2 overflow-hidden shadow-sm cursor-pointer transition hover:shadow-lg hover:-translate-y-1 duration-200 block" style={{ borderColor: DYNAMO_GOLD }}>
-                    <div className="p-5" style={{ background: 'linear-gradient(135deg, #0d1f4e 60%, #162d5e)' }}>
-                      <div className="text-white mb-3"><IconChart /></div>
-                      <div className="text-white font-bold text-lg">Merk / Groep</div>
-                      <div className="text-white/60 text-sm mt-1">Bekijk beschikbare voorraad per merk en productgroep</div>
+                  <Link href="/dashboard/brand-groep" className="mod-card block rounded-2xl overflow-hidden cursor-pointer" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
+                    <div className="p-6">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
+                        <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
+                      </div>
+                      <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Merk / Groep</div>
+                      <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
                     </div>
-                    <div className="px-5 py-3 bg-white flex items-center justify-between">
-                      <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>Ga naar overzicht →</span>
-                      <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
+                    <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                      <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
+                      <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
                     </div>
                   </Link>
 
-                  <div className="rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden shadow-sm opacity-50">
-                    <div className="p-5 bg-gray-50">
-                      <div className="text-gray-400 mb-3"><IconMap /></div>
-                      <div className="text-gray-500 font-bold text-lg">Meer komt eraan</div>
-                      <div className="text-gray-400 text-sm mt-1">Export, vergelijk winkels, lage voorraad alerts en meer</div>
+                  <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.07)' }}>
+                    <div className="p-6">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(13,31,78,0.06)' }}>
+                        <div style={{ color: 'rgba(13,31,78,0.25)' }}><IconMap /></div>
+                      </div>
+                      <div style={{ fontFamily: F, color: 'rgba(13,31,78,0.35)', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
+                      <div style={{ color: 'rgba(13,31,78,0.25)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
                     </div>
-                    <div className="px-5 py-3 bg-white">
-                      <span className="text-xs font-semibold text-gray-400">Binnenkort beschikbaar</span>
+                    <div className="px-6 py-3" style={{ background: 'rgba(13,31,78,0.02)', borderTop: '1px solid rgba(13,31,78,0.05)' }}>
+                      <span style={{ color: 'rgba(13,31,78,0.25)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: DYNAMO_BLUE }}>Winkels op de kaart</h2>
-                <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
+              {/* KAART */}
+              <div className="s3">
+                <div className="flex items-center gap-3 mb-4">
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Locaties</span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
+                  <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.filter(w => w.lat && w.lng).length} van {winkels.length} op kaart</span>
+                </div>
+                <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(13,31,78,0.08)', border: '1px solid rgba(13,31,78,0.07)' }}>
+                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
+                </div>
               </div>
+
+              {/* WINKELKAARTEN */}
+              {winkels.length > 0 && (
+                <div className="s4 space-y-6">
+
+                  {/* Favorieten */}
+                  {favorieten.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_GOLD, fontFamily: F }}>★ Mijn winkels</span>
+                        <div className="flex-1 h-px" style={{ background: `${DYNAMO_GOLD}40` }} />
+                        <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{favorieten.length} favoriet{favorieten.length !== 1 ? 'en' : ''}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {winkels.filter(w => favorieten.includes(w.id)).map(w => (
+                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkels.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Alle winkels */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Alle winkels</span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
+                      <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.length} locaties</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {winkels.map((w, i) => (
+                        <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+
           ) : (
             <>
-              <button onClick={() => setGeselecteerdeWinkel(null)} className="flex items-center gap-2 text-sm font-semibold hover:underline transition" style={{ color: DYNAMO_BLUE }}>
+              <button onClick={() => setGeselecteerdeWinkel(null)} className="flex items-center gap-2 text-sm font-semibold transition hover:opacity-70" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                 <IconArrowLeft /> Terug naar startscherm
               </button>
 
+              {/* Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: 'Producten', value: stats.producten, vorig: vorigeStats?.producten, color: DYNAMO_BLUE },
@@ -694,88 +736,86 @@ export default function Dashboard() {
                   { label: 'Fietsen op voorraad', value: stats.fietsen, color: '#16a34a' },
                   { label: 'Merken', value: stats.merken, color: DYNAMO_BLUE },
                 ].map(s => (
-                  <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 py-3 shadow-sm">
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</div>
-                    <div className="flex items-baseline mt-0.5">
-                      <div className="text-2xl font-black" style={{ color: s.color }}>{s.value.toLocaleString('nl-NL')}</div>
+                  <div key={s.label} className="rounded-2xl px-5 py-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+                    <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.08em', fontFamily: F }}>{s.label}</div>
+                    <div className="flex items-baseline gap-1">
+                      <div className="text-2xl font-bold" style={{ color: s.color, fontFamily: F, letterSpacing: '-0.03em' }}>{s.value.toLocaleString('nl-NL')}</div>
                       {trendPijl(s.value, (s as any).vorig)}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+              {/* Zoekbalk */}
+              <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE }}>{geselecteerdeWinkel.naam}</span>
-                      <span className="text-gray-400 text-sm">#{dealer}</span>
-                      {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs text-gray-400"><IconPin />{geselecteerdeWinkel.stad}</span>}
+                      <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{geselecteerdeWinkel.naam}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>#{dealer}</span>
+                      {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                     </div>
                     <div className="flex items-center gap-3">
-                      <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border transition hover:shadow-sm" style={{ borderColor: DYNAMO_GOLD, color: DYNAMO_BLUE, background: '#fffbeb' }}>
+                      <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-80" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>
                         <IconChart /> Merk/Groep
                       </Link>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>
                         {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
                       </span>
                     </div>
                   </div>
-
                   <div className="flex flex-wrap gap-2 items-center">
                     <div className="relative flex-1 min-w-[200px]">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">⌕</span>
-                      <input type="text" placeholder="Zoek op product, merk, barcode..." value={zoekterm} onChange={e => setZoekterm(e.target.value)} className={inputClass + ' w-full pl-9'} />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(13,31,78,0.3)' }}>⌕</span>
+                      <input type="text" placeholder="Zoek op product, merk, barcode..." value={zoekterm} onChange={e => setZoekterm(e.target.value)} className="w-full rounded-xl px-3 py-2 pl-9 text-sm" style={inputStyle} />
                     </div>
-
-                    <select value={zoekKolom} onChange={e => setZoekKolom(e.target.value)} className={inputClass}>
+                    <select value={zoekKolom} onChange={e => setZoekKolom(e.target.value)} className="rounded-xl px-3 py-2 text-sm" style={inputStyle}>
                       <option value="ALL">Alle kolommen</option>
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
-
                     <div className="relative">
-                      <button onClick={() => setKolomPanelOpen(v => !v)} className="rounded-lg px-4 py-2 text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-2" style={{ color: DYNAMO_BLUE }}>
+                      <button onClick={() => setKolomPanelOpen(v => !v)} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 flex items-center gap-2" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                         ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
-                        <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl p-4 z-30">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Kolommen instellen</span>
+                        <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white shadow-xl p-4 z-30" style={{ border: '1px solid rgba(13,31,78,0.1)' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Kolommen</span>
                             <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
                           </div>
-                          <p className="text-xs text-gray-400 mb-3">Jouw voorkeur wordt automatisch onthouden.</p>
+                          <p className="text-xs mb-3" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Voorkeur wordt automatisch onthouden.</p>
                           <div className="flex gap-2 mb-3">
-                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles aan</button>
-                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg border border-gray-200 py-1.5 text-xs font-semibold hover:bg-gray-50">Alles uit</button>
+                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Alles aan</button>
+                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Alles uit</button>
                           </div>
-                          <div className="space-y-2 max-h-64 overflow-auto">
+                          <div className="space-y-1 max-h-64 overflow-auto">
                             {kolommen.map(k => (
-                              <label key={k} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1">
+                              <label key={k} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1.5">
                                 <input type="checkbox" checked={zichtbareKolommen.includes(k)} onChange={() => toggleKolom(k)} disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1} className="accent-blue-600" />
-                                <span className="text-gray-800">{columnLabel(k)}</span>
-                                {isSticky(k) && <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Vast</span>}
+                                <span style={{ color: DYNAMO_BLUE, fontFamily: F }}>{columnLabel(k)}</span>
+                                {isSticky(k) && <span className="ml-auto text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Vast</span>}
                               </label>
                             ))}
                           </div>
                         </div>
                       )}
                     </div>
-
                     {(zoekterm || zoekKolom !== 'ALL') && (
-                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="text-sm text-red-400 hover:text-red-600 font-medium">✕ Wis filters</button>
+                      <button onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="text-sm font-semibold transition hover:opacity-70" style={{ color: '#ef4444', fontFamily: F }}>✕ Wis filters</button>
                     )}
                   </div>
                 </div>
               </div>
 
               {authRequired && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  <p className="font-semibold">Toestemming vereist</p>
-                  <p className="mt-1">{authRequired.message}</p>
+                <div className="rounded-2xl p-4 text-sm" style={{ background: '#fffbeb', border: '1px solid rgba(240,192,64,0.4)' }}>
+                  <p className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Toestemming vereist</p>
+                  <p className="mt-1" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{authRequired.message}</p>
                 </div>
               )}
 
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Tabel */}
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                 <div className="overflow-auto">
                   <table className="w-full text-sm [border-collapse:separate] [border-spacing:0]">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
@@ -784,44 +824,41 @@ export default function Dashboard() {
                           const active = sortKey === k
                           const sticky = stickyEnabled && stickyKey === k
                           return (
-                            <th key={k} className="px-4 py-3 text-left whitespace-nowrap text-xs font-bold uppercase tracking-wide" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.85)', background: DYNAMO_BLUE, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}>
+                            <th key={k} className="px-4 py-3 text-left whitespace-nowrap" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}>
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
-                                <span style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.3)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                                <span style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.25)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
                               </button>
                             </th>
                           )
                         })}
                       </tr>
                     </thead>
-
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody>
                       {loading ? (
                         Array.from({ length: 12 }).map((_, i) => (
-                          <tr key={i} className="animate-pulse">
-                            {zichtbareKolommen.map(k => (
-                              <td key={k} className="px-4 py-3"><div className="h-3 bg-gray-200 rounded w-24" /></td>
-                            ))}
+                          <tr key={i} className="animate-pulse" style={{ borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
+                            {zichtbareKolommen.map(k => <td key={k} className="px-4 py-3"><div className="h-3 rounded" style={{ background: 'rgba(13,31,78,0.06)', width: '80px' }} /></td>)}
                           </tr>
                         ))
                       ) : gefilterdEnGesorteerd.length === 0 ? (
                         <tr>
-                          <td colSpan={zichtbareKolommen.length} className="px-6 py-12 text-center">
-                            <div className="text-4xl mb-2">🔍</div>
-                            <div className="font-semibold text-gray-700">Geen producten gevonden</div>
-                            <div className="text-sm text-gray-400 mt-1">Let op: we tonen alleen voorraad ≥ 1</div>
+                          <td colSpan={zichtbareKolommen.length} className="px-6 py-16 text-center">
+                            <div className="text-3xl mb-3">🔍</div>
+                            <div className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen producten gevonden</div>
+                            <div className="text-sm mt-1" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Probeer een andere zoekterm</div>
                           </td>
                         </tr>
                       ) : (
                         gefilterdEnGesorteerd.map((p, i) => (
-                          <tr key={i} className="transition hover:bg-yellow-50" style={i % 2 === 1 ? { background: '#fafafa' } : {}}>
+                          <tr key={i} className="transition hover:bg-blue-50/40" style={{ borderBottom: '1px solid rgba(13,31,78,0.05)', background: i % 2 === 1 ? 'rgba(13,31,78,0.015)' : 'white' }}>
                             {zichtbareKolommen.map(k => {
                               const sticky = stickyEnabled && stickyKey === k
                               const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
                               const stockVal = Number(p[k])
                               return (
-                                <td key={k} className="px-4 py-2.5 whitespace-nowrap align-middle" style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(229,231,235,1)' } : undefined}>
-                                  <span className={isStock ? (stockVal <= 3 ? 'text-amber-600 font-semibold' : 'text-green-600 font-semibold') : 'text-gray-800'}>
+                                <td key={k} className="px-4 py-2.5 whitespace-nowrap align-middle" style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(13,31,78,0.06)' } : undefined}>
+                                  <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
                                     {formatValue(k, p[k])}
                                   </span>
                                 </td>
@@ -833,11 +870,10 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
-
                 {!loading && gefilterdEnGesorteerd.length > 0 && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
-                    <span>{gefilterdEnGesorteerd.length} producten (voorraad ≥ 1)</span>
-                    <span>Klik op een kolomheader om te sorteren</span>
+                  <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid rgba(13,31,78,0.06)' }}>
+                    <span className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{gefilterdEnGesorteerd.length} producten</span>
+                    <span className="text-xs" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }}>Klik op kolomheader om te sorteren</span>
                   </div>
                 )}
               </div>
