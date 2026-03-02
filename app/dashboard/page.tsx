@@ -482,8 +482,8 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
       {/* Navigatie */}
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
-        <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
+  <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-30">
+        <div className="px-5 flex items-stretch" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center gap-3 pr-6 border-r border-white/10">
             <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
@@ -534,12 +534,12 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
+     <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="bg-white border-r border-gray-200 flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '260px' : '0px', minWidth: sidebarOpen ? '260px' : '0px' }}>
+<aside className="flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '256px' : '0px', minWidth: sidebarOpen ? '256px' : '0px', background: '#f8f9fc', borderRight: '1px solid rgba(13,31,78,0.07)', fontFamily: F }}>
           <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <span className="text-xs font-bold uppercase tracking-widest" style={{ color: DYNAMO_BLUE }}>Winkels</span>
