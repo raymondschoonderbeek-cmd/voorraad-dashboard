@@ -111,13 +111,8 @@ export default function BrandGroepPage() {
 
   const [minAvailable, setMinAvailable] = useState<number>(0)
   const [top10Brands, setTop10Brands] = useState<boolean>(false)
-  const [winkelModalOpen, setWinkelModalOpen] = useState(false)
-
-  useEffect(() => {
-    if (!geselecteerdeWinkel && winkels.length > 0) {
-      setWinkelModalOpen(true)
-    }
-  }, [geselecteerdeWinkel, winkels.length])
+  const [winkelModalOpen, setWinkelModalOpen] = useState(true)
+  const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
 
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
@@ -127,13 +122,20 @@ export default function BrandGroepPage() {
 
   const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string) => {
     setLoading(true)
+    setAuthRequired(null)
     const params = new URLSearchParams()
     if (winkelId) params.set('winkel', String(winkelId))
     if (dealer) params.set('dealer', dealer)
     params.set('q', '')
 
     const res = await fetch(`/api/voorraad?${params.toString()}`)
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setProducten([])
+      setAuthRequired({ message: data?.message ?? 'Voorraad ophalen mislukt.' })
+      setLoading(false)
+      return
+    }
     const items = Array.isArray(data) ? data : data.products ?? []
     setProducten(items)
     setLoading(false)
@@ -144,6 +146,7 @@ export default function BrandGroepPage() {
   async function selecteerWinkel(winkel: Winkel | null) {
     setGeselecteerdeWinkel(winkel)
     setProducten([])
+    setAuthRequired(null)
     setSelectedGroup('')
     setSelectedBrand('')
     setSelectedProduct(null)
@@ -314,7 +317,7 @@ export default function BrandGroepPage() {
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100] shadow-lg">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0 min-h-[56px]">
-          <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0">
+          <Link href="/dashboard" className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
             <div style={{ background: DYNAMO_GOLD }} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
@@ -322,7 +325,7 @@ export default function BrandGroepPage() {
               <div className="text-white font-bold text-xs sm:text-sm leading-tight tracking-wide truncate">DYNAMO</div>
               <div style={{ color: DYNAMO_GOLD }} className="text-[10px] sm:text-xs font-semibold tracking-widest leading-tight truncate">RETAIL GROUP</div>
             </div>
-          </div>
+          </Link>
 
           <div className="flex items-center px-3 sm:px-5 border-r border-white/10 gap-2 flex-1 min-w-0">
             <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block shrink-0">Winkel</span>
@@ -381,6 +384,12 @@ export default function BrandGroepPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {authRequired && (
+              <div className="rounded-2xl p-4 text-sm" style={{ background: '#fffbeb', border: '1px solid rgba(240,192,64,0.4)' }}>
+                <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Toestemming vereist</p>
+                <p className="mt-1" style={{ color: 'rgba(13,31,78,0.6)' }}>{authRequired.message}</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-4">
               {/* Groepen */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
