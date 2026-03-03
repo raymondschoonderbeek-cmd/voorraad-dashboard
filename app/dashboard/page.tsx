@@ -467,9 +467,7 @@ setZichtbareKolommen(wilmarKols)
       : 'cyclesoftware'
 
   const gefilterdEnGesorteerd = useMemo(() => {
-    let arr = bron === 'wilmar'
-      let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
-
+    let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
     if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
       const needle = debouncedZoekterm.toLowerCase()
       arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
