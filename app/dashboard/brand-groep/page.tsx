@@ -3,6 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { WinkelSelect } from '@/components/WinkelSelect'
+import { WinkelModal } from '@/components/WinkelModal'
 import type { Winkel } from '@/lib/types'
 
 const DYNAMO_BLUE = '#0d1f4e'
@@ -110,6 +111,7 @@ export default function BrandGroepPage() {
 
   const [minAvailable, setMinAvailable] = useState<number>(0)
   const [top10Brands, setTop10Brands] = useState<boolean>(false)
+  const [winkelModalOpen, setWinkelModalOpen] = useState(false)
 
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
@@ -351,14 +353,25 @@ export default function BrandGroepPage() {
         <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
+      <WinkelModal
+        open={winkelModalOpen}
+        onClose={() => setWinkelModalOpen(false)}
+        winkels={winkels}
+        onSelect={selecteerWinkel}
+      />
+
       <main className="flex-1 p-3 sm:p-5 space-y-4 overflow-x-hidden">
         {!geselecteerdeWinkel ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>📊</div>
-            <div>
-              <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Kies een winkel</p>
-              <p className="text-sm text-gray-500 mt-1">Selecteer een winkel via de navigatie bovenin</p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style={{ background: DYNAMO_BLUE }}>📊</div>
+            <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Kies een winkel</p>
+            <button
+              onClick={() => setWinkelModalOpen(true)}
+              className="rounded-xl px-5 py-2.5 font-semibold text-sm transition hover:opacity-90"
+              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(240,192,64,0.3)' }}
+            >
+              Kies een winkel
+            </button>
           </div>
         ) : (
           <div className="space-y-4">

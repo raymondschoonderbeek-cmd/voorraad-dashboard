@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { WinkelSelect, type WinkelSelectRef } from '@/components/WinkelSelect'
+import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
 
@@ -276,7 +277,6 @@ export default function Dashboard() {
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const [favorieten, setFavorieten] = useState<number[]>([])
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
-  const [winkelZoek, setWinkelZoek] = useState('')
 
   const router = useRouter()
   const supabase = createClient()
@@ -389,19 +389,8 @@ export default function Dashboard() {
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
 
   function openWinkelSelect() {
-    setWinkelZoek('')
     setWinkelModalOpen(true)
   }
-
-  const gefilterdeWinkels = useMemo(() => {
-    const q = winkelZoek.trim().toLowerCase()
-    if (!q) return winkels
-    return winkels.filter(w =>
-      w.naam.toLowerCase().includes(q) ||
-      w.dealer_nummer.includes(q) ||
-      (w.stad?.toLowerCase().includes(q))
-    )
-  }, [winkels, winkelZoek])
 
   function toggleSort(k: string) {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -531,69 +520,12 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Winkelkeuze modal */}
-      {winkelModalOpen && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          onClick={() => setWinkelModalOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Kies een winkel"
-        >
-          <div style={{ background: 'rgba(13,31,78,0.6)' }} className="absolute inset-0 backdrop-blur-sm" />
-          <div
-            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-            style={{ background: 'white', maxHeight: '80vh' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-4 border-b" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
-              <h2 style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 700 }}>Kies een winkel</h2>
-              <input
-                type="search"
-                placeholder="Zoek op naam, dealer of stad..."
-                value={winkelZoek}
-                onChange={e => setWinkelZoek(e.target.value)}
-                autoFocus
-                className={`${inputClass} w-full mt-3 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200`}
-                style={{ border: '1px solid rgba(13,31,78,0.15)' }}
-              />
-            </div>
-            <div className="overflow-y-auto max-h-[50vh]">
-              {gefilterdeWinkels.length === 0 ? (
-                <div className="p-6 text-center" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F, fontSize: '14px' }}>
-                  {winkelZoek ? 'Geen winkels gevonden' : 'Geen winkels beschikbaar'}
-                </div>
-              ) : (
-                <ul className="divide-y divide-[rgba(13,31,78,0.06)]">
-                  {gefilterdeWinkels.map(w => (
-                    <li key={w.id}>
-                      <button
-                        type="button"
-                        onClick={() => { selecteerWinkel(w); setWinkelModalOpen(false) }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center justify-between gap-3"
-                        style={{ fontFamily: F }}
-                      >
-                        <span style={{ color: DYNAMO_BLUE, fontWeight: 600, fontSize: '14px' }}>{w.naam}</span>
-                        {w.stad && <span style={{ color: 'rgba(13,31,78,0.4)', fontSize: '12px' }}>{w.stad}</span>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="p-3 border-t flex justify-end" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
-              <button
-                type="button"
-                onClick={() => setWinkelModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}
-              >
-                Annuleren
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WinkelModal
+        open={winkelModalOpen}
+        onClose={() => setWinkelModalOpen(false)}
+        winkels={winkels}
+        onSelect={selecteerWinkel}
+      />
 
       <main className="flex-1 min-w-0 p-3 sm:p-5 pb-6 sm:pb-5 space-y-4 sm:space-y-6 overflow-auto">
           {!geselecteerdeWinkel ? (
