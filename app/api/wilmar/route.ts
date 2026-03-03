@@ -56,7 +56,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Wilmar stores ophalen mislukt', status: res.status, detail }, { status: 502 })
     }
     const data = await res.json()
-    return NextResponse.json(data)
+    // Normaliseer naar vaste veldnamen (API kan PascalCase of andere namen gebruiken)
+    const list = Array.isArray(data) ? data : (data?.data ?? data?.stores ?? [])
+    const stores = list.map((s: any) => ({
+      branchId: s.branchId ?? s.BranchId ?? s.branch_id ?? s.id,
+      organisationId: s.organisationId ?? s.OrganisationId ?? s.organisation_id ?? s.organizationId ?? s.OrganizationId,
+      name: s.name ?? s.Name ?? s.branchName ?? s.BranchName ?? '',
+      city: s.city ?? s.City ?? s.location ?? s.Location ?? '',
+    })).filter((s: any) => s.branchId != null && s.organisationId != null)
+    return NextResponse.json(stores)
   }
 
   if (action === 'stock') {

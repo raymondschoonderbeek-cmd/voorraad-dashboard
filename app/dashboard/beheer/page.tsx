@@ -637,22 +637,29 @@ export default function BeheerPage() {
                       </p>
                     )}
 
-                    {/* Dropdown na laden */}
+                    {/* Dropdown na laden — waarde = organisationId-branchId zodat selectie altijd beide ids zet */}
                     {wilmarStores.length > 0 && (
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
                         <select
-                          value={wilmarBranchId !== null ? String(wilmarBranchId) : ''}
+                          value={
+                            wilmarBranchId != null && wilmarOrganisationId != null
+                              ? `${wilmarOrganisationId}-${wilmarBranchId}`
+                              : ''
+                          }
                           onChange={e => {
                             const val = e.target.value
                             if (!val) {
                               setWilmarBranchId(null)
                               setWilmarOrganisationId(null)
                             } else {
-                              const store = wilmarStores.find(s => String(s.branchId) === val)
-                              if (store) {
-                                setWilmarBranchId(store.branchId)
-                                setWilmarOrganisationId(store.organisationId)
+                              const [orgIdStr, branchIdStr] = val.split('-')
+                              const orgId = orgIdStr ? Number(orgIdStr) : null
+                              const branchId = branchIdStr ? Number(branchIdStr) : null
+                              if (orgId != null && branchId != null && !Number.isNaN(orgId) && !Number.isNaN(branchId)) {
+                                setWilmarOrganisationId(orgId)
+                                setWilmarBranchId(branchId)
+                                setBewerkWinkel(prev => prev ? { ...prev, api_type: 'wilmar' } : null)
                               }
                             }
                           }}
@@ -661,12 +668,15 @@ export default function BeheerPage() {
                         >
                           <option value="">— Niet gekoppeld —</option>
                           {wilmarStores.map(s => (
-                            <option key={s.branchId} value={String(s.branchId)}>
-                              {s.name} {s.city ? `(${s.city})` : ''}
+                            <option
+                              key={`${s.organisationId}-${s.branchId}`}
+                              value={`${s.organisationId}-${s.branchId}`}
+                            >
+                              {s.name || 'Winkel'} {s.city ? `(${s.city})` : ''}
                             </option>
                           ))}
                         </select>
-                        {wilmarBranchId && (
+                        {wilmarBranchId != null && wilmarOrganisationId != null && (
                           <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
                             ✓ Geselecteerd: org {wilmarOrganisationId}, branch {wilmarBranchId}
                           </p>

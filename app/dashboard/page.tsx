@@ -22,22 +22,10 @@ const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: 
   SUPPLIER_PRODUCT_NUMBER: { label: 'Art. nummer', order: 40, format: 'text' },
   STOCK: { label: 'Voorraad', order: 50, format: 'int' },
   AVAILABLE_STOCK: { label: 'Beschikbaar', order: 60, format: 'int' },
-  RESERVED: { label: 'Gereserveerd', order: 65, format: 'int' },
-  SOLD: { label: 'Verkocht', order: 67, format: 'int' },
   SALES_PRICE_INC: { label: 'Prijs incl.', order: 70, format: 'money' },
   GROUP_DESCRIPTION_1: { label: 'Groep', order: 80, format: 'text' },
   GROUP_DESCRIPTION_2: { label: 'Subgroep', order: 90, format: 'text' },
   SUPPLIER_NAME: { label: 'Leverancier', order: 100, format: 'text' },
-  FRAME_NUMBER: { label: 'Framenummer', order: 35, format: 'text' },
-COLOR: { label: 'Kleur', order: 45, format: 'text' },
-FRAME_HEIGHT: { label: 'Framehoogte', order: 46, format: 'text' },
-GENDER: { label: 'Geslacht', order: 47, format: 'text' },
-WHEEL_SIZE: { label: 'Wielmaat', order: 48, format: 'text' },
-GEAR: { label: 'Versnelling', order: 49, format: 'text' },
-CATEGORY: { label: 'Categorie', order: 75, format: 'text' },
-LOCATION: { label: 'Locatie', order: 76, format: 'text' },
-MODEL_YEAR: { label: 'Modeljaar', order: 77, format: 'text' },
-IS_NEW: { label: 'Nieuw/Occasion', order: 78, format: 'text' },
 }
 
 function columnLabel(key: string) { return COLUMN_CONFIG[key]?.label ?? key.replace(/_/g, ' ') }
@@ -167,6 +155,7 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
             onClick={e => { e.stopPropagation(); onToggleFavoriet(w.id) }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70 shrink-0"
             style={{ background: favoriet ? `${DYNAMO_GOLD}20` : 'rgba(13,31,78,0.04)', border: favoriet ? `1px solid ${DYNAMO_GOLD}60` : '1px solid rgba(13,31,78,0.08)' }}
+            title={favoriet ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
           >
             <span style={{ color: favoriet ? DYNAMO_GOLD : 'rgba(13,31,78,0.25)', fontSize: '14px', lineHeight: '1' }}>★</span>
           </button>
@@ -239,7 +228,7 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
         ;(window as any).L?.map(mapEl)?.remove?.()
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winkelsMetCoords.length])
 
   if (winkelsMetCoords.length === 0) {
@@ -301,6 +290,7 @@ export default function Dashboard() {
       }
     } catch {}
     setKolommenGeladen(true)
+
     try {
       const fav = localStorage.getItem('dynamo_favorieten')
       if (fav) setFavorieten(JSON.parse(fav))
@@ -318,35 +308,14 @@ export default function Dashboard() {
     setWinkels(data)
   }, [])
 
-  const haalVoorraadOp = useCallback(async (winkel: Winkel, q: string) => {
+  const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string, q: string) => {
     setLoading(true)
     setAuthRequired(null)
-
-    const isWilmar = winkel.api_type === 'wilmar' ||
-      (!winkel.api_type && !!(winkel.wilmar_branch_id && winkel.wilmar_organisation_id))
-
-    if (isWilmar && winkel.wilmar_organisation_id && winkel.wilmar_branch_id) {
-      const url = `/api/wilmar?action=bicycles&organisationId=${winkel.wilmar_organisation_id}&branchId=${winkel.wilmar_branch_id}${q ? `&q=${encodeURIComponent(q)}` : ''}`
-      const res = await fetch(url)
-      const data = await res.json().catch(() => ([]))
-      if (!res.ok) {
-        setProducten([]); setKolommen([])
-        setAuthRequired({ message: data?.error ?? 'Wilmar voorraad ophalen mislukt.' })
-        setLoading(false)
-        return
-      }
-      const items: Product[] = Array.isArray(data) ? data.filter((p: any) => p.BARCODE) : []
-setProducten(items)
-const wilmarKols = ['BARCODE', 'STOCK', 'AVAILABLE_STOCK', 'RESERVED', 'SOLD']
-setKolommen(wilmarKols)
-setZichtbareKolommen(wilmarKols)
-    }
-
-    // CycleSoftware
     const params = new URLSearchParams()
-    params.set('winkel', String(winkel.id))
-    params.set('dealer', winkel.dealer_nummer)
+    if (winkelId) params.set('winkel', String(winkelId))
+    if (dealer) params.set('dealer', dealer)
     params.set('q', q)
+
     const res = await fetch(`/api/voorraad?${params.toString()}`)
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
@@ -394,7 +363,7 @@ setZichtbareKolommen(wilmarKols)
 
   useEffect(() => {
     if (!geselecteerdeWinkel) return
-    haalVoorraadOp(geselecteerdeWinkel, debouncedZoekterm)
+    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer, debouncedZoekterm)
   }, [debouncedZoekterm, geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
@@ -405,7 +374,7 @@ setZichtbareKolommen(wilmarKols)
     setGeselecteerdeWinkel(winkel)
     setZoekterm(''); setDebouncedZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setAuthRequired(null)
-    await haalVoorraadOp(winkel, '')
+    await haalVoorraadOp(winkel.id, winkel.dealer_nummer, '')
   }
 
   async function voegWinkelToe(e: React.FormEvent) {
@@ -460,22 +429,18 @@ setZichtbareKolommen(wilmarKols)
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
-  const bron = geselecteerdeWinkel?.api_type === 'wilmar'
-    ? 'wilmar'
-    : (!geselecteerdeWinkel?.api_type && geselecteerdeWinkel?.wilmar_branch_id && geselecteerdeWinkel?.wilmar_organisation_id)
+  const bron =
+    geselecteerdeWinkel?.api_type ??
+    (geselecteerdeWinkel?.wilmar_branch_id && geselecteerdeWinkel?.wilmar_organisation_id
       ? 'wilmar'
-      : 'cyclesoftware'
+      : 'cyclesoftware')
 
   const gefilterdEnGesorteerd = useMemo(() => {
     let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
     if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
       const needle = debouncedZoekterm.toLowerCase()
       arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
-    } else if (zoekKolom === 'ALL' && debouncedZoekterm.trim() !== '') {
-      const needle = debouncedZoekterm.toLowerCase()
-      arr = arr.filter(p => Object.values(p).some(v => String(v ?? '').toLowerCase().includes(needle)))
     }
-
     if (sortKey) {
       arr.sort((a, b) => {
         const av = asSortable(a[sortKey]), bv = asSortable(b[sortKey])
@@ -485,14 +450,14 @@ setZichtbareKolommen(wilmarKols)
       })
     }
     return arr
-  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir, bron])
+  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
 
   const stats = useMemo(() => ({
     producten: gefilterdEnGesorteerd.length,
     voorraad: gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
-    fietsen: bron === 'wilmar' ? 0 : gefilterdEnGesorteerd.filter(p => isFiets(p) && (Number(p.STOCK) || 0) > 0).reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
-    merken: bron === 'wilmar' ? 0 : new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
-  }), [gefilterdEnGesorteerd, bron])
+    fietsen: gefilterdEnGesorteerd.filter(p => isFiets(p) && (Number(p.STOCK) || 0) > 0).reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
+    merken: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
+  }), [gefilterdEnGesorteerd])
 
   function trendPijl(huidig: number, vorig: number | undefined) {
     if (vorig === undefined || vorig === null) return null
@@ -616,7 +581,6 @@ setZichtbareKolommen(wilmarKols)
                       <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
                       <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.45)' : 'rgba(13,31,78,0.35)', fontFamily: F }}>
                         {w.stad ? <><IconPin />{w.stad}</> : `#${w.dealer_nummer}`}
-                        {w.api_type === 'wilmar' && <span className="ml-1 text-xs px-1 rounded" style={{ background: active ? 'rgba(255,255,255,0.15)' : 'rgba(22,163,74,0.1)', color: active ? 'rgba(255,255,255,0.7)' : '#16a34a' }}>W</span>}
                       </div>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
@@ -644,7 +608,12 @@ setZichtbareKolommen(wilmarKols)
               <div className="s1 relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 220 }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(240,192,64,0.12) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: DYNAMO_GOLD }} />
-                <div className="relative p-8 sm:p-10">
+                <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '280px', background: 'rgba(255,255,255,0.025)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.07 }}>
+                    <svg width="100" height="100" viewBox="0 0 24 24" fill="white"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                  </div>
+                </div>
+                <div className="relative p-8 sm:p-10 sm:pr-72">
                   <div className="inline-flex items-center gap-2 mb-5 rounded-full px-3 py-1" style={{ background: 'rgba(240,192,64,0.12)', border: '1px solid rgba(240,192,64,0.25)' }}>
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: DYNAMO_GOLD }} />
                     <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{getDagdeel()}</span>
@@ -740,6 +709,8 @@ setZichtbareKolommen(wilmarKols)
               {/* WINKELKAARTEN */}
               {winkels.length > 0 && (
                 <div className="s4 space-y-6">
+
+                  {/* Favorieten */}
                   {favorieten.length > 0 && (
                     <div>
                       <div className="flex items-center gap-3 mb-4">
@@ -754,6 +725,8 @@ setZichtbareKolommen(wilmarKols)
                       </div>
                     </div>
                   )}
+
+                  {/* Alle winkels */}
                   <div>
                     <div className="flex items-center gap-3 mb-4">
                       <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Alle winkels</span>
@@ -781,8 +754,8 @@ setZichtbareKolommen(wilmarKols)
                 {[
                   { label: 'Producten', value: stats.producten, vorig: vorigeStats?.producten, color: DYNAMO_BLUE },
                   { label: 'Totaal voorraad', value: stats.voorraad, vorig: vorigeStats?.voorraad, color: DYNAMO_BLUE },
-                  { label: bron === 'wilmar' ? 'Gereserveerd' : 'Fietsen op voorraad', value: bron === 'wilmar' ? gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.RESERVED) || 0), 0) : stats.fietsen, color: '#16a34a' },
-                  { label: bron === 'wilmar' ? 'Verkocht' : 'Merken', value: bron === 'wilmar' ? gefilterdEnGesorteerd.reduce((s, p) => s + (Number(p.SOLD) || 0), 0) : stats.merken, color: DYNAMO_BLUE },
+                  { label: 'Fietsen op voorraad', value: stats.fietsen, color: '#16a34a' },
+                  { label: 'Merken', value: stats.merken, color: DYNAMO_BLUE },
                 ].map(s => (
                   <div key={s.label} className="rounded-2xl px-5 py-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                     <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.08em', fontFamily: F }}>{s.label}</div>
@@ -798,11 +771,11 @@ setZichtbareKolommen(wilmarKols)
               <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>#{dealer}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={bron === 'wilmar' ? { background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontFamily: F } : { background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
-                        {bron === 'wilmar' ? '🔗 Wilmar' : 'CycleSoftware'}
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
+                        {bron === 'wilmar' ? 'Wilmar' : 'CycleSoftware'}
                       </span>
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                     </div>
@@ -818,7 +791,7 @@ setZichtbareKolommen(wilmarKols)
                   <div className="flex flex-wrap gap-2 items-center">
                     <div className="relative flex-1 min-w-[200px]">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(13,31,78,0.3)' }}>⌕</span>
-                      <input type="text" placeholder={bron === 'wilmar' ? 'Zoek op barcode...' : 'Zoek op product, merk, barcode...'} value={zoekterm} onChange={e => setZoekterm(e.target.value)} className="w-full rounded-xl px-3 py-2 pl-9 text-sm" style={inputStyle} />
+                      <input type="text" placeholder="Zoek op product, merk, barcode..." value={zoekterm} onChange={e => setZoekterm(e.target.value)} className="w-full rounded-xl px-3 py-2 pl-9 text-sm" style={inputStyle} />
                     </div>
                     <select value={zoekKolom} onChange={e => setZoekKolom(e.target.value)} className="rounded-xl px-3 py-2 text-sm" style={inputStyle}>
                       <option value="ALL">Alle kolommen</option>
@@ -906,19 +879,10 @@ setZichtbareKolommen(wilmarKols)
                             {zichtbareKolommen.map(k => {
                               const sticky = stickyEnabled && stickyKey === k
                               const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
-                              const isRed = k === 'RESERVED'
                               const stockVal = Number(p[k])
                               return (
                                 <td key={k} className="px-4 py-2.5 whitespace-nowrap align-middle" style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(13,31,78,0.06)' } : undefined}>
-                                  <span className="text-sm" style={{
-                                    fontFamily: F,
-                                    color: isStock
-                                      ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a')
-                                      : isRed ? '#d97706'
-                                      : DYNAMO_BLUE,
-                                    fontWeight: (isStock || isRed) ? 600 : 400,
-                                    opacity: (isStock || isRed) ? 1 : 0.8,
-                                  }}>
+                                  <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
                                     {formatValue(k, p[k])}
                                   </span>
                                 </td>

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+console.log('WILMAR_API_KEY set?', !!process.env.WILMAR_API_KEY)
+console.log('WILMAR_PASSWORD set?', !!process.env.WILMAR_PASSWORD)
 const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
 const WILMAR_KEY = process.env.WILMAR_API_KEY!
 const WILMAR_PASSWORD = process.env.WILMAR_PASSWORD!
