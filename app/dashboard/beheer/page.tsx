@@ -148,10 +148,11 @@ export default function BeheerPage() {
   }
 
   async function slaWinkelOp(e: React.FormEvent) {
-    e.preventDefault()
-    if (!bewerkWinkel) return
-    setWinkelLoading(true)
-    await fetch('/api/winkels', {
+  e.preventDefault()
+  if (!bewerkWinkel) return
+  alert(`Opslaan: branchId=${wilmarBranchId}, orgId=${wilmarOrganisationId}`)
+  setWinkelLoading(true)
+  await fetch('/api/winkels', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
