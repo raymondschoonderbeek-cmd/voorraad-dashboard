@@ -3,11 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 
 const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
 const WILMAR_KEY = process.env.WILMAR_API_KEY!
+const WILMAR_PASSWORD = process.env.WILMAR_PASSWORD!
 
 function wilmarHeaders() {
+  const credentials = Buffer.from(`${WILMAR_KEY}:${WILMAR_PASSWORD}`).toString('base64')
   return {
-    'Authorization': WILMAR_KEY,
-    'Accept': 'text/plain',
+    'Authorization': `Basic ${credentials}`,
+    'Accept': 'application/json',
   }
 }
 
