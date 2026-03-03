@@ -802,7 +802,7 @@ export default function BeheerPage() {
                 <div className="divide-y" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
                   {winkels.map((w, i) => (
                     <div key={w.id} className="flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50/50">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? '#374151' : WINKEL_KLEUREN[i % 8] }}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? 'white' : WINKEL_KLEUREN[i % 8], border: isBikeTotaal(w.naam) ? '1px solid rgba(13,31,78,0.1)' : undefined }}>
                         {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
                       </div>
                       <div className="flex-1 min-w-0">

@@ -154,7 +154,7 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
       <div style={{ height: '4px', background: kleur }} />
       <div className="p-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={isBikeTotaal(w.naam) ? { background: '#374151' } : { background: kleur }} onClick={() => onSelecteer(w)}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={isBikeTotaal(w.naam) ? { background: 'white', border: '1px solid rgba(13,31,78,0.1)' } : { background: kleur }} onClick={() => onSelecteer(w)}>
             {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
           </div>
           <div className="min-w-0 flex-1" onClick={() => onSelecteer(w)}>
@@ -217,7 +217,7 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
         const isBike = /bike\s*totaal/i.test(w.naam)
         const icon = L.divIcon({
           html: isBike
-            ? `<div style="background:#374151;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${BIKE_TOTAAL_LOGO}" alt="" style="transform:rotate(45deg);width:20px;height:20px;object-fit:contain" /></div>`
+            ? `<div style="background:white;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${BIKE_TOTAAL_LOGO}" alt="" style="transform:rotate(45deg);width:20px;height:20px;object-fit:contain" /></div>`
             : `<div style="background:${kleur};width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;text-align:center;line-height:26px;">${w.naam.charAt(0)}</div></div>`,
           className: '', iconSize: [32, 32], iconAnchor: [16, 32],
         })

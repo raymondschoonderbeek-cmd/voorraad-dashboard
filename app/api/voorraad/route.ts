@@ -139,6 +139,12 @@ export async function GET(request: NextRequest) {
 
       const bicyclesRaw = await bicyclesRes.json().catch(() => null)
       const bicyclesList = Array.isArray(bicyclesRaw) ? bicyclesRaw : bicyclesRaw?.data ?? bicyclesRaw?.bicycles ?? []
+      // Wilmar: alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Hybride Fietsen")
+      const wilmarGroep = (raw: string) => {
+        const s = String(raw ?? '').trim()
+        const first = s.split(/\s+/)[0]
+        return first || s
+      }
       const bicycles = bicyclesList.map((item: any) => ({
         PRODUCT_DESCRIPTION: item.name ?? item.webshopDescription ?? '',
         BRAND_NAME: item.manufacturer ?? item.brand ?? '',
@@ -147,7 +153,7 @@ export async function GET(request: NextRequest) {
         STOCK: item.quantity ?? 1,
         AVAILABLE_STOCK: item.isReserved ? 0 : (item.quantity ?? 1),
         SALES_PRICE_INC: item.sellPrice ?? item.defaultSellPrice ?? item.recommendedSellPrice ?? null,
-        GROUP_DESCRIPTION_1: item.category ?? item.registerGroup ?? '',
+        GROUP_DESCRIPTION_1: wilmarGroep(item.category ?? item.registerGroup ?? ''),
         GROUP_DESCRIPTION_2: item.registerSubGroup ?? '',
         SUPPLIER_PRODUCT_NUMBER: item.articleNumber ?? item.supplierBarcode ?? '',
         SUPPLIER_NAME: item.supplierName ?? '',
@@ -169,7 +175,8 @@ export async function GET(request: NextRequest) {
           const stock = item.numberOnStock ?? item.totalNumberInShop ?? 0
           const reserved = item.reserved ?? 0
           if (stock > 0) {
-            const cat = item.category ?? item.productGroup?.name ?? ''
+            const catRaw = item.category ?? item.productGroup?.name ?? ''
+            const cat = wilmarGroep(catRaw)
             const subCat = item.size ?? item.productGroup?.sub ?? ''
             partsList.push({
               PRODUCT_DESCRIPTION: item.name ?? item.description ?? '',
