@@ -5,16 +5,36 @@ const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
 const WILMAR_KEY = process.env.WILMAR_API_KEY!
 const WILMAR_PASSWORD = process.env.WILMAR_PASSWORD!
 
-function wilmarHeaders() {
-  const credentials = Buffer.from(`${WILMAR_KEY}:${WILMAR_PASSWORD}`).toString('base64')
+// Haal een access token op via apiKey + password
+async function getWilmarToken(): Promise<string> {
+  const res = await fetch(`${WILMAR_BASE}/api/v1/Account`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      apiKey: WILMAR_KEY,
+      password: WILMAR_PASSWORD,
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Wilmar login mislukt: ${res.status} ${text}`)
+  }
+
+  const data = await res.json()
+  return data.accessToken
+}
+
+function wilmarHeaders(token: string) {
   return {
-    'Authorization': `Basic ${credentials}`,
+    'Authorization': `Bearer ${token}`,
     'Accept': 'application/json',
   }
 }
 
-// GET /api/wilmar?action=stores
-// GET /api/wilmar?action=stock&organisationId=X&branchId=Y
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,11 +43,21 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const action = searchParams.get('action')
 
+  let token: string
+  try {
+    token = await getWilmarToken()
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 502 })
+  }
+
   if (action === 'stores') {
     const res = await fetch(`${WILMAR_BASE}/api/v1/Stores/all`, {
-      headers: wilmarHeaders(),
+      headers: wilmarHeaders(token),
     })
-    if (!res.ok) return NextResponse.json({ error: 'Wilmar stores ophalen mislukt', status: res.status }, { status: 502 })
+    if (!res.ok) {
+      const detail = await res.text()
+      return NextResponse.json({ error: 'Wilmar stores ophalen mislukt', status: res.status, detail }, { status: 502 })
+    }
     const data = await res.json()
     return NextResponse.json(data)
   }
@@ -47,13 +77,15 @@ export async function GET(req: NextRequest) {
     if (barcode) url.searchParams.set('barcode', barcode)
 
     const res = await fetch(url.toString(), {
-      headers: wilmarHeaders(),
+      headers: wilmarHeaders(token),
     })
 
-    if (!res.ok) return NextResponse.json({ error: 'Wilmar stock ophalen mislukt', status: res.status }, { status: 502 })
-    const data = await res.json()
+    if (!res.ok) {
+      const detail = await res.text()
+      return NextResponse.json({ error: 'Wilmar stock ophalen mislukt', status: res.status, detail }, { status: 502 })
+    }
 
-    // Normaliseer naar hetzelfde formaat als onze eigen voorraad
+    const data = await res.json()
     const normalized = data.map((item: any) => ({
       BARCODE: item.barcode,
       STOCK: item.stock,
