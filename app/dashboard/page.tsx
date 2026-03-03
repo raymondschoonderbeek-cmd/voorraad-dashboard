@@ -471,7 +471,7 @@ export default function Dashboard() {
       `}</style>
 
       {/* NAVIGATIE */}
-      <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-40">
+      <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-[100]">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>
