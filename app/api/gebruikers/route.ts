@@ -29,7 +29,7 @@ export async function GET() {
 
   const { data: winkels } = await supabase
     .from('winkels')
-    .select('id, naam, dealer_nummer')
+    .select('*')
     .order('naam')
 
   return NextResponse.json({ rollen: rollen ?? [], winkelToegang: winkelToegang ?? [], winkels: winkels ?? [] })

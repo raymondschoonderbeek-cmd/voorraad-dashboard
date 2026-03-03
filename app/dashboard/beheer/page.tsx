@@ -106,6 +106,8 @@ export default function BeheerPage() {
     setWilmarBranchId(w.wilmar_branch_id ?? null)
     setWilmarOrganisationId(w.wilmar_organisation_id ?? null)
     setWilmarStores([])
+    setFormError('')
+    setFormSuccess('')
   }
 
   async function voegGebruikerToe(e: React.FormEvent) {
@@ -170,26 +172,34 @@ export default function BeheerPage() {
   }
 
   async function slaWinkelOp(e: React.FormEvent) {
-  e.preventDefault()
-  if (!bewerkWinkel) return
-  setWinkelLoading(true)
-  const heeftWilmarKoppeling = wilmarBranchId != null && wilmarOrganisationId != null
-  const payload = {
-    id: bewerkWinkel.id,
-    naam: bewerkWinkel.naam,
-    dealer_nummer: bewerkWinkel.dealer_nummer,
-    postcode: bewerkWinkel.postcode,
-    stad: bewerkWinkel.stad,
-    wilmar_organisation_id: wilmarOrganisationId ?? null,
-    wilmar_branch_id: wilmarBranchId ?? null,
-    api_type: heeftWilmarKoppeling ? 'wilmar' : 'cyclesoftware',
-  }
-  await fetch('/api/winkels', {
+    e.preventDefault()
+    if (!bewerkWinkel) return
+    setWinkelLoading(true)
+    setFormError('')
+    setFormSuccess('')
+    const heeftWilmarKoppeling = wilmarBranchId != null && wilmarOrganisationId != null
+    const payload = {
+      id: bewerkWinkel.id,
+      naam: bewerkWinkel.naam,
+      dealer_nummer: bewerkWinkel.dealer_nummer,
+      postcode: bewerkWinkel.postcode,
+      stad: bewerkWinkel.stad,
+      wilmar_organisation_id: wilmarOrganisationId ?? null,
+      wilmar_branch_id: wilmarBranchId ?? null,
+      api_type: heeftWilmarKoppeling ? 'wilmar' : 'cyclesoftware',
+    }
+    const res = await fetch('/api/winkels', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
+    const data = await res.json().catch(() => ({}))
     setWinkelLoading(false)
+    if (!res.ok) {
+      setFormError(data.error ?? data.message ?? 'Opslaan mislukt. Probeer het opnieuw.')
+      return
+    }
+    setFormSuccess(`${bewerkWinkel.naam} opgeslagen.`)
     setBewerkWinkel(null)
     setWilmarBranchId(null)
     setWilmarOrganisationId(null)
@@ -320,6 +330,7 @@ export default function BeheerPage() {
         </div>
 
         {error && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{error}</div>}
+        {formError && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
         {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
         <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>

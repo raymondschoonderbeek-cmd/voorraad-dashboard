@@ -90,8 +90,6 @@ export async function PUT(request: NextRequest) {
     updateData.api_type = api_type
   }
 
-  console.log('PUT winkels updateData:', updateData)
-
   const { error } = await supabase
     .from('winkels')
     .update(updateData)
