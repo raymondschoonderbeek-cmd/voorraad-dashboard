@@ -468,8 +468,7 @@ setZichtbareKolommen(wilmarKols)
 
   const gefilterdEnGesorteerd = useMemo(() => {
     let arr = bron === 'wilmar'
-      ? producten.filter(p => p.BARCODE && p.BARCODE !== '')
-      : producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
+      let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
 
     if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
       const needle = debouncedZoekterm.toLowerCase()
