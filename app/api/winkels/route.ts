@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, naam, dealer_nummer, postcode, stad } = body
+  const { id, naam, dealer_nummer, postcode, stad, wilmar_organisation_id, wilmar_branch_id } = body
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
@@ -75,6 +75,8 @@ export async function PUT(request: NextRequest) {
       stad: stad || null,
       lat,
       lng,
+    wilmar_organisation_id: wilmar_organisation_id || null,
+      wilmar_branch_id: wilmar_branch_id || null,
     })
     .eq('id', id)
 

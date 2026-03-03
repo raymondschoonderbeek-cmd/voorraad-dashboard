@@ -73,7 +73,7 @@ function isFiets(p: any) {
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
-type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number }
+type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number; wilmar_organisation_id?: number; wilmar_branch_id?: number }
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 

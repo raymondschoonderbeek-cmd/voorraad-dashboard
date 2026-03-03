@@ -9,7 +9,7 @@ const F = "'Outfit', sans-serif"
 
 type Rol = { id: number; user_id: string; rol: string; naam: string; created_at: string }
 type WinkelToegang = { id: number; user_id: string; winkel_id: number }
-type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string }
+type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number; wilmar_organisation_id?: number; wilmar_branch_id?: number }
 type Tab = 'gebruikers' | 'winkels' | 'import'
 
 const IconArrowLeft = () => (
@@ -46,6 +46,10 @@ export default function BeheerPage() {
   const [nieuwWinkelPostcode, setNieuwWinkelPostcode] = useState('')
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
 
+  // Wilmar
+  const [wilmarStores, setWilmarStores] = useState<any[]>([])
+  const [wilmarStoresLoading, setWilmarStoresLoading] = useState(false)
+
   // Excel import
   const [importData, setImportData] = useState<any[]>([])
   const [importLoading, setImportLoading] = useState(false)
@@ -69,6 +73,18 @@ export default function BeheerPage() {
   }, [])
 
   useEffect(() => { haalGebruikersOp() }, [haalGebruikersOp])
+
+  async function haalWilmarStoresOp() {
+    setWilmarStoresLoading(true)
+    try {
+      const res = await fetch('/api/wilmar?action=stores')
+      const data = await res.json()
+      setWilmarStores(Array.isArray(data) ? data : [])
+    } catch {
+      setWilmarStores([])
+    }
+    setWilmarStoresLoading(false)
+  }
 
   async function voegGebruikerToe(e: React.FormEvent) {
     e.preventDefault()
@@ -128,7 +144,15 @@ export default function BeheerPage() {
     await fetch('/api/winkels', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: bewerkWinkel.id, naam: bewerkWinkel.naam, dealer_nummer: bewerkWinkel.dealer_nummer, postcode: bewerkWinkel.postcode, stad: bewerkWinkel.stad }),
+      body: JSON.stringify({
+        id: bewerkWinkel.id,
+        naam: bewerkWinkel.naam,
+        dealer_nummer: bewerkWinkel.dealer_nummer,
+        postcode: bewerkWinkel.postcode,
+        stad: bewerkWinkel.stad,
+        wilmar_organisation_id: bewerkWinkel.wilmar_organisation_id,
+        wilmar_branch_id: bewerkWinkel.wilmar_branch_id,
+      }),
     })
     setWinkelLoading(false); setBewerkWinkel(null)
     await haalGebruikersOp()
@@ -159,22 +183,18 @@ export default function BeheerPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setImportError(''); setImportSuccess(''); setImportData([])
-
     try {
       const XLSX = await import('xlsx' as any)
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { type: 'array' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-
-      // Verwacht kolommen: naam, dealer_nummer, postcode, stad
       const parsed = rows.map(r => ({
         naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
         dealer_nummer: String(r.dealer_nummer || r['Dealer nummer'] || r.DEALER_NUMMER || '').trim(),
         postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
         stad: String(r.stad || r.Stad || r.STAD || '').trim(),
       })).filter(r => r.naam && r.dealer_nummer)
-
       setImportData(parsed)
     } catch {
       setImportError('Kon het bestand niet lezen. Zorg dat het een geldig .xlsx bestand is.')
@@ -184,7 +204,6 @@ export default function BeheerPage() {
   async function importeerWinkels() {
     if (importData.length === 0) return
     setImportLoading(true); setImportError(''); setImportSuccess('')
-
     let succes = 0
     for (const winkel of importData) {
       const res = await fetch('/api/winkels', {
@@ -194,7 +213,6 @@ export default function BeheerPage() {
       })
       if (res.ok) succes++
     }
-
     setImportLoading(false)
     setImportSuccess(`${succes} van ${importData.length} winkels succesvol geïmporteerd!`)
     setImportData([])
@@ -277,10 +295,7 @@ export default function BeheerPage() {
               key={t.key}
               onClick={() => { setTab(t.key); setToonForm(false); setBewerkGebruiker(null); setToonWinkelForm(false); setBewerkWinkel(null) }}
               className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all"
-              style={tab === t.key
-                ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F }
-                : { color: 'rgba(13,31,78,0.5)', fontFamily: F }
-              }
+              style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(13,31,78,0.5)', fontFamily: F }}
             >
               <span>{t.icon}</span>
               <span>{t.label}</span>
@@ -494,6 +509,50 @@ export default function BeheerPage() {
                       <input value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass} style={inputStyle} />
                     </div>
                   </div>
+
+                  {/* Wilmar koppeling */}
+                  <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.08)' }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>🔗 Wilmar koppeling</p>
+                      <button type="button" onClick={haalWilmarStoresOp} disabled={wilmarStoresLoading} className="text-xs px-2 py-1 rounded-lg transition hover:opacity-70" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+                        {wilmarStoresLoading ? 'Laden...' : 'Laad Wilmar winkels'}
+                      </button>
+                    </div>
+                    {bewerkWinkel.wilmar_branch_id && wilmarStores.length === 0 && (
+                      <p className="text-xs" style={{ color: '#16a34a', fontFamily: F }}>✓ Gekoppeld (branch: {bewerkWinkel.wilmar_branch_id}) — klik op laden om te wijzigen</p>
+                    )}
+                    {wilmarStores.length > 0 && (
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
+                        <select
+                          value={bewerkWinkel.wilmar_branch_id ?? ''}
+                          onChange={e => {
+                            const store = wilmarStores.find(s => s.branchId === Number(e.target.value))
+                            setBewerkWinkel({
+                              ...bewerkWinkel,
+                              wilmar_branch_id: store?.branchId ?? undefined,
+                              wilmar_organisation_id: store?.organisationId ?? undefined,
+                            })
+                          }}
+                          className={inputClass}
+                          style={inputStyle}
+                        >
+                          <option value="">— Niet gekoppeld —</option>
+                          {wilmarStores.map(s => (
+                            <option key={s.branchId} value={s.branchId}>
+                              {s.name} {s.city ? `(${s.city})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {bewerkWinkel.wilmar_branch_id && (
+                          <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
+                            ✓ Gekoppeld aan Wilmar (org: {bewerkWinkel.wilmar_organisation_id}, branch: {bewerkWinkel.wilmar_branch_id})
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Opslaan...' : 'Opslaan'}</button>
                     <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
@@ -517,7 +576,12 @@ export default function BeheerPage() {
                         {w.naam.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</span>
+                          {w.wilmar_branch_id && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontFamily: F }}>🔗 Wilmar</span>
+                          )}
+                        </div>
                         <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>
                           #{w.dealer_nummer}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
@@ -538,17 +602,10 @@ export default function BeheerPage() {
         {tab === 'import' && (
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-              <div className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-12px' }}>
-              </div>
-              <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F }}>📊 Winkels importeren via Excel</h2>
+              <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
               <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong>, <strong>postcode</strong>, <strong>stad</strong></p>
 
-              {/* Upload zone */}
-              <div
-                className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80"
-                style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }}
-                onClick={() => fileInputRef.current?.click()}
-              >
+              <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
                 <div className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Ondersteund: .xlsx, .xls</div>
@@ -558,7 +615,6 @@ export default function BeheerPage() {
               {importError && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', color: '#dc2626', fontFamily: F }}>{importError}</div>}
               {importSuccess && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#f0fdf4', color: '#16a34a', fontFamily: F }}>✓ {importSuccess}</div>}
 
-              {/* Preview */}
               {importData.length > 0 && (
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -568,11 +624,7 @@ export default function BeheerPage() {
                   <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                     <table className="w-full text-xs">
                       <thead style={{ background: DYNAMO_BLUE }}>
-                        <tr>
-                          {['Naam', 'Dealer #', 'Postcode', 'Stad'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F, letterSpacing: '0.05em' }}>{h}</th>
-                          ))}
-                        </tr>
+                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Stad'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {importData.slice(0, 10).map((r, i) => (
@@ -585,9 +637,7 @@ export default function BeheerPage() {
                         ))}
                       </tbody>
                     </table>
-                    {importData.length > 10 && (
-                      <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>
-                    )}
+                    {importData.length > 10 && <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>}
                   </div>
                   <button onClick={importeerWinkels} disabled={importLoading} className="w-full rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
                     {importLoading ? 'Importeren...' : `${importData.length} winkels importeren`}
@@ -596,24 +646,15 @@ export default function BeheerPage() {
               )}
             </div>
 
-            {/* Voorbeeld template */}
             <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat</h3>
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>
-                      {['naam', 'dealer_nummer', 'postcode', 'stad'].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{['naam', 'dealer_nummer', 'postcode', 'stad'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {[
-                      ['Dynamo Amsterdam', '10001', '1012AB', 'Amsterdam'],
-                      ['Dynamo Rotterdam', '10002', '3011AD', 'Rotterdam'],
-                      ['Dynamo Utrecht', '10003', '3511EP', 'Utrecht'],
-                    ].map((r, i) => (
+                    {[['Dynamo Amsterdam','10001','1012AB','Amsterdam'],['Dynamo Rotterdam','10002','3011AD','Rotterdam'],['Dynamo Utrecht','10003','3511EP','Utrecht']].map((r, i) => (
                       <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
                         {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.7)', fontFamily: F }}>{c}</td>)}
                       </tr>
