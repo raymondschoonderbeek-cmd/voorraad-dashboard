@@ -13,6 +13,7 @@ import type { Winkel } from '@/lib/types'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 const DYNAMO_GOLD = '#f0c040'
 const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
+const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
 const WINKEL_KLEUREN = [
@@ -282,6 +283,18 @@ export default function Dashboard() {
   const supabase = createClient()
 
   useEffect(() => {
+    if (winkels.length > 0 && !geselecteerdeWinkel) {
+      try {
+        const id = localStorage.getItem(WINKEL_STORAGE_KEY)
+        if (id) {
+          const w = winkels.find(x => x.id === Number(id))
+          if (w) selecteerWinkel(w)
+        }
+      } catch {}
+    }
+  }, [winkels, geselecteerdeWinkel])
+
+  useEffect(() => {
     try {
       const opgeslagen = localStorage.getItem(KOLOMMEN_STORAGE_KEY)
       if (opgeslagen) {
@@ -380,6 +393,7 @@ export default function Dashboard() {
   }, [debouncedZoekterm, geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
+    try { localStorage.setItem(WINKEL_STORAGE_KEY, String(winkel.id)) } catch {}
     setVorigeStats(producten.length > 0 ? {
       producten: producten.length,
       voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
@@ -711,7 +725,7 @@ export default function Dashboard() {
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
-                      <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-80 shrink-0" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>
+                      <Link href={geselecteerdeWinkel ? `/dashboard/brand-groep?winkel=${geselecteerdeWinkel.id}` : '/dashboard/brand-groep'} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-80 shrink-0" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>
                         <IconChart /> Merk/Groep
                       </Link>
                       <span className="text-xs shrink-0" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>

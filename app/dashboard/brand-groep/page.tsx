@@ -2,12 +2,14 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { WinkelSelect } from '@/components/WinkelSelect'
 import { WinkelModal } from '@/components/WinkelModal'
 import type { Winkel } from '@/lib/types'
 
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
+const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 type Product = { [key: string]: any }
 
 const BRAND_ALIASES: Record<string, string> = {
@@ -92,6 +94,7 @@ type GroupIndex = {
 }
 
 export default function BrandGroepPage() {
+  const searchParams = useSearchParams()
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
   const [producten, setProducten] = useState<Product[]>([])
@@ -143,7 +146,22 @@ export default function BrandGroepPage() {
 
   useEffect(() => { haalWinkelsOp() }, [haalWinkelsOp])
 
+  useEffect(() => {
+    if (winkels.length === 0 || geselecteerdeWinkel) return
+    const idParam = searchParams.get('winkel')
+    const id = idParam ? Number(idParam) : (() => { try { const s = localStorage.getItem(WINKEL_STORAGE_KEY); return s ? Number(s) : null } catch { return null } })()
+    const w = id ? winkels.find(x => x.id === id) : null
+    if (w) {
+      setGeselecteerdeWinkel(w)
+      setWinkelModalOpen(false)
+      haalVoorraadOp(w.id, w.dealer_nummer)
+    }
+  }, [winkels, geselecteerdeWinkel, searchParams, haalVoorraadOp])
+
   async function selecteerWinkel(winkel: Winkel | null) {
+    if (winkel) {
+      try { localStorage.setItem(WINKEL_STORAGE_KEY, String(winkel.id)) } catch {}
+    }
     setGeselecteerdeWinkel(winkel)
     setProducten([])
     setAuthRequired(null)
