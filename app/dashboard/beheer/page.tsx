@@ -522,41 +522,37 @@ export default function BeheerPage() {
                       <p className="text-xs" style={{ color: '#16a34a', fontFamily: F }}>✓ Gekoppeld (branch: {bewerkWinkel.wilmar_branch_id}) — klik op laden om te wijzigen</p>
                     )}
                     {wilmarStores.length > 0 && (
-                      <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
-                        <select
-                          value={bewerkWinkel.wilmar_branch_id ?? ''}
-                          onChange={e => {
-        console.log('Selected value:', e.target.value)
-        console.log('WilmarStores:', wilmarStores)
+  <div>
+    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
+    <select
+      value={String(bewerkWinkel?.wilmar_branch_id ?? '')}
+      onChange={e => {
         const val = e.target.value
-        if (!val) {
-          setBewerkWinkel({ ...bewerkWinkel!, wilmar_branch_id: undefined, wilmar_organisation_id: undefined })
-        } else {
+        setBewerkWinkel(prev => {
+          if (!prev) return prev
+          if (!val) return { ...prev, wilmar_branch_id: undefined, wilmar_organisation_id: undefined }
           const store = wilmarStores.find(s => String(s.branchId) === val)
-          console.log('Found store:', store)
-          if (store) {
-            setBewerkWinkel({ ...bewerkWinkel!, wilmar_branch_id: store.branchId, wilmar_organisation_id: store.organisationId })
-          }
-        }
+          if (!store) return prev
+          return { ...prev, wilmar_branch_id: store.branchId, wilmar_organisation_id: store.organisationId }
+        })
       }}
-                          className={inputClass}
-                          style={inputStyle}
-                        >
-                          <option value="">— Niet gekoppeld —</option>
-                          {wilmarStores.map(s => (
-                            <option key={s.branchId} value={s.branchId}>
-                              {s.name} {s.city ? `(${s.city})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        {bewerkWinkel.wilmar_branch_id && (
-                          <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
-                            ✓ Gekoppeld aan Wilmar (org: {bewerkWinkel.wilmar_organisation_id}, branch: {bewerkWinkel.wilmar_branch_id})
-                          </p>
-                        )}
-                      </div>
-                    )}
+      className={inputClass}
+      style={inputStyle}
+    >
+      <option value="">— Niet gekoppeld —</option>
+      {wilmarStores.map(s => (
+        <option key={s.branchId} value={String(s.branchId)}>
+          {s.name} {s.city ? `(${s.city})` : ''}
+        </option>
+      ))}
+    </select>
+    {bewerkWinkel?.wilmar_branch_id && (
+      <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
+        ✓ Gekoppeld: org {bewerkWinkel.wilmar_organisation_id}, branch {bewerkWinkel.wilmar_branch_id}
+      </p>
+    )}
+  </div>
+)}
                   </div>
 
                   <div className="flex gap-3 pt-1">
