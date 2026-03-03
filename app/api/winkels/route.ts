@@ -66,22 +66,26 @@ export async function PUT(request: NextRequest) {
 
   const { lat, lng } = postcode ? await haalCoordsOp(postcode) : { lat: null, lng: null }
 
+  const updateData: any = {
+    naam,
+    dealer_nummer,
+    postcode: postcode || null,
+    stad: stad || null,
+    lat,
+    lng,
+    wilmar_organisation_id: wilmar_organisation_id ?? null,
+    wilmar_branch_id: wilmar_branch_id ?? null,
+  }
+
+  console.log('PUT winkels updateData:', updateData)
+
   const { error } = await supabase
     .from('winkels')
-    .update({
-      naam,
-      dealer_nummer,
-      postcode: postcode || null,
-      stad: stad || null,
-      lat,
-      lng,
-    wilmar_organisation_id: wilmar_organisation_id || null,
-      wilmar_branch_id: wilmar_branch_id || null,
-    })
+    .update(updateData)
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
- return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true })
 }
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
