@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
     }
 
     const clientIp = getClientIp(request)
-    const ipTrusted = isIpTrusted(clientIp)
+    const { data: dbIps, error: dbErr } = await supabase.from('trusted_ips').select('ip_or_cidr')
+    const dbEntries = !dbErr && dbIps ? dbIps.map(r => r.ip_or_cidr).filter(Boolean) : []
+    const ipTrusted = isIpTrusted(clientIp, dbEntries)
 
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     const currentLevel = aalData?.currentLevel ?? 'aal1'

@@ -29,9 +29,9 @@ CYCLESOFTWARE_USER=...
 CYCLESOFTWARE_PASS=...
 CYCLESOFTWARE_BASE_URL=https://...
 
-# MFA: vertrouwde IP's (optioneel, komma-gescheiden)
-# Vanaf deze IP's is geen TOTP-code nodig bij inloggen. Bijv. kantoor-IP's.
-# Ondersteunt exacte IP's en CIDR: 192.168.1.100,192.168.1.0/24,10.0.0.1
+# MFA: vertrouwde IP's (optioneel)
+# Vanaf deze IP's is geen TOTP-code nodig. Beheer via Beheer > Vertrouwde IP's (admin).
+# Of via env (komma-gescheiden): 192.168.1.100,192.168.1.0/24
 TRUSTED_IPS=
 ```
 
@@ -54,6 +54,7 @@ Benodigde tabellen:
 - **gebruiker_rollen** – `user_id`, `rol` (viewer/admin), `naam`
 - **gebruiker_winkels** – koppeling gebruiker ↔ winkel (leeg = alle winkels)
 - **brand_aliases** – merk-aliases voor groepering
+- **trusted_ips** – vertrouwde IP-adressen (geen MFA nodig); alleen admins kunnen beheren via Beheer. Voer `supabase/migrations/20250303000000_trusted_ips.sql` uit in Supabase.
 
 ## Architectuur
 

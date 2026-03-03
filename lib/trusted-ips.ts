@@ -1,7 +1,7 @@
 /**
  * Controleert of een IP-adres in de vertrouwde lijst staat.
- * TRUSTED_IPS in .env: komma-gescheiden, bijv. "192.168.1.100,192.168.1.0/24,10.0.0.1"
- * Ondersteunt exacte IP's en CIDR-notatie (bijv. /24, /16).
+ * Ondersteunt: env TRUSTED_IPS + database tabel trusted_ips.
+ * Exacte IP's en CIDR-notatie (bijv. /24, /16).
  */
 function ipToNumber(ip: string): number | null {
   const parts = ip.trim().split('.').map(Number)
@@ -25,33 +25,41 @@ function isIpInCidr(ipNum: number, cidr: { base: number; mask: number }): boolea
   return (ipNum & cidr.mask) === cidr.base
 }
 
-let cachedEntries: (string | { base: number; mask: number })[] | null = null
+let cachedEnvEntries: (string | { base: number; mask: number })[] | null = null
 
-function getTrustedEntries(): (string | { base: number; mask: number })[] {
-  if (cachedEntries) return cachedEntries
-  const raw = process.env.TRUSTED_IPS ?? ''
-  cachedEntries = raw
+function parseRawEntries(raw: string): (string | { base: number; mask: number })[] {
+  return raw
     .split(',')
     .map(s => s.trim())
     .filter(Boolean)
     .map(entry => {
       if (entry.includes('/')) {
         const cidr = parseCidr(entry)
-        return cidr ?? entry // fallback naar exact match als parse faalt
+        return cidr ?? entry
       }
       return entry
     })
-  return cachedEntries
 }
 
-export function isIpTrusted(clientIp: string | null | undefined): boolean {
-  if (!clientIp?.trim()) return false
-  const entries = getTrustedEntries()
-  if (entries.length === 0) return false
+function getEnvEntries(): (string | { base: number; mask: number })[] {
+  if (cachedEnvEntries) return cachedEnvEntries
+  cachedEnvEntries = parseRawEntries(process.env.TRUSTED_IPS ?? '')
+  return cachedEnvEntries
+}
 
+/** Parseert een lijst IP/CIDR strings naar entries voor matching */
+export function parseTrustedIpEntries(ipList: string[]): (string | { base: number; mask: number })[] {
+  return parseRawEntries(ipList.join(','))
+}
+
+/** Controleert of clientIp matcht met de gegeven entries */
+export function isIpInEntries(
+  clientIp: string | null | undefined,
+  entries: (string | { base: number; mask: number })[]
+): boolean {
+  if (!clientIp?.trim() || entries.length === 0) return false
   const ipNum = ipToNumber(clientIp.split(',')[0]!.trim())
   if (ipNum == null) return false
-
   for (const entry of entries) {
     if (typeof entry === 'string') {
       if (ipToNumber(entry) === ipNum) return true
@@ -60,6 +68,17 @@ export function isIpTrusted(clientIp: string | null | undefined): boolean {
     }
   }
   return false
+}
+
+/** Controleert of IP vertrouwd is (env + optionele dbEntries) */
+export function isIpTrusted(
+  clientIp: string | null | undefined,
+  dbEntries?: string[]
+): boolean {
+  const envEntries = getEnvEntries()
+  const dbParsed = dbEntries?.length ? parseTrustedIpEntries(dbEntries) : []
+  const allEntries = [...envEntries, ...dbParsed]
+  return isIpInEntries(clientIp, allEntries)
 }
 
 export function getClientIp(request: Request): string | null {
