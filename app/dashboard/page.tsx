@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -14,6 +14,8 @@ const WINKEL_KLEUREN = [
   '#2563eb', '#16a34a', '#dc2626', '#9333ea',
   '#ea580c', '#0891b2', '#65a30d', '#db2777',
 ]
+const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
+function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
 const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: number; sticky?: boolean; format?: 'money' | 'int' | 'text' }> = {
   _type: { label: 'Type', order: 5, format: 'text' },
@@ -152,8 +154,8 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
       <div style={{ height: '4px', background: kleur }} />
       <div className="p-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: kleur }} onClick={() => onSelecteer(w)}>
-            {w.naam.charAt(0)}
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={isBikeTotaal(w.naam) ? { background: '#374151' } : { background: kleur }} onClick={() => onSelecteer(w)}>
+            {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
           </div>
           <div className="min-w-0 flex-1" onClick={() => onSelecteer(w)}>
             <div className="font-semibold text-sm truncate" style={{ color: DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
@@ -212,8 +214,11 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
       const bounds: [number, number][] = []
       winkelsMetCoords.forEach((w, i) => {
         const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
+        const isBike = /bike\s*totaal/i.test(w.naam)
         const icon = L.divIcon({
-          html: `<div style="background:${kleur};width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;text-align:center;line-height:26px;">${w.naam.charAt(0)}</div></div>`,
+          html: isBike
+            ? `<div style="background:#374151;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${BIKE_TOTAAL_LOGO}" alt="" style="transform:rotate(45deg);width:20px;height:20px;object-fit:contain" /></div>`
+            : `<div style="background:${kleur};width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="transform:rotate(45deg);color:white;font-size:12px;font-weight:bold;text-align:center;line-height:26px;">${w.naam.charAt(0)}</div></div>`,
           className: '', iconSize: [32, 32], iconAnchor: [16, 32],
         })
         const marker = L.marker([w.lat!, w.lng!], { icon })
@@ -269,16 +274,8 @@ export default function Dashboard() {
   const [debouncedZoekterm, setDebouncedZoekterm] = useState('')
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
   const [loading, setLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [toonWinkelForm, setToonWinkelForm] = useState(false)
-  const [winkelLoading, setWinkelLoading] = useState(false)
-  const [nieuweNaam, setNieuweNaam] = useState('')
-  const [nieuwDealer, setNieuwDealer] = useState('')
-  const [nieuwePostcode, setNieuwePostcode] = useState('')
-  const [nieuweStad, setNieuweStad] = useState('')
-  const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
-  const [bewerkLoading, setBewerkLoading] = useState(false)
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
+  const winkelSelectRef = useRef<HTMLSelectElement>(null)
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [gebruiker, setGebruiker] = useState('')
@@ -385,32 +382,11 @@ export default function Dashboard() {
     await haalVoorraadOp(winkel.id, winkel.dealer_nummer, '')
   }
 
-  async function voegWinkelToe(e: React.FormEvent) {
-    e.preventDefault()
-    setWinkelLoading(true)
-    await fetch('/api/winkels', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ naam: nieuweNaam, dealer_nummer: nieuwDealer, postcode: nieuwePostcode, stad: nieuweStad }) })
-    setNieuweNaam(''); setNieuwDealer(''); setNieuwePostcode(''); setNieuweStad('')
-    setToonWinkelForm(false); setWinkelLoading(false)
-    await haalWinkelsOp()
-  }
-
-  async function slaWinkelOp(e: React.FormEvent) {
-    e.preventDefault()
-    if (!bewerkWinkel) return
-    setBewerkLoading(true)
-    await fetch('/api/winkels', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: bewerkWinkel.id, naam: bewerkWinkel.naam, dealer_nummer: bewerkWinkel.dealer_nummer, postcode: bewerkWinkel.postcode, stad: bewerkWinkel.stad }) })
-    setBewerkLoading(false); setBewerkWinkel(null)
-    await haalWinkelsOp()
-  }
-
-  async function verwijderWinkel(id: number) {
-    if (!confirm('Winkel verwijderen?')) return
-    await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
-    if (geselecteerdeWinkel?.id === id) { setGeselecteerdeWinkel(null); setProducten([]); setKolommen([]); setZoekterm(''); setAuthRequired(null) }
-    await haalWinkelsOp()
-  }
-
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
+
+  function focusWinkelSelect() {
+    winkelSelectRef.current?.focus()
+  }
 
   function toggleSort(k: string) {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -507,6 +483,7 @@ export default function Dashboard() {
           <div className="flex items-center px-5 gap-2" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <span className="text-xs font-semibold uppercase hidden sm:block" style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: F }}>Winkel</span>
             <select
+              ref={winkelSelectRef}
               value={geselecteerdeWinkel?.id ?? ''}
               onChange={e => { const w = winkels.find(w => w.id === Number(e.target.value)); if (w) selecteerWinkel(w) }}
               className="text-sm rounded-lg px-3 py-1.5 cursor-pointer min-w-[170px]"
@@ -518,13 +495,6 @@ export default function Dashboard() {
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2 pl-4">
-            <button onClick={() => setSidebarOpen(v => !v)} className="w-8 h-8 rounded-lg flex items-center justify-center transition hover:opacity-70" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span className="flex flex-col gap-1 w-3.5">
-                <span className="block h-px bg-white rounded" />
-                <span className="block h-px bg-white rounded" />
-                <span className="block h-px bg-white rounded" />
-              </span>
-            </button>
             <span className="text-xs hidden md:block px-2" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{gebruiker}</span>
             <Link href="/dashboard/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 hidden md:flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -540,75 +510,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* SIDEBAR */}
-        <aside className="flex flex-col transition-all duration-200 overflow-hidden" style={{ width: sidebarOpen ? '256px' : '0px', minWidth: sidebarOpen ? '256px' : '0px', background: '#f8f9fc', borderRight: '1px solid rgba(13,31,78,0.07)', fontFamily: F }}>
-          <div className={sidebarOpen ? 'flex flex-col h-full p-4 gap-3' : 'hidden'}>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-xs font-bold uppercase" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Winkels</span>
-              <button onClick={() => setToonWinkelForm(v => !v)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold transition hover:opacity-80" style={{ background: DYNAMO_BLUE, fontSize: '18px' }}>+</button>
-            </div>
-
-            {toonWinkelForm && (
-              <form onSubmit={voegWinkelToe} className="rounded-xl p-3 space-y-2" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)' }}>
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</p>
-                <input placeholder="Naam winkel" value={nieuweNaam} onChange={e => setNieuweNaam(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} required />
-                <input placeholder="Dealer nummer" value={nieuwDealer} onChange={e => setNieuwDealer(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} required />
-                <input placeholder="Postcode" value={nieuwePostcode} onChange={e => setNieuwePostcode(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} />
-                <input placeholder="Stad" value={nieuweStad} onChange={e => setNieuweStad(e.target.value)} className={inputClass + ' w-full'} style={inputStyle} />
-                <div className="flex gap-2">
-                  <button type="submit" disabled={winkelLoading} className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
-                  <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-lg border px-3 text-sm hover:bg-gray-50" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>✕</button>
-                </div>
-              </form>
-            )}
-
-            {bewerkWinkel && (
-              <form onSubmit={slaWinkelOp} className="rounded-xl p-3 space-y-2" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}` }}>
-                <p className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ Bewerken</p>
-                <input placeholder="Naam winkel" value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} required />
-                <input placeholder="Dealer nummer" value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} required />
-                <input placeholder="Postcode" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} />
-                <input placeholder="Stad" value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass + ' w-full'} style={inputStyle} />
-                <div className="flex gap-2">
-                  <button type="submit" disabled={bewerkLoading} className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{bewerkLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                  <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-lg border px-3 text-sm hover:bg-gray-50" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>✕</button>
-                </div>
-              </form>
-            )}
-
-            <div className="flex-1 overflow-y-auto space-y-1">
-              {winkels.map((w, i) => {
-                const active = geselecteerdeWinkel?.id === w.id
-                const kleur = WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]
-                return (
-                  <div key={w.id} onClick={() => selecteerWinkel(w)} className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer transition-all" style={active ? { background: DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(13,31,78,0.2)' } : { background: 'white', border: '1px solid rgba(13,31,78,0.07)' }}>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: active ? 'rgba(255,255,255,0.15)' : kleur }}>{w.naam.charAt(0)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{ color: active ? 'white' : DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
-                      <div className="text-xs flex items-center gap-1" style={{ color: active ? 'rgba(255,255,255,0.45)' : 'rgba(13,31,78,0.35)', fontFamily: F }}>
-                        {w.stad ? <><IconPin />{w.stad}</> : `#${w.dealer_nummer}`}
-                      </div>
-                    </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition flex gap-1">
-                      <button onClick={e => { e.stopPropagation(); setBewerkWinkel(w); setToonWinkelForm(false) }} className="text-xs rounded px-1 py-0.5" style={{ color: active ? 'rgba(255,255,255,0.6)' : 'rgba(13,31,78,0.4)' }}>✏️</button>
-                      <button onClick={e => { e.stopPropagation(); verwijderWinkel(w.id) }} className="text-xs rounded px-1 py-0.5" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#ef4444' }}>✕</button>
-                    </div>
-                  </div>
-                )
-              })}
-              {winkels.length === 0 && (
-                <div className="rounded-xl p-4 text-center" style={{ border: '1px dashed rgba(13,31,78,0.15)' }}>
-                  <p className="text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Nog geen winkels.<br />Klik op <strong>+</strong> om toe te voegen.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-
-        {/* MAIN */}
-        <main className="flex-1 min-w-0 p-5 space-y-6 overflow-auto">
+      <main className="flex-1 min-w-0 p-5 space-y-6 overflow-auto">
           {!geselecteerdeWinkel ? (
             <div className="space-y-8">
 
@@ -629,7 +531,7 @@ export default function Dashboard() {
                   <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>Voorraad Dashboard</h1>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '8px', fontFamily: F }}>{getDatum()}</p>
                   <div className="flex items-center gap-3 mt-6">
-                    <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}>
+                    <button onClick={focusWinkelSelect} className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}>
                       <IconStore /> Kies een winkel
                     </button>
                     <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
@@ -659,7 +561,7 @@ export default function Dashboard() {
                   <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={() => setSidebarOpen(true)}>
+                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={focusWinkelSelect}>
                     <div className="p-6">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
                         <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
@@ -912,7 +814,6 @@ export default function Dashboard() {
             </>
           )}
         </main>
-      </div>
     </div>
   )
 }

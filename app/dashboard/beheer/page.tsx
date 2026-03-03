@@ -6,6 +6,9 @@ import Link from 'next/link'
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
 const F = "'Outfit', sans-serif"
+const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
+const WINKEL_KLEUREN = ['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
+function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
 type Rol = { id: number; user_id: string; rol: string; naam: string; created_at: string }
 type WinkelToegang = { id: number; user_id: string; winkel_id: number }
@@ -799,8 +802,8 @@ export default function BeheerPage() {
                 <div className="divide-y" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
                   {winkels.map((w, i) => (
                     <div key={w.id} className="flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50/50">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: ['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777'][i % 8] }}>
-                        {w.naam.charAt(0)}
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? '#374151' : WINKEL_KLEUREN[i % 8] }}>
+                        {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
