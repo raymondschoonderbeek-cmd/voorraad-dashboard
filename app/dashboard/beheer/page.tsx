@@ -527,13 +527,16 @@ export default function BeheerPage() {
                         <select
                           value={bewerkWinkel.wilmar_branch_id ?? ''}
                           onChange={e => {
-                            const store = wilmarStores.find(s => s.branchId === Number(e.target.value))
-                            setBewerkWinkel({
-                              ...bewerkWinkel,
-                              wilmar_branch_id: store?.branchId ?? undefined,
-                              wilmar_organisation_id: store?.organisationId ?? undefined,
-                            })
-                          }}
+  const val = e.target.value
+  if (!val) {
+    setBewerkWinkel({ ...bewerkWinkel!, wilmar_branch_id: undefined, wilmar_organisation_id: undefined })
+  } else {
+    const store = wilmarStores.find(s => String(s.branchId) === val)
+    if (store) {
+      setBewerkWinkel({ ...bewerkWinkel!, wilmar_branch_id: store.branchId, wilmar_organisation_id: store.organisationId })
+    }
+  }
+}}
                           className={inputClass}
                           style={inputStyle}
                         >
