@@ -46,9 +46,11 @@ export default function BeheerPage() {
   const [nieuwWinkelPostcode, setNieuwWinkelPostcode] = useState('')
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
 
-  // Wilmar
+  // Wilmar — aparte state los van bewerkWinkel
   const [wilmarStores, setWilmarStores] = useState<any[]>([])
   const [wilmarStoresLoading, setWilmarStoresLoading] = useState(false)
+  const [wilmarBranchId, setWilmarBranchId] = useState<number | null>(null)
+  const [wilmarOrganisationId, setWilmarOrganisationId] = useState<number | null>(null)
 
   // Excel import
   const [importData, setImportData] = useState<any[]>([])
@@ -84,6 +86,14 @@ export default function BeheerPage() {
       setWilmarStores([])
     }
     setWilmarStoresLoading(false)
+  }
+
+  function startWinkelBewerken(w: Winkel) {
+    setBewerkWinkel(w)
+    setToonWinkelForm(false)
+    setWilmarBranchId(w.wilmar_branch_id ?? null)
+    setWilmarOrganisationId(w.wilmar_organisation_id ?? null)
+    setWilmarStores([])
   }
 
   async function voegGebruikerToe(e: React.FormEvent) {
@@ -150,11 +160,14 @@ export default function BeheerPage() {
         dealer_nummer: bewerkWinkel.dealer_nummer,
         postcode: bewerkWinkel.postcode,
         stad: bewerkWinkel.stad,
-     wilmar_organisation_id: bewerkWinkel.wilmar_organisation_id ?? null,
-  wilmar_branch_id: bewerkWinkel.wilmar_branch_id ?? null,
+        wilmar_organisation_id: wilmarOrganisationId,
+        wilmar_branch_id: wilmarBranchId,
       }),
     })
-    setWinkelLoading(false); setBewerkWinkel(null)
+    setWinkelLoading(false)
+    setBewerkWinkel(null)
+    setWilmarBranchId(null)
+    setWilmarOrganisationId(null)
     await haalGebruikersOp()
   }
 
@@ -234,7 +247,6 @@ export default function BeheerPage() {
 
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
-      {/* Navigatie */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30">
         <div className="px-5 flex items-stretch" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center gap-3 pr-6" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
@@ -260,16 +272,13 @@ export default function BeheerPage() {
 
       <main className="flex-1 p-5 max-w-5xl mx-auto w-full space-y-5">
 
-        {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(240,192,64,0.1) 0%, transparent 60%)' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: DYNAMO_GOLD }} />
           <div className="relative p-7 flex items-center justify-between gap-6">
             <div>
               <h1 style={{ fontFamily: F, color: 'white', fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Beheer</h1>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '4px', fontFamily: F }}>
-                Beheer gebruikers, winkels en importeer data via Excel
-              </p>
+              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '4px', fontFamily: F }}>Beheer gebruikers, winkels en importeer data via Excel</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-center px-4">
@@ -288,21 +297,14 @@ export default function BeheerPage() {
         {error && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{error}</div>}
         {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
-        {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
           {tabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => { setTab(t.key); setToonForm(false); setBewerkGebruiker(null); setToonWinkelForm(false); setBewerkWinkel(null) }}
+            <button key={t.key} onClick={() => { setTab(t.key); setToonForm(false); setBewerkGebruiker(null); setToonWinkelForm(false); setBewerkWinkel(null) }}
               className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all"
-              style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(13,31,78,0.5)', fontFamily: F }}
-            >
-              <span>{t.icon}</span>
-              <span>{t.label}</span>
+              style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+              <span>{t.icon}</span><span>{t.label}</span>
               {t.count !== undefined && (
-                <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={tab === t.key ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(13,31,78,0.07)', color: 'rgba(13,31,78,0.5)' }}>
-                  {t.count}
-                </span>
+                <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={tab === t.key ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(13,31,78,0.07)', color: 'rgba(13,31,78,0.5)' }}>{t.count}</span>
               )}
             </button>
           ))}
@@ -361,9 +363,7 @@ export default function BeheerPage() {
                   </div>
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3">
-                    <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                      {formLoading ? 'Versturen...' : 'Uitnodiging versturen'}
-                    </button>
+                    <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Versturen...' : 'Uitnodiging versturen'}</button>
                     <button type="button" onClick={() => setToonForm(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
@@ -415,9 +415,7 @@ export default function BeheerPage() {
                 <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{rollen.length} gebruikers</div>
               </div>
               {loading ? (
-                <div className="p-10 text-center">
-                  <div className="w-7 h-7 border-2 border-gray-200 rounded-full animate-spin mx-auto mb-2" style={{ borderTopColor: DYNAMO_BLUE }} />
-                </div>
+                <div className="p-10 text-center"><div className="w-7 h-7 border-2 border-gray-200 rounded-full animate-spin mx-auto mb-2" style={{ borderTopColor: DYNAMO_BLUE }} /></div>
               ) : rollen.length === 0 ? (
                 <div className="p-10 text-center text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Nog geen gebruikers</div>
               ) : (
@@ -518,46 +516,55 @@ export default function BeheerPage() {
                         {wilmarStoresLoading ? 'Laden...' : 'Laad Wilmar winkels'}
                       </button>
                     </div>
-                    {bewerkWinkel.wilmar_branch_id && wilmarStores.length === 0 && (
-                      <p className="text-xs" style={{ color: '#16a34a', fontFamily: F }}>✓ Gekoppeld (branch: {bewerkWinkel.wilmar_branch_id}) — klik op laden om te wijzigen</p>
+
+                    {/* Huidig gekoppeld — zonder dropdown */}
+                    {wilmarBranchId && wilmarStores.length === 0 && (
+                      <p className="text-xs" style={{ color: '#16a34a', fontFamily: F }}>
+                        ✓ Gekoppeld (branch: {wilmarBranchId}) — klik op laden om te wijzigen
+                      </p>
                     )}
+
+                    {/* Dropdown na laden */}
                     {wilmarStores.length > 0 && (
-  <div>
-    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
-    <select
-      value={String(bewerkWinkel?.wilmar_branch_id ?? '')}
-      onChange={e => {
-        const val = e.target.value
-        setBewerkWinkel(prev => {
-          if (!prev) return prev
-          if (!val) return { ...prev, wilmar_branch_id: undefined, wilmar_organisation_id: undefined }
-          const store = wilmarStores.find(s => String(s.branchId) === val)
-          if (!store) return prev
-          return { ...prev, wilmar_branch_id: store.branchId, wilmar_organisation_id: store.organisationId }
-        })
-      }}
-      className={inputClass}
-      style={inputStyle}
-    >
-      <option value="">— Niet gekoppeld —</option>
-      {wilmarStores.map(s => (
-        <option key={s.branchId} value={String(s.branchId)}>
-          {s.name} {s.city ? `(${s.city})` : ''}
-        </option>
-      ))}
-    </select>
-    {bewerkWinkel?.wilmar_branch_id && (
-      <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
-        ✓ Gekoppeld: org {bewerkWinkel.wilmar_organisation_id}, branch {bewerkWinkel.wilmar_branch_id}
-      </p>
-    )}
-  </div>
-)}
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
+                        <select
+                          value={wilmarBranchId !== null ? String(wilmarBranchId) : ''}
+                          onChange={e => {
+                            const val = e.target.value
+                            if (!val) {
+                              setWilmarBranchId(null)
+                              setWilmarOrganisationId(null)
+                            } else {
+                              const store = wilmarStores.find(s => String(s.branchId) === val)
+                              if (store) {
+                                setWilmarBranchId(store.branchId)
+                                setWilmarOrganisationId(store.organisationId)
+                              }
+                            }
+                          }}
+                          className={inputClass}
+                          style={inputStyle}
+                        >
+                          <option value="">— Niet gekoppeld —</option>
+                          {wilmarStores.map(s => (
+                            <option key={s.branchId} value={String(s.branchId)}>
+                              {s.name} {s.city ? `(${s.city})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {wilmarBranchId && (
+                          <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
+                            ✓ Geselecteerd: org {wilmarOrganisationId}, branch {wilmarBranchId}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => setBewerkWinkel(null)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
@@ -589,7 +596,7 @@ export default function BeheerPage() {
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => { setBewerkWinkel(w); setToonWinkelForm(false) }} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
+                        <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
                         <button onClick={() => verwijderWinkel(w.id, w.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
                     </div>
@@ -606,17 +613,14 @@ export default function BeheerPage() {
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
               <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong>, <strong>postcode</strong>, <strong>stad</strong></p>
-
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
                 <div className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Ondersteund: .xlsx, .xls</div>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={verwerkExcel} />
               </div>
-
               {importError && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', color: '#dc2626', fontFamily: F }}>{importError}</div>}
               {importSuccess && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#f0fdf4', color: '#16a34a', fontFamily: F }}>✓ {importSuccess}</div>}
-
               {importData.length > 0 && (
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -647,7 +651,6 @@ export default function BeheerPage() {
                 </div>
               )}
             </div>
-
             <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat</h3>
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
