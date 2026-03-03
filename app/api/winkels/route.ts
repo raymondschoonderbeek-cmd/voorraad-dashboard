@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest) {
   }
 
   if (api_type) {
-    updateData.api_type = api_type
+updateData.api_type = api_type ?? 'cyclesoftware'
   }
 
   console.log('PUT winkels updateData:', updateData)
