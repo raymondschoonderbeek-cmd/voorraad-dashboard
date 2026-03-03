@@ -34,9 +34,20 @@ function wilmarHeaders(token: string) {
   }
 }
 
-/** Alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Stadsfietsen") */
-function alleenHoofdGroep(raw: string) {
-  const s = String(raw ?? '').trim()
+/** Haal categorienaam uit item (string of object) */
+function extractCategory(item: any): string {
+  const c = item?.category ?? item?.registerGroup
+  if (typeof c === 'string') return c
+  if (c && typeof c === 'object') return c?.name ?? c?.description ?? c?.value ?? ''
+  return ''
+}
+
+/** Alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Stadsfietsen" of "Fietsen\Stadsfietsen") */
+function alleenHoofdGroep(raw: any): string {
+  let s = String(raw ?? '').trim()
+  if (!s) return s
+  // Wilmar gebruikt soms backslash als separator; normaliseer naar spaties
+  s = s.replace(/\\/g, ' ').replace(/\s+/g, ' ').trim()
   const first = s.split(/\s+/)[0]
   return first || s
 }
@@ -154,7 +165,7 @@ export async function GET(request: NextRequest) {
         STOCK: item.quantity ?? 1,
         AVAILABLE_STOCK: item.isReserved ? 0 : (item.quantity ?? 1),
         SALES_PRICE_INC: item.sellPrice ?? item.defaultSellPrice ?? item.recommendedSellPrice ?? null,
-        GROUP_DESCRIPTION_1: alleenHoofdGroep(item.category ?? item.registerGroup ?? ''),
+        GROUP_DESCRIPTION_1: alleenHoofdGroep(extractCategory(item)),
         GROUP_DESCRIPTION_2: item.registerSubGroup ?? '',
         SUPPLIER_PRODUCT_NUMBER: item.articleNumber ?? item.supplierBarcode ?? '',
         SUPPLIER_NAME: item.supplierName ?? '',
@@ -176,7 +187,7 @@ export async function GET(request: NextRequest) {
           const stock = item.numberOnStock ?? item.totalNumberInShop ?? 0
           const reserved = item.reserved ?? 0
           if (stock > 0) {
-            const catRaw = item.category ?? item.productGroup?.name ?? ''
+            const catRaw = extractCategory(item) || (item.productGroup?.name ?? '')
             const cat = alleenHoofdGroep(catRaw)
             const subCat = item.size ?? item.productGroup?.sub ?? ''
             partsList.push({
