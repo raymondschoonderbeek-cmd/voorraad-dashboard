@@ -34,6 +34,13 @@ function wilmarHeaders(token: string) {
   }
 }
 
+/** Alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Stadsfietsen") */
+function alleenHoofdGroep(raw: string) {
+  const s = String(raw ?? '').trim()
+  const first = s.split(/\s+/)[0]
+  return first || s
+}
+
 function isAuthBodyError(data: any) {
   if (!data || typeof data !== 'object') return false
   if (data?.error !== true) return false
@@ -139,12 +146,6 @@ export async function GET(request: NextRequest) {
 
       const bicyclesRaw = await bicyclesRes.json().catch(() => null)
       const bicyclesList = Array.isArray(bicyclesRaw) ? bicyclesRaw : bicyclesRaw?.data ?? bicyclesRaw?.bicycles ?? []
-      // Wilmar: alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Hybride Fietsen")
-      const wilmarGroep = (raw: string) => {
-        const s = String(raw ?? '').trim()
-        const first = s.split(/\s+/)[0]
-        return first || s
-      }
       const bicycles = bicyclesList.map((item: any) => ({
         PRODUCT_DESCRIPTION: item.name ?? item.webshopDescription ?? '',
         BRAND_NAME: item.manufacturer ?? item.brand ?? '',
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
         STOCK: item.quantity ?? 1,
         AVAILABLE_STOCK: item.isReserved ? 0 : (item.quantity ?? 1),
         SALES_PRICE_INC: item.sellPrice ?? item.defaultSellPrice ?? item.recommendedSellPrice ?? null,
-        GROUP_DESCRIPTION_1: wilmarGroep(item.category ?? item.registerGroup ?? ''),
+        GROUP_DESCRIPTION_1: alleenHoofdGroep(item.category ?? item.registerGroup ?? ''),
         GROUP_DESCRIPTION_2: item.registerSubGroup ?? '',
         SUPPLIER_PRODUCT_NUMBER: item.articleNumber ?? item.supplierBarcode ?? '',
         SUPPLIER_NAME: item.supplierName ?? '',
@@ -176,7 +177,7 @@ export async function GET(request: NextRequest) {
           const reserved = item.reserved ?? 0
           if (stock > 0) {
             const catRaw = item.category ?? item.productGroup?.name ?? ''
-            const cat = wilmarGroep(catRaw)
+            const cat = alleenHoofdGroep(catRaw)
             const subCat = item.size ?? item.productGroup?.sub ?? ''
             partsList.push({
               PRODUCT_DESCRIPTION: item.name ?? item.description ?? '',
@@ -279,16 +280,25 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 4) Normale dataflow: filter op zoekterm
-    if (zoekterm && Array.isArray(data)) {
+    // 4) CycleSoftware: alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Stadsfietsen")
+    const rawItems = Array.isArray(data) ? data : (data?.products ?? [])
+    const items = rawItems.map((item: any) => {
+      if (item && typeof item === 'object' && 'GROUP_DESCRIPTION_1' in item) {
+        return { ...item, GROUP_DESCRIPTION_1: alleenHoofdGroep(item.GROUP_DESCRIPTION_1) }
+      }
+      return item
+    })
+
+    // 5) Filter op zoekterm
+    if (zoekterm && items.length > 0) {
       const needle = zoekterm.toLowerCase()
-      const gefilterd = data.filter((item: any) =>
+      const gefilterd = items.filter((item: any) =>
         Object.values(item).some(waarde => String(waarde).toLowerCase().includes(needle))
       )
-      return NextResponse.json(gefilterd)
+      return NextResponse.json(Array.isArray(data) ? gefilterd : { ...data, products: gefilterd })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(Array.isArray(data) ? items : { ...data, products: items })
   } catch (err) {
     console.error('Voorraad API fout:', err)
     return NextResponse.json(
