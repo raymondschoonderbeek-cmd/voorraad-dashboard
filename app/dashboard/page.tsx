@@ -275,6 +275,8 @@ export default function Dashboard() {
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const [favorieten, setFavorieten] = useState<number[]>([])
+  const [winkelModalOpen, setWinkelModalOpen] = useState(false)
+  const [winkelZoek, setWinkelZoek] = useState('')
 
   const router = useRouter()
   const supabase = createClient()
@@ -387,8 +389,19 @@ export default function Dashboard() {
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
 
   function openWinkelSelect() {
-    winkelSelectRef.current?.open()
+    setWinkelZoek('')
+    setWinkelModalOpen(true)
   }
+
+  const gefilterdeWinkels = useMemo(() => {
+    const q = winkelZoek.trim().toLowerCase()
+    if (!q) return winkels
+    return winkels.filter(w =>
+      w.naam.toLowerCase().includes(q) ||
+      w.dealer_nummer.includes(q) ||
+      (w.stad?.toLowerCase().includes(q))
+    )
+  }, [winkels, winkelZoek])
 
   function toggleSort(k: string) {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -518,47 +531,109 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {/* Winkelkeuze modal */}
+      {winkelModalOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setWinkelModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Kies een winkel"
+        >
+          <div style={{ background: 'rgba(13,31,78,0.6)' }} className="absolute inset-0 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            style={{ background: 'white', maxHeight: '80vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-4 border-b" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+              <h2 style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 700 }}>Kies een winkel</h2>
+              <input
+                type="search"
+                placeholder="Zoek op naam, dealer of stad..."
+                value={winkelZoek}
+                onChange={e => setWinkelZoek(e.target.value)}
+                autoFocus
+                className={`${inputClass} w-full mt-3 bg-white text-gray-900 placeholder:text-gray-400 border-gray-200`}
+                style={{ border: '1px solid rgba(13,31,78,0.15)' }}
+              />
+            </div>
+            <div className="overflow-y-auto max-h-[50vh]">
+              {gefilterdeWinkels.length === 0 ? (
+                <div className="p-6 text-center" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F, fontSize: '14px' }}>
+                  {winkelZoek ? 'Geen winkels gevonden' : 'Geen winkels beschikbaar'}
+                </div>
+              ) : (
+                <ul className="divide-y" style={{ divideColor: 'rgba(13,31,78,0.06)' }}>
+                  {gefilterdeWinkels.map(w => (
+                    <li key={w.id}>
+                      <button
+                        type="button"
+                        onClick={() => { selecteerWinkel(w); setWinkelModalOpen(false) }}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center justify-between gap-3"
+                        style={{ fontFamily: F }}
+                      >
+                        <span style={{ color: DYNAMO_BLUE, fontWeight: 600, fontSize: '14px' }}>{w.naam}</span>
+                        {w.stad && <span style={{ color: 'rgba(13,31,78,0.4)', fontSize: '12px' }}>{w.stad}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="p-3 border-t flex justify-end" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+              <button
+                type="button"
+                onClick={() => setWinkelModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 min-w-0 p-3 sm:p-5 pb-6 sm:pb-5 space-y-4 sm:space-y-6 overflow-auto">
           {!geselecteerdeWinkel ? (
             <div className="space-y-8">
 
               {/* HERO */}
-              <div className="s1 relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 220 }}>
+              <div className="s1 relative rounded-xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 140 }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(240,192,64,0.12) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: DYNAMO_GOLD }} />
-                <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '280px', background: 'rgba(255,255,255,0.025)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.07 }}>
-                    <svg width="100" height="100" viewBox="0 0 24 24" fill="white"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: DYNAMO_GOLD }} />
+                <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '200px', background: 'rgba(255,255,255,0.025)', borderLeft: '1px solid rgba(255,255,255,0.06)' }} />
+                <div className="relative p-4 sm:p-5 sm:pr-52 flex flex-wrap items-center gap-x-6 gap-y-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(240,192,64,0.12)', border: '1px solid rgba(240,192,64,0.25)' }}>
+                      <span className="w-1 h-1 rounded-full" style={{ background: DYNAMO_GOLD }} />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{getDagdeel()}</span>
+                    </div>
+                    <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>Voorraad Dashboard</h1>
                   </div>
-                </div>
-                <div className="relative p-5 sm:p-8 md:p-10 sm:pr-72">
-                  <div className="inline-flex items-center gap-2 mb-5 rounded-full px-3 py-1" style={{ background: 'rgba(240,192,64,0.12)', border: '1px solid rgba(240,192,64,0.25)' }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: DYNAMO_GOLD }} />
-                    <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{getDagdeel()}</span>
-                  </div>
-                  <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>Voorraad Dashboard</h1>
-                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '8px', fontFamily: F }}>{getDatum()}</p>
-                  <div className="flex items-center gap-3 mt-6">
+                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button
                       onClick={openWinkelSelect}
                       aria-label="Kies een winkel"
-                      className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90"
-                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}
+                      className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-90"
+                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 2px 12px rgba(240,192,64,0.3)' }}
                     >
                       <IconStore /> Kies een winkel
                     </button>
-                    <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
+                    <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
                       <IconChart /> Analyse
                     </Link>
                   </div>
                   {winkels.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-6 sm:mt-8 pt-4 sm:pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="flex items-center gap-4 sm:gap-5 pt-2 border-t border-white/10 w-full sm:w-auto">
                       {[{ label: 'Winkels', value: winkels.length, color: 'white' }, { label: 'Locaties', value: winkels.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: DYNAMO_GOLD }].map((s, i) => (
-                        <div key={s.label} className="flex items-center gap-4 sm:gap-6">
-                          {i > 0 && <div className="hidden sm:block" style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />}
+                        <div key={s.label} className="flex items-center gap-2">
+                          {i > 0 && <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />}
                           <div>
-                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
-                            <div style={{ color: s.color, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
+                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                            <div style={{ color: s.color, fontSize: '16px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
                           </div>
                         </div>
                       ))}
