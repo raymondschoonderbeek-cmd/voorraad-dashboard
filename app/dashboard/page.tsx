@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { WinkelSelect, type WinkelSelectRef } from '@/components/WinkelSelect'
-import { WinkelZoekBlok } from '@/components/WinkelZoekBlok'
+import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
 
@@ -276,6 +276,8 @@ export default function Dashboard() {
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const [favorieten, setFavorieten] = useState<number[]>([])
+  const [winkelModalOpen, setWinkelModalOpen] = useState(false)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -303,7 +305,10 @@ export default function Dashboard() {
   const haalWinkelsOp = useCallback(() => mutateWinkels(), [mutateWinkels])
   const kolomPanelRef = useRef<HTMLDivElement>(null)
   const kolomTriggerRef = useRef<HTMLButtonElement>(null)
-  const winkelZoekRef = useRef<HTMLDivElement>(null)
+
+  function openWinkelSelect() {
+    setWinkelModalOpen(true)
+  }
 
   const wasOpenRef = useRef(false)
   useEffect(() => {
@@ -516,16 +521,19 @@ export default function Dashboard() {
         </div>
       </header>
 
+      <WinkelModal
+        open={winkelModalOpen}
+        onClose={() => setWinkelModalOpen(false)}
+        winkels={winkels}
+        onSelect={selecteerWinkel}
+      />
+
       <main className="flex-1 min-w-0 p-3 sm:p-5 pb-6 sm:pb-5 space-y-4 sm:space-y-6 overflow-auto">
           {!geselecteerdeWinkel ? (
-            <div className="space-y-6">
-              {/* Winkel zoekveld - direct zichtbaar */}
-              <div ref={winkelZoekRef} className="s1 max-w-xl">
-                <WinkelZoekBlok winkels={winkels} onSelect={selecteerWinkel} />
-              </div>
+            <div className="space-y-8">
 
               {/* HERO */}
-              <div className="s2 relative rounded-xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 140 }}>
+              <div className="s1 relative rounded-xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 140 }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(240,192,64,0.12) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: DYNAMO_GOLD }} />
                 <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '200px', background: 'rgba(255,255,255,0.025)', borderLeft: '1px solid rgba(255,255,255,0.06)' }} />
@@ -539,6 +547,14 @@ export default function Dashboard() {
                   </div>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={openWinkelSelect}
+                      aria-label="Kies een winkel"
+                      className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-90"
+                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 2px 12px rgba(240,192,64,0.3)' }}
+                    >
+                      <IconStore /> Kies een winkel
+                    </button>
                     <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
                       <IconChart /> Analyse
                     </Link>
@@ -566,7 +582,7 @@ export default function Dashboard() {
                   <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={() => winkelZoekRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={openWinkelSelect}>
                     <div className="p-6">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
                         <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
