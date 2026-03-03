@@ -28,6 +28,11 @@ WILMAR_PASSWORD=...
 CYCLESOFTWARE_USER=...
 CYCLESOFTWARE_PASS=...
 CYCLESOFTWARE_BASE_URL=https://...
+
+# MFA: vertrouwde IP's (optioneel, komma-gescheiden)
+# Vanaf deze IP's is geen TOTP-code nodig bij inloggen. Bijv. kantoor-IP's.
+# Ondersteunt exacte IP's en CIDR: 192.168.1.100,192.168.1.0/24,10.0.0.1
+TRUSTED_IPS=
 ```
 
 Bij opstarten worden ontbrekende variabelen gelogd in de console.
@@ -74,6 +79,7 @@ lib/
 ## Beveiliging
 
 - **Auth**: Supabase Auth, middleware beschermt alle routes behalve `/login` en `/update-password`
+- **MFA (TOTP)**: Optioneel via Instellingen. Vanaf vertrouwde IP's (TRUSTED_IPS) is geen MFA nodig
 - **Rollen**: Admin voor beheer (gebruikers, winkels); viewer voor alleen voorraad
 - **Rate limiting**: 60 requests/minuut per IP op API-routes
 
