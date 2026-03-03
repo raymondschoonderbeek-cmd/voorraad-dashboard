@@ -564,7 +564,7 @@ export default function Dashboard() {
                   {winkelZoek ? 'Geen winkels gevonden' : 'Geen winkels beschikbaar'}
                 </div>
               ) : (
-                <ul className="divide-y" style={{ divideColor: 'rgba(13,31,78,0.06)' }}>
+                <ul className="divide-y divide-[rgba(13,31,78,0.06)]">
                   {gefilterdeWinkels.map(w => (
                     <li key={w.id}>
                       <button
