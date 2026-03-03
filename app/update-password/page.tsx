@@ -32,10 +32,10 @@ export default function UpdatePassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-6">
       <form
         onSubmit={handleUpdate}
-        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-200 space-y-5"
+        className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-200 space-y-5"
       >
         <h1 className="text-2xl font-bold text-gray-900">
           Nieuw wachtwoord instellen

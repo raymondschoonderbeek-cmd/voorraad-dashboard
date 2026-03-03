@@ -340,21 +340,21 @@ export default function BeheerPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30">
-        <div className="px-5 flex items-stretch" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="flex items-center gap-3 pr-6" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black" style={{ background: DYNAMO_GOLD }}>
-              <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '15px' }}>D</span>
+        <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>
+              <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '13px' }} className="sm:text-[15px]">D</span>
             </div>
-            <div>
-              <div className="font-bold text-sm text-white leading-tight" style={{ letterSpacing: '0.06em', fontFamily: F }}>DYNAMO</div>
-              <div className="text-xs font-semibold leading-tight" style={{ color: DYNAMO_GOLD, letterSpacing: '0.12em', fontFamily: F }}>RETAIL GROUP</div>
+            <div className="min-w-0">
+              <div className="font-bold text-xs sm:text-sm text-white leading-tight truncate" style={{ letterSpacing: '0.06em', fontFamily: F }}>DYNAMO</div>
+              <div className="text-[10px] sm:text-xs font-semibold leading-tight truncate" style={{ color: DYNAMO_GOLD, letterSpacing: '0.12em', fontFamily: F }}>RETAIL GROUP</div>
             </div>
           </div>
-          <div className="flex items-center px-5">
-            <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: F }}>Beheer</span>
+          <div className="flex items-center px-3 sm:px-5">
+            <span className="text-xs sm:text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: F }}>Beheer</span>
           </div>
           <div className="flex-1" />
-          <div className="flex items-center gap-3 pl-5">
+          <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-5 shrink-0">
             <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
               <IconArrowLeft /> Dashboard
             </Link>
@@ -362,17 +362,17 @@ export default function BeheerPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-5 max-w-5xl mx-auto w-full space-y-5">
+      <main className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
 
         <div className="relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(240,192,64,0.1) 0%, transparent 60%)' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: DYNAMO_GOLD }} />
-          <div className="relative p-7 flex items-center justify-between gap-6">
-            <div>
-              <h1 style={{ fontFamily: F, color: 'white', fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Beheer</h1>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '4px', fontFamily: F }}>Beheer gebruikers, winkels en importeer data via Excel</p>
+          <div className="relative p-4 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+            <div className="min-w-0">
+              <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px,4vw,24px)', fontWeight: 700, letterSpacing: '-0.02em' }}>Beheer</h1>
+              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', marginTop: '4px', fontFamily: F }} className="hidden sm:block">Beheer gebruikers, winkels en importeer data via Excel</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 sm:gap-3 shrink-0">
               <div className="text-center px-4">
                 <div style={{ color: DYNAMO_GOLD, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{rollen.length}</div>
                 <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gebruikers</div>
@@ -390,10 +390,10 @@ export default function BeheerPage() {
         {formError && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
         {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
-        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+        <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)', WebkitOverflowScrolling: 'touch' }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => { setTab(t.key); setToonForm(false); setBewerkGebruiker(null); setToonWinkelForm(false); setBewerkWinkel(null) }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all"
+              className="flex-1 min-w-[100px] sm:min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2.5 text-xs sm:text-sm font-semibold transition-all shrink-0"
               style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
               <span>{t.icon}</span><span>{t.label}</span>
               {t.count !== undefined && (
@@ -801,7 +801,7 @@ export default function BeheerPage() {
               ) : (
                 <div className="divide-y" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
                   {winkels.map((w, i) => (
-                    <div key={w.id} className="flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50/50">
+                    <div key={w.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition hover:bg-gray-50/50">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? 'white' : WINKEL_KLEUREN[i % 8], border: isBikeTotaal(w.naam) ? '1px solid rgba(13,31,78,0.1)' : undefined }}>
                         {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
                       </div>
@@ -823,9 +823,9 @@ export default function BeheerPage() {
                           #{w.dealer_nummer}{w.straat ? ` · ${w.straat}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
-                        <button onClick={() => verwijderWinkel(w.id, w.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
+                      <div className="flex gap-2 shrink-0 sm:ml-auto">
+                        <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
+                        <button onClick={() => verwijderWinkel(w.id, w.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
                     </div>
                   ))}

@@ -313,23 +313,23 @@ export default function BrandGroepPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30 shadow-lg">
-        <div className="px-5 flex items-stretch gap-0 min-h-[56px]">
-          <div className="flex items-center gap-3 pr-6 border-r border-white/10">
-            <div style={{ background: DYNAMO_GOLD }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-base">
+        <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0 min-h-[56px]">
+          <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0">
+            <div style={{ background: DYNAMO_GOLD }} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
-            <div>
-              <div className="text-white font-bold text-sm leading-tight tracking-wide">DYNAMO</div>
-              <div style={{ color: DYNAMO_GOLD }} className="text-xs font-semibold tracking-widest leading-tight">RETAIL GROUP</div>
+            <div className="min-w-0 hidden sm:block">
+              <div className="text-white font-bold text-xs sm:text-sm leading-tight tracking-wide truncate">DYNAMO</div>
+              <div style={{ color: DYNAMO_GOLD }} className="text-[10px] sm:text-xs font-semibold tracking-widest leading-tight truncate">RETAIL GROUP</div>
             </div>
           </div>
 
-          <div className="flex items-center px-5 border-r border-white/10 gap-2">
-            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block">Winkel</span>
+          <div className="flex items-center px-3 sm:px-5 border-r border-white/10 gap-2 flex-1 min-w-0">
+            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block shrink-0">Winkel</span>
             <select
               value={geselecteerdeWinkel?.id ?? ''}
               onChange={e => selecteerWinkel(Number(e.target.value))}
-              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 cursor-pointer min-w-[170px]"
+              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 cursor-pointer min-w-0 flex-1 max-w-[160px] sm:min-w-[140px]"
             >
               <option value="" disabled className="text-gray-900">Kies winkel...</option>
               {winkels.map(w => (
@@ -338,19 +338,19 @@ export default function BrandGroepPage() {
             </select>
           </div>
 
-          <div className="flex items-center px-5">
-            <span className="text-white/80 text-sm font-semibold">Merk / Groep overzicht</span>
+          <div className="flex items-center px-3 sm:px-5 shrink-0">
+            <span className="text-white/80 text-xs sm:text-sm font-semibold truncate">Merk / Groep</span>
           </div>
 
-          <div className="flex-1" />
+          <div className="flex-1 hidden sm:block" />
 
-          <div className="flex items-center gap-4 pl-5">
-            <span className="text-white/50 text-xs hidden md:block">
-              {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten (voorraad ≥ 1)` : ''}
+          <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-5 shrink-0 w-full sm:w-auto justify-end">
+            <span className="text-white/50 text-xs hidden md:block truncate max-w-[140px]">
+              {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten` : ''}
             </span>
             <Link
               href="/dashboard"
-              className="rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90 border border-white/20 text-white hover:bg-white/10"
+              className="rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold transition hover:opacity-90 border border-white/20 text-white hover:bg-white/10"
             >
               ← Dashboard
             </Link>
@@ -359,7 +359,7 @@ export default function BrandGroepPage() {
         <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
       </header>
 
-      <main className="flex-1 p-5 space-y-4">
+      <main className="flex-1 p-3 sm:p-5 space-y-4 overflow-x-hidden">
         {!geselecteerdeWinkel ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: DYNAMO_BLUE }}>📊</div>
@@ -391,8 +391,8 @@ export default function BrandGroepPage() {
                   <input value={groupSearch} onChange={e => setGroupSearch(e.target.value)} placeholder="Zoek groep..." className={inputClass} />
                 </div>
 
-                <div className="overflow-auto flex-1" style={{ maxHeight: 480 }}>
-                  <table className="w-full text-sm">
+                <div className="overflow-auto flex-1" style={{ maxHeight: 480, WebkitOverflowScrolling: 'touch' }}>
+                  <table className="w-full text-sm min-w-[280px]">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
                       <tr>
                         <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-white/85">Groep</th>
@@ -463,12 +463,12 @@ export default function BrandGroepPage() {
                     </select>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                     <input
                       value={brandSearch}
                       onChange={e => setBrandSearch(e.target.value)}
                       placeholder="Zoek merk..."
-                      className={inputClass + ' flex-1 min-w-[140px]'}
+                      className={inputClass + ' flex-1 min-w-0'}
                       disabled={!selectedGroup}
                     />
                     <input
@@ -477,7 +477,7 @@ export default function BrandGroepPage() {
                       value={minAvailable}
                       onChange={e => setMinAvailable(Math.max(0, Number(e.target.value) || 0))}
                       placeholder="Min beschikbaar"
-                      className={inputClass + ' w-36'}
+                      className={inputClass + ' w-full sm:w-36'}
                       disabled={!selectedGroup}
                     />
                   </div>
@@ -488,8 +488,8 @@ export default function BrandGroepPage() {
                   </label>
                 </div>
 
-                <div className="overflow-auto flex-1" style={{ maxHeight: 480 }}>
-                  <table className="w-full text-sm">
+                <div className="overflow-auto flex-1" style={{ maxHeight: 480, WebkitOverflowScrolling: 'touch' }}>
+                  <table className="w-full text-sm min-w-[280px]">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
                       <tr>
                         <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-white/85">Merk</th>
