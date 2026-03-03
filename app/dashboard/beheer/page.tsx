@@ -708,13 +708,15 @@ export default function BeheerPage() {
                         {w.naam.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</span>
-                          {w.api_type === 'wilmar' && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontFamily: F }}>Wilmar</span>
+                          {w.api_type === 'wilmar' ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }}>Wilmar</span>
+                          ) : (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)', fontFamily: F }}>CycleSoftware</span>
                           )}
-                          {w.wilmar_branch_id && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontFamily: F }}>🔗 Wilmar</span>
+                          {w.wilmar_organisation_id != null && w.wilmar_branch_id != null && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', fontFamily: F }}>🔗 Gekoppeld (org {w.wilmar_organisation_id}, branch {w.wilmar_branch_id})</span>
                           )}
                         </div>
                         <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>
