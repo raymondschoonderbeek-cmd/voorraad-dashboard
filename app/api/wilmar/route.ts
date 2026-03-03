@@ -93,28 +93,50 @@ export async function GET(req: NextRequest) {
   }
 
   if (action === 'bicycles') {
-    const organisationId = searchParams.get('organisationId')
-    const branchId = searchParams.get('branchId')
+  const organisationId = searchParams.get('organisationId')
+  const branchId = searchParams.get('branchId')
 
-    if (!organisationId || !branchId) {
-      return NextResponse.json({ error: 'organisationId en branchId zijn verplicht' }, { status: 400 })
-    }
-
-    const url = new URL(`${WILMAR_BASE}/api/v1/Bicycles`)
-    url.searchParams.set('organisationId', organisationId)
-    url.searchParams.set('branchId', branchId)
-    url.searchParams.set('stockState', 'OnStock')
-
-    const res = await fetch(url.toString(), {
-      headers: wilmarHeaders(token),
-    })
-    if (!res.ok) {
-      const detail = await res.text()
-      return NextResponse.json({ error: 'Wilmar bicycles ophalen mislukt', status: res.status, detail }, { status: 502 })
-    }
-    const data = await res.json()
-    return NextResponse.json(data)
+  if (!organisationId || !branchId) {
+    return NextResponse.json({ error: 'organisationId en branchId zijn verplicht' }, { status: 400 })
   }
+
+  const url = new URL(`${WILMAR_BASE}/api/v1/Bicycles`)
+  url.searchParams.set('organisationId', organisationId)
+  url.searchParams.set('branchId', branchId)
+  url.searchParams.set('stockState', 'OnStock')
+
+  const res = await fetch(url.toString(), {
+    headers: wilmarHeaders(token),
+  })
+  if (!res.ok) {
+    const detail = await res.text()
+    return NextResponse.json({ error: 'Wilmar bicycles ophalen mislukt', status: res.status, detail }, { status: 502 })
+  }
+  const data = await res.json()
+  const normalized = data.map((item: any) => ({
+    PRODUCT_DESCRIPTION: item.name,
+    BRAND_NAME: item.manufacturer,
+    BARCODE: item.barcode || item.supplierBarcode || '',
+    FRAME_NUMBER: item.frameNumber || '',
+    ARTICLE_NUMBER: item.articleNumber || '',
+    COLOR: item.color || '',
+    FRAME_HEIGHT: item.frameHight || '',
+    GENDER: item.gender || '',
+    WHEEL_SIZE: item.wheelSize || '',
+    GEAR: item.gear || '',
+    STOCK: item.quantity ?? 1,
+    AVAILABLE_STOCK: item.isReserved ? 0 : (item.quantity ?? 1),
+    SALES_PRICE_INC: item.sellPrice ?? item.defaultSellPrice ?? 0,
+    CATEGORY: item.category?.replace(/\\/g, '') || '',
+    LOCATION: item.location || '',
+    MODEL_YEAR: item.modelYear || '',
+    IS_NEW: item.isNewBicycle ? 'Nieuw' : 'Occasion',
+    SUPPLIER_NAME: item.supplierName || '',
+    _source: 'wilmar_bicycles',
+  }))
+  return NextResponse.json(normalized)
+}
+
 
   return NextResponse.json({ error: 'Onbekende actie' }, { status: 400 })
 }

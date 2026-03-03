@@ -28,6 +28,16 @@ const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: 
   GROUP_DESCRIPTION_1: { label: 'Groep', order: 80, format: 'text' },
   GROUP_DESCRIPTION_2: { label: 'Subgroep', order: 90, format: 'text' },
   SUPPLIER_NAME: { label: 'Leverancier', order: 100, format: 'text' },
+  FRAME_NUMBER: { label: 'Framenummer', order: 35, format: 'text' },
+COLOR: { label: 'Kleur', order: 45, format: 'text' },
+FRAME_HEIGHT: { label: 'Framehoogte', order: 46, format: 'text' },
+GENDER: { label: 'Geslacht', order: 47, format: 'text' },
+WHEEL_SIZE: { label: 'Wielmaat', order: 48, format: 'text' },
+GEAR: { label: 'Versnelling', order: 49, format: 'text' },
+CATEGORY: { label: 'Categorie', order: 75, format: 'text' },
+LOCATION: { label: 'Locatie', order: 76, format: 'text' },
+MODEL_YEAR: { label: 'Modeljaar', order: 77, format: 'text' },
+IS_NEW: { label: 'Nieuw/Occasion', order: 78, format: 'text' },
 }
 
 function columnLabel(key: string) { return COLUMN_CONFIG[key]?.label ?? key.replace(/_/g, ' ') }
@@ -316,7 +326,7 @@ export default function Dashboard() {
       (!winkel.api_type && !!(winkel.wilmar_branch_id && winkel.wilmar_organisation_id))
 
     if (isWilmar && winkel.wilmar_organisation_id && winkel.wilmar_branch_id) {
-      const url = `/api/wilmar?action=stock&organisationId=${winkel.wilmar_organisation_id}&branchId=${winkel.wilmar_branch_id}${q ? `&barcode=${encodeURIComponent(q)}` : ''}`
+      const url = `/api/wilmar?action=bicycles&organisationId=${winkel.wilmar_organisation_id}&branchId=${winkel.wilmar_branch_id}${q ? `&q=${encodeURIComponent(q)}` : ''}`
       const res = await fetch(url)
       const data = await res.json().catch(() => ([]))
       if (!res.ok) {
@@ -326,12 +336,10 @@ export default function Dashboard() {
         return
       }
       const items: Product[] = Array.isArray(data) ? data.filter((p: any) => p.BARCODE) : []
-      setProducten(items)
-      const wilmarKols = ['BARCODE', 'STOCK', 'AVAILABLE_STOCK', 'RESERVED', 'SOLD']
-      setKolommen(wilmarKols)
-      setZichtbareKolommen(wilmarKols)
-      setLoading(false)
-      return
+setProducten(items)
+const wilmarKols = ['BARCODE', 'STOCK', 'AVAILABLE_STOCK', 'RESERVED', 'SOLD']
+setKolommen(wilmarKols)
+setZichtbareKolommen(wilmarKols)
     }
 
     // CycleSoftware
