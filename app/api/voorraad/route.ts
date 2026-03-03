@@ -116,42 +116,87 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const url = new URL(`${WILMAR_BASE}/api/v1/Articles/Stock`)
-      url.searchParams.set('organisationId', String(wilmarOrganisationId))
-      url.searchParams.set('branchId', String(wilmarBranchId))
-      // Voor nu: geen extra filter op barcode; de zoekterm wordt lokaal toegepast
+      // Haal fietsen én onderdelen parallel op
+      const [bicyclesRes, partsRes] = await Promise.all([
+        fetch(
+          `${WILMAR_BASE}/api/v1/Bicycles?organisationId=${wilmarOrganisationId}&branchId=${wilmarBranchId}&stockState=OnStock`,
+          { headers: wilmarHeaders(token), next: { revalidate: 60 } }
+        ),
+        fetch(
+          `${WILMAR_BASE}/api/v1/Parts?organisationId=${wilmarOrganisationId}&branchId=${wilmarBranchId}`,
+          { headers: wilmarHeaders(token), next: { revalidate: 60 } }
+        ),
+      ])
 
-      const response = await fetch(url.toString(), {
-        headers: wilmarHeaders(token),
-        next: { revalidate: 60 },
-      })
-
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '')
-        console.error('Wilmar voorraad fout:', response.status, detail)
+      if (!bicyclesRes.ok) {
+        const detail = await bicyclesRes.text().catch(() => '')
+        console.error('Wilmar fietsen fout:', bicyclesRes.status, detail)
         return NextResponse.json(
           { error: 'UPSTREAM_ERROR', message: 'Voorraad ophalen bij Wilmar mislukt.' },
           { status: 502 }
         )
       }
 
-      const raw = await response.json().catch(() => null)
-      const data = Array.isArray(raw)
-        ? raw.map((item: any) => ({
-            // Minimale set velden zodat de bestaande UI blijft werken
-            BARCODE: item.barcode ?? '',
-            STOCK: item.stock ?? 0,
-            AVAILABLE_STOCK: item.freeStock ?? item.stock ?? 0,
-            SALES_PRICE_INC: item.salesPriceInc ?? null,
-            PRODUCT_DESCRIPTION: item.description ?? '',
-            BRAND_NAME: item.brandName ?? '',
-            GROUP_DESCRIPTION_1: item.groupDescription1 ?? '',
-            GROUP_DESCRIPTION_2: item.groupDescription2 ?? '',
-            SUPPLIER_PRODUCT_NUMBER: item.supplierProductNumber ?? '',
-            SUPPLIER_NAME: item.supplierName ?? '',
-            _source: 'wilmar',
-          }))
-        : []
+      const bicyclesRaw = await bicyclesRes.json().catch(() => null)
+      const bicyclesList = Array.isArray(bicyclesRaw) ? bicyclesRaw : bicyclesRaw?.data ?? bicyclesRaw?.bicycles ?? []
+      const bicycles = bicyclesList.map((item: any) => ({
+        PRODUCT_DESCRIPTION: item.name ?? item.webshopDescription ?? '',
+        BRAND_NAME: item.manufacturer ?? item.brand ?? '',
+        BARCODE: item.barcode ?? item.stockBarcode ?? item.supplierBarcode ?? '',
+        ARTICLE_NUMBER: item.articleNumber ?? '',
+        STOCK: item.quantity ?? 1,
+        AVAILABLE_STOCK: item.isReserved ? 0 : (item.quantity ?? 1),
+        SALES_PRICE_INC: item.sellPrice ?? item.defaultSellPrice ?? item.recommendedSellPrice ?? null,
+        GROUP_DESCRIPTION_1: item.category ?? item.registerGroup ?? '',
+        GROUP_DESCRIPTION_2: item.registerSubGroup ?? '',
+        SUPPLIER_PRODUCT_NUMBER: item.articleNumber ?? item.supplierBarcode ?? '',
+        SUPPLIER_NAME: item.supplierName ?? '',
+        COLOR: item.color ?? item.primaryBasicColor ?? '',
+        FRAME_HEIGHT: item.frameHight ?? '',
+        MODEL_YEAR: item.modelYear ?? '',
+        WHEEL_SIZE: item.wheelSize ?? '',
+        GEAR: item.gear ?? item.gearType ?? '',
+        LOCATION: item.location ?? '',
+        _type: 'fiets',
+        _source: 'wilmar',
+      }))
+
+      const partsList: any[] = []
+      if (partsRes.ok) {
+        const partsRaw = await partsRes.json().catch(() => null)
+        const rawList = Array.isArray(partsRaw) ? partsRaw : partsRaw?.data ?? partsRaw?.parts ?? []
+        rawList.forEach((item: any) => {
+          const stock = item.numberOnStock ?? item.totalNumberInShop ?? 0
+          const reserved = item.reserved ?? 0
+          if (stock > 0) {
+            const cat = item.category ?? item.productGroup?.name ?? ''
+            const subCat = item.size ?? item.productGroup?.sub ?? ''
+            partsList.push({
+              PRODUCT_DESCRIPTION: item.name ?? item.description ?? '',
+              BRAND_NAME: item.brand ?? '',
+              BARCODE: item.stockBarcode ?? item.catalogueBarcode ?? '',
+              ARTICLE_NUMBER: item.articleNumber ?? '',
+              STOCK: stock,
+              AVAILABLE_STOCK: Math.max(0, stock - reserved),
+              SALES_PRICE_INC: item.sellPrice ?? item.defaultSellPrice ?? null,
+              GROUP_DESCRIPTION_1: cat,
+              GROUP_DESCRIPTION_2: subCat,
+              SUPPLIER_PRODUCT_NUMBER: item.articleNumber ?? '',
+              SUPPLIER_NAME: item.supplierName ?? '',
+              COLOR: item.color1 ?? item.color2 ?? item.color3 ?? '',
+              FRAME_HEIGHT: item.size ?? '',
+              MODEL_YEAR: '',
+              WHEEL_SIZE: '',
+              GEAR: '',
+              LOCATION: '',
+              _type: 'onderdeel',
+              _source: 'wilmar',
+            })
+          }
+        })
+      }
+
+      const data = [...bicycles, ...partsList]
 
       if (zoekterm && Array.isArray(data)) {
         const needle = zoekterm.toLowerCase()

@@ -16,14 +16,22 @@ const WINKEL_KLEUREN = [
 ]
 
 const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: number; sticky?: boolean; format?: 'money' | 'int' | 'text' }> = {
+  _type: { label: 'Type', order: 5, format: 'text' },
   PRODUCT_DESCRIPTION: { label: 'Product', order: 10, sticky: true, format: 'text' },
   BRAND_NAME: { label: 'Merk', order: 20, format: 'text' },
   BARCODE: { label: 'Barcode', order: 30, format: 'text' },
-  SUPPLIER_PRODUCT_NUMBER: { label: 'Art. nummer', order: 40, format: 'text' },
+  ARTICLE_NUMBER: { label: 'Art. nummer', order: 35, format: 'text' },
+  SUPPLIER_PRODUCT_NUMBER: { label: 'Leverancier art.', order: 40, format: 'text' },
   STOCK: { label: 'Voorraad', order: 50, format: 'int' },
   AVAILABLE_STOCK: { label: 'Beschikbaar', order: 60, format: 'int' },
   SALES_PRICE_INC: { label: 'Prijs incl.', order: 70, format: 'money' },
-  GROUP_DESCRIPTION_1: { label: 'Groep', order: 80, format: 'text' },
+  COLOR: { label: 'Kleur', order: 75, format: 'text' },
+  FRAME_HEIGHT: { label: 'Framehoogte', order: 76, format: 'text' },
+  MODEL_YEAR: { label: 'Modeljaar', order: 77, format: 'text' },
+  WHEEL_SIZE: { label: 'Wielmaat', order: 78, format: 'text' },
+  GEAR: { label: 'Versnelling', order: 79, format: 'text' },
+  LOCATION: { label: 'Locatie', order: 80, format: 'text' },
+  GROUP_DESCRIPTION_1: { label: 'Groep', order: 85, format: 'text' },
   GROUP_DESCRIPTION_2: { label: 'Subgroep', order: 90, format: 'text' },
   SUPPLIER_NAME: { label: 'Leverancier', order: 100, format: 'text' },
 }
