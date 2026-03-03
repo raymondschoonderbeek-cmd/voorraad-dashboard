@@ -283,16 +283,13 @@ export default function Dashboard() {
   const supabase = createClient()
 
   useEffect(() => {
-    if (winkels.length > 0 && !geselecteerdeWinkel) {
-      try {
-        const id = localStorage.getItem(WINKEL_STORAGE_KEY)
-        if (id) {
-          const w = winkels.find(x => x.id === Number(id))
-          if (w) selecteerWinkel(w)
-        }
-      } catch {}
-    }
-  }, [winkels, geselecteerdeWinkel])
+    try {
+      if (sessionStorage.getItem('dynamo_geen_winkel_restore')) {
+        sessionStorage.removeItem('dynamo_geen_winkel_restore')
+      }
+      localStorage.removeItem(WINKEL_STORAGE_KEY)
+    } catch {}
+  }, [])
 
   useEffect(() => {
     try {
