@@ -339,7 +339,7 @@ export default function BeheerPage() {
 
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-30">
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-40">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>

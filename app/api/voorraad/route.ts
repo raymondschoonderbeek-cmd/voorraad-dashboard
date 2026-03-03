@@ -53,6 +53,14 @@ function alleenHoofdGroep(raw: any): string {
   return first || s
 }
 
+/** Zoek op meerdere woorden: elk woord moet ergens in het item voorkomen (bijv. "gazelle grenoble" matcht merk Gazelle + product Grenoble) */
+function matchesSearch(item: any, zoekterm: string): boolean {
+  const words = zoekterm.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return true
+  const allText = Object.values(item).map(v => String(v ?? '').toLowerCase()).join(' ')
+  return words.every(word => allText.includes(word))
+}
+
 function isAuthBodyError(data: any) {
   if (!data || typeof data !== 'object') return false
   if (data?.error !== true) return false
@@ -221,10 +229,7 @@ export async function GET(request: NextRequest) {
       const data = [...bicycles, ...partsList]
 
       if (zoekterm && Array.isArray(data)) {
-        const needle = zoekterm.toLowerCase()
-        const gefilterd = data.filter((item: any) =>
-          Object.values(item).some(waarde => String(waarde).toLowerCase().includes(needle))
-        )
+        const gefilterd = data.filter((item: any) => matchesSearch(item, zoekterm))
         return NextResponse.json(gefilterd)
       }
 
@@ -305,10 +310,7 @@ export async function GET(request: NextRequest) {
 
     // 5) Filter op zoekterm
     if (zoekterm && items.length > 0) {
-      const needle = zoekterm.toLowerCase()
-      const gefilterd = items.filter((item: any) =>
-        Object.values(item).some(waarde => String(waarde).toLowerCase().includes(needle))
-      )
+      const gefilterd = items.filter((item: any) => matchesSearch(item, zoekterm))
       return NextResponse.json(Array.isArray(data) ? gefilterd : { ...data, products: gefilterd })
     }
 

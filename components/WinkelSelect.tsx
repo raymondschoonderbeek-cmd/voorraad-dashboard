@@ -68,7 +68,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
         <div
           role="listbox"
           aria-label="Winkellijst"
-          className="absolute top-full left-0 mt-1 z-50 min-w-[200px] max-w-[320px] max-h-[280px] overflow-hidden rounded-xl shadow-xl"
+          className="absolute top-full left-0 mt-1 z-20 min-w-[200px] max-w-[320px] max-h-[280px] overflow-hidden rounded-xl shadow-xl"
           style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)' }}
         >
           <div className="p-2 border-b border-gray-100">
