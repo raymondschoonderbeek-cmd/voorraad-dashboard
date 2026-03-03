@@ -150,8 +150,8 @@ export default function BeheerPage() {
         dealer_nummer: bewerkWinkel.dealer_nummer,
         postcode: bewerkWinkel.postcode,
         stad: bewerkWinkel.stad,
-        wilmar_organisation_id: bewerkWinkel.wilmar_organisation_id,
-        wilmar_branch_id: bewerkWinkel.wilmar_branch_id,
+     wilmar_organisation_id: bewerkWinkel.wilmar_organisation_id ?? null,
+  wilmar_branch_id: bewerkWinkel.wilmar_branch_id ?? null,
       }),
     })
     setWinkelLoading(false); setBewerkWinkel(null)
