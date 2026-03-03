@@ -9,7 +9,18 @@ const F = "'Outfit', sans-serif"
 
 type Rol = { id: number; user_id: string; rol: string; naam: string; created_at: string }
 type WinkelToegang = { id: number; user_id: string; winkel_id: number }
-type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number; wilmar_organisation_id?: number; wilmar_branch_id?: number }
+type Winkel = {
+  id: number
+  naam: string
+  dealer_nummer: string
+  postcode?: string
+  stad?: string
+  lat?: number
+  lng?: number
+  wilmar_organisation_id?: number
+  wilmar_branch_id?: number
+  api_type?: 'cyclesoftware' | 'wilmar' | null
+}
 type Tab = 'gebruikers' | 'winkels' | 'import'
 
 const IconArrowLeft = () => (
@@ -45,6 +56,7 @@ export default function BeheerPage() {
   const [nieuwWinkelDealer, setNieuwWinkelDealer] = useState('')
   const [nieuwWinkelPostcode, setNieuwWinkelPostcode] = useState('')
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
+  const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar'>('cyclesoftware')
 
   // Wilmar — aparte state los van bewerkWinkel
   const [wilmarStores, setWilmarStores] = useState<any[]>([])
@@ -140,9 +152,19 @@ export default function BeheerPage() {
     await fetch('/api/winkels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ naam: nieuwWinkelNaam, dealer_nummer: nieuwWinkelDealer, postcode: nieuwWinkelPostcode, stad: nieuwWinkelStad }),
+      body: JSON.stringify({
+        naam: nieuwWinkelNaam,
+        dealer_nummer: nieuwWinkelDealer,
+        postcode: nieuwWinkelPostcode,
+        stad: nieuwWinkelStad,
+        api_type: nieuwWinkelApiType,
+      }),
     })
-    setNieuwWinkelNaam(''); setNieuwWinkelDealer(''); setNieuwWinkelPostcode(''); setNieuwWinkelStad('')
+    setNieuwWinkelNaam('')
+    setNieuwWinkelDealer('')
+    setNieuwWinkelPostcode('')
+    setNieuwWinkelStad('')
+    setNieuwWinkelApiType('cyclesoftware')
     setToonWinkelForm(false); setWinkelLoading(false)
     await haalGebruikersOp()
   }
@@ -150,7 +172,6 @@ export default function BeheerPage() {
   async function slaWinkelOp(e: React.FormEvent) {
   e.preventDefault()
   if (!bewerkWinkel) return
-  alert(`Opslaan: branchId=${wilmarBranchId}, orgId=${wilmarOrganisationId}`)
   setWinkelLoading(true)
   await fetch('/api/winkels', {
       method: 'PUT',
@@ -163,6 +184,9 @@ export default function BeheerPage() {
         stad: bewerkWinkel.stad,
         wilmar_organisation_id: wilmarOrganisationId,
         wilmar_branch_id: wilmarBranchId,
+        api_type:
+          bewerkWinkel.api_type ??
+          (wilmarBranchId && wilmarOrganisationId ? 'wilmar' : 'cyclesoftware'),
       }),
     })
     setWinkelLoading(false)
@@ -478,6 +502,45 @@ export default function BeheerPage() {
                       <input placeholder="bijv. Amsterdam" value={nieuwWinkelStad} onChange={e => setNieuwWinkelStad(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                   </div>
+                  <div>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>
+                      Systeem
+                    </label>
+                    <div className="flex flex-wrap gap-3">
+                      {[
+                        { value: 'cyclesoftware', label: 'CycleSoftware', info: 'Standaard koppeling via dealer nummer' },
+                        { value: 'wilmar', label: 'Wilmar', info: 'Gebruik Wilmar API met branch koppeling' },
+                      ].map(opt => (
+                        <label key={opt.value} className="flex-1 min-w-[140px] cursor-pointer">
+                          <input
+                            type="radio"
+                            name="winkel_api_type"
+                            value={opt.value}
+                            checked={nieuwWinkelApiType === opt.value}
+                            onChange={() =>
+                              setNieuwWinkelApiType(opt.value as 'cyclesoftware' | 'wilmar')
+                            }
+                            className="sr-only"
+                          />
+                          <div
+                            className="rounded-xl border-2 p-3 transition"
+                            style={
+                              nieuwWinkelBron === opt.value
+                                ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' }
+                                : { borderColor: 'rgba(13,31,78,0.1)' }
+                            }
+                          >
+                            <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                              {opt.label}
+                            </div>
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
+                              {opt.info}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
                     <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
@@ -506,6 +569,55 @@ export default function BeheerPage() {
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
                       <input value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass} style={inputStyle} />
+                    </div>
+                  </div>
+
+                  {/* Systeemkeuze */}
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(13,31,78,0.02)', border: '1px solid rgba(13,31,78,0.08)' }}>
+                    <p className="text-xs font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Systeem</p>
+                    <div className="flex flex-wrap gap-3">
+                      {[
+                        { value: 'cyclesoftware' as const, label: 'CycleSoftware', info: 'Gebruik dealer nummer voor voorraad' },
+                        { value: 'wilmar' as const, label: 'Wilmar', info: 'Gebruik Wilmar koppeling (branch/organisation)' },
+                      ].map(opt => (
+                        <label key={opt.value} className="flex-1 min-w-[140px] cursor-pointer">
+                          <input
+                            type="radio"
+                            name="bewerk_winkel_api_type"
+                            value={opt.value}
+                            checked={
+                              (bewerkWinkel.api_type ??
+                                (bewerkWinkel.wilmar_branch_id &&
+                                bewerkWinkel.wilmar_organisation_id
+                                  ? 'wilmar'
+                                  : 'cyclesoftware')) === opt.value
+                            }
+                            onChange={() =>
+                              setBewerkWinkel({ ...bewerkWinkel, api_type: opt.value })
+                            }
+                            className="sr-only"
+                          />
+                          <div
+                            className="rounded-xl border-2 p-3 transition"
+                            style={
+                              (bewerkWinkel.api_type ??
+                                (bewerkWinkel.wilmar_branch_id &&
+                                bewerkWinkel.wilmar_organisation_id
+                                  ? 'wilmar'
+                                  : 'cyclesoftware')) === opt.value
+                                ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' }
+                                : { borderColor: 'rgba(13,31,78,0.1)' }
+                            }
+                          >
+                            <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                              {opt.label}
+                            </div>
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
+                              {opt.info}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
@@ -588,6 +700,9 @@ export default function BeheerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</span>
+                          {w.api_type === 'wilmar' && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontFamily: F }}>Wilmar</span>
+                          )}
                           {w.wilmar_branch_id && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontFamily: F }}>🔗 Wilmar</span>
                           )}

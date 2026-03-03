@@ -73,7 +73,18 @@ function isFiets(p: any) {
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
-type Winkel = { id: number; naam: string; dealer_nummer: string; postcode?: string; stad?: string; lat?: number; lng?: number; wilmar_organisation_id?: number; wilmar_branch_id?: number }
+type Winkel = {
+  id: number
+  naam: string
+  dealer_nummer: string
+  postcode?: string
+  stad?: string
+  lat?: number
+  lng?: number
+  wilmar_organisation_id?: number
+  wilmar_branch_id?: number
+  api_type?: 'cyclesoftware' | 'wilmar' | null
+}
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
@@ -297,10 +308,15 @@ export default function Dashboard() {
     setWinkels(data)
   }, [])
 
-  const haalVoorraadOp = useCallback(async (dealer: string, q: string) => {
+  const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string, q: string) => {
     setLoading(true)
     setAuthRequired(null)
-    const res = await fetch(`/api/voorraad?dealer=${dealer}&q=${encodeURIComponent(q)}`)
+    const params = new URLSearchParams()
+    if (winkelId) params.set('winkel', String(winkelId))
+    if (dealer) params.set('dealer', dealer)
+    params.set('q', q)
+
+    const res = await fetch(`/api/voorraad?${params.toString()}`)
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       setProducten([]); setKolommen([])
@@ -347,7 +363,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!geselecteerdeWinkel) return
-    haalVoorraadOp(geselecteerdeWinkel.dealer_nummer, debouncedZoekterm)
+    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer, debouncedZoekterm)
   }, [debouncedZoekterm, geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
@@ -358,7 +374,7 @@ export default function Dashboard() {
     setGeselecteerdeWinkel(winkel)
     setZoekterm(''); setDebouncedZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setAuthRequired(null)
-    await haalVoorraadOp(winkel.dealer_nummer, '')
+    await haalVoorraadOp(winkel.id, winkel.dealer_nummer, '')
   }
 
   async function voegWinkelToe(e: React.FormEvent) {
@@ -413,6 +429,11 @@ export default function Dashboard() {
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
+  const bron =
+    geselecteerdeWinkel?.api_type ??
+    (geselecteerdeWinkel?.wilmar_branch_id && geselecteerdeWinkel?.wilmar_organisation_id
+      ? 'wilmar'
+      : 'cyclesoftware')
 
   const gefilterdEnGesorteerd = useMemo(() => {
     let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
@@ -753,6 +774,9 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>#{dealer}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
+                        {bron === 'wilmar' ? 'Wilmar' : 'CycleSoftware'}
+                      </span>
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                     </div>
                     <div className="flex items-center gap-3">

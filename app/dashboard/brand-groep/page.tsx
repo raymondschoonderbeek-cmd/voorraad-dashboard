@@ -6,7 +6,14 @@ import Link from 'next/link'
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
 
-type Winkel = { id: number; naam: string; dealer_nummer: string }
+type Winkel = {
+  id: number
+  naam: string
+  dealer_nummer: string
+  wilmar_organisation_id?: number
+  wilmar_branch_id?: number
+  api_type?: 'cyclesoftware' | 'wilmar' | null
+}
 type Product = { [key: string]: any }
 
 const BRAND_ALIASES: Record<string, string> = {
@@ -117,9 +124,14 @@ export default function BrandGroepPage() {
     setWinkels(data)
   }, [])
 
-  const haalVoorraadOp = useCallback(async (dealer: string) => {
+  const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string) => {
     setLoading(true)
-    const res = await fetch(`/api/voorraad?dealer=${dealer}&q=`)
+    const params = new URLSearchParams()
+    if (winkelId) params.set('winkel', String(winkelId))
+    if (dealer) params.set('dealer', dealer)
+    params.set('q', '')
+
+    const res = await fetch(`/api/voorraad?${params.toString()}`)
     const data = await res.json()
     const items = Array.isArray(data) ? data : data.products ?? []
     setProducten(items)
@@ -139,7 +151,7 @@ export default function BrandGroepPage() {
     setBrandSearch('')
     setMinAvailable(0)
     setTop10Brands(false)
-    if (winkel) await haalVoorraadOp(winkel.dealer_nummer)
+    if (winkel) await haalVoorraadOp(winkel.id, winkel.dealer_nummer)
   }
 
   // ✅ Filter alvast 0-voorraad weg (basis voor alles)
