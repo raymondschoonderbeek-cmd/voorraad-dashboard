@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth, requireAdmin } from '@/lib/auth'
+import { withRateLimit } from '@/lib/api-middleware'
 
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
+  const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabase
@@ -32,9 +35,11 @@ async function haalCoordsOp(postcode: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const rl = withRateLimit(request)
+  if (rl) return rl
+  const auth = await requireAdmin()
+  if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang (admin vereist)' }, { status: auth.status })
+  const { supabase } = auth
 
   const body = await request.json()
   const { naam, dealer_nummer, postcode, straat, stad, api_type } = body
@@ -65,9 +70,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const rl = withRateLimit(request)
+  if (rl) return rl
+  const auth = await requireAdmin()
+  if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang (admin vereist)' }, { status: auth.status })
+  const { supabase } = auth
 
   const body = await request.json()
   const { id, naam, dealer_nummer, postcode, straat, stad, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
@@ -102,9 +109,11 @@ export async function PUT(request: NextRequest) {
   return NextResponse.json({ success: true })
 }
 export async function DELETE(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const rl = withRateLimit(req)
+  if (rl) return rl
+  const auth = await requireAdmin()
+  if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang (admin vereist)' }, { status: auth.status })
+  const { supabase } = auth
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })

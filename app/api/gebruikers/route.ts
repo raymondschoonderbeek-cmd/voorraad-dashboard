@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/api-middleware'
 
 // Controleer of gebruiker admin is
 async function isAdmin(supabase: any, userId: string) {
@@ -12,7 +13,9 @@ async function isAdmin(supabase: any, userId: string) {
 }
 
 // Haal alle gebruikers op
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -37,6 +40,8 @@ export async function GET() {
 
 // Nieuwe gebruiker uitnodigen
 export async function POST(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -73,6 +78,8 @@ export async function POST(request: NextRequest) {
 
 // Gebruiker verwijderen
 export async function DELETE(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

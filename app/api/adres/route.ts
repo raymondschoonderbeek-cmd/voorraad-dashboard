@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/api-middleware'
 
 /**
  * Haalt adresgegevens op via PDOK Locatieserver (BAG) op basis van postcode + huisnummer.
  * GET /api/adres?postcode=1234AB&huisnummer=10
  */
 export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

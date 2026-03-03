@@ -4,8 +4,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import useSWR from 'swr'
+import { WinkelSelect, type WinkelSelectRef } from '@/components/WinkelSelect'
+import { DYNAMO_BLUE } from '@/lib/theme'
+import type { Winkel } from '@/lib/types'
 
-const DYNAMO_BLUE = '#0d1f4e'
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 const DYNAMO_GOLD = '#f0c040'
 const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const F = "'Outfit', sans-serif"
@@ -13,7 +17,7 @@ const F = "'Outfit', sans-serif"
 const WINKEL_KLEUREN = [
   '#2563eb', '#16a34a', '#dc2626', '#9333ea',
   '#ea580c', '#0891b2', '#65a30d', '#db2777',
-]
+] as const
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
@@ -83,18 +87,6 @@ function isFiets(p: any) {
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
-type Winkel = {
-  id: number
-  naam: string
-  dealer_nummer: string
-  postcode?: string
-  stad?: string
-  lat?: number
-  lng?: number
-  wilmar_organisation_id?: number
-  wilmar_branch_id?: number
-  api_type?: 'cyclesoftware' | 'wilmar' | null
-}
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
@@ -264,7 +256,8 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
 }
 
 export default function Dashboard() {
-  const [winkels, setWinkels] = useState<Winkel[]>([])
+  const { data: winkelsData = [], mutate: mutateWinkels } = useSWR<Winkel[]>('/api/winkels', fetcher)
+  const winkels = Array.isArray(winkelsData) ? winkelsData : []
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
   const [producten, setProducten] = useState<Product[]>([])
   const [kolommen, setKolommen] = useState<string[]>([])
@@ -275,7 +268,7 @@ export default function Dashboard() {
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
   const [loading, setLoading] = useState(false)
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
-  const winkelSelectRef = useRef<HTMLSelectElement>(null)
+  const winkelSelectRef = useRef<WinkelSelectRef>(null)
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [gebruiker, setGebruiker] = useState('')
@@ -307,11 +300,21 @@ export default function Dashboard() {
     try { localStorage.setItem(KOLOMMEN_STORAGE_KEY, JSON.stringify(zichtbareKolommen)) } catch {}
   }, [zichtbareKolommen, kolommenGeladen])
 
-  const haalWinkelsOp = useCallback(async () => {
-    const res = await fetch('/api/winkels')
-    const data = await res.json()
-    setWinkels(data)
-  }, [])
+  const haalWinkelsOp = useCallback(() => mutateWinkels(), [mutateWinkels])
+  const kolomPanelRef = useRef<HTMLDivElement>(null)
+  const kolomTriggerRef = useRef<HTMLButtonElement>(null)
+
+  const wasOpenRef = useRef(false)
+  useEffect(() => {
+    if (kolomPanelOpen && kolomPanelRef.current) {
+      wasOpenRef.current = true
+      const first = kolomPanelRef.current.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+      first?.focus()
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false
+      kolomTriggerRef.current?.focus()
+    }
+  }, [kolomPanelOpen])
 
   const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string, q: string) => {
     setLoading(true)
@@ -357,9 +360,8 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    haalWinkelsOp()
     supabase.auth.getUser().then(({ data }) => setGebruiker(data.user?.email ?? ''))
-  }, [haalWinkelsOp])
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedZoekterm(zoekterm), 400)
@@ -482,16 +484,17 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center px-3 sm:px-5 gap-2 flex-1 min-w-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <span className="text-xs font-semibold uppercase hidden sm:block shrink-0" style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: F }}>Winkel</span>
-            <select
+            <WinkelSelect
               ref={winkelSelectRef}
-              value={geselecteerdeWinkel?.id ?? ''}
-              onChange={e => { const w = winkels.find(w => w.id === Number(e.target.value)); if (w) selecteerWinkel(w) }}
-              className="text-sm rounded-lg px-3 py-1.5 cursor-pointer min-w-0 w-full max-w-[180px] sm:min-w-[140px]"
-              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F, outline: 'none' }}
-            >
-              <option value="" disabled className="text-gray-900">Kies winkel...</option>
-              {winkels.map(w => <option key={w.id} value={w.id} className="text-gray-900">{w.naam}</option>)}
-            </select>
+              winkels={winkels}
+              value={geselecteerdeWinkel}
+              onChange={w => selecteerWinkel(w)}
+              placeholder="Kies winkel..."
+              id="winkel-select"
+              aria-label="Selecteer winkel"
+              className="min-w-0 flex-1 max-w-[180px] sm:min-w-[140px]"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}
+            />
           </div>
           <div className="flex items-center gap-2 pl-2 sm:pl-4 shrink-0 w-full sm:w-auto justify-end sm:justify-start">
             <span className="text-xs hidden md:block px-2 truncate max-w-[120px]" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{gebruiker}</span>
@@ -502,7 +505,7 @@ export default function Dashboard() {
               </svg>
               <span className="hidden sm:inline">Beheer</span>
             </Link>
-            <button onClick={uitloggen} className="rounded-lg px-3 sm:px-4 py-1.5 text-xs font-bold transition hover:opacity-90 shrink-0" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F }}>
+            <button onClick={uitloggen} aria-label="Uitloggen" className="rounded-lg px-3 sm:px-4 py-1.5 text-xs font-bold transition hover:opacity-90 shrink-0" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F }}>
               Uitloggen
             </button>
           </div>
@@ -530,7 +533,7 @@ export default function Dashboard() {
                   <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>Voorraad Dashboard</h1>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '8px', fontFamily: F }}>{getDatum()}</p>
                   <div className="flex items-center gap-3 mt-6">
-                    <button onClick={focusWinkelSelect} className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}>
+                    <button onClick={focusWinkelSelect} aria-label="Kies een winkel" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}>
                       <IconStore /> Kies een winkel
                     </button>
                     <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
@@ -707,14 +710,14 @@ export default function Dashboard() {
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
                     <div className="relative">
-                      <button onClick={() => setKolomPanelOpen(v => !v)} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 flex items-center gap-2" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                      <button ref={kolomTriggerRef} onClick={() => setKolomPanelOpen(v => !v)} aria-expanded={kolomPanelOpen} aria-haspopup="dialog" aria-label="Kolommen kiezen" className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 flex items-center gap-2" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                         ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
-                        <div className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-2xl bg-white shadow-xl p-4 z-30" style={{ border: '1px solid rgba(13,31,78,0.1)' }}>
+                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-2xl bg-white shadow-xl p-4 z-30" style={{ border: '1px solid rgba(13,31,78,0.1)' }}>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Kolommen</span>
-                            <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
+                            <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none" aria-label="Sluiten">✕</button>
                           </div>
                           <p className="text-xs mb-3" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Voorkeur wordt automatisch onthouden.</p>
                           <div className="flex gap-2 mb-3">
@@ -757,7 +760,7 @@ export default function Dashboard() {
                           const active = sortKey === k
                           const sticky = stickyEnabled && stickyKey === k
                           return (
-                            <th key={k} className="px-4 py-3 text-left whitespace-nowrap" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}>
+                            <th key={k} scope="col" className="px-4 py-3 text-left whitespace-nowrap" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}>
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
                                 <span style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.25)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/api-middleware'
 
 const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
 const WILMAR_KEY = process.env.WILMAR_API_KEY!
@@ -65,6 +66,8 @@ function isAuthBodyError(data: any) {
 }
 
 export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   try {
     const supabase = await createClient()
     const {
@@ -310,11 +313,16 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(Array.isArray(data) ? items : { ...data, products: items })
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Voorraad API fout:', err)
+    const message = err instanceof Error ? err.message : 'Er ging iets mis bij het ophalen van de voorraad.'
+    const isUpstream = /wilmar|cyclesoftware|fetch|network/i.test(message)
     return NextResponse.json(
-      { error: 'SERVER_ERROR', message: 'Er ging iets mis bij het ophalen van de voorraad.' },
-      { status: 500 }
+      {
+        error: isUpstream ? 'UPSTREAM_ERROR' : 'SERVER_ERROR',
+        message: isUpstream ? 'De voorraad-bron is tijdelijk niet bereikbaar. Probeer het later opnieuw.' : message,
+      },
+      { status: 502 }
     )
   }
 }
