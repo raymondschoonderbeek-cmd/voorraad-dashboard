@@ -525,7 +525,7 @@ export default function BeheerPage() {
                           <div
                             className="rounded-xl border-2 p-3 transition"
                             style={
-                              nieuwWinkelBron === opt.value
+                              nieuwWinkelApiType === opt.value
                                 ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' }
                                 : { borderColor: 'rgba(13,31,78,0.1)' }
                             }
