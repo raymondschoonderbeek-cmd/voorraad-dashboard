@@ -335,12 +335,17 @@ export default function BeheerPage() {
       const workbook = XLSX.read(buffer, { type: 'array' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-      const parsed = rows.map(r => ({
-        naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
-        dealer_nummer: String(r.dealer_nummer || r['Dealer nummer'] || r.DEALER_NUMMER || '').trim(),
-        postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
-        stad: String(r.stad || r.Stad || r.STAD || '').trim(),
-      })).filter(r => r.naam && r.dealer_nummer)
+      const parsed = rows.map(r => {
+        const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
+        return {
+          naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
+          dealer_nummer: String(r.dealer_nummer || r['Dealer nummer'] || r.DEALER_NUMMER || '').trim(),
+          postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
+          straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
+          stad: String(r.stad || r.Stad || r.STAD || '').trim(),
+          api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined),
+        }
+      }).filter(r => r.naam && r.dealer_nummer)
       setImportData(parsed)
     } catch {
       setImportError('Kon het bestand niet lezen. Zorg dat het een geldig .xlsx bestand is.')
@@ -896,7 +901,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong>, <strong>postcode</strong>, <strong>stad</strong></p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>api_type</strong> (optioneel: cyclesoftware of wilmar)</p>
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
@@ -914,7 +919,7 @@ export default function BeheerPage() {
                   <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                     <table className="w-full text-xs">
                       <thead style={{ background: DYNAMO_BLUE }}>
-                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Stad'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
+                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Straat', 'Stad', 'API'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {importData.slice(0, 10).map((r, i) => (
@@ -922,7 +927,9 @@ export default function BeheerPage() {
                             <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.naam}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
+                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
+                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -940,10 +947,14 @@ export default function BeheerPage() {
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>{['naam', 'dealer_nummer', 'postcode', 'stad'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
+                    <tr>{['naam', 'dealer_nummer', 'postcode', 'straat', 'stad', 'api_type'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {[['Dynamo Amsterdam','10001','1012AB','Amsterdam'],['Dynamo Rotterdam','10002','3011AD','Rotterdam'],['Dynamo Utrecht','10003','3511EP','Utrecht']].map((r, i) => (
+                    {[
+                      ['Dynamo Amsterdam','10001','1012AB','Damrak 1','Amsterdam','cyclesoftware'],
+                      ['Dynamo Rotterdam','10002','3011AD','Coolsingel 42','Rotterdam','cyclesoftware'],
+                      ['Dynamo Utrecht','10003','3511EP','Oudegracht 100','Utrecht','wilmar'],
+                    ].map((r, i) => (
                       <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
                         {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.7)', fontFamily: F }}>{c}</td>)}
                       </tr>
