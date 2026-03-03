@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { naam, dealer_nummer, postcode, stad, api_type } = body
+  const { naam, dealer_nummer, postcode, straat, stad, api_type } = body
 
   if (!naam || !dealer_nummer) {
     return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       naam,
       dealer_nummer,
       postcode: postcode ?? null,
+      straat: straat ?? null,
       stad: stad ?? null,
       lat,
       lng,
@@ -69,7 +70,7 @@ export async function PUT(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, naam, dealer_nummer, postcode, stad, wilmar_organisation_id, wilmar_branch_id, api_type } = body
+  const { id, naam, dealer_nummer, postcode, straat, stad, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
@@ -79,11 +80,13 @@ export async function PUT(request: NextRequest) {
     naam,
     dealer_nummer,
     postcode: postcode || null,
+    straat: straat ?? null,
     stad: stad || null,
     lat,
     lng,
     wilmar_organisation_id: wilmar_organisation_id ?? null,
     wilmar_branch_id: wilmar_branch_id ?? null,
+    wilmar_store_naam: wilmar_store_naam ?? null,
   }
 
   if (api_type) {

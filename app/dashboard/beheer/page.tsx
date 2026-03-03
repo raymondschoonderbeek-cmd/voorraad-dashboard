@@ -14,11 +14,13 @@ type Winkel = {
   naam: string
   dealer_nummer: string
   postcode?: string
+  straat?: string
   stad?: string
   lat?: number
   lng?: number
   wilmar_organisation_id?: number
   wilmar_branch_id?: number
+  wilmar_store_naam?: string
   api_type?: 'cyclesoftware' | 'wilmar' | null
 }
 type Tab = 'gebruikers' | 'winkels' | 'import'
@@ -55,8 +57,12 @@ export default function BeheerPage() {
   const [nieuwWinkelNaam, setNieuwWinkelNaam] = useState('')
   const [nieuwWinkelDealer, setNieuwWinkelDealer] = useState('')
   const [nieuwWinkelPostcode, setNieuwWinkelPostcode] = useState('')
+  const [nieuwWinkelHuisnummer, setNieuwWinkelHuisnummer] = useState('')
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
+  const [nieuwWinkelStraat, setNieuwWinkelStraat] = useState('')
   const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar'>('cyclesoftware')
+  const [adresLoading, setAdresLoading] = useState(false)
+  const [bewerkHuisnummer, setBewerkHuisnummer] = useState('')
 
   // Wilmar — aparte state los van bewerkWinkel
   const [wilmarStores, setWilmarStores] = useState<any[]>([])
@@ -100,12 +106,49 @@ export default function BeheerPage() {
     setWilmarStoresLoading(false)
   }
 
+  async function haalAdresOp(isNieuw: boolean) {
+    const postcode = isNieuw ? nieuwWinkelPostcode : (bewerkWinkel?.postcode ?? '')
+    const huisnummer = isNieuw ? nieuwWinkelHuisnummer : bewerkHuisnummer
+    if (!postcode.trim() || !huisnummer.trim()) {
+      setFormError('Vul postcode en huisnummer in om het adres op te halen.')
+      return
+    }
+    setAdresLoading(true)
+    setFormError('')
+    try {
+      const res = await fetch(`/api/adres?postcode=${encodeURIComponent(postcode.replace(/\s/g, ''))}&huisnummer=${encodeURIComponent(huisnummer)}`)
+      const data = await res.json()
+      if (!res.ok) {
+        setFormError(data.error ?? 'Adres niet gevonden.')
+        return
+      }
+      if (isNieuw) {
+        setNieuwWinkelStad(data.stad ?? '')
+        setNieuwWinkelStraat(data.straat ?? '')
+        if (data.postcode) setNieuwWinkelPostcode(data.postcode)
+      } else if (bewerkWinkel) {
+        setBewerkWinkel({
+          ...bewerkWinkel,
+          stad: data.stad ?? bewerkWinkel.stad,
+          straat: data.straat ?? bewerkWinkel.straat,
+          postcode: data.postcode ?? bewerkWinkel.postcode,
+          lat: data.lat ?? bewerkWinkel.lat,
+          lng: data.lng ?? bewerkWinkel.lng,
+        })
+      }
+    } catch {
+      setFormError('Kon adres niet ophalen.')
+    }
+    setAdresLoading(false)
+  }
+
   function startWinkelBewerken(w: Winkel) {
     setBewerkWinkel(w)
     setToonWinkelForm(false)
     setWilmarBranchId(w.wilmar_branch_id ?? null)
     setWilmarOrganisationId(w.wilmar_organisation_id ?? null)
     setWilmarStores([])
+    setBewerkHuisnummer('')
     setFormError('')
     setFormSuccess('')
   }
@@ -158,6 +201,7 @@ export default function BeheerPage() {
         naam: nieuwWinkelNaam,
         dealer_nummer: nieuwWinkelDealer,
         postcode: nieuwWinkelPostcode,
+        straat: nieuwWinkelStraat || undefined,
         stad: nieuwWinkelStad,
         api_type: nieuwWinkelApiType,
       }),
@@ -165,7 +209,9 @@ export default function BeheerPage() {
     setNieuwWinkelNaam('')
     setNieuwWinkelDealer('')
     setNieuwWinkelPostcode('')
+    setNieuwWinkelHuisnummer('')
     setNieuwWinkelStad('')
+    setNieuwWinkelStraat('')
     setNieuwWinkelApiType('cyclesoftware')
     setToonWinkelForm(false); setWinkelLoading(false)
     await haalGebruikersOp()
@@ -178,14 +224,22 @@ export default function BeheerPage() {
     setFormError('')
     setFormSuccess('')
     const heeftWilmarKoppeling = wilmarBranchId != null && wilmarOrganisationId != null
+    const geselecteerdeWilmarStore = wilmarStores.find(
+      s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId
+    )
+    const wilmarNaam = geselecteerdeWilmarStore?.name
+      ? `${geselecteerdeWilmarStore.name}${geselecteerdeWilmarStore.city ? ` (${geselecteerdeWilmarStore.city})` : ''}`
+      : null
     const payload = {
       id: bewerkWinkel.id,
       naam: bewerkWinkel.naam,
       dealer_nummer: bewerkWinkel.dealer_nummer,
       postcode: bewerkWinkel.postcode,
+      straat: bewerkWinkel.straat,
       stad: bewerkWinkel.stad,
       wilmar_organisation_id: wilmarOrganisationId ?? null,
       wilmar_branch_id: wilmarBranchId ?? null,
+      wilmar_store_naam: heeftWilmarKoppeling ? (wilmarNaam ?? bewerkWinkel.wilmar_store_naam ?? null) : null,
       api_type: heeftWilmarKoppeling ? 'wilmar' : 'cyclesoftware',
     }
     const res = await fetch('/api/winkels', {
@@ -504,9 +558,23 @@ export default function BeheerPage() {
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Dealer nummer *</label>
                       <input placeholder="bijv. 12345" value={nieuwWinkelDealer} onChange={e => setNieuwWinkelDealer(e.target.value)} className={inputClass} style={inputStyle} required />
                     </div>
+                    <div className="sm:col-span-2">
+                      <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Adres (optioneel — vul postcode + huisnummer in en klik op Haal adres op)</div>
+                      <div className="flex flex-wrap gap-2 items-end">
+                        <div className="flex-1 min-w-[100px]">
+                          <input placeholder="Postcode (1234AB)" value={nieuwWinkelPostcode} onChange={e => setNieuwWinkelPostcode(e.target.value)} className={inputClass} style={inputStyle} />
+                        </div>
+                        <div className="w-24">
+                          <input placeholder="Nr." value={nieuwWinkelHuisnummer} onChange={e => setNieuwWinkelHuisnummer(e.target.value)} className={inputClass} style={inputStyle} />
+                        </div>
+                        <button type="button" onClick={() => haalAdresOp(true)} disabled={adresLoading} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.08)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.12)', fontFamily: F }}>
+                          {adresLoading ? 'Bezig...' : 'Haal adres op'}
+                        </button>
+                      </div>
+                    </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Postcode</label>
-                      <input placeholder="bijv. 1234AB" value={nieuwWinkelPostcode} onChange={e => setNieuwWinkelPostcode(e.target.value)} className={inputClass} style={inputStyle} />
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Straat</label>
+                      <input placeholder="Straat + huisnummer" value={nieuwWinkelStraat} onChange={e => setNieuwWinkelStraat(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
@@ -552,9 +620,10 @@ export default function BeheerPage() {
                       ))}
                     </div>
                   </div>
+                  {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
-                    <button type="button" onClick={() => setToonWinkelForm(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setToonWinkelForm(false); setFormError('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
@@ -573,9 +642,23 @@ export default function BeheerPage() {
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Dealer nummer *</label>
                       <input value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass} style={inputStyle} required />
                     </div>
+                    <div className="sm:col-span-2">
+                      <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Adres (postcode + huisnummer → Haal adres op)</div>
+                      <div className="flex flex-wrap gap-2 items-end">
+                        <div className="flex-1 min-w-[100px]">
+                          <input placeholder="Postcode" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass} style={inputStyle} />
+                        </div>
+                        <div className="w-24">
+                          <input placeholder="Nr." value={bewerkHuisnummer} onChange={e => setBewerkHuisnummer(e.target.value)} className={inputClass} style={inputStyle} />
+                        </div>
+                        <button type="button" onClick={() => haalAdresOp(false)} disabled={adresLoading} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.08)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.12)', fontFamily: F }}>
+                          {adresLoading ? 'Bezig...' : 'Haal adres op'}
+                        </button>
+                      </div>
+                    </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Postcode</label>
-                      <input value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass} style={inputStyle} />
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Straat</label>
+                      <input placeholder="Straat + huisnummer" value={bewerkWinkel.straat ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, straat: e.target.value })} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
@@ -689,16 +772,17 @@ export default function BeheerPage() {
                         </select>
                         {wilmarBranchId != null && wilmarOrganisationId != null && (
                           <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
-                            ✓ Geselecteerd: org {wilmarOrganisationId}, branch {wilmarBranchId}
+                            ✓ Geselecteerd: {wilmarStores.find(s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId)?.name ?? `org ${wilmarOrganisationId}, branch ${wilmarBranchId}`}
                           </p>
                         )}
                       </div>
                     )}
                   </div>
 
+                  {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null); setFormError('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
@@ -727,11 +811,13 @@ export default function BeheerPage() {
                             <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)', fontFamily: F }}>CycleSoftware</span>
                           )}
                           {w.wilmar_organisation_id != null && w.wilmar_branch_id != null && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', fontFamily: F }}>🔗 Gekoppeld (org {w.wilmar_organisation_id}, branch {w.wilmar_branch_id})</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', fontFamily: F }}>
+                              🔗 Gekoppeld: {w.wilmar_store_naam || `org ${w.wilmar_organisation_id}, branch ${w.wilmar_branch_id}`}
+                            </span>
                           )}
                         </div>
                         <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>
-                          #{w.dealer_nummer}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
+                          #{w.dealer_nummer}{w.straat ? ` · ${w.straat}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
