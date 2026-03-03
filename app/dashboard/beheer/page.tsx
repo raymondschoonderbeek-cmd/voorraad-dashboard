@@ -173,21 +173,21 @@ export default function BeheerPage() {
   e.preventDefault()
   if (!bewerkWinkel) return
   setWinkelLoading(true)
+  const heeftWilmarKoppeling = wilmarBranchId != null && wilmarOrganisationId != null
+  const payload = {
+    id: bewerkWinkel.id,
+    naam: bewerkWinkel.naam,
+    dealer_nummer: bewerkWinkel.dealer_nummer,
+    postcode: bewerkWinkel.postcode,
+    stad: bewerkWinkel.stad,
+    wilmar_organisation_id: wilmarOrganisationId ?? null,
+    wilmar_branch_id: wilmarBranchId ?? null,
+    api_type: heeftWilmarKoppeling ? 'wilmar' : 'cyclesoftware',
+  }
   await fetch('/api/winkels', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: bewerkWinkel.id,
-        naam: bewerkWinkel.naam,
-        dealer_nummer: bewerkWinkel.dealer_nummer,
-        postcode: bewerkWinkel.postcode,
-        stad: bewerkWinkel.stad,
-        wilmar_organisation_id: wilmarOrganisationId,
-        wilmar_branch_id: wilmarBranchId,
-        api_type:
-          bewerkWinkel.api_type ??
-          (wilmarBranchId && wilmarOrganisationId ? 'wilmar' : 'cyclesoftware'),
-      }),
+      body: JSON.stringify(payload),
     })
     setWinkelLoading(false)
     setBewerkWinkel(null)
