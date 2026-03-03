@@ -5,7 +5,6 @@ const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
 const WILMAR_KEY = process.env.WILMAR_API_KEY!
 const WILMAR_PASSWORD = process.env.WILMAR_PASSWORD!
 
-// Haal een access token op via apiKey + password
 async function getWilmarToken(): Promise<string> {
   const res = await fetch(`${WILMAR_BASE}/api/v1/Account`, {
     method: 'POST',
@@ -18,12 +17,10 @@ async function getWilmarToken(): Promise<string> {
       password: WILMAR_PASSWORD,
     }),
   })
-
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Wilmar login mislukt: ${res.status} ${text}`)
   }
-
   const data = await res.json()
   return data.accessToken
 }
@@ -79,12 +76,10 @@ export async function GET(req: NextRequest) {
     const res = await fetch(url.toString(), {
       headers: wilmarHeaders(token),
     })
-
     if (!res.ok) {
       const detail = await res.text()
       return NextResponse.json({ error: 'Wilmar stock ophalen mislukt', status: res.status, detail }, { status: 502 })
     }
-
     const data = await res.json()
     const normalized = data.map((item: any) => ({
       BARCODE: item.barcode,
@@ -94,8 +89,31 @@ export async function GET(req: NextRequest) {
       SOLD: item.sold,
       _source: 'wilmar',
     }))
-
     return NextResponse.json(normalized)
+  }
+
+  if (action === 'bicycles') {
+    const organisationId = searchParams.get('organisationId')
+    const branchId = searchParams.get('branchId')
+
+    if (!organisationId || !branchId) {
+      return NextResponse.json({ error: 'organisationId en branchId zijn verplicht' }, { status: 400 })
+    }
+
+    const url = new URL(`${WILMAR_BASE}/api/v1/Bicycles`)
+    url.searchParams.set('organisationId', organisationId)
+    url.searchParams.set('branchId', branchId)
+    url.searchParams.set('stockState', 'OnStock')
+
+    const res = await fetch(url.toString(), {
+      headers: wilmarHeaders(token),
+    })
+    if (!res.ok) {
+      const detail = await res.text()
+      return NextResponse.json({ error: 'Wilmar bicycles ophalen mislukt', status: res.status, detail }, { status: 502 })
+    }
+    const data = await res.json()
+    return NextResponse.json(data)
   }
 
   return NextResponse.json({ error: 'Onbekende actie' }, { status: 400 })
