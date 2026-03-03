@@ -386,8 +386,8 @@ export default function Dashboard() {
 
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
 
-  function focusWinkelSelect() {
-    winkelSelectRef.current?.focus()
+  function openWinkelSelect() {
+    winkelSelectRef.current?.open()
   }
 
   function toggleSort(k: string) {
@@ -539,7 +539,12 @@ export default function Dashboard() {
                   <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>Voorraad Dashboard</h1>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '8px', fontFamily: F }}>{getDatum()}</p>
                   <div className="flex items-center gap-3 mt-6">
-                    <button onClick={focusWinkelSelect} aria-label="Kies een winkel" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}>
+                    <button
+                      onClick={openWinkelSelect}
+                      aria-label="Kies een winkel"
+                      className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-90"
+                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 4px 16px rgba(240,192,64,0.35)' }}
+                    >
                       <IconStore /> Kies een winkel
                     </button>
                     <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
@@ -569,7 +574,7 @@ export default function Dashboard() {
                   <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={focusWinkelSelect}>
+                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={openWinkelSelect}>
                     <div className="p-6">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
                         <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
