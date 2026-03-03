@@ -2,18 +2,11 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { WinkelSelect } from '@/components/WinkelSelect'
+import type { Winkel } from '@/lib/types'
 
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
-
-type Winkel = {
-  id: number
-  naam: string
-  dealer_nummer: string
-  wilmar_organisation_id?: number
-  wilmar_branch_id?: number
-  api_type?: 'cyclesoftware' | 'wilmar' | null
-}
 type Product = { [key: string]: any }
 
 const BRAND_ALIASES: Record<string, string> = {
@@ -140,8 +133,7 @@ export default function BrandGroepPage() {
 
   useEffect(() => { haalWinkelsOp() }, [haalWinkelsOp])
 
-  async function selecteerWinkel(id: number) {
-    const winkel = winkels.find(w => w.id === id) ?? null
+  async function selecteerWinkel(winkel: Winkel | null) {
     setGeselecteerdeWinkel(winkel)
     setProducten([])
     setSelectedGroup('')
@@ -326,16 +318,16 @@ export default function BrandGroepPage() {
 
           <div className="flex items-center px-3 sm:px-5 border-r border-white/10 gap-2 flex-1 min-w-0">
             <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block shrink-0">Winkel</span>
-            <select
-              value={geselecteerdeWinkel?.id ?? ''}
-              onChange={e => selecteerWinkel(Number(e.target.value))}
-              className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/20 focus:outline-none focus:ring-2 cursor-pointer min-w-0 flex-1 max-w-[160px] sm:min-w-[140px]"
-            >
-              <option value="" disabled className="text-gray-900">Kies winkel...</option>
-              {winkels.map(w => (
-                <option key={w.id} value={w.id} className="text-gray-900">{w.naam}</option>
-              ))}
-            </select>
+            <WinkelSelect
+              winkels={winkels}
+              value={geselecteerdeWinkel}
+              onChange={w => selecteerWinkel(w)}
+              placeholder="Kies winkel..."
+              id="winkel-select"
+              aria-label="Selecteer winkel"
+              className="min-w-0 flex-1 max-w-[180px] sm:min-w-[140px]"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
           </div>
 
           <div className="flex items-center px-3 sm:px-5 shrink-0">
