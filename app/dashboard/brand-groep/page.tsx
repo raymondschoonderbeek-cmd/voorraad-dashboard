@@ -113,6 +113,12 @@ export default function BrandGroepPage() {
   const [top10Brands, setTop10Brands] = useState<boolean>(false)
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
 
+  useEffect(() => {
+    if (!geselecteerdeWinkel && winkels.length > 0) {
+      setWinkelModalOpen(true)
+    }
+  }, [geselecteerdeWinkel, winkels.length])
+
   const haalWinkelsOp = useCallback(async () => {
     const res = await fetch('/api/winkels')
     const data = await res.json()
