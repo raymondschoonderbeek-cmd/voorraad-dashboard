@@ -857,12 +857,16 @@ export default function BeheerPage() {
                               {cycleAuthStatus[w.id] === 'loading' && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.4)', fontFamily: F }} title="Controleren...">…</span>
                               )}
-                              {cycleAuthStatus[w.id] && cycleAuthStatus[w.id] !== 'loading' && cycleAuthStatus[w.id].authorized && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="API heeft rechten om voorraad op te halen">✓ API toegang</span>
-                              )}
-                              {cycleAuthStatus[w.id] && cycleAuthStatus[w.id] !== 'loading' && !cycleAuthStatus[w.id].authorized && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Winkel heeft nog geen toestemming gegeven in CycleSoftware">⚠ Geen toestemming</span>
-                              )}
+                              {(() => {
+                                const status = cycleAuthStatus[w.id]
+                                if (status && status !== 'loading' && status.authorized) {
+                                  return <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="API heeft rechten om voorraad op te halen">✓ API toegang</span>
+                                }
+                                if (status && status !== 'loading' && !status.authorized) {
+                                  return <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Winkel heeft nog geen toestemming gegeven in CycleSoftware">⚠ Geen toestemming</span>
+                                }
+                                return null
+                              })()}
                             </>
                           )}
                           {w.wilmar_organisation_id != null && w.wilmar_branch_id != null && (
