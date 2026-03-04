@@ -82,6 +82,7 @@ export default function BeheerPage() {
   const [importLoading, setImportLoading] = useState(false)
   const [importError, setImportError] = useState('')
   const [importSuccess, setImportSuccess] = useState('')
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; toegevoegd: number; bijgewerkt: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [cycleStatusLoading, setCycleStatusLoading] = useState(false)
@@ -446,18 +447,47 @@ export default function BeheerPage() {
 
   async function importeerWinkels() {
     if (importData.length === 0) return
-    setImportLoading(true); setImportError(''); setImportSuccess('')
-    let succes = 0
-    for (const winkel of importData) {
-      const res = await fetch('/api/winkels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(winkel),
-      })
-      if (res.ok) succes++
+    setImportLoading(true); setImportError(''); setImportSuccess(''); setImportProgress({ current: 0, total: importData.length, toegevoegd: 0, bijgewerkt: 0 })
+    let toegevoegd = 0
+    let bijgewerkt = 0
+    for (let i = 0; i < importData.length; i++) {
+      const winkel = importData[i]
+      const bestaand = winkels.find(w => String(w.dealer_nummer).trim() === String(winkel.dealer_nummer).trim())
+      if (bestaand) {
+        const payload = {
+          id: bestaand.id,
+          naam: winkel.naam,
+          dealer_nummer: winkel.dealer_nummer,
+          postcode: winkel.postcode || null,
+          straat: winkel.straat || null,
+          stad: winkel.stad || null,
+          wilmar_organisation_id: bestaand.wilmar_organisation_id ?? null,
+          wilmar_branch_id: bestaand.wilmar_branch_id ?? null,
+          wilmar_store_naam: bestaand.wilmar_store_naam ?? null,
+          api_type: winkel.api_type ?? 'cyclesoftware',
+        }
+        const res = await fetch('/api/winkels', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (res.ok) bijgewerkt++
+      } else {
+        const res = await fetch('/api/winkels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(winkel),
+        })
+        if (res.ok) toegevoegd++
+      }
+      setImportProgress({ current: i + 1, total: importData.length, toegevoegd, bijgewerkt })
     }
     setImportLoading(false)
-    setImportSuccess(`${succes} van ${importData.length} winkels succesvol geïmporteerd!`)
+    setImportProgress(null)
+    const parts = []
+    if (toegevoegd > 0) parts.push(`${toegevoegd} toegevoegd`)
+    if (bijgewerkt > 0) parts.push(`${bijgewerkt} bijgewerkt`)
+    setImportSuccess(parts.length > 0 ? `${parts.join(', ')} (${toegevoegd + bijgewerkt} van ${importData.length} winkels)` : `${toegevoegd + bijgewerkt} van ${importData.length} winkels verwerkt`)
     setImportData([])
     if (fileInputRef.current) fileInputRef.current.value = ''
     await haalGebruikersOp()
@@ -1068,7 +1098,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>api_type</strong> (optioneel: cyclesoftware of wilmar)</p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
@@ -1077,6 +1107,17 @@ export default function BeheerPage() {
               </div>
               {importError && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', color: '#dc2626', fontFamily: F }}>{importError}</div>}
               {importSuccess && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#f0fdf4', color: '#16a34a', fontFamily: F }}>✓ {importSuccess}</div>}
+              {importProgress && (
+                <div className="mt-3 rounded-xl p-4 space-y-2" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                  <div className="flex justify-between text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
+                    <span>{importProgress.current} van {importProgress.total} verwerkt</span>
+                    <span style={{ color: 'rgba(13,31,78,0.5)' }}>{importProgress.toegevoegd} toegevoegd · {importProgress.bijgewerkt} bijgewerkt</span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(13,31,78,0.06)' }}>
+                    <div className="h-full transition-all duration-300" style={{ width: `${(importProgress.current / importProgress.total) * 100}%`, background: DYNAMO_BLUE }} />
+                  </div>
+                </div>
+              )}
               {importData.length > 0 && (
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -1104,7 +1145,11 @@ export default function BeheerPage() {
                     {importData.length > 10 && <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>}
                   </div>
                   <button onClick={importeerWinkels} disabled={importLoading} className="w-full rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                    {importLoading ? 'Importeren...' : `${importData.length} winkels importeren`}
+                    {importLoading && importProgress
+                      ? `Importeren... ${importProgress.current} van ${importProgress.total}`
+                      : importLoading
+                        ? 'Importeren...'
+                        : `${importData.length} winkels importeren`}
                   </button>
                 </div>
               )}
