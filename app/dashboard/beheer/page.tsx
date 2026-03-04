@@ -501,22 +501,14 @@ export default function BeheerPage() {
   }
 
   const gefilterdeWilmarStores = useMemo(() => {
-    const gekoppeldeIds = new Set(
-      winkels
-        .filter(w => w.id !== bewerkWinkel?.id && w.wilmar_organisation_id != null && w.wilmar_branch_id != null)
-        .map(w => `${w.wilmar_organisation_id}-${w.wilmar_branch_id}`)
-    )
     const zoek = wilmarZoekterm.trim().toLowerCase()
+    if (!zoek) return wilmarStores
     return wilmarStores.filter(s => {
-      if (gekoppeldeIds.has(`${s.organisationId}-${s.branchId}`)) return false
-      if (zoek) {
-        const naam = String(s.name ?? '').toLowerCase()
-        const stad = String(s.city ?? '').toLowerCase()
-        if (!naam.includes(zoek) && !stad.includes(zoek)) return false
-      }
-      return true
+      const naam = String(s.name ?? '').toLowerCase()
+      const stad = String(s.city ?? '').toLowerCase()
+      return naam.includes(zoek) || stad.includes(zoek)
     })
-  }, [wilmarStores, winkels, bewerkWinkel?.id, wilmarZoekterm])
+  }, [wilmarStores, wilmarZoekterm])
 
   const gefilterdeWinkels = useMemo(() => {
     return winkels.filter(w => {
@@ -973,7 +965,7 @@ export default function BeheerPage() {
                       </p>
                     )}
 
-                    {/* Dropdown na laden — waarde = organisationId-branchId zodat selectie altijd beide ids zet */}
+                    {/* Zoekbare lijst na laden */}
                     {wilmarStores.length > 0 && (
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
@@ -983,50 +975,51 @@ export default function BeheerPage() {
                           value={wilmarZoekterm}
                           onChange={e => setWilmarZoekterm(e.target.value)}
                           className={inputClass}
-                          style={{ ...inputStyle, marginBottom: '8px' }}
-                        />
-                        <select
-                          value={
-                            wilmarBranchId != null && wilmarOrganisationId != null
-                              ? `${wilmarOrganisationId}-${wilmarBranchId}`
-                              : ''
-                          }
-                          onChange={e => {
-                            const val = e.target.value
-                            if (!val) {
-                              setWilmarBranchId(null)
-                              setWilmarOrganisationId(null)
-                            } else {
-                              const [orgIdStr, branchIdStr] = val.split('-')
-                              const orgId = orgIdStr ? Number(orgIdStr) : null
-                              const branchId = branchIdStr ? Number(branchIdStr) : null
-                              if (orgId != null && branchId != null && !Number.isNaN(orgId) && !Number.isNaN(branchId)) {
-                                setWilmarOrganisationId(orgId)
-                                setWilmarBranchId(branchId)
-                                setBewerkWinkel(prev => prev ? { ...prev, api_type: 'wilmar' } : null)
-                              }
-                            }
-                          }}
-                          className={inputClass}
                           style={inputStyle}
-                        >
-                          <option value="">— Niet gekoppeld —</option>
-                          {gefilterdeWilmarStores.map(s => (
-                            <option
-                              key={`${s.organisationId}-${s.branchId}`}
-                              value={`${s.organisationId}-${s.branchId}`}
-                            >
-                              {s.name || 'Winkel'} {s.city ? `(${s.city})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        {gefilterdeWilmarStores.length === 0 && (
-                          <p className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
-                            {wilmarZoekterm.trim() ? 'Geen resultaten gevonden' : 'Alle winkels zijn al gekoppeld'}
-                          </p>
-                        )}
+                        />
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setWilmarBranchId(null); setWilmarOrganisationId(null) }}
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0"
+                            style={wilmarBranchId == null ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)', fontFamily: F }}
+                          >
+                            — Niet gekoppeld
+                          </button>
+                        </div>
+                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>
+                          {gefilterdeWilmarStores.length === 0 ? (
+                            <div className="p-4 text-center text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+                              {wilmarZoekterm.trim() ? 'Geen resultaten gevonden' : 'Geen winkels'}
+                            </div>
+                          ) : (
+                            gefilterdeWilmarStores.map(s => {
+                              const isGeselecteerd = wilmarOrganisationId === s.organisationId && wilmarBranchId === s.branchId
+                              return (
+                                <button
+                                  key={`${s.organisationId}-${s.branchId}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setWilmarOrganisationId(s.organisationId)
+                                    setWilmarBranchId(s.branchId)
+                                    setBewerkWinkel(prev => prev ? { ...prev, api_type: 'wilmar' } : null)
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs transition"
+                                  style={{
+                                    fontFamily: F,
+                                    background: isGeselecteerd ? 'rgba(13,31,78,0.08)' : 'transparent',
+                                    color: isGeselecteerd ? DYNAMO_BLUE : 'rgba(13,31,78,0.8)',
+                                    borderBottom: '1px solid rgba(13,31,78,0.05)',
+                                  }}
+                                >
+                                  {s.name || 'Winkel'} {s.city ? `(${s.city})` : ''}
+                                </button>
+                              )
+                            })
+                          )}
+                        </div>
                         {wilmarBranchId != null && wilmarOrganisationId != null && (
-                          <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
+                          <p className="text-xs mt-2" style={{ color: '#16a34a', fontFamily: F }}>
                             ✓ Geselecteerd: {wilmarStores.find(s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId)?.name ?? `org ${wilmarOrganisationId}, branch ${wilmarBranchId}`}
                           </p>
                         )}
