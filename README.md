@@ -29,6 +29,10 @@ CYCLESOFTWARE_USER=...
 CYCLESOFTWARE_PASS=...
 CYCLESOFTWARE_BASE_URL=https://...
 
+# Supabase Service Role (optioneel, voor MFA-status in Beheer)
+# Zet SUPABASE_SERVICE_ROLE_KEY om MFA aan/uit per gebruiker te tonen in Beheer > Gebruikers
+SUPABASE_SERVICE_ROLE_KEY=
+
 # MFA: vertrouwde IP's (optioneel)
 # Vanaf deze IP's is geen TOTP-code nodig. Beheer via Beheer > Vertrouwde IP's (admin).
 # Of via env (komma-gescheiden): 192.168.1.100,192.168.1.0/24

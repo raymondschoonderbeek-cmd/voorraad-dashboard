@@ -83,6 +83,7 @@ export default function BeheerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [cycleStatusLoading, setCycleStatusLoading] = useState(false)
+  const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -102,6 +103,7 @@ export default function BeheerPage() {
     setRollen(data.rollen ?? [])
     setWinkelToegang(data.winkelToegang ?? [])
     setWinkels(data.winkels ?? [])
+    setMfaStatus(data.mfaStatus ?? {})
     setLoading(false)
   }, [])
 
@@ -525,7 +527,7 @@ export default function BeheerPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(leeg = alle winkels)</span></label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(leeg = alle winkels, inclusief toekomstige)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {winkels.map(w => (
                         <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
@@ -565,7 +567,7 @@ export default function BeheerPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang</label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(leeg = alle winkels, inclusief toekomstige)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {winkels.map(w => (
                         <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
@@ -603,11 +605,17 @@ export default function BeheerPage() {
                         {(rol.naam || 'G').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(240,192,64,0.15)', color: '#92660a' } : { background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)' }}>
                             {rol.rol === 'admin' ? '👑 Admin' : '👁 Viewer'}
                           </span>
+                          {mfaStatus[rol.user_id] === true && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.12)', color: '#15803d' }} title="MFA ingeschakeld">✓ MFA</span>
+                          )}
+                          {mfaStatus[rol.user_id] === false && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)' }} title="MFA uitgeschakeld">— MFA</span>
+                          )}
                         </div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
                       </div>

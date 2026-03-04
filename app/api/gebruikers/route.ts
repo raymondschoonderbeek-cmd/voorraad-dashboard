@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
 
 // Controleer of gebruiker admin is
-async function isAdmin(supabase: any, userId: string) {
+async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
     .from('gebruiker_rollen')
     .select('rol')
     .eq('user_id', userId)
     .single()
   return data?.rol === 'admin'
+}
+
+// Haal MFA-status op voor alle gebruikers (vereist service role key)
+async function haalMfaStatusOp(userIds: string[]): Promise<Record<string, boolean>> {
+  const result: Record<string, boolean> = {}
+  if (userIds.length === 0) return result
+  try {
+    const admin = createAdminClient()
+    await Promise.all(
+      userIds.map(async (uid) => {
+        const { data } = await admin.auth.admin.mfa.listFactors({ userId: uid })
+        const factors = data?.totp ?? []
+        result[uid] = factors.length > 0
+      })
+    )
+  } catch {
+    // Geen admin key of fout: retourneer lege map
+  }
+  return result
 }
 
 // Haal alle gebruikers op
@@ -35,7 +55,15 @@ export async function GET(request: NextRequest) {
     .select('*')
     .order('naam')
 
-  return NextResponse.json({ rollen: rollen ?? [], winkelToegang: winkelToegang ?? [], winkels: winkels ?? [] })
+  const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
+  const mfaStatus = await haalMfaStatusOp(userIds)
+
+  return NextResponse.json({
+    rollen: rollen ?? [],
+    winkelToegang: winkelToegang ?? [],
+    winkels: winkels ?? [],
+    mfaStatus,
+  })
 }
 
 // Nieuwe gebruiker uitnodigen
