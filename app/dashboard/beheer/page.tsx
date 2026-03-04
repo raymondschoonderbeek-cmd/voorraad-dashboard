@@ -104,6 +104,7 @@ export default function BeheerPage() {
   // Winkel filters
   const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar'>('alle')
   const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld'>('alle')
+  const [winkelFilterLand, setWinkelFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
   const [winkelZoekterm, setWinkelZoekterm] = useState('')
 
   const haalGebruikersOp = useCallback(async () => {
@@ -451,7 +452,7 @@ export default function BeheerPage() {
           postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
           straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
           stad: String(r.stad || r.Stad || r.STAD || '').trim(),
-          land: landVal === 'belgium' || landVal === 'belgië' ? 'Belgium' : (landVal === 'netherlands' || landVal === 'nederland' ? 'Netherlands' : undefined),
+          land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
           api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined),
         }
       }).filter(r => r.naam && r.dealer_nummer)
@@ -472,16 +473,16 @@ export default function BeheerPage() {
       if (bestaand) {
         const payload = {
           id: bestaand.id,
-          naam: winkel.naam,
+          naam: (winkel.naam?.trim()) ? winkel.naam.trim() : bestaand.naam,
           dealer_nummer: winkel.dealer_nummer,
-          postcode: winkel.postcode || null,
-          straat: winkel.straat || null,
-          stad: winkel.stad || null,
+          postcode: (winkel.postcode?.trim()) ? winkel.postcode.trim() : bestaand.postcode,
+          straat: (winkel.straat?.trim()) ? winkel.straat.trim() : bestaand.straat,
+          stad: (winkel.stad?.trim()) ? winkel.stad.trim() : bestaand.stad,
           land: winkel.land ?? bestaand.land ?? null,
           wilmar_organisation_id: bestaand.wilmar_organisation_id ?? null,
           wilmar_branch_id: bestaand.wilmar_branch_id ?? null,
           wilmar_store_naam: bestaand.wilmar_store_naam ?? null,
-          api_type: winkel.api_type ?? 'cyclesoftware',
+          api_type: winkel.api_type ?? bestaand.api_type ?? 'cyclesoftware',
         }
         const res = await fetch('/api/winkels', {
           method: 'PUT',
@@ -544,6 +545,7 @@ export default function BeheerPage() {
       const isCycle = !isWilmar
       if (winkelFilterSysteem === 'cyclesoftware' && isWilmar) return false
       if (winkelFilterSysteem === 'wilmar' && isCycle) return false
+      if (winkelFilterLand !== 'alle' && w.land !== winkelFilterLand) return false
       if (winkelFilterApi !== 'alle') {
         if (winkelFilterSysteem === 'wilmar') {
           if (winkelFilterApi === 'gekoppeld') return isWilmar && w.wilmar_organisation_id != null && w.wilmar_branch_id != null
@@ -565,7 +567,7 @@ export default function BeheerPage() {
       }
       return true
     })
-  }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelZoekterm])
+  }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelFilterLand, winkelZoekterm])
 
   const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
@@ -1109,6 +1111,11 @@ export default function BeheerPage() {
                   style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
                 />
                 <div className="flex flex-wrap items-center gap-2">
+                  <select value={winkelFilterLand} onChange={e => setWinkelFilterLand(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                    <option value="alle">Alle landen</option>
+                    <option value="Netherlands">🇳🇱 Nederland</option>
+                    <option value="Belgium">🇧🇪 België</option>
+                  </select>
                   <select value={winkelFilterSysteem} onChange={e => { const v = e.target.value as any; setWinkelFilterSysteem(v); setWinkelFilterApi('alle') }} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     <option value="alle">Alle systemen</option>
                     <option value="cyclesoftware">CycleSoftware</option>
@@ -1241,7 +1248,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>land</strong> (optioneel: Netherlands of Belgium), <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
@@ -1270,7 +1277,7 @@ export default function BeheerPage() {
                   <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                     <table className="w-full text-xs">
                       <thead style={{ background: DYNAMO_BLUE }}>
-                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Straat', 'Stad', 'API'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
+                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Straat', 'Stad', 'Land', 'API'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {importData.slice(0, 10).map((r, i) => (
@@ -1280,6 +1287,7 @@ export default function BeheerPage() {
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
+                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
                           </tr>
                         ))}
@@ -1302,13 +1310,13 @@ export default function BeheerPage() {
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>{['naam', 'dealer_nummer', 'postcode', 'straat', 'stad', 'api_type'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
+                    <tr>{['naam', 'dealer_nummer', 'postcode', 'straat', 'stad', 'land', 'api_type'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {[
-                      ['Dynamo Amsterdam','10001','1012AB','Damrak 1','Amsterdam','cyclesoftware'],
-                      ['Dynamo Rotterdam','10002','3011AD','Coolsingel 42','Rotterdam','cyclesoftware'],
-                      ['Dynamo Utrecht','10003','3511EP','Oudegracht 100','Utrecht','wilmar'],
+                      ['Dynamo Amsterdam','10001','1012AB','Damrak 1','Amsterdam','Nederland','cyclesoftware'],
+                      ['Dynamo Rotterdam','10002','3011AD','Coolsingel 42','Rotterdam','Nederland','cyclesoftware'],
+                      ['Dynamo Brussel','10003','1000','Nieuwstraat 1','Brussel','België','wilmar'],
                     ].map((r, i) => (
                       <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
                         {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.7)', fontFamily: F }}>{c}</td>)}

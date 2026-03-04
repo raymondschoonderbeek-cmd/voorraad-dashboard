@@ -22,7 +22,7 @@ function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' |
   const pc = (postcode ?? '').replace(/\s/g, '')
   if (/^\d{4}$/.test(pc)) return 'Belgium'
   const stadLower = (stad ?? '').toLowerCase()
-  if (['brussel', 'brussels', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège', 'liege', 'charleroi', 'brugge', 'bruges', 'namur', 'leuven', 'mons', 'aalst', 'mechelen', 'kortrijk', 'hasselt', 'sint-niklaas', 'genk', 'roeselare', 'dendermonde', 'turnhout', 'dilbeek', 'heist-op-den-berg', 'lokeren', 'vilvoorde', 'sint-truiden', 'mouscron', 'la louvière', 'waregem', 'geel', 'braine-l\'alleud', 'louvain-la-neuve'].some(s => stadLower.includes(s))) return 'Belgium'
+  if (['brussel', 'brussels', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège', 'liege', 'luik', 'charleroi', 'brugge', 'bruges', 'namur', 'namen', 'leuven', 'mons', 'bergen', 'aalst', 'mechelen', 'kortrijk', 'hasselt', 'sint-niklaas', 'genk', 'roeselare', 'dendermonde', 'turnhout', 'dilbeek', 'heist-op-den-berg', 'lokeren', 'vilvoorde', 'sint-truiden', 'mouscron', 'la louvière', 'louvière', 'waregem', 'geel', 'braine-l\'alleud', 'louvain-la-neuve', 'oostende', 'ostend', 'nieuwpoort', 'knokke', 'heist', 'wavre', 'nivelles', 'waterloo', 'seraing', 'verviers'].some(s => stadLower.includes(s))) return 'Belgium'
   return 'Netherlands'
 }
 
