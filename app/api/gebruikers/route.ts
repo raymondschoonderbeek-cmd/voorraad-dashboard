@@ -38,12 +38,21 @@ async function haalUserEmailsOp(userIds: string[]): Promise<Record<string, strin
   if (userIds.length === 0) return result
   try {
     const admin = createAdminClient()
-    await Promise.all(
-      userIds.map(async (uid) => {
-        const { data } = await admin.auth.admin.getUserById(uid)
-        result[uid] = data?.user?.email ?? ''
-      })
-    )
+    const idSet = new Set(userIds)
+    let page = 1
+    const perPage = 1000
+    let hasMore = true
+    while (hasMore) {
+      const { data } = await admin.auth.admin.listUsers({ page, perPage })
+      const users = data?.users ?? []
+      for (const u of users) {
+        if (idSet.has(u.id)) {
+          result[u.id] = u.email ?? ''
+        }
+      }
+      hasMore = users.length >= perPage
+      page++
+    }
   } catch {
     // Geen admin key of fout: retourneer lege map
   }
