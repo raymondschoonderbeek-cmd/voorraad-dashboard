@@ -8,7 +8,6 @@ security definer
 set search_path = public
 as $$
 begin
-  -- Alleen admins mogen deze functie aanroepen
   if not exists (
     select 1 from public.gebruiker_rollen
     where gebruiker_rollen.user_id = auth.uid() and rol = 'admin'

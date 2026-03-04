@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function InstellingenPage() {
+  const searchParams = useSearchParams()
+  const mfaVerplicht = searchParams.get('mfa') === 'verplicht'
   const [mfaFactors, setMfaFactors] = useState<{ id: string; friendly_name?: string }[]>([])
   const [mfaEnrolling, setMfaEnrolling] = useState(false)
   const [mfaQr, setMfaQr] = useState('')
@@ -99,6 +102,11 @@ export default function InstellingenPage() {
             </Link>
           </div>
 
+          {mfaVerplicht && mfaFactors.length === 0 && (
+            <div className="rounded-lg p-3 text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200">
+              MFA is verplicht voor jouw account. Schakel het hieronder in om verder te gaan.
+            </div>
+          )}
           {mfaError && <div className="rounded-lg p-2 text-sm text-red-600 bg-red-50">{mfaError}</div>}
           {mfaSuccess && <div className="rounded-lg p-2 text-sm text-green-700 bg-green-50">{mfaSuccess}</div>}
 

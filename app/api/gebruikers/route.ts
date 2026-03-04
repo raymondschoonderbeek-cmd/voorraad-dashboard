@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
 
 // Controleer of gebruiker admin is
@@ -13,21 +12,25 @@ async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userI
   return data?.rol === 'admin'
 }
 
-// Haal MFA-status op voor alle gebruikers (vereist service role key)
-async function haalMfaStatusOp(userIds: string[]): Promise<Record<string, boolean>> {
+// Haal MFA-status op via Postgres-functie (leest auth.mfa_factors)
+async function haalMfaStatusOp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userIds: string[]
+): Promise<Record<string, boolean>> {
   const result: Record<string, boolean> = {}
   if (userIds.length === 0) return result
   try {
-    const admin = createAdminClient()
-    await Promise.all(
-      userIds.map(async (uid) => {
-        const { data } = await admin.auth.admin.mfa.listFactors({ userId: uid })
-        const factors = data?.factors ?? []
-        result[uid] = factors.some((f) => f.factor_type === 'totp')
-      })
-    )
+    const { data } = await supabase.rpc('get_user_mfa_status', { user_ids: userIds })
+    for (const row of data ?? []) {
+      const uid = (row as { user_id: string }).user_id
+      if (uid) result[uid] = true
+    }
+    // Vul false voor users zonder MFA (zodat we — MFA tonen)
+    for (const uid of userIds) {
+      if (!(uid in result)) result[uid] = false
+    }
   } catch {
-    // Geen admin key of fout: retourneer lege map
+    // Migratie mogelijk nog niet uitgevoerd
   }
   return result
 }
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
 
   const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
   const [mfaStatus, userEmails] = await Promise.all([
-    haalMfaStatusOp(userIds),
+    haalMfaStatusOp(supabase, userIds),
     haalUserEmailsOp(supabase, userIds),
   ])
 
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { email, rol, naam, winkel_ids } = await request.json()
+  const { email, rol, naam, mfa_verplicht, winkel_ids } = await request.json()
 
   // Nodig gebruiker uit via Supabase Admin
   const adminClient = await createClient()
@@ -118,6 +121,7 @@ export async function POST(request: NextRequest) {
     user_id: newUserId,
     rol: rol ?? 'viewer',
     naam: naam ?? email,
+    mfa_verplicht: mfa_verplicht === true,
   }])
 
   // Sla winkeltoegang op

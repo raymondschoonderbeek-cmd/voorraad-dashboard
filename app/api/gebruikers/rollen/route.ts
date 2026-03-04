@@ -18,12 +18,14 @@ export async function PUT(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { user_id, rol, naam, email, winkel_ids } = await request.json()
+  const { user_id, rol, naam, email, mfa_verplicht, winkel_ids } = await request.json()
 
-  // Update rol en naam in gebruiker_rollen
+  // Update rol, naam en mfa_verplicht in gebruiker_rollen
+  const updateData: { rol: string; naam: string; mfa_verplicht?: boolean } = { rol, naam }
+  if (typeof mfa_verplicht === 'boolean') updateData.mfa_verplicht = mfa_verplicht
   await supabase
     .from('gebruiker_rollen')
-    .update({ rol, naam })
+    .update(updateData)
     .eq('user_id', user_id)
 
   // Update e-mail in Auth (indien opgegeven)

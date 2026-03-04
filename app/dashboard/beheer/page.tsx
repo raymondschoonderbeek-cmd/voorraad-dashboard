@@ -10,7 +10,7 @@ const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 const WINKEL_KLEUREN = ['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
 function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
-type Rol = { id: number; user_id: string; rol: string; naam: string; created_at: string }
+type Rol = { id: number; user_id: string; rol: string; naam: string; mfa_verplicht?: boolean; created_at: string }
 type WinkelToegang = { id: number; user_id: string; winkel_id: number }
 type Winkel = {
   id: number
@@ -54,6 +54,7 @@ export default function BeheerPage() {
   const [nieuwEmail, setNieuwEmail] = useState('')
   const [nieuwNaam, setNieuwNaam] = useState('')
   const [nieuwRol, setNieuwRol] = useState('viewer')
+  const [nieuwMfaVerplicht, setNieuwMfaVerplicht] = useState(false)
   const [geselecteerdeWinkels, setGeselecteerdeWinkels] = useState<number[]>([])
   const [formLoading, setFormLoading] = useState(false)
   const [formError, setFormError] = useState('')
@@ -245,14 +246,14 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, rol: nieuwRol, winkel_ids: geselecteerdeWinkels }),
+      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, rol: nieuwRol, mfa_verplicht: nieuwMfaVerplicht, winkel_ids: geselecteerdeWinkels }),
     })
     const data = await res.json()
     setFormLoading(false)
     if (!res.ok) { setFormError(data.error ?? 'Er ging iets mis') }
     else {
       setFormSuccess(`Uitnodiging verstuurd naar ${nieuwEmail}!`)
-      setNieuwEmail(''); setNieuwNaam(''); setNieuwRol('viewer'); setGeselecteerdeWinkels([])
+      setNieuwEmail(''); setNieuwNaam(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setGeselecteerdeWinkels([])
       setToonForm(false)
       await haalGebruikersOp()
     }
@@ -266,7 +267,7 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers/rollen', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: bewerkEmail.trim() || undefined, winkel_ids: geselecteerdeWinkels }),
+      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: bewerkEmail.trim() || undefined, mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false, winkel_ids: geselecteerdeWinkels }),
     })
     const data = await res.json().catch(() => ({}))
     setFormLoading(false)
@@ -541,6 +542,10 @@ export default function BeheerPage() {
                       ))}
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="nieuw_mfa_verplicht" checked={nieuwMfaVerplicht} onChange={e => setNieuwMfaVerplicht(e.target.checked)} className="accent-blue-600" />
+                    <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
+                  </div>
                   <div>
                     <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(leeg = alle winkels, inclusief toekomstige)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -583,6 +588,10 @@ export default function BeheerPage() {
                         <option value="viewer">Viewer</option>
                         <option value="admin">Admin</option>
                       </select>
+                    </div>
+                    <div className="sm:col-span-2 flex items-center gap-2">
+                      <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-blue-600" />
+                      <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                     </div>
                   </div>
                   <div>
@@ -634,6 +643,9 @@ export default function BeheerPage() {
                           )}
                           {mfaStatus[rol.user_id] === false && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)' }} title="MFA uitgeschakeld">— MFA</span>
+                          )}
+                          {rol.mfa_verplicht && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }} title="MFA verplicht">MFA verplicht</span>
                           )}
                         </div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>

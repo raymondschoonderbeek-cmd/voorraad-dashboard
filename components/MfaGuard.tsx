@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 /**
- * Controleert of MFA-verificatie nodig is (IP niet vertrouwd + MFA ingeschakeld).
- * Redirect naar /mfa-verify indien nodig.
+ * Controleert of MFA-verificatie of MFA-setup nodig is.
+ * Redirect naar /mfa-verify of /dashboard/instellingen indien nodig.
  */
 export function MfaGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -23,6 +23,14 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
       .then(res => res.json())
       .then(data => {
         if (cancelled) return
+        if (data?.requiresMfaSetup) {
+          if (pathname !== '/dashboard/instellingen') {
+            router.replace('/dashboard/instellingen?mfa=verplicht')
+          } else {
+            setReady(true)
+          }
+          return
+        }
         if (data?.requiresMfaChallenge) {
           router.replace('/mfa-verify')
           return

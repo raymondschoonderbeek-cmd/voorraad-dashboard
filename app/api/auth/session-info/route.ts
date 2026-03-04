@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ requiresMfaChallenge: false, aal: null, ipTrusted: false })
+      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false })
     }
 
     const clientIp = getClientIp(request)
@@ -24,20 +24,41 @@ export async function GET(request: NextRequest) {
     const currentLevel = aalData?.currentLevel ?? 'aal1'
     const nextLevel = aalData?.nextLevel ?? 'aal1'
 
-    // MFA vereist als: gebruiker heeft MFA ingeschakeld (nextLevel aal2) maar nog niet geverifieerd (currentLevel aal1) EN IP is niet vertrouwd
     const hasMfaEnrolled = nextLevel === 'aal2'
-    const needsVerification = currentLevel === 'aal1' && hasMfaEnrolled
-    const requiresMfaChallenge = needsVerification && !ipTrusted
+
+    // Check of MFA verplicht is voor deze gebruiker
+    const { data: rol } = await supabase
+      .from('gebruiker_rollen')
+      .select('mfa_verplicht')
+      .eq('user_id', user.id)
+      .single()
+
+    const mfaVerplicht = rol?.mfa_verplicht === true
+
+    let requiresMfaChallenge = false
+    let requiresMfaSetup = false
+
+    if (mfaVerplicht && !ipTrusted) {
+      if (!hasMfaEnrolled) {
+        requiresMfaSetup = true
+      } else if (currentLevel === 'aal1') {
+        requiresMfaChallenge = true
+      }
+    } else if (!mfaVerplicht) {
+      // Zonder mfa_verplicht: alleen challenge als gebruiker zelf MFA heeft én nog niet geverifieerd
+      requiresMfaChallenge = currentLevel === 'aal1' && hasMfaEnrolled && !ipTrusted
+    }
 
     return NextResponse.json({
       aal: currentLevel,
       nextLevel,
       ipTrusted,
       requiresMfaChallenge,
+      requiresMfaSetup,
       hasMfaEnrolled,
     })
   } catch (err) {
     console.error('Session info error:', err)
-    return NextResponse.json({ requiresMfaChallenge: false, aal: 'aal1', ipTrusted: false })
+    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false })
   }
 }
