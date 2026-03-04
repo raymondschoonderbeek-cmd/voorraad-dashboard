@@ -375,9 +375,10 @@ export default function BeheerPage() {
   }
 
   function winkelNamenVoorGebruiker(userId: string) {
-    const ids = winkelToegang.filter(wt => wt.user_id === userId).map(wt => wt.winkel_id)
-    if (ids.length === 0) return 'Alle winkels'
-    return winkels.filter(w => ids.includes(w.id)).map(w => w.naam).join(', ')
+    const uitgeslotenIds = winkelToegang.filter(wt => wt.user_id === userId).map(wt => wt.winkel_id)
+    if (uitgeslotenIds.length === 0) return 'Alle winkels'
+    const toegankelijk = winkels.filter(w => !uitgeslotenIds.includes(w.id))
+    return toegankelijk.length === 0 ? 'Geen winkels' : toegankelijk.map(w => w.naam).join(', ')
   }
 
   async function verwerkExcel(e: React.ChangeEvent<HTMLInputElement>) {
@@ -547,11 +548,11 @@ export default function BeheerPage() {
                     <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(leeg = alle winkels, inclusief toekomstige)</span></label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {winkels.map(w => (
-                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
-                          <input type="checkbox" checked={geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-blue-600" />
+                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
+                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-blue-600" />
                           <div className="min-w-0">
                             <div className="text-xs font-semibold truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
                             <div className="text-xs" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
@@ -595,11 +596,11 @@ export default function BeheerPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(leeg = alle winkels, inclusief toekomstige)</span></label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {winkels.map(w => (
-                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
-                          <input type="checkbox" checked={geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-blue-600" />
+                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
+                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-blue-600" />
                           <div className="min-w-0">
                             <div className="text-xs font-semibold truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
                             <div className="text-xs" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>

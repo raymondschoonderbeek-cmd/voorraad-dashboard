@@ -56,7 +56,7 @@ Benodigde tabellen:
 
 - **winkels** – winkels met `dealer_nummer`, `wilmar_organisation_id`, `wilmar_branch_id`, `api_type`, `straat`, etc.
 - **gebruiker_rollen** – `user_id`, `rol` (viewer/admin), `naam`
-- **gebruiker_winkels** – koppeling gebruiker ↔ winkel (leeg = alle winkels)
+- **gebruiker_winkels** – winkels waar gebruiker GEEN toegang toe heeft (leeg = alle winkels; standaard alle aangevinkt)
 - **brand_aliases** – merk-aliases voor groepering
 - **trusted_ips** – vertrouwde IP-adressen (geen MFA nodig); alleen admins kunnen beheren via Beheer. Voer `supabase/migrations/20250303000000_trusted_ips.sql` uit in Supabase.
 
