@@ -32,6 +32,24 @@ async function haalMfaStatusOp(userIds: string[]): Promise<Record<string, boolea
   return result
 }
 
+// Haal e-mailadressen op voor alle gebruikers (vereist service role key)
+async function haalUserEmailsOp(userIds: string[]): Promise<Record<string, string>> {
+  const result: Record<string, string> = {}
+  if (userIds.length === 0) return result
+  try {
+    const admin = createAdminClient()
+    await Promise.all(
+      userIds.map(async (uid) => {
+        const { data } = await admin.auth.admin.getUserById(uid)
+        result[uid] = data?.user?.email ?? ''
+      })
+    )
+  } catch {
+    // Geen admin key of fout: retourneer lege map
+  }
+  return result
+}
+
 // Haal alle gebruikers op
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -56,13 +74,17 @@ export async function GET(request: NextRequest) {
     .order('naam')
 
   const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
-  const mfaStatus = await haalMfaStatusOp(userIds)
+  const [mfaStatus, userEmails] = await Promise.all([
+    haalMfaStatusOp(userIds),
+    haalUserEmailsOp(userIds),
+  ])
 
   return NextResponse.json({
     rollen: rollen ?? [],
     winkelToegang: winkelToegang ?? [],
     winkels: winkels ?? [],
     mfaStatus,
+    userEmails,
   })
 }
 

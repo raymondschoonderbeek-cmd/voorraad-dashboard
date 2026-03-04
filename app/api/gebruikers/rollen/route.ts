@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-async function isAdmin(supabase: any, userId: string) {
+async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
     .from('gebruiker_rollen')
     .select('rol')
@@ -10,20 +11,30 @@ async function isAdmin(supabase: any, userId: string) {
   return data?.rol === 'admin'
 }
 
-// Update rol en winkeltoegang
+// Update rol, naam, email en winkeltoegang
 export async function PUT(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { user_id, rol, naam, winkel_ids } = await request.json()
+  const { user_id, rol, naam, email, winkel_ids } = await request.json()
 
-  // Update rol
+  // Update rol en naam in gebruiker_rollen
   await supabase
     .from('gebruiker_rollen')
     .update({ rol, naam })
     .eq('user_id', user_id)
+
+  // Update e-mail in Auth (indien opgegeven)
+  if (email != null && email.trim() !== '') {
+    try {
+      const admin = createAdminClient()
+      await admin.auth.admin.updateUserById(user_id, { email: email.trim() })
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    }
+  }
 
   // Update winkeltoegang — verwijder eerst, dan opnieuw invoegen
   await supabase.from('gebruiker_winkels').delete().eq('user_id', user_id)

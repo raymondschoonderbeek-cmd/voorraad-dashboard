@@ -45,6 +45,7 @@ export default function BeheerPage() {
   const [error, setError] = useState('')
   const [toonForm, setToonForm] = useState(false)
   const [bewerkGebruiker, setBewerkGebruiker] = useState<Rol | null>(null)
+  const [bewerkEmail, setBewerkEmail] = useState('')
   const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
   const [toonWinkelForm, setToonWinkelForm] = useState(false)
   const [winkelLoading, setWinkelLoading] = useState(false)
@@ -84,6 +85,7 @@ export default function BeheerPage() {
 
   const [cycleStatusLoading, setCycleStatusLoading] = useState(false)
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
+  const [userEmails, setUserEmails] = useState<Record<string, string>>({})
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -104,6 +106,7 @@ export default function BeheerPage() {
     setWinkelToegang(data.winkelToegang ?? [])
     setWinkels(data.winkels ?? [])
     setMfaStatus(data.mfaStatus ?? {})
+    setUserEmails(data.userEmails ?? {})
     setLoading(false)
   }, [])
 
@@ -259,13 +262,23 @@ export default function BeheerPage() {
     e.preventDefault()
     if (!bewerkGebruiker) return
     setFormLoading(true)
+    setFormError('')
     const res = await fetch('/api/gebruikers/rollen', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, winkel_ids: geselecteerdeWinkels }),
+      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: bewerkEmail.trim() || undefined, winkel_ids: geselecteerdeWinkels }),
     })
+    const data = await res.json().catch(() => ({}))
     setFormLoading(false)
-    if (res.ok) { setBewerkGebruiker(null); setGeselecteerdeWinkels([]); await haalGebruikersOp() }
+    if (res.ok) {
+      setBewerkGebruiker(null)
+      setBewerkEmail('')
+      setGeselecteerdeWinkels([])
+      setFormSuccess('Gebruiker opgeslagen.')
+      await haalGebruikersOp()
+    } else {
+      setFormError(data.error ?? 'Opslaan mislukt.')
+    }
   }
 
   async function verwijderGebruiker(userId: string, naam: string) {
@@ -354,7 +367,9 @@ export default function BeheerPage() {
   }
 
   function startBewerken(rol: Rol) {
-    setBewerkGebruiker(rol); setToonForm(false)
+    setBewerkGebruiker(rol)
+    setBewerkEmail(userEmails[rol.user_id] ?? '')
+    setToonForm(false)
     setGeselecteerdeWinkels(winkelToegang.filter(wt => wt.user_id === rol.user_id).map(wt => wt.winkel_id))
   }
 
@@ -556,7 +571,11 @@ export default function BeheerPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Naam</label>
-                      <input type="text" value={bewerkGebruiker.naam} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, naam: e.target.value })} className={inputClass} style={inputStyle} />
+                      <input type="text" value={bewerkGebruiker.naam} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, naam: e.target.value })} className={inputClass} style={inputStyle} placeholder="Volledige naam" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>E-mailadres</label>
+                      <input type="email" value={bewerkEmail} onChange={e => setBewerkEmail(e.target.value)} className={inputClass} style={inputStyle} placeholder="naam@bedrijf.nl" />
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Rol</label>
@@ -582,7 +601,7 @@ export default function BeheerPage() {
                   </div>
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkGebruiker(null); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
@@ -617,7 +636,8 @@ export default function BeheerPage() {
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)' }} title="MFA uitgeschakeld">— MFA</span>
                           )}
                         </div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
