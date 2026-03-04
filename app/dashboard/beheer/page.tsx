@@ -146,11 +146,6 @@ export default function BeheerPage() {
     return () => { cancelled = true }
   }, [haalGebruikersOp, haalWinkelsOp])
 
-  // Alleen trusted IPs ophalen als admin
-  useEffect(() => {
-    if (isAdmin === true) haalTrustedIpsOp()
-  }, [isAdmin, haalTrustedIpsOp])
-
   const haalTrustedIpsOp = useCallback(async () => {
     const res = await fetch('/api/trusted-ips')
     if (res.ok) {
@@ -162,8 +157,8 @@ export default function BeheerPage() {
   }, [])
 
   useEffect(() => {
-    haalTrustedIpsOp()
-  }, [haalTrustedIpsOp])
+    if (isAdmin === true) haalTrustedIpsOp()
+  }, [isAdmin, haalTrustedIpsOp])
 
   async function voegTrustedIpToe(e: React.FormEvent) {
     e.preventDefault()
