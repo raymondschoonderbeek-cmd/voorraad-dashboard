@@ -183,10 +183,15 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
   )
 }
 
-function WinkelKaart({ winkels, onSelecteer, onGeocode, isAdmin, geocodeLoading }: {
+function isBelgischePostcode(postcode?: string | null): boolean {
+  return /^\d{4}$/.test((postcode ?? '').replace(/\s/g, ''))
+}
+
+function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmin, geocodeLoading }: {
   winkels: Winkel[]
   onSelecteer: (w: Winkel) => void
   onGeocode?: () => Promise<void>
+  onGeocodeBelgium?: () => Promise<void>
   isAdmin?: boolean
   geocodeLoading?: boolean
 }) {
@@ -258,6 +263,8 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, isAdmin, geocodeLoading 
 
   const zonderCoords = winkels.filter(w => !w.lat || !w.lng)
   const kanGeocoden = isAdmin && zonderCoords.some(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+  const belgischeWinkels = winkels.filter(w => isBelgischePostcode(w.postcode) && (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim())))
+  const kanBelgieGeocoden = isAdmin && belgischeWinkels.length > 0 && !!onGeocodeBelgium
 
   if (winkelsMetCoords.length === 0) {
     return (
@@ -266,11 +273,18 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, isAdmin, geocodeLoading 
           <div className="flex justify-center mb-2" style={{ color: 'rgba(13,31,78,0.2)' }}><IconMap /></div>
           <p className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Geen kaart beschikbaar</p>
           <p className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }}>Voeg postcodes toe aan je winkels</p>
-          {kanGeocoden && onGeocode && (
-            <button onClick={onGeocode} disabled={geocodeLoading} className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
-              {geocodeLoading ? 'Locaties ophalen...' : 'Locaties ophalen'}
-            </button>
-          )}
+          <div className="mt-4 flex flex-wrap gap-2 justify-center">
+            {kanGeocoden && onGeocode && (
+              <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+                {geocodeLoading ? 'Locaties ophalen...' : 'Locaties ophalen'}
+              </button>
+            )}
+            {kanBelgieGeocoden && (
+              <button onClick={onGeocodeBelgium} disabled={geocodeLoading} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', border: '1px solid rgba(234,179,8,0.4)', fontFamily: F }}>
+                {geocodeLoading ? 'Bezig...' : `België geocoderen (${belgischeWinkels.length})`}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -278,14 +292,23 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, isAdmin, geocodeLoading 
 
   return (
     <div className="space-y-2">
-      {kanGeocoden && onGeocode && zonderCoords.length > 0 && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>{zonderCoords.length} winkel{zonderCoords.length !== 1 ? 's' : ''} zonder locatie</span>
-          <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}>
-            {geocodeLoading ? 'Bezig...' : 'Locaties ophalen'}
-          </button>
+      {(kanGeocoden && zonderCoords.length > 0) || kanBelgieGeocoden ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {kanGeocoden && onGeocode && zonderCoords.length > 0 && (
+            <>
+              <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>{zonderCoords.length} winkel{zonderCoords.length !== 1 ? 's' : ''} zonder locatie</span>
+              <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}>
+                {geocodeLoading ? 'Bezig...' : 'Locaties ophalen'}
+              </button>
+            </>
+          )}
+          {kanBelgieGeocoden && (
+            <button onClick={onGeocodeBelgium} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(234,179,8,0.15)', color: '#a16207', fontFamily: F }}>
+              {geocodeLoading ? 'Bezig...' : `België opnieuw geocoderen (${belgischeWinkels.length})`}
+            </button>
+          )}
         </div>
-      )}
+      ) : null}
       <div style={{ height: 320, borderRadius: '16px', overflow: 'hidden' }}>
         <div id={mapIdRef.current} style={{ height: '100%', width: '100%' }} />
       </div>
@@ -465,6 +488,17 @@ export default function Dashboard() {
     setGeocodeLoading(true)
     try {
       const res = await fetch('/api/winkels/geocode', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.bijgewerkt != null) await mutateWinkels()
+    } finally {
+      setGeocodeLoading(false)
+    }
+  }
+
+  async function haalBelgieLocatiesOp() {
+    setGeocodeLoading(true)
+    try {
+      const res = await fetch('/api/winkels/geocode?force_belgium=1', { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.bijgewerkt != null) await mutateWinkels()
     } finally {
@@ -700,7 +734,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.filter(w => w.lat && w.lng).length} van {winkels.length} op kaart</span>
                 </div>
                 <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(13,31,78,0.08)', border: '1px solid rgba(13,31,78,0.07)' }}>
-                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} />
+                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} />
                 </div>
               </div>
 

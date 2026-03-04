@@ -3,6 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
+function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' | 'Netherlands' {
+  const pc = (postcode ?? '').replace(/\s/g, '')
+  if (/^\d{4}$/.test(pc)) return 'Belgium'
+  const stadLower = (stad ?? '').toLowerCase()
+  if (['brussel', 'brussels', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège', 'liege', 'charleroi', 'brugge', 'bruges', 'namur', 'leuven', 'mons', 'aalst', 'mechelen', 'kortrijk', 'hasselt', 'sint-niklaas', 'genk', 'roeselare', 'dendermonde', 'turnhout', 'dilbeek', 'heist-op-den-berg', 'lokeren', 'vilvoorde', 'sint-truiden', 'mouscron', 'la louvière', 'waregem', 'geel', 'braine-l\'alleud', 'louvain-la-neuve'].some(s => stadLower.includes(s))) return 'Belgium'
+  return 'Netherlands'
+}
+
 async function geocodeAdres(postcode?: string | null, straat?: string | null, stad?: string | null): Promise<{ lat: number; lng: number } | null> {
   const parts: string[] = []
   if (straat?.trim()) parts.push(straat.trim())
@@ -10,7 +18,8 @@ async function geocodeAdres(postcode?: string | null, straat?: string | null, st
   if (stad?.trim()) parts.push(stad.trim())
   if (parts.length === 0) return null
 
-  const q = parts.join(', ') + ', Netherlands'
+  const land = bepaalLand(postcode, stad)
+  const q = parts.join(', ') + `, ${land}`
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
@@ -28,7 +37,11 @@ async function geocodeAdres(postcode?: string | null, straat?: string | null, st
   return null
 }
 
-/** Geocode winkels die postcode/straat+stad hebben maar geen lat/lng. Alleen admin. */
+function isBelgischePostcode(postcode?: string | null): boolean {
+  return /^\d{4}$/.test((postcode ?? '').replace(/\s/g, ''))
+}
+
+/** Geocode winkels die postcode/straat+stad hebben maar geen lat/lng. Alleen admin. Optioneel: force_belgium=1 om Belgische winkels opnieuw te geocoderen. */
 export async function POST(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -36,18 +49,31 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang' }, { status: auth.status })
   const { supabase } = auth
 
-  const { data: winkels } = await supabase
-    .from('winkels')
-    .select('id, naam, postcode, straat, stad, lat, lng')
-    .or('lat.is.null,lng.is.null')
+  const { searchParams } = new URL(request.url)
+  const forceBelgium = searchParams.get('force_belgium') === '1'
 
-  const zonderCoords = (winkels ?? []).filter(
-    (w: { postcode?: string; straat?: string; stad?: string }) =>
-      (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
-  )
+  let teVerwerken: { id: number; postcode?: string; straat?: string; stad?: string }[] = []
+
+  if (forceBelgium) {
+    const { data: alleWinkels } = await supabase
+      .from('winkels')
+      .select('id, naam, postcode, straat, stad, lat, lng')
+    teVerwerken = (alleWinkels ?? []).filter(
+      (w: any) => isBelgischePostcode(w.postcode) && (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+    )
+  } else {
+    const { data: winkels } = await supabase
+      .from('winkels')
+      .select('id, naam, postcode, straat, stad, lat, lng')
+      .or('lat.is.null,lng.is.null')
+    teVerwerken = (winkels ?? []).filter(
+      (w: { postcode?: string; straat?: string; stad?: string }) =>
+        (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+    )
+  }
 
   let bijgewerkt = 0
-  for (const w of zonderCoords) {
+  for (const w of teVerwerken) {
     const coords = await geocodeAdres(w.postcode, w.straat, w.stad)
     if (coords) {
       await supabase
@@ -59,5 +85,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ bijgewerkt, totaal: zonderCoords.length })
+  return NextResponse.json({ bijgewerkt, totaal: teVerwerken.length })
 }

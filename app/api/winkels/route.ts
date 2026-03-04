@@ -18,13 +18,22 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data)
 }
 
+function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' | 'Netherlands' {
+  const pc = (postcode ?? '').replace(/\s/g, '')
+  if (/^\d{4}$/.test(pc)) return 'Belgium'
+  const stadLower = (stad ?? '').toLowerCase()
+  if (['brussel', 'brussels', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège', 'liege', 'charleroi', 'brugge', 'bruges', 'namur', 'leuven', 'mons', 'aalst', 'mechelen', 'kortrijk', 'hasselt', 'sint-niklaas', 'genk', 'roeselare', 'dendermonde', 'turnhout', 'dilbeek', 'heist-op-den-berg', 'lokeren', 'vilvoorde', 'sint-truiden', 'mouscron', 'la louvière', 'waregem', 'geel', 'braine-l\'alleud', 'louvain-la-neuve'].some(s => stadLower.includes(s))) return 'Belgium'
+  return 'Netherlands'
+}
+
 async function haalCoordsOp(postcode?: string | null, straat?: string | null, stad?: string | null) {
   const parts: string[] = []
   if (straat?.trim()) parts.push(straat.trim())
   if (postcode?.trim()) parts.push(postcode.replace(/\s/g, ''))
   if (stad?.trim()) parts.push(stad.trim())
   if (parts.length === 0) return { lat: null, lng: null }
-  const q = parts.join(', ') + ', Netherlands'
+  const land = bepaalLand(postcode, stad)
+  const q = parts.join(', ') + `, ${land}`
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
