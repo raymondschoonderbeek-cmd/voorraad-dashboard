@@ -76,6 +76,7 @@ export default function BeheerPage() {
   const [wilmarStoresLoading, setWilmarStoresLoading] = useState(false)
   const [wilmarBranchId, setWilmarBranchId] = useState<number | null>(null)
   const [wilmarOrganisationId, setWilmarOrganisationId] = useState<number | null>(null)
+  const [wilmarZoekterm, setWilmarZoekterm] = useState('')
 
   // Excel import
   const [importData, setImportData] = useState<any[]>([])
@@ -221,6 +222,7 @@ export default function BeheerPage() {
 
   async function haalWilmarStoresOp() {
     setWilmarStoresLoading(true)
+    setWilmarZoekterm('')
     try {
       const res = await fetch('/api/wilmar?action=stores')
       const data = await res.json()
@@ -273,6 +275,7 @@ export default function BeheerPage() {
     setWilmarBranchId(w.wilmar_branch_id ?? null)
     setWilmarOrganisationId(w.wilmar_organisation_id ?? null)
     setWilmarStores([])
+    setWilmarZoekterm('')
     setBewerkHuisnummer('')
     setFormError('')
     setFormSuccess('')
@@ -496,6 +499,24 @@ export default function BeheerPage() {
     if (fileInputRef.current) fileInputRef.current.value = ''
     await haalGebruikersOp()
   }
+
+  const gefilterdeWilmarStores = useMemo(() => {
+    const gekoppeldeIds = new Set(
+      winkels
+        .filter(w => w.id !== bewerkWinkel?.id && w.wilmar_organisation_id != null && w.wilmar_branch_id != null)
+        .map(w => `${w.wilmar_organisation_id}-${w.wilmar_branch_id}`)
+    )
+    const zoek = wilmarZoekterm.trim().toLowerCase()
+    return wilmarStores.filter(s => {
+      if (gekoppeldeIds.has(`${s.organisationId}-${s.branchId}`)) return false
+      if (zoek) {
+        const naam = String(s.name ?? '').toLowerCase()
+        const stad = String(s.city ?? '').toLowerCase()
+        if (!naam.includes(zoek) && !stad.includes(zoek)) return false
+      }
+      return true
+    })
+  }, [wilmarStores, winkels, bewerkWinkel?.id, wilmarZoekterm])
 
   const gefilterdeWinkels = useMemo(() => {
     return winkels.filter(w => {
@@ -956,6 +977,14 @@ export default function BeheerPage() {
                     {wilmarStores.length > 0 && (
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
+                        <input
+                          type="text"
+                          placeholder="Zoek op naam of stad..."
+                          value={wilmarZoekterm}
+                          onChange={e => setWilmarZoekterm(e.target.value)}
+                          className={inputClass}
+                          style={{ ...inputStyle, marginBottom: '8px' }}
+                        />
                         <select
                           value={
                             wilmarBranchId != null && wilmarOrganisationId != null
@@ -982,7 +1011,7 @@ export default function BeheerPage() {
                           style={inputStyle}
                         >
                           <option value="">— Niet gekoppeld —</option>
-                          {wilmarStores.map(s => (
+                          {gefilterdeWilmarStores.map(s => (
                             <option
                               key={`${s.organisationId}-${s.branchId}`}
                               value={`${s.organisationId}-${s.branchId}`}
@@ -991,6 +1020,11 @@ export default function BeheerPage() {
                             </option>
                           ))}
                         </select>
+                        {gefilterdeWilmarStores.length === 0 && (
+                          <p className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+                            {wilmarZoekterm.trim() ? 'Geen resultaten gevonden' : 'Alle winkels zijn al gekoppeld'}
+                          </p>
+                        )}
                         {wilmarBranchId != null && wilmarOrganisationId != null && (
                           <p className="text-xs mt-1" style={{ color: '#16a34a', fontFamily: F }}>
                             ✓ Geselecteerd: {wilmarStores.find(s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId)?.name ?? `org ${wilmarOrganisationId}, branch ${wilmarBranchId}`}
