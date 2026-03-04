@@ -196,7 +196,7 @@ export default function BeheerPage() {
   }
 
   async function verversCycleApiStatus() {
-    const cycleWinkels = winkels.filter(w =>
+    const cycleWinkels = gefilterdeWinkels.filter(w =>
       (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) &&
       w.dealer_nummer?.trim()
     )
@@ -1088,12 +1088,12 @@ export default function BeheerPage() {
                     )}
                   </select>
                 </div>
-                {winkels.some(w => w.api_type !== 'wilmar' && !w.wilmar_organisation_id && !w.wilmar_branch_id && w.dealer_nummer) && (
+                {winkelFilterSysteem !== 'wilmar' && winkels.some(w => w.api_type !== 'wilmar' && !w.wilmar_organisation_id && !w.wilmar_branch_id && w.dealer_nummer) && (
                   <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     {cycleStatusLoading ? 'Bezig...' : 'Ververs API-status'}
                   </button>
                 )}
-                {winkels.some(w => (w.api_type === 'wilmar' || !w.api_type) && (!w.wilmar_organisation_id || !w.wilmar_branch_id)) && (
+                {winkelFilterSysteem === 'wilmar' && winkels.some(w => (w.api_type === 'wilmar' || !w.api_type) && (!w.wilmar_organisation_id || !w.wilmar_branch_id)) && (
                   <button onClick={wilmarAutoKoppelen} disabled={wilmarAutoLinkLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(22,163,74,0.1)', color: '#15803d', border: '1px solid rgba(22,163,74,0.25)', fontFamily: F }}>
                     {wilmarAutoLinkLoading ? 'Bezig...' : 'Wilmar auto-koppelen'}
                   </button>
