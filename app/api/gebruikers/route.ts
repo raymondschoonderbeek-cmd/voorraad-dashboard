@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
 
 // Controleer of gebruiker admin is
@@ -106,8 +107,12 @@ export async function POST(request: NextRequest) {
 
   const { email, rol, naam, mfa_verplicht, winkel_ids } = await request.json()
 
-  // Nodig gebruiker uit via Supabase Admin
-  const adminClient = await createClient()
+  if (!hasAdminKey()) {
+    return NextResponse.json({
+      error: 'Uitnodigen vereist SUPABASE_SERVICE_ROLE_KEY. Voeg deze toe aan .env.local en herstart de server.',
+    }, { status: 400 })
+  }
+  const adminClient = createAdminClient()
   const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email)
 
   if (inviteError) {

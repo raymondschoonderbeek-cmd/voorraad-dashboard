@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
@@ -28,13 +28,22 @@ export async function PUT(request: NextRequest) {
     .update(updateData)
     .eq('user_id', user_id)
 
-  // Update e-mail in Auth (indien opgegeven)
+  // Update e-mail in Auth via admin client (zelfde als invite)
   if (email != null && email.trim() !== '') {
-    try {
-      const admin = createAdminClient()
-      await admin.auth.admin.updateUserById(user_id, { email: email.trim() })
-    } catch (e) {
-      return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    if (!hasAdminKey()) {
+      return NextResponse.json({
+        error: 'E-mail wijzigen vereist SUPABASE_SERVICE_ROLE_KEY. Voeg toe aan .env.local en herstart de server.',
+      }, { status: 400 })
+    }
+    const adminClient = createAdminClient()
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, {
+      email: email.trim(),
+      email_confirm: true, // direct bevestigen, geen verificatiemail
+    })
+    if (updateError) {
+      return NextResponse.json({
+        error: updateError.message,
+      }, { status: 400 })
     }
   }
 

@@ -264,10 +264,13 @@ export default function BeheerPage() {
     if (!bewerkGebruiker) return
     setFormLoading(true)
     setFormError('')
+    const origEmail = userEmails[bewerkGebruiker.user_id] ?? ''
+    const newEmail = bewerkEmail.trim()
+    const emailChanged = newEmail && newEmail !== origEmail
     const res = await fetch('/api/gebruikers/rollen', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: bewerkEmail.trim() || undefined, mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false, winkel_ids: geselecteerdeWinkels }),
+      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: emailChanged ? newEmail : undefined, mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false, winkel_ids: geselecteerdeWinkels }),
     })
     const data = await res.json().catch(() => ({}))
     setFormLoading(false)
