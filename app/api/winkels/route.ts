@@ -26,14 +26,14 @@ function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' |
   return 'Netherlands'
 }
 
-async function haalCoordsOp(postcode?: string | null, straat?: string | null, stad?: string | null) {
+async function haalCoordsOp(postcode?: string | null, straat?: string | null, stad?: string | null, land?: 'Netherlands' | 'Belgium' | null) {
   const parts: string[] = []
   if (straat?.trim()) parts.push(straat.trim())
   if (postcode?.trim()) parts.push(postcode.replace(/\s/g, ''))
   if (stad?.trim()) parts.push(stad.trim())
   if (parts.length === 0) return { lat: null, lng: null }
-  const land = bepaalLand(postcode, stad)
-  const q = parts.join(', ') + `, ${land}`
+  const landStr = land ?? bepaalLand(postcode, stad)
+  const q = parts.join(', ') + `, ${landStr}`
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json()
-  const { naam, dealer_nummer, postcode, straat, stad, api_type } = body
+  const { naam, dealer_nummer, postcode, straat, stad, land, api_type } = body
 
   if (!naam || !dealer_nummer) {
     return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
   }
 
-  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad) : { lat: null, lng: null }
+  const landVal = land === 'Belgium' || land === 'Netherlands' ? land : null
+  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad, landVal) : { lat: null, lng: null }
 
   const { data, error } = await supabase
     .from('winkels')
@@ -75,9 +76,9 @@ export async function POST(request: NextRequest) {
       postcode: postcode ?? null,
       straat: straat ?? null,
       stad: stad ?? null,
+      land: landVal,
       lat,
       lng,
-      // api_type: cyclesoftware of wilmar (default cyclesoftware)
       api_type: api_type ?? 'cyclesoftware',
     }])
     .select()
@@ -94,11 +95,12 @@ export async function PUT(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json()
-  const { id, naam, dealer_nummer, postcode, straat, stad, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
+  const { id, naam, dealer_nummer, postcode, straat, stad, land, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
-  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad) : { lat: null, lng: null }
+  const landVal = land === 'Belgium' || land === 'Netherlands' ? land : null
+  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad, landVal) : { lat: null, lng: null }
 
   const updateData: any = {
     naam,
@@ -106,6 +108,7 @@ export async function PUT(request: NextRequest) {
     postcode: postcode || null,
     straat: straat ?? null,
     stad: stad || null,
+    land: landVal,
     lat,
     lng,
     wilmar_organisation_id: wilmar_organisation_id ?? null,

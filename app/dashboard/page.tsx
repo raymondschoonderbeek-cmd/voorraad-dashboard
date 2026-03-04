@@ -153,7 +153,12 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
           </div>
           <div className="min-w-0 flex-1" onClick={() => onSelecteer(w)}>
             <div className="font-semibold text-sm truncate" style={{ color: DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
-            <div style={{ color: 'rgba(13,31,78,0.35)', fontSize: '11px', fontFamily: F }}>#{w.dealer_nummer}</div>
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'rgba(13,31,78,0.35)', fontSize: '11px', fontFamily: F }}>#{w.dealer_nummer}</span>
+              {w.land && (
+                <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: w.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: w.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{w.land === 'Belgium' ? '🇧🇪' : '🇳🇱'}</span>
+              )}
+            </div>
           </div>
           <button
             onClick={e => { e.stopPropagation(); onToggleFavoriet(w.id) }}
@@ -810,6 +815,9 @@ export default function Dashboard() {
                         {bron === 'wilmar' ? 'Wilmar' : 'CycleSoftware'}
                       </span>
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
+                      {geselecteerdeWinkel.land && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: geselecteerdeWinkel.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: geselecteerdeWinkel.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{geselecteerdeWinkel.land === 'Belgium' ? 'België' : 'Nederland'}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <Link href={geselecteerdeWinkel ? `/dashboard/brand-groep?winkel=${geselecteerdeWinkel.id}` : '/dashboard/brand-groep'} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-80 shrink-0" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>

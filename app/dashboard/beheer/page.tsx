@@ -19,6 +19,7 @@ type Winkel = {
   postcode?: string
   straat?: string
   stad?: string
+  land?: 'Netherlands' | 'Belgium' | null
   lat?: number
   lng?: number
   wilmar_organisation_id?: number
@@ -68,6 +69,7 @@ export default function BeheerPage() {
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
   const [nieuwWinkelStraat, setNieuwWinkelStraat] = useState('')
   const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar'>('cyclesoftware')
+  const [nieuwWinkelLand, setNieuwWinkelLand] = useState<'Netherlands' | 'Belgium' | ''>('')
   const [adresLoading, setAdresLoading] = useState(false)
   const [bewerkHuisnummer, setBewerkHuisnummer] = useState('')
 
@@ -346,6 +348,7 @@ export default function BeheerPage() {
         postcode: nieuwWinkelPostcode,
         straat: nieuwWinkelStraat || undefined,
         stad: nieuwWinkelStad,
+        land: nieuwWinkelLand || undefined,
         api_type: nieuwWinkelApiType,
       }),
     })
@@ -355,6 +358,7 @@ export default function BeheerPage() {
     setNieuwWinkelHuisnummer('')
     setNieuwWinkelStad('')
     setNieuwWinkelStraat('')
+    setNieuwWinkelLand('')
     setNieuwWinkelApiType('cyclesoftware')
     setToonWinkelForm(false); setWinkelLoading(false)
     await haalGebruikersOp()
@@ -380,6 +384,7 @@ export default function BeheerPage() {
       postcode: bewerkWinkel.postcode,
       straat: bewerkWinkel.straat,
       stad: bewerkWinkel.stad,
+      land: bewerkWinkel.land ?? null,
       wilmar_organisation_id: wilmarOrganisationId ?? null,
       wilmar_branch_id: wilmarBranchId ?? null,
       wilmar_store_naam: heeftWilmarKoppeling ? (wilmarNaam ?? bewerkWinkel.wilmar_store_naam ?? null) : null,
@@ -439,12 +444,14 @@ export default function BeheerPage() {
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
       const parsed = rows.map(r => {
         const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
+        const landVal = String(r.land || r.Land || r.LAND || '').trim().toLowerCase()
         return {
           naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
           dealer_nummer: String(r.dealer_nummer || r['Dealer nummer'] || r.DEALER_NUMMER || '').trim(),
           postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
           straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
           stad: String(r.stad || r.Stad || r.STAD || '').trim(),
+          land: landVal === 'belgium' || landVal === 'belgië' ? 'Belgium' : (landVal === 'netherlands' || landVal === 'nederland' ? 'Netherlands' : undefined),
           api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined),
         }
       }).filter(r => r.naam && r.dealer_nummer)
@@ -470,6 +477,7 @@ export default function BeheerPage() {
           postcode: winkel.postcode || null,
           straat: winkel.straat || null,
           stad: winkel.stad || null,
+          land: winkel.land ?? bestaand.land ?? null,
           wilmar_organisation_id: bestaand.wilmar_organisation_id ?? null,
           wilmar_branch_id: bestaand.wilmar_branch_id ?? null,
           wilmar_store_naam: bestaand.wilmar_store_naam ?? null,
@@ -848,6 +856,14 @@ export default function BeheerPage() {
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
                       <input placeholder="bijv. Amsterdam" value={nieuwWinkelStad} onChange={e => setNieuwWinkelStad(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
+                    <div>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Land</label>
+                      <select value={nieuwWinkelLand} onChange={e => setNieuwWinkelLand(e.target.value as 'Netherlands' | 'Belgium' | '')} className={inputClass} style={inputStyle}>
+                        <option value="">— Niet gekozen</option>
+                        <option value="Netherlands">🇳🇱 Nederland</option>
+                        <option value="Belgium">🇧🇪 België</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>
@@ -931,6 +947,14 @@ export default function BeheerPage() {
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
                       <input value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Land</label>
+                      <select value={bewerkWinkel.land ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, land: (e.target.value || null) as 'Netherlands' | 'Belgium' | null })} className={inputClass} style={inputStyle}>
+                        <option value="">— Niet gekozen</option>
+                        <option value="Netherlands">🇳🇱 Nederland</option>
+                        <option value="Belgium">🇧🇪 België</option>
+                      </select>
                     </div>
                   </div>
 
@@ -1146,6 +1170,9 @@ export default function BeheerPage() {
                               )}
                             </>
                           )}
+                          {w.land && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: w.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: w.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{w.land === 'Belgium' ? '🇧🇪 België' : '🇳🇱 Nederland'}</span>
+                          )}
                           {w.wilmar_organisation_id != null && w.wilmar_branch_id != null && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', fontFamily: F }}>
                               🔗 Gekoppeld: {w.wilmar_store_naam || `org ${w.wilmar_organisation_id}, branch ${w.wilmar_branch_id}`}
@@ -1214,7 +1241,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>land</strong> (optioneel: Netherlands of Belgium), <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>

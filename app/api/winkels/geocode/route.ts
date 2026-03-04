@@ -11,15 +11,15 @@ function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' |
   return 'Netherlands'
 }
 
-async function geocodeAdres(postcode?: string | null, straat?: string | null, stad?: string | null): Promise<{ lat: number; lng: number } | null> {
+async function geocodeAdres(postcode?: string | null, straat?: string | null, stad?: string | null, land?: 'Netherlands' | 'Belgium' | null): Promise<{ lat: number; lng: number } | null> {
   const parts: string[] = []
   if (straat?.trim()) parts.push(straat.trim())
   if (postcode?.trim()) parts.push(postcode.replace(/\s/g, ''))
   if (stad?.trim()) parts.push(stad.trim())
   if (parts.length === 0) return null
 
-  const land = bepaalLand(postcode, stad)
-  const q = parts.join(', ') + `, ${land}`
+  const landStr = land ?? bepaalLand(postcode, stad)
+  const q = parts.join(', ') + `, ${landStr}`
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
@@ -52,19 +52,19 @@ export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const forceBelgium = searchParams.get('force_belgium') === '1'
 
-  let teVerwerken: { id: number; postcode?: string; straat?: string; stad?: string }[] = []
+  let teVerwerken: { id: number; postcode?: string; straat?: string; stad?: string; land?: string }[] = []
 
   if (forceBelgium) {
     const { data: alleWinkels } = await supabase
       .from('winkels')
-      .select('id, naam, postcode, straat, stad, lat, lng')
+      .select('id, naam, postcode, straat, stad, land, lat, lng')
     teVerwerken = (alleWinkels ?? []).filter(
       (w: any) => isBelgischePostcode(w.postcode) && (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
     )
   } else {
     const { data: winkels } = await supabase
       .from('winkels')
-      .select('id, naam, postcode, straat, stad, lat, lng')
+      .select('id, naam, postcode, straat, stad, land, lat, lng')
       .or('lat.is.null,lng.is.null')
     teVerwerken = (winkels ?? []).filter(
       (w: { postcode?: string; straat?: string; stad?: string }) =>
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
 
   let bijgewerkt = 0
   for (const w of teVerwerken) {
-    const coords = await geocodeAdres(w.postcode, w.straat, w.stad)
+    const landVal = (w as any).land === 'Belgium' || (w as any).land === 'Netherlands' ? (w as any).land : null
+    const coords = await geocodeAdres(w.postcode, w.straat, w.stad, landVal)
     if (coords) {
       await supabase
         .from('winkels')

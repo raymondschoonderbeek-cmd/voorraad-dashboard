@@ -7,6 +7,7 @@ export type Winkel = {
   postcode?: string
   straat?: string
   stad?: string
+  land?: 'Netherlands' | 'Belgium' | null
   lat?: number
   lng?: number
   wilmar_organisation_id?: number
