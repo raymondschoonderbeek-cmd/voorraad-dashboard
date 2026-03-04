@@ -100,7 +100,7 @@ export default function BeheerPage() {
 
   // Winkel filters
   const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar'>('alle')
-  const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd'>('alle')
+  const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld'>('alle')
 
   const haalGebruikersOp = useCallback(async () => {
     setLoading(true)
@@ -517,9 +517,14 @@ export default function BeheerPage() {
       if (winkelFilterSysteem === 'cyclesoftware' && isWilmar) return false
       if (winkelFilterSysteem === 'wilmar' && isCycle) return false
       if (winkelFilterApi !== 'alle') {
-        if (winkelFilterApi === 'ok') return isCycle && w.cycle_api_authorized === true
-        if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false
-        if (winkelFilterApi === 'niet_gecontroleerd') return w.cycle_api_authorized == null
+        if (winkelFilterSysteem === 'wilmar') {
+          if (winkelFilterApi === 'gekoppeld') return isWilmar && w.wilmar_organisation_id != null && w.wilmar_branch_id != null
+          if (winkelFilterApi === 'niet_gekoppeld') return isWilmar && (w.wilmar_organisation_id == null || w.wilmar_branch_id == null)
+        } else {
+          if (winkelFilterApi === 'ok') return isCycle && w.cycle_api_authorized === true
+          if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false
+          if (winkelFilterApi === 'niet_gecontroleerd') return w.cycle_api_authorized == null
+        }
       }
       return true
     })
@@ -977,16 +982,6 @@ export default function BeheerPage() {
                           className={inputClass}
                           style={inputStyle}
                         />
-                        <div className="mt-2 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => { setWilmarBranchId(null); setWilmarOrganisationId(null) }}
-                            className="rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0"
-                            style={wilmarBranchId == null ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)', fontFamily: F }}
-                          >
-                            — Niet gekoppeld
-                          </button>
-                        </div>
                         <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border" style={{ borderColor: 'rgba(13,31,78,0.1)' }}>
                           {gefilterdeWilmarStores.length === 0 ? (
                             <div className="p-4 text-center text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
@@ -1019,9 +1014,19 @@ export default function BeheerPage() {
                           )}
                         </div>
                         {wilmarBranchId != null && wilmarOrganisationId != null && (
-                          <p className="text-xs mt-2" style={{ color: '#16a34a', fontFamily: F }}>
-                            ✓ Geselecteerd: {wilmarStores.find(s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId)?.name ?? `org ${wilmarOrganisationId}, branch ${wilmarBranchId}`}
-                          </p>
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <p className="text-xs" style={{ color: '#16a34a', fontFamily: F }}>
+                              ✓ Geselecteerd: {wilmarStores.find(s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId)?.name ?? `org ${wilmarOrganisationId}, branch ${wilmarBranchId}`}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => { setWilmarBranchId(null); setWilmarOrganisationId(null) }}
+                              className="rounded-lg px-2 py-1 text-xs font-semibold"
+                              style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', fontFamily: F }}
+                            >
+                              Ontkoppelen
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -1043,16 +1048,26 @@ export default function BeheerPage() {
                   <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{gefilterdeWinkels.length} van {winkels.length} winkels</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <select value={winkelFilterSysteem} onChange={e => setWinkelFilterSysteem(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                  <select value={winkelFilterSysteem} onChange={e => { const v = e.target.value as any; setWinkelFilterSysteem(v); setWinkelFilterApi('alle') }} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     <option value="alle">Alle systemen</option>
                     <option value="cyclesoftware">CycleSoftware</option>
                     <option value="wilmar">Wilmar</option>
                   </select>
                   <select value={winkelFilterApi} onChange={e => setWinkelFilterApi(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
-                    <option value="alle">API: alle</option>
-                    <option value="ok">API: ✓ In orde</option>
-                    <option value="geen">API: ⚠ Geen toestemming</option>
-                    <option value="niet_gecontroleerd">API: — Niet gecontroleerd</option>
+                    {winkelFilterSysteem === 'wilmar' ? (
+                      <>
+                        <option value="alle">ALLE (toon alle winkels)</option>
+                        <option value="gekoppeld">API: Gekoppeld</option>
+                        <option value="niet_gekoppeld">API: Nog niet gekoppeld</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="alle">API: alle</option>
+                        <option value="ok">API: ✓ In orde</option>
+                        <option value="geen">API: ⚠ Geen toestemming</option>
+                        <option value="niet_gecontroleerd">API: — Niet gecontroleerd</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 {winkels.some(w => w.api_type !== 'wilmar' && !w.wilmar_organisation_id && !w.wilmar_branch_id && w.dealer_nummer) && (
