@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 
 function isAuthBodyError(data: unknown): boolean {
   if (!data || typeof data !== 'object') return false
@@ -31,12 +31,11 @@ async function checkDealer(dealer: string): Promise<boolean> {
   return true
 }
 
-/** Batch-check CycleSoftware API-status en update cache in DB (alleen admin) */
+/** Batch-check CycleSoftware API-status en update cache in DB (admin + viewer) */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdmin()
-    if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang' }, { status: auth.status })
-    const { supabase } = auth
+    const { user, supabase } = await requireAuth()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json().catch(() => ({}))
     const items = Array.isArray(body.items) ? body.items : []

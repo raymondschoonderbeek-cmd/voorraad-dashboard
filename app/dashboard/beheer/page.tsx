@@ -94,8 +94,11 @@ export default function BeheerPage() {
   const [ipLoading, setIpLoading] = useState(false)
   const [ipError, setIpError] = useState('')
 
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
   const haalGebruikersOp = useCallback(async () => {
     setLoading(true)
+    setError('')
     const res = await fetch('/api/gebruikers')
     if (res.status === 403) {
       setError('Geen toegang. Alleen admins.')
@@ -111,7 +114,42 @@ export default function BeheerPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { haalGebruikersOp() }, [haalGebruikersOp])
+  const haalWinkelsOp = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const res = await fetch('/api/winkels')
+    if (!res.ok) {
+      setError('Kon winkels niet laden.')
+      setLoading(false)
+      return
+    }
+    const data = await res.json()
+    setWinkels(Array.isArray(data) ? data : [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function init() {
+      const res = await fetch('/api/auth/session-info')
+      const info = await res.json().catch(() => ({}))
+      const admin = info.isAdmin === true
+      if (cancelled) return
+      setIsAdmin(admin)
+      if (admin) {
+        await haalGebruikersOp()
+      } else {
+        await haalWinkelsOp()
+      }
+    }
+    init()
+    return () => { cancelled = true }
+  }, [haalGebruikersOp, haalWinkelsOp])
+
+  // Alleen trusted IPs ophalen als admin
+  useEffect(() => {
+    if (isAdmin === true) haalTrustedIpsOp()
+  }, [isAdmin, haalTrustedIpsOp])
 
   const haalTrustedIpsOp = useCallback(async () => {
     const res = await fetch('/api/trusted-ips')
@@ -433,12 +471,14 @@ export default function BeheerPage() {
   const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
 
-  const tabs: { key: Tab; label: string; icon: string; count?: number }[] = [
-    { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
-    { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
-    ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
-    { key: 'import', label: 'Excel Import', icon: '📊' },
-  ]
+  const tabs: { key: Tab; label: string; icon: string; count?: number }[] = isAdmin
+    ? [
+        { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
+        { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
+        ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
+        { key: 'import', label: 'Excel Import', icon: '📊' },
+      ]
+    : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb', fontFamily: F }}>
@@ -476,14 +516,18 @@ export default function BeheerPage() {
           <div className="relative p-4 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
             <div className="min-w-0">
               <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px,4vw,24px)', fontWeight: 700, letterSpacing: '-0.02em' }}>Beheer</h1>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', marginTop: '4px', fontFamily: F }} className="hidden sm:block">Beheer gebruikers, winkels en importeer data via Excel</p>
+              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', marginTop: '4px', fontFamily: F }} className="hidden sm:block">{isAdmin ? 'Beheer gebruikers, winkels en importeer data via Excel' : 'Bekijk winkels en API-status'}</p>
             </div>
             <div className="flex items-center gap-4 sm:gap-3 shrink-0">
-              <div className="text-center px-4">
-                <div style={{ color: DYNAMO_GOLD, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{rollen.length}</div>
-                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gebruikers</div>
-              </div>
-              <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
+              {isAdmin && (
+                <>
+                  <div className="text-center px-4">
+                    <div style={{ color: DYNAMO_GOLD, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{rollen.length}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gebruikers</div>
+                  </div>
+                  <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
+                </>
+              )}
               <div className="text-center px-4">
                 <div style={{ color: 'white', fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{winkels.length}</div>
                 <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Winkels</div>
@@ -670,13 +714,15 @@ export default function BeheerPage() {
         {/* ── TAB: WINKELS ── */}
         {tab === 'winkels' && (
           <div className="space-y-4">
-            <div className="flex justify-end">
-              <button onClick={() => { setToonWinkelForm(v => !v); setBewerkWinkel(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
-                + Winkel toevoegen
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="flex justify-end">
+                <button onClick={() => { setToonWinkelForm(v => !v); setBewerkWinkel(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+                  + Winkel toevoegen
+                </button>
+              </div>
+            )}
 
-            {toonWinkelForm && (
+            {isAdmin && toonWinkelForm && (
               <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_GOLD}`, boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</h2>
                 <form onSubmit={voegWinkelToe} className="space-y-3">
@@ -760,7 +806,7 @@ export default function BeheerPage() {
               </div>
             )}
 
-            {bewerkWinkel && (
+            {isAdmin && bewerkWinkel && (
               <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkWinkel.naam} bewerken</h2>
                 <form onSubmit={slaWinkelOp} className="space-y-3">
@@ -969,10 +1015,12 @@ export default function BeheerPage() {
                           #{w.dealer_nummer}{w.straat ? ` · ${w.straat}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0 sm:ml-auto">
-                        <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
-                        <button onClick={() => verwijderWinkel(w.id, w.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex gap-2 shrink-0 sm:ml-auto">
+                          <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>
+                          <button onClick={() => verwijderWinkel(w.id, w.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

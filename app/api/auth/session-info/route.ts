@@ -12,8 +12,16 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false })
+      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false })
     }
+
+    const { data: rolData } = await supabase
+      .from('gebruiker_rollen')
+      .select('rol, mfa_verplicht')
+      .eq('user_id', user.id)
+      .single()
+    const isAdmin = rolData?.rol === 'admin'
+    const mfaVerplicht = rolData?.mfa_verplicht === true
 
     const clientIp = getClientIp(request)
     const { data: dbIps, error: dbErr } = await supabase.from('trusted_ips').select('ip_or_cidr')
@@ -25,15 +33,6 @@ export async function GET(request: NextRequest) {
     const nextLevel = aalData?.nextLevel ?? 'aal1'
 
     const hasMfaEnrolled = nextLevel === 'aal2'
-
-    // Check of MFA verplicht is voor deze gebruiker
-    const { data: rol } = await supabase
-      .from('gebruiker_rollen')
-      .select('mfa_verplicht')
-      .eq('user_id', user.id)
-      .single()
-
-    const mfaVerplicht = rol?.mfa_verplicht === true
 
     let requiresMfaChallenge = false
     let requiresMfaSetup = false
@@ -56,9 +55,10 @@ export async function GET(request: NextRequest) {
       requiresMfaChallenge,
       requiresMfaSetup,
       hasMfaEnrolled,
+      isAdmin,
     })
   } catch (err) {
     console.error('Session info error:', err)
-    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false })
+    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false })
   }
 }
