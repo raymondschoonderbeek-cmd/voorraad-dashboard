@@ -59,7 +59,9 @@ export async function POST(request: NextRequest) {
       .from('winkels')
       .select('id, naam, postcode, straat, stad, land, lat, lng')
     teVerwerken = (alleWinkels ?? []).filter(
-      (w: any) => isBelgischePostcode(w.postcode) && (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+      (w: any) =>
+        (w.land === 'Belgium' || isBelgischePostcode(w.postcode)) &&
+        (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
     )
   } else {
     const { data: winkels } = await supabase

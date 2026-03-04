@@ -268,7 +268,10 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
 
   const zonderCoords = winkels.filter(w => !w.lat || !w.lng)
   const kanGeocoden = isAdmin && zonderCoords.some(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
-  const belgischeWinkels = winkels.filter(w => isBelgischePostcode(w.postcode) && (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim())))
+  const belgischeWinkels = winkels.filter(w =>
+    (w.land === 'Belgium' || isBelgischePostcode(w.postcode)) &&
+    (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+  )
   const kanBelgieGeocoden = isAdmin && belgischeWinkels.length > 0 && !!onGeocodeBelgium
 
   if (winkelsMetCoords.length === 0) {
