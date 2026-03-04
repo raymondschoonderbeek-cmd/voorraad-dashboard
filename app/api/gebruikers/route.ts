@@ -67,16 +67,19 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { data: rollen } = await supabase
+  // Gebruik service role client om RLS te omzeilen: admins moeten alle gebruikers zien
+  const client = hasAdminKey() ? createAdminClient() : supabase
+
+  const { data: rollen } = await client
     .from('gebruiker_rollen')
     .select('*')
     .order('created_at')
 
-  const { data: winkelToegang } = await supabase
+  const { data: winkelToegang } = await client
     .from('gebruiker_winkels')
     .select('*')
 
-  const { data: winkels } = await supabase
+  const { data: winkels } = await client
     .from('winkels')
     .select('*')
     .order('naam')
