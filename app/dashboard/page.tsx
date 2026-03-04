@@ -288,7 +288,8 @@ export default function Dashboard() {
   const [gebruiker, setGebruiker] = useState('')
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
-  const [favorieten, setFavorieten] = useState<number[]>([])
+  const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
+  const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
 
   const router = useRouter()
@@ -313,10 +314,6 @@ export default function Dashboard() {
     } catch {}
     setKolommenGeladen(true)
 
-    try {
-      const fav = localStorage.getItem('dynamo_favorieten')
-      if (fav) setFavorieten(JSON.parse(fav))
-    } catch {}
   }, [])
 
   useEffect(() => {
@@ -437,12 +434,13 @@ export default function Dashboard() {
     })
   }
 
-  function toggleFavoriet(id: number) {
-    setFavorieten(prev => {
-      const nieuw = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-      try { localStorage.setItem('dynamo_favorieten', JSON.stringify(nieuw)) } catch {}
-      return nieuw
+  async function toggleFavoriet(id: number) {
+    const res = await fetch('/api/favorieten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ winkel_id: id }),
     })
+    if (res.ok) await mutateFavorieten()
   }
 
   const isDebouncing = zoekterm !== debouncedZoekterm
