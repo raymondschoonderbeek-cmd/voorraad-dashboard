@@ -32,31 +32,24 @@ async function haalMfaStatusOp(userIds: string[]): Promise<Record<string, boolea
   return result
 }
 
-// Haal e-mailadressen op voor alle gebruikers (vereist service role key)
-async function haalUserEmailsOp(userIds: string[]): Promise<Record<string, string>> {
+// Haal e-mailadressen op via Postgres-functie (leest auth.users)
+async function haalUserEmailsOp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userIds: string[]
+): Promise<Record<string, string>> {
   const result: Record<string, string> = {}
   if (userIds.length === 0) return result
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return result
-  const authUrl = `${url.replace(/\/$/, '')}/auth/v1`
-  const headers = {
-    Authorization: `Bearer ${key}`,
-    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
-  }
   try {
-    // GET /admin/user/{user_id} per gebruiker (GoTrue API)
-    await Promise.all(
-      userIds.map(async (uid) => {
-        const res = await fetch(`${authUrl}/admin/user/${uid}`, { headers })
-        if (!res.ok) return
-        const data = await res.json()
-        const email = data?.email ?? data?.identities?.[0]?.identity_data?.email ?? ''
-        if (email) result[uid] = email
-      })
-    )
+    const { data } = await supabase.rpc('get_user_emails', {
+      user_ids: userIds,
+    })
+    for (const row of data ?? []) {
+      const uid = (row as { user_id: string }).user_id
+      const email = (row as { email: string }).email ?? ''
+      if (uid && email) result[uid] = email
+    }
   } catch {
-    // Fout: retourneer lege map
+    // Migratie mogelijk nog niet uitgevoerd
   }
   return result
 }
@@ -87,7 +80,7 @@ export async function GET(request: NextRequest) {
   const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
   const [mfaStatus, userEmails] = await Promise.all([
     haalMfaStatusOp(userIds),
-    haalUserEmailsOp(userIds),
+    haalUserEmailsOp(supabase, userIds),
   ])
 
   return NextResponse.json({
