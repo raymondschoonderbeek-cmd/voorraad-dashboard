@@ -376,7 +376,15 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setGebruiker(data.user?.email ?? ''))
+    supabase.auth.getUser().then(async ({ data }) => {
+      const email = data.user?.email ?? ''
+      let displayNaam = email
+      if (data.user?.id) {
+        const { data: rol } = await supabase.from('gebruiker_rollen').select('naam').eq('user_id', data.user.id).single()
+        if (rol?.naam?.trim()) displayNaam = rol.naam.trim()
+      }
+      setGebruiker(displayNaam)
+    })
   }, [])
 
   useEffect(() => {
@@ -552,7 +560,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(240,192,64,0.12)', border: '1px solid rgba(240,192,64,0.25)' }}>
                       <span className="w-1 h-1 rounded-full" style={{ background: DYNAMO_GOLD }} />
-                      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{getDagdeel()}</span>
+                      <span className="text-[10px] font-semibold tracking-wider" style={{ color: DYNAMO_GOLD, fontFamily: F }}><span className="uppercase">{getDagdeel()}</span>{gebruiker ? `, ${gebruiker}` : ''}</span>
                     </div>
                     <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>Voorraad Dashboard</h1>
                   </div>
