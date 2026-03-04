@@ -22,8 +22,8 @@ async function haalMfaStatusOp(userIds: string[]): Promise<Record<string, boolea
     await Promise.all(
       userIds.map(async (uid) => {
         const { data } = await admin.auth.admin.mfa.listFactors({ userId: uid })
-        const factors = data?.totp ?? []
-        result[uid] = factors.length > 0
+        const factors = data?.factors ?? []
+        result[uid] = factors.some((f) => f.factor_type === 'totp')
       })
     )
   } catch {
