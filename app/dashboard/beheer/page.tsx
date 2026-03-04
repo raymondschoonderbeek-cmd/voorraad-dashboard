@@ -102,6 +102,7 @@ export default function BeheerPage() {
   // Winkel filters
   const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar'>('alle')
   const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld'>('alle')
+  const [winkelZoekterm, setWinkelZoekterm] = useState('')
 
   const haalGebruikersOp = useCallback(async () => {
     setLoading(true)
@@ -529,6 +530,7 @@ export default function BeheerPage() {
   }, [wilmarStores, wilmarZoekterm])
 
   const gefilterdeWinkels = useMemo(() => {
+    const zoek = winkelZoekterm.trim().toLowerCase()
     return winkels.filter(w => {
       const isWilmar = w.api_type === 'wilmar' || (w.wilmar_organisation_id != null && w.wilmar_branch_id != null)
       const isCycle = !isWilmar
@@ -544,9 +546,18 @@ export default function BeheerPage() {
           if (winkelFilterApi === 'niet_gecontroleerd') return w.cycle_api_authorized == null
         }
       }
+      if (zoek) {
+        const naam = String(w.naam ?? '').toLowerCase()
+        const stad = String(w.stad ?? '').toLowerCase()
+        const dealer = String(w.dealer_nummer ?? '').toLowerCase()
+        const straat = String(w.straat ?? '').toLowerCase()
+        const postcode = String(w.postcode ?? '').toLowerCase()
+        const wilmarNaam = String(w.wilmar_store_naam ?? '').toLowerCase()
+        if (!naam.includes(zoek) && !stad.includes(zoek) && !dealer.includes(zoek) && !straat.includes(zoek) && !postcode.includes(zoek) && !wilmarNaam.includes(zoek)) return false
+      }
       return true
     })
-  }, [winkels, winkelFilterSysteem, winkelFilterApi])
+  }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelZoekterm])
 
   const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
@@ -1060,11 +1071,19 @@ export default function BeheerPage() {
             )}
 
             <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-              <div className="p-4 flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
-                <div>
+              <div className="p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+                <div className="min-w-0">
                   <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
                   <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{gefilterdeWinkels.length} van {winkels.length} winkels</div>
                 </div>
+                <input
+                  type="text"
+                  placeholder="Zoek op naam, stad, dealer, straat..."
+                  value={winkelZoekterm}
+                  onChange={e => setWinkelZoekterm(e.target.value)}
+                  className="rounded-lg px-3 py-1.5 text-xs w-full sm:w-56"
+                  style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   <select value={winkelFilterSysteem} onChange={e => { const v = e.target.value as any; setWinkelFilterSysteem(v); setWinkelFilterApi('alle') }} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     <option value="alle">Alle systemen</option>
