@@ -25,6 +25,8 @@ type Winkel = {
   wilmar_branch_id?: number
   wilmar_store_naam?: string
   api_type?: 'cyclesoftware' | 'wilmar' | null
+  cycle_api_authorized?: boolean | null
+  cycle_api_checked_at?: string | null
 }
 type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips'
 
@@ -80,8 +82,7 @@ export default function BeheerPage() {
   const [importSuccess, setImportSuccess] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // CycleSoftware API-status per winkel (alleen voor CycleSoftware-winkels)
-  const [cycleAuthStatus, setCycleAuthStatus] = useState<Record<number, { authorized: boolean } | 'loading'>>({})
+  const [cycleStatusLoading, setCycleStatusLoading] = useState(false)
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -148,43 +149,31 @@ export default function BeheerPage() {
     if (res.ok) haalTrustedIpsOp()
   }
 
-  // Check CycleSoftware API-rechten wanneer winkels-tab actief is
-  useEffect(() => {
-    if (tab !== 'winkels') return
-    if (winkels.length === 0) {
-      setCycleAuthStatus({})
-      return
-    }
+  async function verversCycleApiStatus() {
     const cycleWinkels = winkels.filter(w =>
       (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) &&
       w.dealer_nummer?.trim()
     )
     if (cycleWinkels.length === 0) return
-
-    let cancelled = false
-    setCycleAuthStatus(prev => {
-      const next = { ...prev }
-      cycleWinkels.forEach(w => { next[w.id] = 'loading' })
-      return next
-    })
-
-    Promise.all(
-      cycleWinkels.map(async w => {
-        const res = await fetch(`/api/voorraad/status?dealer=${encodeURIComponent(w.dealer_nummer)}`)
-        const data = await res.json().catch(() => ({}))
-        return { id: w.id, authorized: data?.authorized === true }
+    setCycleStatusLoading(true)
+    try {
+      const res = await fetch('/api/voorraad/status/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cycleWinkels.map(w => ({ id: w.id, dealer_nummer: w.dealer_nummer })) }),
       })
-    ).then(results => {
-      if (cancelled) return
-      setCycleAuthStatus(prev => {
-        const next = { ...prev }
-        results.forEach(({ id, authorized }) => { next[id] = { authorized } })
-        return next
-      })
-    })
-
-    return () => { cancelled = true }
-  }, [tab, winkels])
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.results) {
+        setWinkels(prev => prev.map(w => {
+          const r = data.results[w.id]
+          if (!r) return w
+          return { ...w, cycle_api_authorized: r.authorized, cycle_api_checked_at: new Date().toISOString() }
+        }))
+      }
+    } finally {
+      setCycleStatusLoading(false)
+    }
+  }
 
   async function haalWilmarStoresOp() {
     setWilmarStoresLoading(true)
@@ -887,9 +876,16 @@ export default function BeheerPage() {
             )}
 
             <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
-                <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
-                <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{winkels.length} winkels</div>
+              <div className="p-4 flex flex-wrap items-center justify-between gap-2" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+                <div>
+                  <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
+                  <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{winkels.length} winkels</div>
+                </div>
+                {winkels.some(w => w.api_type !== 'wilmar' && !w.wilmar_organisation_id && !w.wilmar_branch_id && w.dealer_nummer) && (
+                  <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                    {cycleStatusLoading ? 'Bezig...' : 'Ververs API-status'}
+                  </button>
+                )}
               </div>
               {winkels.length === 0 ? (
                 <div className="p-10 text-center text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Nog geen winkels</div>
@@ -908,19 +904,15 @@ export default function BeheerPage() {
                           ) : (
                             <>
                               <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)', fontFamily: F }}>CycleSoftware</span>
-                              {cycleAuthStatus[w.id] === 'loading' && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.4)', fontFamily: F }} title="Controleren...">…</span>
+                              {w.cycle_api_authorized === true && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="API heeft rechten om voorraad op te halen">✓ API toegang</span>
                               )}
-                              {(() => {
-                                const status = cycleAuthStatus[w.id]
-                                if (status && status !== 'loading' && status.authorized) {
-                                  return <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="API heeft rechten om voorraad op te halen">✓ API toegang</span>
-                                }
-                                if (status && status !== 'loading' && !status.authorized) {
-                                  return <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Winkel heeft nog geen toestemming gegeven in CycleSoftware">⚠ Geen toestemming</span>
-                                }
-                                return null
-                              })()}
+                              {w.cycle_api_authorized === false && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Winkel heeft nog geen toestemming gegeven in CycleSoftware">⚠ Geen toestemming</span>
+                              )}
+                              {w.cycle_api_authorized == null && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.4)', fontFamily: F }} title="Klik op 'Ververs API-status' om te controleren">—</span>
+                              )}
                             </>
                           )}
                           {w.wilmar_organisation_id != null && w.wilmar_branch_id != null && (

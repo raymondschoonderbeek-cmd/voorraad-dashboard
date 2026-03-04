@@ -185,24 +185,23 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
 
 function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer: (w: Winkel) => void }) {
   const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
+  const mapRef = useRef<any>(null)
+  const mapIdRef = useRef(`winkel-kaart-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
   useEffect(() => {
     if (winkelsMetCoords.length === 0) return
     if (typeof window === 'undefined') return
 
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(link)
+    const mapId = mapIdRef.current
 
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    script.onload = () => {
+    const initMap = () => {
       const L = (window as any).L
-      const mapEl = document.getElementById('winkel-kaart')
+      if (!L) return
+      const mapEl = document.getElementById(mapId)
       if (!mapEl || (mapEl as any)._leaflet_id) return
 
-      const map = L.map('winkel-kaart', { zoomControl: true, scrollWheelZoom: false })
+      const map = L.map(mapId, { zoomControl: true, scrollWheelZoom: false })
+      mapRef.current = map
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map)
 
       const bounds: [number, number][] = []
@@ -227,12 +226,25 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
         if (winkel) onSelecteer(winkel)
       }
     }
-    document.head.appendChild(script)
+
+    if ((window as any).L) {
+      initMap()
+    } else {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(link)
+
+      const script = document.createElement('script')
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+      script.onload = initMap
+      document.head.appendChild(script)
+    }
 
     return () => {
-      const mapEl = document.getElementById('winkel-kaart')
-      if (mapEl && (mapEl as any)._leaflet_id) {
-        ;(window as any).L?.map(mapEl)?.remove?.()
+      if (mapRef.current) {
+        try { mapRef.current.remove() } catch {}
+        mapRef.current = null
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,7 +264,7 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
 
   return (
     <div style={{ height: 320, borderRadius: '16px', overflow: 'hidden' }}>
-      <div id="winkel-kaart" style={{ height: '100%', width: '100%' }} />
+      <div id={mapIdRef.current} style={{ height: '100%', width: '100%' }} />
     </div>
   )
 }

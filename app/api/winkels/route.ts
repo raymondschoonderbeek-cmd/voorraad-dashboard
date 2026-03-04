@@ -94,6 +94,8 @@ export async function PUT(request: NextRequest) {
     wilmar_organisation_id: wilmar_organisation_id ?? null,
     wilmar_branch_id: wilmar_branch_id ?? null,
     wilmar_store_naam: wilmar_store_naam ?? null,
+    cycle_api_authorized: null,
+    cycle_api_checked_at: null,
   }
 
   if (api_type) {
