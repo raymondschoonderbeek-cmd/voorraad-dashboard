@@ -18,15 +18,23 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data)
 }
 
-async function haalCoordsOp(postcode: string) {
+async function haalCoordsOp(postcode?: string | null, straat?: string | null, stad?: string | null) {
+  const parts: string[] = []
+  if (straat?.trim()) parts.push(straat.trim())
+  if (postcode?.trim()) parts.push(postcode.replace(/\s/g, ''))
+  if (stad?.trim()) parts.push(stad.trim())
+  if (parts.length === 0) return { lat: null, lng: null }
+  const q = parts.join(', ') + ', Netherlands'
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(postcode)}&country=NL&format=json&limit=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
       { headers: { 'User-Agent': 'DynamoRetailDashboard/1.0' } }
     )
     const data = await res.json()
-    if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+    if (Array.isArray(data) && data.length > 0) {
+      const lat = parseFloat(data[0].lat)
+      const lng = parseFloat(data[0].lon)
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
     }
   } catch (e) {
     console.error('Geocoding mislukt:', e)
@@ -48,7 +56,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
   }
 
-  const { lat, lng } = postcode ? await haalCoordsOp(postcode) : { lat: null, lng: null }
+  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad) : { lat: null, lng: null }
 
   const { data, error } = await supabase
     .from('winkels')
@@ -81,7 +89,7 @@ export async function PUT(request: NextRequest) {
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
-  const { lat, lng } = postcode ? await haalCoordsOp(postcode) : { lat: null, lng: null }
+  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad) : { lat: null, lng: null }
 
   const updateData: any = {
     naam,

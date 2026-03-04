@@ -183,7 +183,13 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
   )
 }
 
-function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer: (w: Winkel) => void }) {
+function WinkelKaart({ winkels, onSelecteer, onGeocode, isAdmin, geocodeLoading }: {
+  winkels: Winkel[]
+  onSelecteer: (w: Winkel) => void
+  onGeocode?: () => Promise<void>
+  isAdmin?: boolean
+  geocodeLoading?: boolean
+}) {
   const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
   const mapRef = useRef<any>(null)
   const mapIdRef = useRef(`winkel-kaart-${Date.now()}-${Math.random().toString(36).slice(2)}`)
@@ -250,21 +256,39 @@ function WinkelKaart({ winkels, onSelecteer }: { winkels: Winkel[]; onSelecteer:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winkelsMetCoords.length])
 
+  const zonderCoords = winkels.filter(w => !w.lat || !w.lng)
+  const kanGeocoden = isAdmin && zonderCoords.some(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+
   if (winkelsMetCoords.length === 0) {
     return (
-      <div className="flex items-center justify-center" style={{ height: 280, background: 'rgba(13,31,78,0.03)', borderRadius: '16px', border: '1px dashed rgba(13,31,78,0.15)' }}>
+      <div className="flex flex-col justify-center" style={{ height: 280, background: 'rgba(13,31,78,0.03)', borderRadius: '16px', border: '1px dashed rgba(13,31,78,0.15)' }}>
         <div className="text-center p-6">
           <div className="flex justify-center mb-2" style={{ color: 'rgba(13,31,78,0.2)' }}><IconMap /></div>
           <p className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Geen kaart beschikbaar</p>
           <p className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }}>Voeg postcodes toe aan je winkels</p>
+          {kanGeocoden && onGeocode && (
+            <button onClick={onGeocode} disabled={geocodeLoading} className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+              {geocodeLoading ? 'Locaties ophalen...' : 'Locaties ophalen'}
+            </button>
+          )}
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ height: 320, borderRadius: '16px', overflow: 'hidden' }}>
-      <div id={mapIdRef.current} style={{ height: '100%', width: '100%' }} />
+    <div className="space-y-2">
+      {kanGeocoden && onGeocode && zonderCoords.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>{zonderCoords.length} winkel{zonderCoords.length !== 1 ? 's' : ''} zonder locatie</span>
+          <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}>
+            {geocodeLoading ? 'Bezig...' : 'Locaties ophalen'}
+          </button>
+        </div>
+      )}
+      <div style={{ height: 320, borderRadius: '16px', overflow: 'hidden' }}>
+        <div id={mapIdRef.current} style={{ height: '100%', width: '100%' }} />
+      </div>
     </div>
   )
 }
@@ -291,6 +315,9 @@ export default function Dashboard() {
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
+  const isAdmin = sessionData?.isAdmin === true
+  const [geocodeLoading, setGeocodeLoading] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -432,6 +459,17 @@ export default function Dashboard() {
       const set = new Set([...prev, k])
       return kolommen.filter(x => set.has(x))
     })
+  }
+
+  async function haalLocatiesOp() {
+    setGeocodeLoading(true)
+    try {
+      const res = await fetch('/api/winkels/geocode', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.bijgewerkt != null) await mutateWinkels()
+    } finally {
+      setGeocodeLoading(false)
+    }
   }
 
   async function toggleFavoriet(id: number) {
@@ -662,7 +700,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.filter(w => w.lat && w.lng).length} van {winkels.length} op kaart</span>
                 </div>
                 <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(13,31,78,0.08)', border: '1px solid rgba(13,31,78,0.07)' }}>
-                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} />
+                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} />
                 </div>
               </div>
 

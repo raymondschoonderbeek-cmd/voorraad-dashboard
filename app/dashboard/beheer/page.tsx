@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 
 const DYNAMO_BLUE = '#0d1f4e'
@@ -96,6 +96,10 @@ export default function BeheerPage() {
   const [ipError, setIpError] = useState('')
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
+  // Winkel filters
+  const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar'>('alle')
+  const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd'>('alle')
 
   const haalGebruikersOp = useCallback(async () => {
     setLoading(true)
@@ -492,6 +496,21 @@ export default function BeheerPage() {
     if (fileInputRef.current) fileInputRef.current.value = ''
     await haalGebruikersOp()
   }
+
+  const gefilterdeWinkels = useMemo(() => {
+    return winkels.filter(w => {
+      const isWilmar = w.api_type === 'wilmar' || (w.wilmar_organisation_id != null && w.wilmar_branch_id != null)
+      const isCycle = !isWilmar
+      if (winkelFilterSysteem === 'cyclesoftware' && isWilmar) return false
+      if (winkelFilterSysteem === 'wilmar' && isCycle) return false
+      if (winkelFilterApi !== 'alle') {
+        if (winkelFilterApi === 'ok') return isCycle && w.cycle_api_authorized === true
+        if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false
+        if (winkelFilterApi === 'niet_gecontroleerd') return w.cycle_api_authorized == null
+      }
+      return true
+    })
+  }, [winkels, winkelFilterSysteem, winkelFilterApi])
 
   const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
@@ -991,10 +1010,23 @@ export default function BeheerPage() {
             )}
 
             <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-              <div className="p-4 flex flex-wrap items-center justify-between gap-2" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+              <div className="p-4 flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div>
                   <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
-                  <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{winkels.length} winkels</div>
+                  <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{gefilterdeWinkels.length} van {winkels.length} winkels</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select value={winkelFilterSysteem} onChange={e => setWinkelFilterSysteem(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                    <option value="alle">Alle systemen</option>
+                    <option value="cyclesoftware">CycleSoftware</option>
+                    <option value="wilmar">Wilmar</option>
+                  </select>
+                  <select value={winkelFilterApi} onChange={e => setWinkelFilterApi(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                    <option value="alle">API: alle</option>
+                    <option value="ok">API: ✓ In orde</option>
+                    <option value="geen">API: ⚠ Geen toestemming</option>
+                    <option value="niet_gecontroleerd">API: — Niet gecontroleerd</option>
+                  </select>
                 </div>
                 {winkels.some(w => w.api_type !== 'wilmar' && !w.wilmar_organisation_id && !w.wilmar_branch_id && w.dealer_nummer) && (
                   <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
@@ -1002,11 +1034,11 @@ export default function BeheerPage() {
                   </button>
                 )}
               </div>
-              {winkels.length === 0 ? (
-                <div className="p-10 text-center text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Nog geen winkels</div>
+              {gefilterdeWinkels.length === 0 ? (
+                <div className="p-10 text-center text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>{winkels.length === 0 ? 'Nog geen winkels' : 'Geen winkels voldoen aan de filter'}</div>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
-                  {winkels.map((w, i) => (
+                  {gefilterdeWinkels.map((w, i) => (
                     <div key={w.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition hover:bg-gray-50/50">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? 'white' : WINKEL_KLEUREN[i % 8], border: isBikeTotaal(w.naam) ? '1px solid rgba(13,31,78,0.1)' : undefined }}>
                         {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
