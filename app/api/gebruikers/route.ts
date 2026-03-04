@@ -36,25 +36,27 @@ async function haalMfaStatusOp(userIds: string[]): Promise<Record<string, boolea
 async function haalUserEmailsOp(userIds: string[]): Promise<Record<string, string>> {
   const result: Record<string, string> = {}
   if (userIds.length === 0) return result
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return result
+  const authUrl = `${url.replace(/\/$/, '')}/auth/v1`
+  const headers = {
+    Authorization: `Bearer ${key}`,
+    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+  }
   try {
-    const admin = createAdminClient()
-    const idSet = new Set(userIds)
-    let page = 1
-    const perPage = 1000
-    let hasMore = true
-    while (hasMore) {
-      const { data } = await admin.auth.admin.listUsers({ page, perPage })
-      const users = data?.users ?? []
-      for (const u of users) {
-        if (idSet.has(u.id)) {
-          result[u.id] = u.email ?? ''
-        }
-      }
-      hasMore = users.length >= perPage
-      page++
-    }
+    // GET /admin/user/{user_id} per gebruiker (GoTrue API)
+    await Promise.all(
+      userIds.map(async (uid) => {
+        const res = await fetch(`${authUrl}/admin/user/${uid}`, { headers })
+        if (!res.ok) return
+        const data = await res.json()
+        const email = data?.email ?? data?.identities?.[0]?.identity_data?.email ?? ''
+        if (email) result[uid] = email
+      })
+    )
   } catch {
-    // Geen admin key of fout: retourneer lege map
+    // Fout: retourneer lege map
   }
   return result
 }
