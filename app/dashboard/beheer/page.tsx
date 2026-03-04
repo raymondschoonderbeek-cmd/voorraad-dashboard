@@ -446,19 +446,28 @@ export default function BeheerPage() {
       const parsed = rows.map(r => {
         const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
         const landVal = String(r.land || r.Land || r.LAND || '').trim().toLowerCase()
+        const dealer = String(r.dealer_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
         return {
           naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
-          dealer_nummer: String(r.dealer_nummer || r['Dealer nummer'] || r.DEALER_NUMMER || '').trim(),
+          dealer_nummer: dealer,
           postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
           straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
           stad: String(r.stad || r.Stad || r.STAD || '').trim(),
           land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
           api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined),
         }
-      }).filter(r => r.naam && r.dealer_nummer)
-      setImportData(parsed)
-    } catch {
-      setImportError('Kon het bestand niet lezen. Zorg dat het een geldig .xlsx bestand is.')
+      }).filter(r => r.dealer_nummer)
+      if (parsed.length === 0) {
+        const heeftRijen = rows.length > 0
+        setImportError(heeftRijen
+          ? 'Geen geldige rijen gevonden. Elke rij moet een dealer_nummer hebben. Kolomnamen: dealer_nummer, Dealer nummer, of DEALER_NUMMER.'
+          : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, dealer_nummer, …) en daarna de data.')
+      } else {
+        setImportData(parsed)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Onbekende fout'
+      setImportError(`Kon het bestand niet lezen: ${msg}. Zorg dat het een geldig .xlsx of .xls bestand is.`)
     }
   }
 
@@ -467,6 +476,7 @@ export default function BeheerPage() {
     setImportLoading(true); setImportError(''); setImportSuccess(''); setImportProgress({ current: 0, total: importData.length, toegevoegd: 0, bijgewerkt: 0 })
     let toegevoegd = 0
     let bijgewerkt = 0
+    const fouten: string[] = []
     for (let i = 0; i < importData.length; i++) {
       const winkel = importData[i]
       const bestaand = winkels.find(w => String(w.dealer_nummer).trim() === String(winkel.dealer_nummer).trim())
@@ -489,19 +499,36 @@ export default function BeheerPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        if (res.ok) bijgewerkt++
+        if (res.ok) {
+          bijgewerkt++
+        } else {
+          const data = await res.json().catch(() => ({}))
+          fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): ${data?.error || res.statusText || res.status}`)
+        }
       } else {
-        const res = await fetch('/api/winkels', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(winkel),
-        })
-        if (res.ok) toegevoegd++
+        if (!winkel.naam?.trim()) {
+          fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): Naam is verplicht voor nieuwe winkels`)
+        } else {
+          const res = await fetch('/api/winkels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(winkel),
+          })
+          if (res.ok) {
+            toegevoegd++
+          } else {
+            const data = await res.json().catch(() => ({}))
+            fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): ${data?.error || res.statusText || res.status}`)
+          }
+        }
       }
       setImportProgress({ current: i + 1, total: importData.length, toegevoegd, bijgewerkt })
     }
     setImportLoading(false)
     setImportProgress(null)
+    if (fouten.length > 0) {
+      setImportError(fouten.length <= 3 ? fouten.join(' · ') : `${fouten.length} fouten: ${fouten.slice(0, 2).join(' · ')} ... en ${fouten.length - 2} meer`)
+    }
     const parts = []
     if (toegevoegd > 0) parts.push(`${toegevoegd} toegevoegd`)
     if (bijgewerkt > 0) parts.push(`${bijgewerkt} bijgewerkt`)
