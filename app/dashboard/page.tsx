@@ -89,6 +89,14 @@ function isFiets(p: any) {
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
+/** Zoek op meerdere woorden: elk woord moet ergens in het item voorkomen (zelfde logica als API) */
+function matchesSearch(item: any, zoekterm: string): boolean {
+  const words = zoekterm.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return true
+  const allText = Object.values(item).map((v: any) => String(v ?? '').toLowerCase()).join(' ')
+  return words.every(word => allText.includes(word))
+}
+
 type Product = { [key: string]: any }
 type SortDir = 'asc' | 'desc'
 
@@ -333,7 +341,6 @@ export default function Dashboard() {
   const [zichtbareKolommen, setZichtbareKolommen] = useState<string[]>([])
   const [kolommenGeladen, setKolommenGeladen] = useState(false)
   const [zoekterm, setZoekterm] = useState('')
-  const [debouncedZoekterm, setDebouncedZoekterm] = useState('')
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
   const [loading, setLoading] = useState(false)
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
@@ -399,13 +406,12 @@ export default function Dashboard() {
     }
   }, [kolomPanelOpen])
 
-  const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string, q: string) => {
+  const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string) => {
     setLoading(true)
     setAuthRequired(null)
     const params = new URLSearchParams()
     if (winkelId) params.set('winkel', String(winkelId))
     if (dealer) params.set('dealer', dealer)
-    params.set('q', q)
 
     const res = await fetch(`/api/voorraad?${params.toString()}`)
     const data = await res.json().catch(() => ({}))
@@ -455,14 +461,9 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedZoekterm(zoekterm), 400)
-    return () => clearTimeout(t)
-  }, [zoekterm])
-
-  useEffect(() => {
     if (!geselecteerdeWinkel) return
-    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer, debouncedZoekterm)
-  }, [debouncedZoekterm, geselecteerdeWinkel, haalVoorraadOp])
+    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer)
+  }, [geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
     try { localStorage.setItem(WINKEL_STORAGE_KEY, String(winkel.id)) } catch {}
@@ -471,9 +472,9 @@ export default function Dashboard() {
       voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     } : null)
     setGeselecteerdeWinkel(winkel)
-    setZoekterm(''); setDebouncedZoekterm(''); setProducten([]); setKolommen([])
+    setZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setAuthRequired(null)
-    await haalVoorraadOp(winkel.id, winkel.dealer_nummer, '')
+    await haalVoorraadOp(winkel.id, winkel.dealer_nummer)
   }
 
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
@@ -523,7 +524,6 @@ export default function Dashboard() {
     if (res.ok) await mutateFavorieten()
   }
 
-  const isDebouncing = zoekterm !== debouncedZoekterm
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
@@ -535,9 +535,13 @@ export default function Dashboard() {
 
   const gefilterdEnGesorteerd = useMemo(() => {
     let arr = producten.filter(p => (Number(p?.STOCK) || 0) >= 1)
-    if (zoekKolom !== 'ALL' && debouncedZoekterm.trim() !== '') {
-      const needle = debouncedZoekterm.toLowerCase()
-      arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
+    if (zoekterm.trim() !== '') {
+      if (zoekKolom === 'ALL') {
+        arr = arr.filter(p => matchesSearch(p, zoekterm))
+      } else {
+        const needle = zoekterm.toLowerCase()
+        arr = arr.filter(p => String(p[zoekKolom] ?? '').toLowerCase().includes(needle))
+      }
     }
     if (sortKey) {
       arr.sort((a, b) => {
@@ -548,7 +552,7 @@ export default function Dashboard() {
       })
     }
     return arr
-  }, [producten, zoekKolom, debouncedZoekterm, sortKey, sortDir])
+  }, [producten, zoekKolom, zoekterm, sortKey, sortDir])
 
   const stats = useMemo(() => ({
     producten: gefilterdEnGesorteerd.length,
@@ -827,7 +831,7 @@ export default function Dashboard() {
                         <IconChart /> Merk/Groep
                       </Link>
                       <span className="text-xs shrink-0" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>
-                        {loading ? 'Laden...' : isDebouncing ? 'Wachten...' : `${gefilterdEnGesorteerd.length} resultaten`}
+                        {loading ? 'Laden...' : `${gefilterdEnGesorteerd.length} resultaten`}
                       </span>
                     </div>
                   </div>
