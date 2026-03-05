@@ -38,7 +38,18 @@ async function geocodeAdres(postcode?: string | null, straat?: string | null, st
 }
 
 function isBelgischePostcode(postcode?: string | null): boolean {
-  return /^\d{4}$/.test((postcode ?? '').replace(/\s/g, ''))
+  const pc = (postcode ?? '').replace(/\s/g, '')
+  if (/^\d{4}$/.test(pc)) return true
+  // B-1000, 1000 Brussel, etc.
+  const digits = pc.replace(/\D/g, '')
+  return digits.length === 4 && /^\d{4}$/.test(digits)
+}
+
+function isBelgischeWinkel(w: { postcode?: string; straat?: string; stad?: string; land?: string }): boolean {
+  if (w.land === 'Belgium') return true
+  if (isBelgischePostcode(w.postcode)) return true
+  if (bepaalLand(w.postcode, w.stad) === 'Belgium') return true
+  return false
 }
 
 /** Geocode winkels die postcode/straat+stad hebben maar geen lat/lng. Alleen admin. Optioneel: force_belgium=1 om Belgische winkels opnieuw te geocoderen. */
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
       .select('id, naam, postcode, straat, stad, land, lat, lng')
     teVerwerken = (alleWinkels ?? []).filter(
       (w: any) =>
-        (w.land === 'Belgium' || isBelgischePostcode(w.postcode)) &&
+        isBelgischeWinkel(w) &&
         (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
     )
   } else {
@@ -76,7 +87,8 @@ export async function POST(request: NextRequest) {
 
   let bijgewerkt = 0
   for (const w of teVerwerken) {
-    const landVal = (w as any).land === 'Belgium' || (w as any).land === 'Netherlands' ? (w as any).land : null
+    let landVal: 'Belgium' | 'Netherlands' | null = (w as any).land === 'Belgium' || (w as any).land === 'Netherlands' ? (w as any).land : null
+    if (!landVal && forceBelgium && isBelgischeWinkel(w)) landVal = 'Belgium'
     const coords = await geocodeAdres(w.postcode, w.straat, w.stad, landVal)
     if (coords) {
       await supabase

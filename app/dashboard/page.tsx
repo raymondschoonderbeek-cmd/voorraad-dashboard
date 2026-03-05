@@ -197,7 +197,19 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
 }
 
 function isBelgischePostcode(postcode?: string | null): boolean {
-  return /^\d{4}$/.test((postcode ?? '').replace(/\s/g, ''))
+  const pc = (postcode ?? '').replace(/\s/g, '')
+  if (/^\d{4}$/.test(pc)) return true
+  const digits = pc.replace(/\D/g, '')
+  return digits.length === 4 && /^\d{4}$/.test(digits)
+}
+
+function isBelgischeWinkel(w: Winkel): boolean {
+  if (w.land === 'Belgium') return true
+  if (isBelgischePostcode(w.postcode)) return true
+  const stadLower = (w.stad ?? '').toLowerCase()
+  const belgischeSteden = ['brussel', 'brussels', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège', 'liege', 'luik', 'charleroi', 'brugge', 'bruges', 'namur', 'namen', 'leuven', 'mons', 'bergen', 'aalst', 'mechelen', 'kortrijk', 'hasselt', 'sint-niklaas', 'genk', 'roeselare', 'dendermonde', 'turnhout', 'dilbeek', 'heist-op-den-berg', 'lokeren', 'vilvoorde', 'sint-truiden', 'mouscron', 'waregem', 'geel', 'oostende', 'ostend', 'nieuwpoort', 'knokke', 'heist', 'wavre', 'nivelles', 'waterloo', 'seraing', 'verviers']
+  if (belgischeSteden.some(s => stadLower.includes(s))) return true
+  return false
 }
 
 function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmin, geocodeLoading }: {
@@ -277,7 +289,7 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
   const zonderCoords = winkels.filter(w => !w.lat || !w.lng)
   const kanGeocoden = isAdmin && zonderCoords.some(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
   const belgischeWinkels = winkels.filter(w =>
-    (w.land === 'Belgium' || isBelgischePostcode(w.postcode)) &&
+    isBelgischeWinkel(w) &&
     (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
   )
   const kanBelgieGeocoden = isAdmin && belgischeWinkels.length > 0 && !!onGeocodeBelgium
