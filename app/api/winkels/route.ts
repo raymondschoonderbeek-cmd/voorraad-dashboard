@@ -59,14 +59,15 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json()
-  const { naam, dealer_nummer, postcode, straat, stad, land, api_type } = body
+  const { naam, dealer_nummer, postcode, straat, huisnummer, stad, land, api_type } = body
 
   if (!naam || !dealer_nummer) {
     return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
   }
 
   const landVal = land === 'Belgium' || land === 'Netherlands' ? land : null
-  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad, landVal) : { lat: null, lng: null }
+  const straatVoorCoords = straat && huisnummer ? `${straat} ${huisnummer}` : straat
+  const { lat, lng } = (postcode || straatVoorCoords) ? await haalCoordsOp(postcode, straatVoorCoords, stad, landVal) : { lat: null, lng: null }
 
   const { data, error } = await supabase
     .from('winkels')
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       dealer_nummer,
       postcode: postcode ?? null,
       straat: straat ?? null,
+      huisnummer: huisnummer ?? null,
       stad: stad ?? null,
       land: landVal,
       lat,
@@ -95,18 +97,20 @@ export async function PUT(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json()
-  const { id, naam, dealer_nummer, postcode, straat, stad, land, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
+  const { id, naam, dealer_nummer, postcode, straat, huisnummer, stad, land, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
   const landVal = land === 'Belgium' || land === 'Netherlands' ? land : null
-  const { lat, lng } = (postcode || straat) ? await haalCoordsOp(postcode, straat, stad, landVal) : { lat: null, lng: null }
+  const straatVoorCoords = straat && huisnummer ? `${straat} ${huisnummer}` : straat
+  const { lat, lng } = (postcode || straatVoorCoords) ? await haalCoordsOp(postcode, straatVoorCoords, stad, landVal) : { lat: null, lng: null }
 
   const updateData: any = {
     naam,
     dealer_nummer,
     postcode: postcode || null,
     straat: straat ?? null,
+    huisnummer: huisnummer ?? null,
     stad: stad || null,
     land: landVal,
     lat,

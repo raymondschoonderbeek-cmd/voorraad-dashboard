@@ -19,6 +19,7 @@ type Winkel = {
   dealer_nummer: string
   postcode?: string
   straat?: string
+  huisnummer?: string
   stad?: string
   land?: 'Netherlands' | 'Belgium' | null
   lat?: number
@@ -267,16 +268,19 @@ export default function BeheerPage() {
       if (isNieuw) {
         setNieuwWinkelStad(data.stad ?? '')
         setNieuwWinkelStraat(data.straat ?? '')
+        setNieuwWinkelHuisnummer(data.huisnummer ?? huisnummer)
         if (data.postcode) setNieuwWinkelPostcode(data.postcode)
       } else if (bewerkWinkel) {
         setBewerkWinkel({
           ...bewerkWinkel,
           stad: data.stad ?? bewerkWinkel.stad,
           straat: data.straat ?? bewerkWinkel.straat,
+          huisnummer: data.huisnummer ?? huisnummer ?? bewerkWinkel.huisnummer,
           postcode: data.postcode ?? bewerkWinkel.postcode,
           lat: data.lat ?? bewerkWinkel.lat,
           lng: data.lng ?? bewerkWinkel.lng,
         })
+        setBewerkHuisnummer(data.huisnummer ?? huisnummer ?? bewerkWinkel.huisnummer ?? '')
       }
     } catch {
       setFormError('Kon adres niet ophalen.')
@@ -291,7 +295,7 @@ export default function BeheerPage() {
     setWilmarOrganisationId(w.wilmar_organisation_id ?? null)
     setWilmarStores([])
     setWilmarZoekterm('')
-    setBewerkHuisnummer('')
+    setBewerkHuisnummer(w.huisnummer ?? '')
     setFormError('')
     setFormSuccess('')
   }
@@ -358,6 +362,7 @@ export default function BeheerPage() {
         dealer_nummer: nieuwWinkelDealer,
         postcode: nieuwWinkelPostcode,
         straat: nieuwWinkelStraat || undefined,
+        huisnummer: nieuwWinkelHuisnummer || undefined,
         stad: nieuwWinkelStad,
         land: nieuwWinkelLand || undefined,
         api_type: nieuwWinkelApiType,
@@ -394,6 +399,7 @@ export default function BeheerPage() {
       dealer_nummer: bewerkWinkel.dealer_nummer,
       postcode: bewerkWinkel.postcode,
       straat: bewerkWinkel.straat,
+      huisnummer: bewerkHuisnummer?.trim() || null,
       stad: bewerkWinkel.stad,
       land: bewerkWinkel.land ?? null,
       wilmar_organisation_id: wilmarOrganisationId ?? null,
@@ -462,6 +468,7 @@ export default function BeheerPage() {
           dealer_nummer: dealer,
           postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
           straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
+          huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
           stad: String(r.stad || r.Stad || r.STAD || '').trim(),
           land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
           api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined),
@@ -497,6 +504,7 @@ export default function BeheerPage() {
           dealer_nummer: winkel.dealer_nummer,
           postcode: (winkel.postcode?.trim()) ? winkel.postcode.trim() : bestaand.postcode,
           straat: (winkel.straat?.trim()) ? winkel.straat.trim() : bestaand.straat,
+          huisnummer: (winkel.huisnummer?.trim()) ? winkel.huisnummer.trim() : bestaand.huisnummer ?? null,
           stad: (winkel.stad?.trim()) ? winkel.stad.trim() : bestaand.stad,
           land: winkel.land ?? bestaand.land ?? null,
           wilmar_organisation_id: bestaand.wilmar_organisation_id ?? null,
@@ -890,7 +898,7 @@ export default function BeheerPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Straat</label>
-                      <input placeholder="Straat + huisnummer" value={nieuwWinkelStraat} onChange={e => setNieuwWinkelStraat(e.target.value)} className={inputClass} style={inputStyle} />
+                      <input placeholder="Straat" value={nieuwWinkelStraat} onChange={e => setNieuwWinkelStraat(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
@@ -982,7 +990,7 @@ export default function BeheerPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Straat</label>
-                      <input placeholder="Straat + huisnummer" value={bewerkWinkel.straat ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, straat: e.target.value })} className={inputClass} style={inputStyle} />
+                      <input placeholder="Straat" value={bewerkWinkel.straat ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, straat: e.target.value })} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Stad</label>
@@ -1229,7 +1237,7 @@ export default function BeheerPage() {
                           )}
                         </div>
                         <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>
-                          #{w.dealer_nummer}{w.straat ? ` · ${w.straat}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
+                          #{w.dealer_nummer}{w.straat ? ` · ${w.straat}${w.huisnummer ? ` ${w.huisnummer}` : ''}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
                       </div>
                       {isAdmin && (
@@ -1290,7 +1298,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
@@ -1319,7 +1327,7 @@ export default function BeheerPage() {
                   <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                     <table className="w-full text-xs">
                       <thead style={{ background: DYNAMO_BLUE }}>
-                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Straat', 'Stad', 'Land', 'API'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
+                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Straat', 'Nr', 'Stad', 'Land', 'API'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
                       </thead>
                       <tbody>
                         {importData.slice(0, 10).map((r, i) => (
@@ -1328,6 +1336,7 @@ export default function BeheerPage() {
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
+                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
                             <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
@@ -1352,13 +1361,13 @@ export default function BeheerPage() {
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>{['naam', 'dealer_nummer', 'postcode', 'straat', 'stad', 'land', 'api_type'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
+                    <tr>{['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {[
-                      ['Dynamo Amsterdam','10001','1012AB','Damrak 1','Amsterdam','Nederland','cyclesoftware'],
-                      ['Dynamo Rotterdam','10002','3011AD','Coolsingel 42','Rotterdam','Nederland','cyclesoftware'],
-                      ['Dynamo Brussel','10003','1000','Nieuwstraat 1','Brussel','België','wilmar'],
+                      ['Dynamo Amsterdam','10001','1012AB','Damrak','1','Amsterdam','Nederland','cyclesoftware'],
+                      ['Dynamo Rotterdam','10002','3011AD','Coolsingel','42','Rotterdam','Nederland','cyclesoftware'],
+                      ['Dynamo Brussel','10003','1000','Nieuwstraat','1','Brussel','België','wilmar'],
                     ].map((r, i) => (
                       <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
                         {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.7)', fontFamily: F }}>{c}</td>)}

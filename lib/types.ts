@@ -6,6 +6,7 @@ export type Winkel = {
   dealer_nummer: string
   postcode?: string
   straat?: string
+  huisnummer?: string
   stad?: string
   land?: 'Netherlands' | 'Belgium' | null
   lat?: number

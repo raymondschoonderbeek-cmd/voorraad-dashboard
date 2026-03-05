@@ -11,9 +11,9 @@ function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' |
   return 'Netherlands'
 }
 
-async function geocodeAdres(postcode?: string | null, straat?: string | null, stad?: string | null, land?: 'Netherlands' | 'Belgium' | null): Promise<{ lat: number; lng: number } | null> {
+async function geocodeAdres(postcode?: string | null, straat?: string | null, stad?: string | null, land?: 'Netherlands' | 'Belgium' | null, huisnummer?: string | null): Promise<{ lat: number; lng: number } | null> {
   const parts: string[] = []
-  if (straat?.trim()) parts.push(straat.trim())
+  if (straat?.trim()) parts.push(huisnummer?.trim() ? `${straat.trim()} ${huisnummer.trim()}` : straat.trim())
   if (postcode?.trim()) parts.push(postcode.replace(/\s/g, ''))
   if (stad?.trim()) parts.push(stad.trim())
   if (parts.length === 0) return null
@@ -69,14 +69,14 @@ export async function POST(request: NextRequest) {
   if (forceBelgium) {
     const { data: alleWinkels } = await supabase
       .from('winkels')
-      .select('id, naam, postcode, straat, stad, land, lat, lng')
+      .select('id, naam, postcode, straat, huisnummer, stad, land, lat, lng')
     const belgisch = (alleWinkels ?? []).filter((w: any) => isBelgischeWinkel(w))
     teVerwerken = belgisch.filter((w: any) => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
     zonderAdres = belgisch.filter((w: any) => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim())).map((w: any) => ({ id: w.id, naam: w.naam ?? '' }))
   } else {
     const { data: winkels } = await supabase
       .from('winkels')
-      .select('id, naam, postcode, straat, stad, land, lat, lng')
+      .select('id, naam, postcode, straat, huisnummer, stad, land, lat, lng')
       .or('lat.is.null,lng.is.null')
     const zonderCoords = winkels ?? []
     teVerwerken = zonderCoords.filter(
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   for (const w of teVerwerken) {
     let landVal: 'Belgium' | 'Netherlands' | null = (w as any).land === 'Belgium' || (w as any).land === 'Netherlands' ? (w as any).land : null
     if (!landVal && forceBelgium && isBelgischeWinkel(w)) landVal = 'Belgium'
-    const coords = await geocodeAdres(w.postcode, w.straat, w.stad, landVal)
+    const coords = await geocodeAdres(w.postcode, w.straat, w.stad, landVal, (w as any).huisnummer)
     if (coords) {
       await supabase
         .from('winkels')

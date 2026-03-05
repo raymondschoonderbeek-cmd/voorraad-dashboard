@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       straat: straat || null,
+      huisnummer: huisnummer || null,
       stad: stad || null,
       postcode: doc.postcode ?? postcode,
       lat: Number.isFinite(lat) ? lat : null,
