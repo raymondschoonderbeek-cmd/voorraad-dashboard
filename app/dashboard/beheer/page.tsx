@@ -252,6 +252,11 @@ export default function BeheerPage() {
   async function haalAdresOp(isNieuw: boolean) {
     const postcode = isNieuw ? nieuwWinkelPostcode : (bewerkWinkel?.postcode ?? '')
     const huisnummer = isNieuw ? nieuwWinkelHuisnummer : bewerkHuisnummer
+    const land = isNieuw ? nieuwWinkelLand : (bewerkWinkel?.land ?? '')
+    if (!land) {
+      setFormError('Selecteer eerst het land (Nederland of België) om het adres op te halen.')
+      return
+    }
     if (!postcode.trim() || !huisnummer.trim()) {
       setFormError('Vul postcode en huisnummer in om het adres op te halen.')
       return
@@ -259,7 +264,9 @@ export default function BeheerPage() {
     setAdresLoading(true)
     setFormError('')
     try {
-      const res = await fetch(`/api/adres?postcode=${encodeURIComponent(postcode.replace(/\s/g, ''))}&huisnummer=${encodeURIComponent(huisnummer)}`)
+      const params = new URLSearchParams({ postcode: postcode.replace(/\s/g, ''), huisnummer })
+      if (land === 'Belgium') params.set('land', 'Belgium')
+      const res = await fetch(`/api/adres?${params.toString()}`)
       const data = await res.json()
       if (!res.ok) {
         setFormError(data.error ?? 'Adres niet gevonden.')
