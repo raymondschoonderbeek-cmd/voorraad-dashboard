@@ -256,7 +256,7 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
         bounds.push([w.lat!, w.lng!])
       })
 
-      if (bounds.length > 0) map.fitBounds(bounds, { padding: [40, 40] })
+      if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60] })
       ;(window as any)._selectWinkel = (id: number) => {
         const winkel = winkels.find(w => w.id === id)
         if (winkel) onSelecteer(winkel)
@@ -296,7 +296,7 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
 
   if (winkelsMetCoords.length === 0) {
     return (
-      <div className="flex flex-col justify-center" style={{ height: 280, background: 'rgba(13,31,78,0.03)', borderRadius: '16px', border: '1px dashed rgba(13,31,78,0.15)' }}>
+      <div className="flex flex-col justify-center" style={{ height: 380, background: 'rgba(13,31,78,0.03)', borderRadius: '16px', border: '1px dashed rgba(13,31,78,0.15)' }}>
         <div className="text-center p-6">
           <div className="flex justify-center mb-2" style={{ color: 'rgba(13,31,78,0.2)' }}><IconMap /></div>
           <p className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Geen kaart beschikbaar</p>
@@ -337,7 +337,7 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
           )}
         </div>
       ) : null}
-      <div style={{ height: 320, borderRadius: '16px', overflow: 'hidden' }}>
+      <div style={{ height: 420, borderRadius: '16px', overflow: 'hidden' }}>
         <div id={mapIdRef.current} style={{ height: '100%', width: '100%' }} />
       </div>
     </div>
