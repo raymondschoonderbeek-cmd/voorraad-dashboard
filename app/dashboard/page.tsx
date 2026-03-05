@@ -212,14 +212,17 @@ function isBelgischeWinkel(w: Winkel): boolean {
   return false
 }
 
-function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmin, geocodeLoading }: {
+function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmin, geocodeLoading, geocodeResult, onDismissGeocodeResult }: {
   winkels: Winkel[]
   onSelecteer: (w: Winkel) => void
   onGeocode?: () => Promise<void>
   onGeocodeBelgium?: () => Promise<void>
   isAdmin?: boolean
   geocodeLoading?: boolean
+  geocodeResult?: { bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null
+  onDismissGeocodeResult?: () => void
 }) {
+  const [toonZonderLocatieLijst, setToonZonderLocatieLijst] = useState(false)
   const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
   const mapRef = useRef<any>(null)
   const mapIdRef = useRef(`winkel-kaart-${Date.now()}-${Math.random().toString(36).slice(2)}`)
@@ -320,11 +323,32 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
 
   return (
     <div className="space-y-2">
+      {geocodeResult && onDismissGeocodeResult && (
+        <div className="rounded-xl p-3 text-xs" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p style={{ color: DYNAMO_BLUE, fontWeight: 600 }}>{geocodeResult.bijgewerkt} van {geocodeResult.totaal} gegeocodeerd</p>
+              {geocodeResult.zonderAdres.length > 0 && (
+                <p style={{ color: 'rgba(13,31,78,0.5)', marginTop: 4 }}>{geocodeResult.zonderAdres.length} zonder adres (postcode of straat+stad ontbreekt)</p>
+              )}
+              {geocodeResult.mislukt.length > 0 && (
+                <p style={{ color: '#b91c1c', marginTop: 4 }}>{geocodeResult.mislukt.length} mislukt (adres niet gevonden door Nominatim)</p>
+              )}
+            </div>
+            <button onClick={onDismissGeocodeResult} className="shrink-0 rounded px-2 py-0.5 hover:bg-black/5" style={{ color: 'rgba(13,31,78,0.5)' }}>×</button>
+          </div>
+          {(geocodeResult.mislukt.length > 0 || geocodeResult.zonderAdres.length > 0) && (
+            <Link href="/dashboard/beheer?locatie=zonder" className="inline-block mt-2 font-semibold" style={{ color: DYNAMO_BLUE }}>Bekijk in Beheer →</Link>
+          )}
+        </div>
+      )}
       {(kanGeocoden && zonderCoords.length > 0) || kanBelgieGeocoden ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           {kanGeocoden && onGeocode && zonderCoords.length > 0 && (
             <>
-              <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>{zonderCoords.length} winkel{zonderCoords.length !== 1 ? 's' : ''} zonder locatie</span>
+              <button onClick={() => setToonZonderLocatieLijst(v => !v)} className="text-xs hover:underline text-left" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+                {zonderCoords.length} winkel{zonderCoords.length !== 1 ? 's' : ''} zonder locatie {toonZonderLocatieLijst ? '▼' : '▶'}
+              </button>
               <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}>
                 {geocodeLoading ? 'Bezig...' : 'Locaties ophalen'}
               </button>
@@ -337,6 +361,25 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
           )}
         </div>
       ) : null}
+      {toonZonderLocatieLijst && zonderCoords.length > 0 && (
+        <div className="rounded-xl p-3 max-h-48 overflow-y-auto text-xs" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>
+          <p className="font-semibold mb-2" style={{ color: 'rgba(13,31,78,0.6)' }}>Winkels zonder locatie</p>
+          <p className="mb-2" style={{ color: 'rgba(13,31,78,0.45)' }}>Alleen winkels met postcode of straat+stad worden gegeocodeerd. <Link href="/dashboard/beheer?locatie=zonder" className="font-semibold underline" style={{ color: DYNAMO_BLUE }}>Bewerk in Beheer</Link></p>
+          <ul className="space-y-1">
+            {zonderCoords.map(w => {
+              const heeftAdres = !!(w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+              return (
+                <li key={w.id} className="flex justify-between gap-2">
+                  <span style={{ color: DYNAMO_BLUE }}>{w.naam}</span>
+                  <span style={{ color: heeftAdres ? 'rgba(13,31,78,0.4)' : '#b91c1c' }}>
+                    {heeftAdres ? `${w.stad || ''} ${w.postcode || ''}`.trim() || '—' : 'Geen adres'}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
       <div style={{ height: 420, borderRadius: '16px', overflow: 'hidden' }}>
         <div id={mapIdRef.current} style={{ height: '100%', width: '100%' }} />
       </div>
@@ -368,6 +411,7 @@ export default function Dashboard() {
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
   const [geocodeLoading, setGeocodeLoading] = useState(false)
+  const [geocodeResult, setGeocodeResult] = useState<{ bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
@@ -507,10 +551,14 @@ export default function Dashboard() {
 
   async function haalLocatiesOp() {
     setGeocodeLoading(true)
+    setGeocodeResult(null)
     try {
       const res = await fetch('/api/winkels/geocode', { method: 'POST' })
       const data = await res.json().catch(() => ({}))
-      if (res.ok && data.bijgewerkt != null) await mutateWinkels()
+      if (res.ok) {
+        if (data.bijgewerkt != null) await mutateWinkels()
+        setGeocodeResult({ bijgewerkt: data.bijgewerkt ?? 0, totaal: data.totaal ?? 0, mislukt: data.mislukt ?? [], zonderAdres: data.zonderAdres ?? [] })
+      }
     } finally {
       setGeocodeLoading(false)
     }
@@ -518,10 +566,14 @@ export default function Dashboard() {
 
   async function haalBelgieLocatiesOp() {
     setGeocodeLoading(true)
+    setGeocodeResult(null)
     try {
       const res = await fetch('/api/winkels/geocode?force_belgium=1', { method: 'POST' })
       const data = await res.json().catch(() => ({}))
-      if (res.ok && data.bijgewerkt != null) await mutateWinkels()
+      if (res.ok) {
+        if (data.bijgewerkt != null) await mutateWinkels()
+        setGeocodeResult({ bijgewerkt: data.bijgewerkt ?? 0, totaal: data.totaal ?? 0, mislukt: data.mislukt ?? [], zonderAdres: data.zonderAdres ?? [] })
+      }
     } finally {
       setGeocodeLoading(false)
     }
@@ -758,7 +810,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.filter(w => w.lat && w.lng).length} van {winkels.length} op kaart</span>
                 </div>
                 <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(13,31,78,0.08)', border: '1px solid rgba(13,31,78,0.07)' }}>
-                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} />
+                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
                 </div>
               </div>
 

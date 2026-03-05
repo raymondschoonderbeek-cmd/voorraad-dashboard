@@ -63,28 +63,32 @@ export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const forceBelgium = searchParams.get('force_belgium') === '1'
 
-  let teVerwerken: { id: number; postcode?: string; straat?: string; stad?: string; land?: string }[] = []
+  let teVerwerken: { id: number; naam?: string; postcode?: string; straat?: string; stad?: string; land?: string }[] = []
+  let zonderAdres: { id: number; naam: string }[] = []
 
   if (forceBelgium) {
     const { data: alleWinkels } = await supabase
       .from('winkels')
       .select('id, naam, postcode, straat, stad, land, lat, lng')
-    teVerwerken = (alleWinkels ?? []).filter(
-      (w: any) =>
-        isBelgischeWinkel(w) &&
-        (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
-    )
+    const belgisch = (alleWinkels ?? []).filter((w: any) => isBelgischeWinkel(w))
+    teVerwerken = belgisch.filter((w: any) => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+    zonderAdres = belgisch.filter((w: any) => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim())).map((w: any) => ({ id: w.id, naam: w.naam ?? '' }))
   } else {
     const { data: winkels } = await supabase
       .from('winkels')
       .select('id, naam, postcode, straat, stad, land, lat, lng')
       .or('lat.is.null,lng.is.null')
-    teVerwerken = (winkels ?? []).filter(
+    const zonderCoords = winkels ?? []
+    teVerwerken = zonderCoords.filter(
       (w: { postcode?: string; straat?: string; stad?: string }) =>
         (w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
     )
+    zonderAdres = zonderCoords
+      .filter((w: any) => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim()))
+      .map((w: any) => ({ id: w.id, naam: w.naam ?? '' }))
   }
 
+  const mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[] = []
   let bijgewerkt = 0
   for (const w of teVerwerken) {
     let landVal: 'Belgium' | 'Netherlands' | null = (w as any).land === 'Belgium' || (w as any).land === 'Netherlands' ? (w as any).land : null
@@ -97,8 +101,16 @@ export async function POST(request: NextRequest) {
         .eq('id', w.id)
       bijgewerkt++
       await new Promise(r => setTimeout(r, 1100))
+    } else {
+      mislukt.push({
+        id: w.id,
+        naam: (w as any).naam ?? '',
+        postcode: w.postcode ?? undefined,
+        straat: w.straat ?? undefined,
+        stad: w.stad ?? undefined,
+      })
     }
   }
 
-  return NextResponse.json({ bijgewerkt, totaal: teVerwerken.length })
+  return NextResponse.json({ bijgewerkt, totaal: teVerwerken.length, mislukt, zonderAdres })
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 const DYNAMO_BLUE = '#0d1f4e'
 const DYNAMO_GOLD = '#f0c040'
@@ -38,6 +39,7 @@ const IconArrowLeft = () => (
 )
 
 export default function BeheerPage() {
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<Tab>('winkels')
   const [rollen, setRollen] = useState<Rol[]>([])
   const [winkelToegang, setWinkelToegang] = useState<WinkelToegang[]>([])
@@ -105,6 +107,7 @@ export default function BeheerPage() {
   const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar'>('alle')
   const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld'>('alle')
   const [winkelFilterLand, setWinkelFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
+  const [winkelFilterLocatie, setWinkelFilterLocatie] = useState<'alle' | 'zonder'>('alle')
   const [winkelZoekterm, setWinkelZoekterm] = useState('')
 
   const haalGebruikersOp = useCallback(async () => {
@@ -138,6 +141,13 @@ export default function BeheerPage() {
     setWinkels(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [])
+
+  useEffect(() => {
+    if (searchParams.get('locatie') === 'zonder') {
+      setTab('winkels')
+      setWinkelFilterLocatie('zonder')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     let cancelled = false
@@ -573,6 +583,7 @@ export default function BeheerPage() {
       if (winkelFilterSysteem === 'cyclesoftware' && isWilmar) return false
       if (winkelFilterSysteem === 'wilmar' && isCycle) return false
       if (winkelFilterLand !== 'alle' && w.land !== winkelFilterLand) return false
+      if (winkelFilterLocatie === 'zonder' && (w.lat != null || w.lng != null)) return false
       if (winkelFilterApi !== 'alle') {
         if (winkelFilterSysteem === 'wilmar') {
           if (winkelFilterApi === 'gekoppeld') return isWilmar && w.wilmar_organisation_id != null && w.wilmar_branch_id != null
@@ -594,7 +605,7 @@ export default function BeheerPage() {
       }
       return true
     })
-  }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelFilterLand, winkelZoekterm])
+  }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelFilterLand, winkelFilterLocatie, winkelZoekterm])
 
   const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
@@ -1142,6 +1153,10 @@ export default function BeheerPage() {
                     <option value="alle">Alle landen</option>
                     <option value="Netherlands">🇳🇱 Nederland</option>
                     <option value="Belgium">🇧🇪 België</option>
+                  </select>
+                  <select value={winkelFilterLocatie} onChange={e => setWinkelFilterLocatie(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                    <option value="alle">Alle locaties</option>
+                    <option value="zonder">📍 Zonder locatie</option>
                   </select>
                   <select value={winkelFilterSysteem} onChange={e => { const v = e.target.value as any; setWinkelFilterSysteem(v); setWinkelFilterApi('alle') }} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     <option value="alle">Alle systemen</option>
