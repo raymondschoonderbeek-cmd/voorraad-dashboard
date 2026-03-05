@@ -53,6 +53,27 @@ function alleenHoofdGroep(raw: any): string {
   return first || s
 }
 
+/** Aggregeer duplicaten: combinatie barcode + leverancier art. is uniek; voorraad optellen */
+function aggregeerOpBarcodeEnLeverancierArt(items: any[]): any[] {
+  if (!Array.isArray(items) || items.length === 0) return items
+  const map = new Map<string, any>()
+  for (const item of items) {
+    const barcode = String(item?.BARCODE ?? item?.barcode ?? '').trim()
+    const leverancierArt = String(item?.SUPPLIER_PRODUCT_NUMBER ?? item?.supplierProductNumber ?? item?.articleNumber ?? '').trim()
+    const key = `${barcode}|||${leverancierArt}`
+    const existing = map.get(key)
+    const stock = Number(item.STOCK ?? item.stock ?? item.quantity) || 0
+    const available = Number(item.AVAILABLE_STOCK ?? item.availableStock ?? item.available) || 0
+    if (existing) {
+      existing.STOCK = (Number(existing.STOCK) || 0) + stock
+      existing.AVAILABLE_STOCK = (Number(existing.AVAILABLE_STOCK) || 0) + available
+    } else {
+      map.set(key, { ...item, STOCK: stock, AVAILABLE_STOCK: available })
+    }
+  }
+  return Array.from(map.values())
+}
+
 /** Zoek op meerdere woorden: elk woord moet ergens in het item voorkomen (bijv. "gazelle grenoble" matcht merk Gazelle + product Grenoble) */
 function matchesSearch(item: any, zoekterm: string): boolean {
   const words = zoekterm.trim().toLowerCase().split(/\s+/).filter(Boolean)
@@ -226,7 +247,7 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      const data = [...bicycles, ...partsList]
+      let data = aggregeerOpBarcodeEnLeverancierArt([...bicycles, ...partsList])
 
       if (zoekterm && Array.isArray(data)) {
         const gefilterd = data.filter((item: any) => matchesSearch(item, zoekterm))
@@ -301,12 +322,13 @@ export async function GET(request: NextRequest) {
 
     // 4) CycleSoftware: alleen hoofdcategorie tonen (bijv. "Fietsen" i.p.v. "Fietsen Stadsfietsen")
     const rawItems = Array.isArray(data) ? data : (data?.products ?? [])
-    const items = rawItems.map((item: any) => {
+    let items = rawItems.map((item: any) => {
       if (item && typeof item === 'object' && 'GROUP_DESCRIPTION_1' in item) {
         return { ...item, GROUP_DESCRIPTION_1: alleenHoofdGroep(item.GROUP_DESCRIPTION_1) }
       }
       return item
     })
+    items = aggregeerOpBarcodeEnLeverancierArt(items)
 
     // 5) Filter op zoekterm
     if (zoekterm && items.length > 0) {
