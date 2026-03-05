@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const straat = doc.weergavenaam?.split(',')[0]?.trim() ?? doc.straatnaam ?? ''
+    const straat = doc.straatnaam?.trim() ?? ''
     const stad = doc.woonplaatsnaam ?? ''
 
     return NextResponse.json({
