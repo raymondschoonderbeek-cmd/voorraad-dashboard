@@ -29,6 +29,8 @@ type Winkel = {
   wilmar_store_naam?: string
   api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | null
   cycle_api_authorized?: boolean | null
+  vendit_in_dataset?: boolean
+  vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
 }
 type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips'
@@ -106,7 +108,7 @@ export default function BeheerPage() {
 
   // Winkel filters
   const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
-  const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld'>('alle')
+  const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld' | 'in_dataset' | 'niet_in_dataset' | 'ouder_dan_2_dagen'>('alle')
   const [winkelFilterLand, setWinkelFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
   const [winkelFilterLocatie, setWinkelFilterLocatie] = useState<'alle' | 'zonder'>('alle')
   const [winkelZoekterm, setWinkelZoekterm] = useState('')
@@ -606,7 +608,14 @@ export default function BeheerPage() {
           if (winkelFilterApi === 'gekoppeld') return isWilmar && w.wilmar_organisation_id != null && w.wilmar_branch_id != null
           if (winkelFilterApi === 'niet_gekoppeld') return isWilmar && (w.wilmar_organisation_id == null || w.wilmar_branch_id == null)
         } else if (winkelFilterSysteem === 'vendit') {
-          // Vendit heeft geen API-status; filter niet op API
+          if (winkelFilterApi === 'in_dataset') return isVendit && w.vendit_in_dataset === true
+          if (winkelFilterApi === 'niet_in_dataset') return isVendit && w.vendit_in_dataset === false
+          if (winkelFilterApi === 'ouder_dan_2_dagen') {
+            if (!isVendit || !w.vendit_laatst_datum) return false
+            const datum = new Date(w.vendit_laatst_datum).getTime()
+            const tweeDagenGeleden = Date.now() - 2 * 24 * 60 * 60 * 1000
+            return datum < tweeDagenGeleden
+          }
         } else {
           if (winkelFilterApi === 'ok') return isCycle && w.cycle_api_authorized === true
           if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false
@@ -1193,7 +1202,12 @@ export default function BeheerPage() {
                         <option value="niet_gekoppeld">API: Nog niet gekoppeld</option>
                       </>
                     ) : winkelFilterSysteem === 'vendit' ? (
-                      <option value="alle">ALLE</option>
+                      <>
+                        <option value="alle">ALLE (toon alle winkels)</option>
+                        <option value="in_dataset">✓ In dataset</option>
+                        <option value="niet_in_dataset">— Niet in dataset</option>
+                        <option value="ouder_dan_2_dagen">Data ouder dan 2 dagen</option>
+                      </>
                     ) : (
                       <>
                         <option value="alle">API: alle</option>
@@ -1230,7 +1244,20 @@ export default function BeheerPage() {
                           {w.api_type === 'wilmar' ? (
                             <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }}>Wilmar</span>
                           ) : w.api_type === 'vendit' ? (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(59,130,246,0.15)', color: '#2563eb', fontFamily: F }}>Vendit</span>
+                            <>
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(59,130,246,0.15)', color: '#2563eb', fontFamily: F }}>Vendit</span>
+                              {w.vendit_in_dataset === true && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="Winkel staat in vendit_stock dataset">✓ In dataset</span>
+                              )}
+                              {w.vendit_in_dataset === false && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Geen data voor dit dealer nummer in vendit_stock">— Niet in dataset</span>
+                              )}
+                              {w.vendit_laatst_datum && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.55)', fontFamily: F }} title="Laatst aanwezig in vendit_stock">
+                                  Laatst: {new Date(w.vendit_laatst_datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                              )}
+                            </>
                           ) : (
                             <>
                               <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)', fontFamily: F }}>CycleSoftware</span>

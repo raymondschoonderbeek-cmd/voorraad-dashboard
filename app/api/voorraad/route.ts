@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
       const { data: venditRows, error: venditError } = await supabase
         .from('vendit_stock')
         .select('*')
-        .eq('dealer_nummer', dealerNummer)
+        .eq('dealer_number', dealerNummer)
 
       if (venditError) {
         console.error('Vendit voorraad ophalen mislukt:', venditError)

@@ -79,10 +79,45 @@ export async function GET(request: NextRequest) {
     .from('gebruiker_winkels')
     .select('*')
 
-  const { data: winkels } = await client
+  const { data: winkelsRaw } = await client
     .from('winkels')
     .select('*')
     .order('naam')
+
+  const venditDealerNummers = new Set<string>()
+  const venditLaatstPerDealer = new Map<string, string>() // dealer_nummer -> ISO datum
+  const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
+  if (venditWinkels.length > 0) {
+    const { data: venditDealers } = await client
+      .from('vendit_stock')
+      .select('dealer_number')
+    for (const row of venditDealers ?? []) {
+      const d = row?.dealer_number
+      if (d != null) venditDealerNummers.add(String(d).trim())
+    }
+    try {
+      const { data: stats } = await client.rpc('get_vendit_dealer_stats')
+      for (const row of stats ?? []) {
+        const d = (row as { dealer_nummer: string })?.dealer_nummer
+        const dt = (row as { last_updated: string })?.last_updated
+        if (d != null && dt) venditLaatstPerDealer.set(String(d).trim(), dt)
+      }
+    } catch {
+      // RPC mogelijk nog niet uitgevoerd
+    }
+  }
+
+  const winkels = (winkelsRaw ?? []).map((w: any) => {
+    if (w.api_type === 'vendit') {
+      const key = String(w.dealer_nummer ?? '').trim()
+      return {
+        ...w,
+        vendit_in_dataset: venditDealerNummers.has(key),
+        vendit_laatst_datum: venditLaatstPerDealer.get(key) ?? null,
+      }
+    }
+    return w
+  })
 
   const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
   const [mfaStatus, userEmails] = await Promise.all([
@@ -93,7 +128,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     rollen: rollen ?? [],
     winkelToegang: winkelToegang ?? [],
-    winkels: winkels ?? [],
+    winkels,
     mfaStatus,
     userEmails,
   })
