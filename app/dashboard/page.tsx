@@ -88,7 +88,9 @@ function getDatum() {
 function isFiets(p: any) {
   const g = String(p.GROUP_DESCRIPTION_1 ?? '').toLowerCase()
   if (p._source === 'vendit') {
-    return g.includes('fietsen')
+    const heeftFiets = g.includes('fietsen') || g.includes('fiets')
+    const isOnderdelen = g.includes('onderdelen')
+    return heeftFiets && !isOnderdelen
   }
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
