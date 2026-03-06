@@ -1,20 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [magicLinkMode, setMagicLinkMode] = useState(false)
 
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  useEffect(() => {
+    const err = searchParams.get('error')
+    if (err === 'auth') setError('Inloggen mislukt. Probeer opnieuw of gebruik je wachtwoord.')
+  }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -22,13 +29,29 @@ export default function LoginPage() {
     setMessage('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    if (magicLinkMode) {
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (otpError) {
+        setError(otpError.message)
+      } else {
+        setMessage('Check je e-mail voor de inloglink. Klik op de link om in te loggen.')
+      }
+      setLoading(false)
+      return
+    }
+
+    const { error: pwdError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    if (error) {
-      setError(error.message)
+    if (pwdError) {
+      setError(pwdError.message)
       setLoading(false)
     } else {
       router.push('/dashboard')
@@ -93,34 +116,38 @@ export default function LoginPage() {
             className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Wachtwoord"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              className="w-full rounded-xl pl-4 pr-12 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          {!magicLinkMode && (
+            <>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Wachtwoord"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  className="w-full rounded-xl pl-4 pr-12 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
 
-            <button
-              type="button"
-              onClick={() => setShowPassword(v => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              {showPassword ? '🙈' : '👁️'}
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
 
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={handleResetPassword}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              Wachtwoord vergeten?
-            </button>
-          </div>
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Wachtwoord vergeten?
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         <button
@@ -128,8 +155,18 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
         >
-          {loading ? 'Bezig...' : 'Inloggen'}
+          {loading ? 'Bezig...' : magicLinkMode ? 'Stuur inloglink' : 'Inloggen'}
         </button>
+
+        <div className="text-center pt-2">
+          <button
+            type="button"
+            onClick={() => { setMagicLinkMode(v => !v); setError(''); setMessage(''); }}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            {magicLinkMode ? '← Inloggen met wachtwoord' : 'Inloggen via e-mail (magic link)'}
+          </button>
+        </div>
       </form>
     </div>
   )
