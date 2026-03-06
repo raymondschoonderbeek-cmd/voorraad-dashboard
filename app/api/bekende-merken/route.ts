@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
   const auth = await requireAuth()
-  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { supabase } = auth
 
   const { data, error } = await supabase
