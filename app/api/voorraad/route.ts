@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
         STOCK: Number(row.stock ?? row.STOCK ?? row.quantity ?? row.qty ?? 0) || 0,
         AVAILABLE_STOCK: Number(row.available_stock ?? row.AVAILABLE_STOCK ?? row.stock ?? row.quantity ?? 0) || 0,
         SALES_PRICE_INC: row.sales_price_inc ?? row.SALES_PRICE_INC ?? row.price ?? null,
-        GROUP_DESCRIPTION_1: alleenHoofdGroep(groepZonderCijfers(gro1)),
+        GROUP_DESCRIPTION_1: groepZonderCijfers(gro1),
         GROUP_DESCRIPTION_1_ORIGINAL: gro1,
         GROUP_DESCRIPTION_2: gro2,
         SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.article_number ?? '',
