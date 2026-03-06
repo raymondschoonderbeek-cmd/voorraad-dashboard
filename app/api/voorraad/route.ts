@@ -156,18 +156,29 @@ export async function GET(request: NextRequest) {
       const dealerVariants: (string | number)[] = [...new Set([d, dNorm])]
       const dNum = parseInt(dNorm, 10)
       if (!Number.isNaN(dNum)) dealerVariants.push(dNum)
-      const { data: venditRows, error: venditError } = await supabase
-        .from('vendit_stock')
-        .select('*')
-        .in('dealer_number', dealerVariants)
-        .limit(50000)
 
-      if (venditError) {
-        console.error('Vendit voorraad ophalen mislukt:', venditError)
-        return NextResponse.json(
-          { error: 'UPSTREAM_ERROR', message: 'Voorraad ophalen uit Vendit mislukt.' },
-          { status: 502 }
-        )
+      const BATCH = 1000
+      let venditRows: any[] = []
+      let offset = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data: batch, error: venditError } = await supabase
+          .from('vendit_stock')
+          .select('*')
+          .in('dealer_number', dealerVariants)
+          .range(offset, offset + BATCH - 1)
+
+        if (venditError) {
+          console.error('Vendit voorraad ophalen mislukt:', venditError)
+          return NextResponse.json(
+            { error: 'UPSTREAM_ERROR', message: 'Voorraad ophalen uit Vendit mislukt.' },
+            { status: 502 }
+          )
+        }
+        const rows = batch ?? []
+        venditRows = venditRows.concat(rows)
+        hasMore = rows.length === BATCH
+        offset += BATCH
       }
 
       /** Bekende merken uit database (fallback: statische lijst) */
