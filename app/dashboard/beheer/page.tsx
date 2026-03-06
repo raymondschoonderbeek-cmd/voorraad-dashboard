@@ -33,7 +33,7 @@ type Winkel = {
   vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
 }
-type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips'
+type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken'
 
 const IconArrowLeft = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -103,6 +103,12 @@ export default function BeheerPage() {
   const [nieuwIp, setNieuwIp] = useState('')
   const [ipLoading, setIpLoading] = useState(false)
   const [ipError, setIpError] = useState('')
+
+  // Bekende merken (alleen admin) – voor Vendit merk-extractie
+  const [bekendeMerken, setBekendeMerken] = useState<{ id: number; label: string; created_at: string }[]>([])
+  const [nieuwMerk, setNieuwMerk] = useState('')
+  const [merkLoading, setMerkLoading] = useState(false)
+  const [merkError, setMerkError] = useState('')
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
@@ -184,6 +190,20 @@ export default function BeheerPage() {
     if (isAdmin === true) haalTrustedIpsOp()
   }, [isAdmin, haalTrustedIpsOp])
 
+  const haalMerkenOp = useCallback(async () => {
+    const res = await fetch('/api/bekende-merken')
+    if (res.ok) {
+      const data = await res.json()
+      setBekendeMerken(Array.isArray(data) ? data : [])
+    } else {
+      setBekendeMerken([])
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isAdmin === true) haalMerkenOp()
+  }, [isAdmin, haalMerkenOp])
+
   async function voegTrustedIpToe(e: React.FormEvent) {
     e.preventDefault()
     const ip = nieuwIp.trim()
@@ -210,6 +230,34 @@ export default function BeheerPage() {
     if (!confirm('Dit IP-adres verwijderen?')) return
     const res = await fetch(`/api/trusted-ips?id=${id}`, { method: 'DELETE' })
     if (res.ok) haalTrustedIpsOp()
+  }
+
+  async function voegMerkToe(e: React.FormEvent) {
+    e.preventDefault()
+    const label = nieuwMerk.trim()
+    if (!label) return
+    setMerkLoading(true)
+    setMerkError('')
+    try {
+      const res = await fetch('/api/bekende-merken', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Fout: ${res.status}`)
+      setNieuwMerk('')
+      haalMerkenOp()
+    } catch (err: unknown) {
+      setMerkError(err instanceof Error ? err.message : 'Toevoegen mislukt')
+    }
+    setMerkLoading(false)
+  }
+
+  async function verwijderMerk(id: number) {
+    if (!confirm('Dit merk verwijderen?')) return
+    const res = await fetch(`/api/bekende-merken?id=${id}`, { method: 'DELETE' })
+    if (res.ok) haalMerkenOp()
   }
 
   async function verversCycleApiStatus() {
@@ -643,6 +691,7 @@ export default function BeheerPage() {
         { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
         { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
         ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
+        ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
         { key: 'import', label: 'Excel Import', icon: '📊' },
       ]
     : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
@@ -1263,11 +1312,12 @@ export default function BeheerPage() {
                                   {w.vendit_laatst_datum
                                     ? (() => {
                                         const d = new Date(w.vendit_laatst_datum)
-                                        // Database slaat tijd op als Amsterdam-lokaal (maar met +00); toon als-is
-                                        const opts = { timeZone: 'UTC' as const }
-                                        const datum = d.toLocaleDateString('nl-NL', { ...opts, day: 'numeric', month: 'long', year: 'numeric' })
-                                        const tijd = d.toLocaleTimeString('nl-NL', { ...opts, hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.')
-                                        return `Laatst: ${datum} ${tijd} uur`
+                                        const dag = d.getUTCDate()
+                                        const maand = d.toLocaleDateString('nl-NL', { month: 'long', timeZone: 'UTC' })
+                                        const jaar = d.getUTCFullYear()
+                                        const uur = String(d.getUTCHours()).padStart(2, '0')
+                                        const min = String(d.getUTCMinutes()).padStart(2, '0')
+                                        return `Laatst: ${dag} ${maand} ${jaar} ${uur}.${min} uur`
                                       })()
                                     : '— Datum onbekend'}
                                 </span>
@@ -1344,6 +1394,45 @@ export default function BeheerPage() {
                       <div key={ip.id} className="flex items-center justify-between py-3">
                         <code className="text-sm font-mono" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{ip.ip_or_cidr}</code>
                         <button onClick={() => verwijderTrustedIp(ip.id)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
+        {tab === 'merken' && (
+          <div className="space-y-4">
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+              <div className="p-4" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+                <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Bekende merken</div>
+                <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Lijst voor Vendit merk-extractie uit productomschrijving. Merken worden herkend aan het begin van de omschrijving (bijv. &quot;Batavus Grenoble&quot;).</div>
+              </div>
+              <div className="p-4 space-y-4">
+                <form onSubmit={voegMerkToe} className="flex gap-2">
+                  <input
+                    value={nieuwMerk}
+                    onChange={e => setNieuwMerk(e.target.value)}
+                    placeholder="Bijv. Batavus, Gazelle, Trek"
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                  <button type="submit" disabled={merkLoading || !nieuwMerk.trim()} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                    {merkLoading ? 'Bezig...' : 'Toevoegen'}
+                  </button>
+                </form>
+                {merkError && <div className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{merkError}</div>}
+                <div className="divide-y" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
+                  {bekendeMerken.length === 0 ? (
+                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Nog geen merken. Voeg merken toe voor Vendit merk-extractie.</div>
+                  ) : (
+                    bekendeMerken.map(m => (
+                      <div key={m.id} className="flex items-center justify-between py-3">
+                        <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{m.label}</span>
+                        <button onClick={() => verwijderMerk(m.id)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
                     ))
                   )}

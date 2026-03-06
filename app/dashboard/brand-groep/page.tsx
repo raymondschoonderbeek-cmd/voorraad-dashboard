@@ -102,8 +102,10 @@ export default function BrandGroepPage() {
 
   const [groupSearch, setGroupSearch] = useState('')
   const [brandSearch, setBrandSearch] = useState('')
+  const [productSearch, setProductSearch] = useState('')
   const deferredGroupSearch = useDeferredValue(groupSearch)
   const deferredBrandSearch = useDeferredValue(brandSearch)
+  const deferredProductSearch = useDeferredValue(productSearch)
 
   const [selectedGroup, setSelectedGroup] = useState<string>('')
   const [selectedBrand, setSelectedBrand] = useState<string>('')
@@ -322,15 +324,24 @@ export default function BrandGroepPage() {
     if (!g) return []
     const b = g.brandMap.get(selectedBrand)
     if (!b) return []
-    return b.products
-  }, [groupIndexMap, selectedGroup, selectedBrand])
+    let rows = b.products
+    const needle = deferredProductSearch.trim().toLowerCase()
+    if (needle) {
+      const words = needle.split(/\s+/).filter(Boolean)
+      rows = rows.filter(r => {
+        const text = [r.description, r.supplierSku, r.barcode, r.supplierNameLabel].map(x => String(x ?? '').toLowerCase()).join(' ')
+        return words.every(w => text.includes(w))
+      })
+    }
+    return rows
+  }, [groupIndexMap, selectedGroup, selectedBrand, deferredProductSearch])
 
   const drilldownAvailableTotal = useMemo(
     () => productRows.reduce((sum, r) => sum + (r.available || 0), 0),
     [productRows]
   )
 
-  useEffect(() => { setSelectedProduct(null) }, [selectedGroup, selectedBrand])
+  useEffect(() => { setSelectedProduct(null); setProductSearch('') }, [selectedGroup, selectedBrand])
 
   const inputClass =
     'w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200'
@@ -590,18 +601,28 @@ export default function BrandGroepPage() {
             {/* Producten + details */}
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4">
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
-                  <div>
-                    <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>3) Producten</div>
-                    <div className="text-sm text-gray-600">
-                      {selectedGroupMeta?.groupLabel ?? '—'} · <span className="font-semibold">{selectedBrandMeta?.brandLabel ?? '—'}</span>
-                      {selectedBrand && <span className="text-gray-400"> · {formatInt(drilldownAvailableTotal)} beschikbaar · {productRows.length} regels · voorraad ≥ 1</span>}
+                <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>3) Producten</div>
+                      <div className="text-sm text-gray-600">
+                        {selectedGroupMeta?.groupLabel ?? '—'} · <span className="font-semibold">{selectedBrandMeta?.brandLabel ?? '—'}</span>
+                        {selectedBrand && <span className="text-gray-400"> · {formatInt(drilldownAvailableTotal)} beschikbaar · {productRows.length} regels · voorraad ≥ 1</span>}
+                      </div>
                     </div>
-                  </div>
-                  {selectedBrand && (
+                    {selectedBrand && (
                     <button onClick={() => { setSelectedBrand(''); setSelectedProduct(null) }} className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-300 bg-white hover:bg-gray-50">
                       Sluit
                     </button>
+                  )}
+                  </div>
+                  {selectedBrand && (
+                    <input
+                      value={productSearch}
+                      onChange={e => setProductSearch(e.target.value)}
+                      placeholder="Zoek product (omschrijving, SKU, barcode, leverancier)..."
+                      className={inputClass + ' w-full'}
+                    />
                   )}
                 </div>
 
@@ -716,12 +737,18 @@ export default function BrandGroepPage() {
                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                       <div className="text-xs font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Alle velden</div>
                       <div className="space-y-1.5 text-xs text-gray-700">
-                        {['BRAND_NAME','GROUP_DESCRIPTION_1','GROUP_DESCRIPTION_2','SUPPLIER_PRODUCT_NUMBER','BARCODE','AVAILABLE_STOCK','STOCK','SALES_PRICE_INC','SUPPLIER_NAME'].map(k => (
-                          <div key={k} className="flex items-start justify-between gap-2">
-                            <span className="font-mono text-gray-400 shrink-0">{k}</span>
-                            <span className="text-right break-all">{String(selectedProduct.raw?.[k] ?? '—')}</span>
-                          </div>
-                        ))}
+                        {['BRAND_NAME','GROUP_DESCRIPTION_1','GROUP_DESCRIPTION_2','SUPPLIER_PRODUCT_NUMBER','BARCODE','AVAILABLE_STOCK','STOCK','SALES_PRICE_INC','SUPPLIER_NAME'].map(k => {
+                          const isVenditGroup1 = k === 'GROUP_DESCRIPTION_1' && selectedProduct.raw?._source === 'vendit'
+                          const val = isVenditGroup1 && selectedProduct.raw?.GROUP_DESCRIPTION_1_ORIGINAL != null
+                            ? selectedProduct.raw.GROUP_DESCRIPTION_1_ORIGINAL
+                            : selectedProduct.raw?.[k]
+                          return (
+                            <div key={k} className="flex items-start justify-between gap-2">
+                              <span className="font-mono text-gray-400 shrink-0">{k}{isVenditGroup1 ? ' (volledig)' : ''}</span>
+                              <span className="text-right break-all">{String(val ?? '—')}</span>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   </div>

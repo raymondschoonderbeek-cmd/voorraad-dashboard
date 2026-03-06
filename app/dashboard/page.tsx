@@ -23,7 +23,7 @@ const WINKEL_KLEUREN = [
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
-const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: number; sticky?: boolean; format?: 'money' | 'int' | 'text' }> = {
+const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: number; sticky?: boolean; format?: 'money' | 'int' | 'text'; minWidth?: number }> = {
   _type: { label: 'Type', order: 5, format: 'text' },
   PRODUCT_DESCRIPTION: { label: 'Product', order: 10, sticky: true, format: 'text' },
   BRAND_NAME: { label: 'Merk', order: 20, format: 'text' },
@@ -39,8 +39,8 @@ const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: 
   WHEEL_SIZE: { label: 'Wielmaat', order: 78, format: 'text' },
   GEAR: { label: 'Versnelling', order: 79, format: 'text' },
   LOCATION: { label: 'Locatie', order: 80, format: 'text' },
-  GROUP_DESCRIPTION_1: { label: 'Groep', order: 85, format: 'text' },
-  GROUP_DESCRIPTION_2: { label: 'Subgroep', order: 90, format: 'text' },
+  GROUP_DESCRIPTION_1: { label: 'Groep', order: 85, format: 'text', minWidth: 140 },
+  GROUP_DESCRIPTION_2: { label: 'Subgroep', order: 90, format: 'text', minWidth: 200 },
   SUPPLIER_NAME: { label: 'Leverancier', order: 100, format: 'text' },
 }
 
@@ -48,6 +48,7 @@ function columnLabel(key: string) { return COLUMN_CONFIG[key]?.label ?? key.repl
 function columnOrder(key: string) { return COLUMN_CONFIG[key]?.order ?? 1000 }
 function isHidden(key: string) { return COLUMN_CONFIG[key]?.hidden ?? false }
 function isSticky(key: string) { return COLUMN_CONFIG[key]?.sticky ?? false }
+function columnMinWidth(key: string) { return COLUMN_CONFIG[key]?.minWidth }
 
 function formatValue(key: string, value: any) {
   if (value === null || value === undefined) return ''
@@ -86,6 +87,9 @@ function getDatum() {
 
 function isFiets(p: any) {
   const g = String(p.GROUP_DESCRIPTION_1 ?? '').toLowerCase()
+  if (p._source === 'vendit') {
+    return g.includes('fietsen') || g.includes('fiets')
+  }
   return g.includes('fiets') || g.includes('bike') || g.includes('cycle') || g.includes('ebike') || g.includes('e-bike')
 }
 
@@ -959,7 +963,7 @@ export default function Dashboard() {
                           const active = sortKey === k
                           const sticky = stickyEnabled && stickyKey === k
                           return (
-                            <th key={k} scope="col" className="px-4 py-3 text-left whitespace-nowrap" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined }}>
+                            <th key={k} scope="col" className="px-4 py-3 text-left" style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined, minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
                                 <span style={{ color: active ? DYNAMO_GOLD : 'rgba(255,255,255,0.25)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
@@ -992,7 +996,7 @@ export default function Dashboard() {
                               const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
                               const stockVal = Number(p[k])
                               return (
-                                <td key={k} className="px-4 py-2.5 whitespace-nowrap align-middle" style={sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(13,31,78,0.06)' } : undefined}>
+                                <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(13,31,78,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
                                   <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
                                     {formatValue(k, p[k])}
                                   </span>

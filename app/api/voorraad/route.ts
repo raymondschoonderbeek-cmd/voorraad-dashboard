@@ -164,16 +164,57 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const items = (venditRows ?? []).map((row: any) => ({
-        PRODUCT_DESCRIPTION: row.product_description ?? row.PRODUCT_DESCRIPTION ?? row.name ?? row.description ?? '',
-        BRAND_NAME: row.brand_name ?? row.BRAND_NAME ?? row.brand ?? '',
+      /** Bekende merken uit database (fallback: statische lijst) */
+      const FALLBACK_BRANDS = [
+        'Dutch ID', 'Van Raam', 'Sparta', 'Batavus', 'Gazelle', 'Trek', 'Specialized', 'Cannondale',
+        'Giant', 'Cube', 'Kalkhoff', 'Riese & Müller', 'Stromer', 'Koga', 'Cortina', 'Papa',
+        'Bergamont', 'Victoria', 'Diamant', 'Hercules', 'Kettler', 'Mongoose', 'Scott',
+      ]
+      const { data: brandsRows } = await supabase.from('bekende_merken').select('label')
+      const fromDb = (brandsRows ?? []).map((r: any) => String(r?.label ?? '').trim()).filter(Boolean)
+      const knownBrands = (fromDb.length > 0 ? fromDb : FALLBACK_BRANDS)
+        .filter(b => b.length > 0)
+        .sort((a, b) => b.length - a.length)
+
+      /** Haal merk uit begin van productomschrijving (Vendit: merk staat vooraan) */
+      function extractBrandFromDescription(desc: string, brandFromDb: string): string {
+        if (brandFromDb?.trim()) return brandFromDb.trim()
+        const d = String(desc ?? '').trim()
+        if (!d) return ''
+        const dLower = d.toLowerCase()
+        for (const brand of knownBrands) {
+          const bLower = brand.toLowerCase()
+          if (dLower === bLower || dLower.startsWith(bLower + ' ') || dLower.startsWith(bLower + '\t')) {
+            return brand
+          }
+        }
+        const firstWord = d.split(/\s+/)[0] || ''
+        return firstWord ? firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase() : ''
+      }
+
+      /** Voor Vendit: strip cijfers uit group_description_1, behoud alleen tekst */
+      function groepZonderCijfers(s: string): string {
+        const t = String(s ?? '').trim()
+        if (!t) return t
+        return t.replace(/\d+/g, '').replace(/\s+/g, ' ').trim()
+      }
+      const items = (venditRows ?? []).map((row: any) => {
+        const gro1 = row.group_description_1 ?? row.GROUP_DESCRIPTION_1 ?? row.group_name ?? row.group_description ?? row.category ?? ''
+        const gro2 = row.group_description_2 ?? row.GROUP_DESCRIPTION_2 ?? row.subgroup_description ?? row.subcategory ?? ''
+        const productDesc = row.product_description ?? row.PRODUCT_DESCRIPTION ?? row.name ?? row.description ?? ''
+        const brandFromDb = row.brand_name ?? row.BRAND_NAME ?? row.brand ?? ''
+        const brand = extractBrandFromDescription(productDesc, brandFromDb)
+        return {
+        PRODUCT_DESCRIPTION: productDesc,
+        BRAND_NAME: brand,
         BARCODE: row.barcode ?? row.BARCODE ?? '',
         ARTICLE_NUMBER: row.article_number ?? row.ARTICLE_NUMBER ?? '',
         STOCK: Number(row.stock ?? row.STOCK ?? row.quantity ?? row.qty ?? 0) || 0,
         AVAILABLE_STOCK: Number(row.available_stock ?? row.AVAILABLE_STOCK ?? row.stock ?? row.quantity ?? 0) || 0,
         SALES_PRICE_INC: row.sales_price_inc ?? row.SALES_PRICE_INC ?? row.price ?? null,
-        GROUP_DESCRIPTION_1: alleenHoofdGroep(row.group_description_1 ?? row.GROUP_DESCRIPTION_1 ?? row.category ?? ''),
-        GROUP_DESCRIPTION_2: row.group_description_2 ?? row.GROUP_DESCRIPTION_2 ?? row.subcategory ?? '',
+        GROUP_DESCRIPTION_1: alleenHoofdGroep(groepZonderCijfers(gro1)),
+        GROUP_DESCRIPTION_1_ORIGINAL: gro1,
+        GROUP_DESCRIPTION_2: gro2,
         SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.article_number ?? '',
         SUPPLIER_NAME: row.supplier_name ?? row.SUPPLIER_NAME ?? '',
         COLOR: row.color ?? row.COLOR ?? '',
@@ -184,7 +225,8 @@ export async function GET(request: NextRequest) {
         LOCATION: row.location ?? row.LOCATION ?? '',
         _type: 'fiets',
         _source: 'vendit',
-      }))
+      }
+      })
 
       let data = aggregeerOpBarcodeEnLeverancierArt(items)
 
