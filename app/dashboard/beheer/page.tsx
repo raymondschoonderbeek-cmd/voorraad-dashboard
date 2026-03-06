@@ -1252,9 +1252,11 @@ export default function BeheerPage() {
                               {w.vendit_in_dataset === false && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Geen data voor dit dealer nummer in vendit_stock">— Niet in dataset</span>
                               )}
-                              {w.vendit_laatst_datum && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.55)', fontFamily: F }} title="Laatst aanwezig in vendit_stock">
-                                  Laatst: {new Date(w.vendit_laatst_datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {w.vendit_in_dataset && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.55)', fontFamily: F }} title="Laatste datum voorraad in vendit_stock">
+                                  {w.vendit_laatst_datum
+                                    ? `Laatst: ${new Date(w.vendit_laatst_datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                    : '— Datum onbekend'}
                                 </span>
                               )}
                             </>
