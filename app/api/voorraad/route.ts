@@ -153,12 +153,14 @@ export async function GET(request: NextRequest) {
       }
       const d = String(dealerNummer).trim()
       const dNorm = d.replace(/^0+/, '') || '0'
-      const dealerVariants = [...new Set([d, dNorm])]
-      const venditTable = process.env.VENDIT_STOCK_TABLE || 'vendit_stock'
+      const dealerVariants: (string | number)[] = [...new Set([d, dNorm])]
+      const dNum = parseInt(dNorm, 10)
+      if (!Number.isNaN(dNum)) dealerVariants.push(dNum)
       const { data: venditRows, error: venditError } = await supabase
-        .from(venditTable)
+        .from('vendit_stock')
         .select('*')
         .in('dealer_number', dealerVariants)
+        .limit(50000)
 
       if (venditError) {
         console.error('Vendit voorraad ophalen mislukt:', venditError)
@@ -214,12 +216,12 @@ export async function GET(request: NextRequest) {
         BARCODE: String(row.barcode ?? row.BARCODE ?? row.ean ?? row.EAN ?? '').trim() || '',
         ARTICLE_NUMBER: row.article_number ?? row.ARTICLE_NUMBER ?? '',
         STOCK: Number(row.stock ?? row.STOCK ?? row.quantity ?? row.qty ?? 0) || 0,
-        AVAILABLE_STOCK: Number(row.available_stock ?? row.AVAILABLE_STOCK ?? row.stock ?? row.quantity ?? 0) || 0,
+        AVAILABLE_STOCK: Number(row.available_stock ?? row.AVAILABLE_STOCK ?? row.available_stc ?? row.AVAILABLE_STC ?? row.stock ?? row.quantity ?? 0) || 0,
         SALES_PRICE_INC: row.sales_price_inc ?? row.SALES_PRICE_INC ?? row.price ?? null,
         GROUP_DESCRIPTION_1: groepZonderCijfers(gro1),
         GROUP_DESCRIPTION_1_ORIGINAL: gro1,
         GROUP_DESCRIPTION_2: gro2,
-        SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.supplier_prod_stock ?? row.SUPPLIER_PROD_STOCK ?? row.article_number ?? '',
+        SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.supplier_prod ?? row.SUPPLIER_PROD ?? row.supplier_prod_stock ?? row.SUPPLIER_PROD_STOCK ?? row.article_number ?? '',
         SUPPLIER_NAME: row.supplier_name ?? row.SUPPLIER_NAME ?? '',
         COLOR: row.color ?? row.COLOR ?? '',
         FRAME_HEIGHT: row.frame_height ?? row.FRAME_HEIGHT ?? '',
