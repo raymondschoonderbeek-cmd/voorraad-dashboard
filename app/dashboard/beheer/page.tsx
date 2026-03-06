@@ -689,14 +689,14 @@ export default function BeheerPage() {
               {isAdmin && (
                 <>
                   <div className="text-center px-4">
-                    <div style={{ color: DYNAMO_GOLD, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{rollen.length}</div>
+                    <div style={{ color: DYNAMO_GOLD, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
                     <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gebruikers</div>
                   </div>
                   <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
                 </>
               )}
               <div className="text-center px-4">
-                <div style={{ color: 'white', fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{winkels.length}</div>
+                <div style={{ color: 'white', fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{loading ? '—' : winkels.length}</div>
                 <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Winkels</div>
               </div>
             </div>
@@ -1168,7 +1168,7 @@ export default function BeheerPage() {
               <div className="p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(13,31,78,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="min-w-0">
                   <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
-                  <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{gefilterdeWinkels.length} van {winkels.length} winkels</div>
+                  <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{loading ? 'Laden...' : `${gefilterdeWinkels.length} van ${winkels.length} winkels`}</div>
                 </div>
                 <input
                   type="text"
@@ -1229,7 +1229,13 @@ export default function BeheerPage() {
                   </button>
                 )}
               </div>
-              {gefilterdeWinkels.length === 0 ? (
+              {loading ? (
+                <div className="p-12 flex flex-col items-center justify-center gap-3">
+                  <div className="w-10 h-10 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: DYNAMO_BLUE }} />
+                  <p className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkels laden...</p>
+                  <p className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Vendit- en API-status worden opgehaald</p>
+                </div>
+              ) : gefilterdeWinkels.length === 0 ? (
                 <div className="p-10 text-center text-sm" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>{winkels.length === 0 ? 'Nog geen winkels' : 'Geen winkels voldoen aan de filter'}</div>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
@@ -1255,7 +1261,12 @@ export default function BeheerPage() {
                               {w.vendit_in_dataset && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.55)', fontFamily: F }} title="Laatste datum voorraad in vendit_stock">
                                   {w.vendit_laatst_datum
-                                    ? `Laatst: ${new Date(w.vendit_laatst_datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                    ? (() => {
+                                        const d = new Date(w.vendit_laatst_datum)
+                                        const datum = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+                                        const tijd = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.')
+                                        return `Laatst: ${datum} ${tijd} uur`
+                                      })()
                                     : '— Datum onbekend'}
                                 </span>
                               )}
