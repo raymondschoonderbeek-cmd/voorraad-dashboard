@@ -151,10 +151,14 @@ export async function GET(request: NextRequest) {
       if (!dealerNummer) {
         return NextResponse.json({ error: 'Geen dealer opgegeven' }, { status: 400 })
       }
+      const d = String(dealerNummer).trim()
+      const dNorm = d.replace(/^0+/, '') || '0'
+      const dealerVariants = [...new Set([d, dNorm])]
+      const venditTable = process.env.VENDIT_STOCK_TABLE || 'vendit_stock'
       const { data: venditRows, error: venditError } = await supabase
-        .from('vendit_stock')
+        .from(venditTable)
         .select('*')
-        .eq('dealer_number', dealerNummer)
+        .in('dealer_number', dealerVariants)
 
       if (venditError) {
         console.error('Vendit voorraad ophalen mislukt:', venditError)
@@ -207,7 +211,7 @@ export async function GET(request: NextRequest) {
         return {
         PRODUCT_DESCRIPTION: productDesc,
         BRAND_NAME: brand,
-        BARCODE: row.barcode ?? row.BARCODE ?? '',
+        BARCODE: String(row.barcode ?? row.BARCODE ?? row.ean ?? row.EAN ?? '').trim() || '',
         ARTICLE_NUMBER: row.article_number ?? row.ARTICLE_NUMBER ?? '',
         STOCK: Number(row.stock ?? row.STOCK ?? row.quantity ?? row.qty ?? 0) || 0,
         AVAILABLE_STOCK: Number(row.available_stock ?? row.AVAILABLE_STOCK ?? row.stock ?? row.quantity ?? 0) || 0,
@@ -215,7 +219,7 @@ export async function GET(request: NextRequest) {
         GROUP_DESCRIPTION_1: groepZonderCijfers(gro1),
         GROUP_DESCRIPTION_1_ORIGINAL: gro1,
         GROUP_DESCRIPTION_2: gro2,
-        SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.article_number ?? '',
+        SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.supplier_prod_stock ?? row.SUPPLIER_PROD_STOCK ?? row.article_number ?? '',
         SUPPLIER_NAME: row.supplier_name ?? row.SUPPLIER_NAME ?? '',
         COLOR: row.color ?? row.COLOR ?? '',
         FRAME_HEIGHT: row.frame_height ?? row.FRAME_HEIGHT ?? '',
