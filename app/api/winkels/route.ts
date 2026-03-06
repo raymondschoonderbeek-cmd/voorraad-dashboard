@@ -3,19 +3,55 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
+function normalizeDealer(v: unknown): string {
+  const s = String(v ?? '').trim()
+  if (!s) return s
+  return s.replace(/^0+/, '') || '0'
+}
+
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const { data: winkelsRaw, error } = await supabase
     .from('winkels')
     .select('*')
     .order('naam')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
+  const venditLaatstPerDealer = new Map<string, string>()
+  if (venditWinkels.length > 0) {
+    try {
+      const { data: stats } = await supabase.rpc('get_vendit_dealer_stats')
+      for (const row of stats ?? []) {
+        const d = (row as { dealer_nummer: string })?.dealer_nummer
+        const dt = (row as { last_updated: string })?.last_updated
+        if (d != null && dt) {
+          const k = String(d).trim()
+          venditLaatstPerDealer.set(k, dt)
+          venditLaatstPerDealer.set(normalizeDealer(d), dt)
+        }
+      }
+    } catch {
+      // RPC mogelijk nog niet uitgevoerd
+    }
+  }
+
+  const winkels = (winkelsRaw ?? []).map((w: any) => {
+    if (w.api_type === 'vendit') {
+      const key = String(w.dealer_nummer ?? '').trim()
+      const keyNorm = normalizeDealer(w.dealer_nummer)
+      const laatstDatum = venditLaatstPerDealer.get(key) ?? venditLaatstPerDealer.get(keyNorm) ?? null
+      return { ...w, vendit_laatst_datum: laatstDatum }
+    }
+    return w
+  })
+
+  return NextResponse.json(winkels)
 }
 
 function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' | 'Netherlands' {

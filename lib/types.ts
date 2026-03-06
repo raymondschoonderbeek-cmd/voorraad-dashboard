@@ -17,6 +17,7 @@ export type Winkel = {
   api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | null
   cycle_api_authorized?: boolean | null
   cycle_api_checked_at?: string | null
+  vendit_laatst_datum?: string | null
 }
 
 export type Product = {

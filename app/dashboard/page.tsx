@@ -891,6 +891,18 @@ export default function Dashboard() {
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
                         {bron === 'wilmar' ? 'Wilmar' : bron === 'vendit' ? 'Vendit' : 'CycleSoftware'}
                       </span>
+                      {bron === 'vendit' && geselecteerdeWinkel.vendit_laatst_datum && (
+                        <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+                          Laatst {(() => {
+                            const d = new Date(geselecteerdeWinkel.vendit_laatst_datum!)
+                            const dag = d.getUTCDate()
+                            const maand = d.toLocaleDateString('nl-NL', { month: 'long', timeZone: 'UTC' })
+                            const uur = String(d.getUTCHours()).padStart(2, '0')
+                            const min = String(d.getUTCMinutes()).padStart(2, '0')
+                            return `${dag} ${maand} ${uur}.${min}`
+                          })()}
+                        </span>
+                      )}
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                       {geselecteerdeWinkel.land && (
                         <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: geselecteerdeWinkel.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: geselecteerdeWinkel.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{geselecteerdeWinkel.land === 'Belgium' ? 'België' : 'Nederland'}</span>
