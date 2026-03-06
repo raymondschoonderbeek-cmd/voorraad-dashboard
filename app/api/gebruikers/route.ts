@@ -87,20 +87,44 @@ export async function GET(request: NextRequest) {
   const venditDealerNummers = new Set<string>()
   const venditLaatstPerDealer = new Map<string, string>() // dealer_nummer -> ISO datum
   const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
+  function normalizeDealer(v: unknown): string {
+    const s = String(v ?? '').trim()
+    if (!s) return s
+    const withoutLeadingZeros = s.replace(/^0+/, '') || '0'
+    return withoutLeadingZeros
+  }
   if (venditWinkels.length > 0) {
-    const { data: venditDealers } = await client
-      .from('vendit_stock')
-      .select('dealer_number')
-    for (const row of venditDealers ?? []) {
-      const d = row?.dealer_number
-      if (d != null) venditDealerNummers.add(String(d).trim())
+    try {
+      const { data: venditDealers } = await client.rpc('get_vendit_dealer_numbers')
+      for (const row of venditDealers ?? []) {
+        const d = (row as { dealer_nummer: string })?.dealer_nummer
+        if (d != null) {
+          const n = normalizeDealer(d)
+          venditDealerNummers.add(n)
+          venditDealerNummers.add(String(d).trim())
+        }
+      }
+    } catch {
+      // Fallback: select (max 1000 rijen)
+      const { data: fallback } = await client.from('vendit_stock').select('dealer_number')
+      for (const row of fallback ?? []) {
+        const d = row?.dealer_number
+        if (d != null) {
+          venditDealerNummers.add(normalizeDealer(d))
+          venditDealerNummers.add(String(d).trim())
+        }
+      }
     }
     try {
       const { data: stats } = await client.rpc('get_vendit_dealer_stats')
       for (const row of stats ?? []) {
         const d = (row as { dealer_nummer: string })?.dealer_nummer
         const dt = (row as { last_updated: string })?.last_updated
-        if (d != null && dt) venditLaatstPerDealer.set(String(d).trim(), dt)
+        if (d != null && dt) {
+          const k = String(d).trim()
+          venditLaatstPerDealer.set(k, dt)
+          venditLaatstPerDealer.set(normalizeDealer(d), dt)
+        }
       }
     } catch {
       // RPC mogelijk nog niet uitgevoerd
@@ -110,10 +134,13 @@ export async function GET(request: NextRequest) {
   const winkels = (winkelsRaw ?? []).map((w: any) => {
     if (w.api_type === 'vendit') {
       const key = String(w.dealer_nummer ?? '').trim()
+      const keyNorm = normalizeDealer(w.dealer_nummer)
+      const inDataset = venditDealerNummers.has(key) || venditDealerNummers.has(keyNorm)
+      const laatstDatum = venditLaatstPerDealer.get(key) ?? venditLaatstPerDealer.get(keyNorm) ?? null
       return {
         ...w,
-        vendit_in_dataset: venditDealerNummers.has(key),
-        vendit_laatst_datum: venditLaatstPerDealer.get(key) ?? null,
+        vendit_in_dataset: inDataset,
+        vendit_laatst_datum: laatstDatum,
       }
     }
     return w
