@@ -27,7 +27,7 @@ type Winkel = {
   wilmar_organisation_id?: number
   wilmar_branch_id?: number
   wilmar_store_naam?: string
-  api_type?: 'cyclesoftware' | 'wilmar' | null
+  api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | null
   cycle_api_authorized?: boolean | null
   cycle_api_checked_at?: string | null
 }
@@ -71,7 +71,7 @@ export default function BeheerPage() {
   const [nieuwWinkelHuisnummer, setNieuwWinkelHuisnummer] = useState('')
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
   const [nieuwWinkelStraat, setNieuwWinkelStraat] = useState('')
-  const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar'>('cyclesoftware')
+  const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar' | 'vendit'>('cyclesoftware')
   const [nieuwWinkelLand, setNieuwWinkelLand] = useState<'Netherlands' | 'Belgium' | ''>('')
   const [adresLoading, setAdresLoading] = useState(false)
   const [bewerkHuisnummer, setBewerkHuisnummer] = useState('')
@@ -105,7 +105,7 @@ export default function BeheerPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   // Winkel filters
-  const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar'>('alle')
+  const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
   const [winkelFilterApi, setWinkelFilterApi] = useState<'alle' | 'ok' | 'geen' | 'niet_gecontroleerd' | 'gekoppeld' | 'niet_gekoppeld'>('alle')
   const [winkelFilterLand, setWinkelFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
   const [winkelFilterLocatie, setWinkelFilterLocatie] = useState<'alle' | 'zonder'>('alle')
@@ -412,7 +412,7 @@ export default function BeheerPage() {
       wilmar_organisation_id: wilmarOrganisationId ?? null,
       wilmar_branch_id: wilmarBranchId ?? null,
       wilmar_store_naam: heeftWilmarKoppeling ? (wilmarNaam ?? bewerkWinkel.wilmar_store_naam ?? null) : null,
-      api_type: heeftWilmarKoppeling ? 'wilmar' : 'cyclesoftware',
+      api_type: heeftWilmarKoppeling ? 'wilmar' : (bewerkWinkel.api_type ?? 'cyclesoftware'),
     }
     const res = await fetch('/api/winkels', {
       method: 'PUT',
@@ -478,7 +478,7 @@ export default function BeheerPage() {
           huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
           stad: String(r.stad || r.Stad || r.STAD || '').trim(),
           land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
-          api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined),
+          api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined)),
         }
       }).filter(r => r.dealer_nummer)
       if (parsed.length === 0) {
@@ -594,15 +594,19 @@ export default function BeheerPage() {
     const zoek = winkelZoekterm.trim().toLowerCase()
     return winkels.filter(w => {
       const isWilmar = w.api_type === 'wilmar' || (w.wilmar_organisation_id != null && w.wilmar_branch_id != null)
-      const isCycle = !isWilmar
-      if (winkelFilterSysteem === 'cyclesoftware' && isWilmar) return false
-      if (winkelFilterSysteem === 'wilmar' && isCycle) return false
+      const isVendit = w.api_type === 'vendit'
+      const isCycle = !isWilmar && !isVendit
+      if (winkelFilterSysteem === 'cyclesoftware' && (isWilmar || isVendit)) return false
+      if (winkelFilterSysteem === 'wilmar' && (isCycle || isVendit)) return false
+      if (winkelFilterSysteem === 'vendit' && (isWilmar || isCycle)) return false
       if (winkelFilterLand !== 'alle' && w.land !== winkelFilterLand) return false
       if (winkelFilterLocatie === 'zonder' && (w.lat != null || w.lng != null)) return false
       if (winkelFilterApi !== 'alle') {
         if (winkelFilterSysteem === 'wilmar') {
           if (winkelFilterApi === 'gekoppeld') return isWilmar && w.wilmar_organisation_id != null && w.wilmar_branch_id != null
           if (winkelFilterApi === 'niet_gekoppeld') return isWilmar && (w.wilmar_organisation_id == null || w.wilmar_branch_id == null)
+        } else if (winkelFilterSysteem === 'vendit') {
+          // Vendit heeft geen API-status; filter niet op API
         } else {
           if (winkelFilterApi === 'ok') return isCycle && w.cycle_api_authorized === true
           if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false
@@ -928,6 +932,7 @@ export default function BeheerPage() {
                       {[
                         { value: 'cyclesoftware', label: 'CycleSoftware', info: 'Standaard koppeling via dealer nummer' },
                         { value: 'wilmar', label: 'Wilmar', info: 'Gebruik Wilmar API met branch koppeling' },
+                        { value: 'vendit', label: 'Vendit', info: 'Voorraad uit Supabase vendit_stock (dealer nummer)' },
                       ].map(opt => (
                         <label key={opt.value} className="flex-1 min-w-[140px] cursor-pointer">
                           <input
@@ -936,7 +941,7 @@ export default function BeheerPage() {
                             value={opt.value}
                             checked={nieuwWinkelApiType === opt.value}
                             onChange={() =>
-                              setNieuwWinkelApiType(opt.value as 'cyclesoftware' | 'wilmar')
+                              setNieuwWinkelApiType(opt.value as 'cyclesoftware' | 'wilmar' | 'vendit')
                             }
                             className="sr-only"
                           />
@@ -1020,6 +1025,7 @@ export default function BeheerPage() {
                       {[
                         { value: 'cyclesoftware' as const, label: 'CycleSoftware', info: 'Gebruik dealer nummer voor voorraad' },
                         { value: 'wilmar' as const, label: 'Wilmar', info: 'Gebruik Wilmar koppeling (branch/organisation)' },
+                        { value: 'vendit' as const, label: 'Vendit', info: 'Voorraad uit Supabase vendit_stock (dealer nummer)' },
                       ].map(opt => (
                         <label key={opt.value} className="flex-1 min-w-[140px] cursor-pointer">
                           <input
@@ -1177,6 +1183,7 @@ export default function BeheerPage() {
                     <option value="alle">Alle systemen</option>
                     <option value="cyclesoftware">CycleSoftware</option>
                     <option value="wilmar">Wilmar</option>
+                    <option value="vendit">Vendit</option>
                   </select>
                   <select value={winkelFilterApi} onChange={e => setWinkelFilterApi(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     {winkelFilterSysteem === 'wilmar' ? (
@@ -1185,6 +1192,8 @@ export default function BeheerPage() {
                         <option value="gekoppeld">API: Gekoppeld</option>
                         <option value="niet_gekoppeld">API: Nog niet gekoppeld</option>
                       </>
+                    ) : winkelFilterSysteem === 'vendit' ? (
+                      <option value="alle">ALLE</option>
                     ) : (
                       <>
                         <option value="alle">API: alle</option>
@@ -1195,7 +1204,7 @@ export default function BeheerPage() {
                     )}
                   </select>
                 </div>
-                {winkelFilterSysteem !== 'wilmar' && winkels.some(w => w.api_type !== 'wilmar' && !w.wilmar_organisation_id && !w.wilmar_branch_id && w.dealer_nummer) && (
+                {winkelFilterSysteem !== 'wilmar' && winkelFilterSysteem !== 'vendit' && winkels.some(w => (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) && w.dealer_nummer) && (
                   <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
                     {cycleStatusLoading ? 'Bezig...' : 'Ververs API-status'}
                   </button>
@@ -1220,6 +1229,8 @@ export default function BeheerPage() {
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</span>
                           {w.api_type === 'wilmar' ? (
                             <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }}>Wilmar</span>
+                          ) : w.api_type === 'vendit' ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(59,130,246,0.15)', color: '#2563eb', fontFamily: F }}>Vendit</span>
                           ) : (
                             <>
                               <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)', fontFamily: F }}>CycleSoftware</span>

@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
     const winkelIdParam = searchParams.get('winkel')
 
     let dealerNummer = dealerFromQuery
-    let bron: 'cyclesoftware' | 'wilmar' | null = null
+    let bron: 'cyclesoftware' | 'wilmar' | 'vendit' | null = null
     let wilmarOrganisationId: number | null = null
     let wilmarBranchId: number | null = null
 
@@ -145,6 +145,55 @@ export async function GET(request: NextRequest) {
 
     // Standaard: als geen bron is vastgelegd, ga uit van CycleSoftware
     if (!bron) bron = 'cyclesoftware'
+
+    // Vendit branch: voorraad uit Supabase vendit_stock op basis van dealer_nummer
+    if (bron === 'vendit') {
+      if (!dealerNummer) {
+        return NextResponse.json({ error: 'Geen dealer opgegeven' }, { status: 400 })
+      }
+      const { data: venditRows, error: venditError } = await supabase
+        .from('vendit_stock')
+        .select('*')
+        .eq('dealer_nummer', dealerNummer)
+
+      if (venditError) {
+        console.error('Vendit voorraad ophalen mislukt:', venditError)
+        return NextResponse.json(
+          { error: 'UPSTREAM_ERROR', message: 'Voorraad ophalen uit Vendit mislukt.' },
+          { status: 502 }
+        )
+      }
+
+      const items = (venditRows ?? []).map((row: any) => ({
+        PRODUCT_DESCRIPTION: row.product_description ?? row.PRODUCT_DESCRIPTION ?? row.name ?? row.description ?? '',
+        BRAND_NAME: row.brand_name ?? row.BRAND_NAME ?? row.brand ?? '',
+        BARCODE: row.barcode ?? row.BARCODE ?? '',
+        ARTICLE_NUMBER: row.article_number ?? row.ARTICLE_NUMBER ?? '',
+        STOCK: Number(row.stock ?? row.STOCK ?? row.quantity ?? row.qty ?? 0) || 0,
+        AVAILABLE_STOCK: Number(row.available_stock ?? row.AVAILABLE_STOCK ?? row.stock ?? row.quantity ?? 0) || 0,
+        SALES_PRICE_INC: row.sales_price_inc ?? row.SALES_PRICE_INC ?? row.price ?? null,
+        GROUP_DESCRIPTION_1: alleenHoofdGroep(row.group_description_1 ?? row.GROUP_DESCRIPTION_1 ?? row.category ?? ''),
+        GROUP_DESCRIPTION_2: row.group_description_2 ?? row.GROUP_DESCRIPTION_2 ?? row.subcategory ?? '',
+        SUPPLIER_PRODUCT_NUMBER: row.supplier_product_number ?? row.SUPPLIER_PRODUCT_NUMBER ?? row.article_number ?? '',
+        SUPPLIER_NAME: row.supplier_name ?? row.SUPPLIER_NAME ?? '',
+        COLOR: row.color ?? row.COLOR ?? '',
+        FRAME_HEIGHT: row.frame_height ?? row.FRAME_HEIGHT ?? '',
+        MODEL_YEAR: row.model_year ?? row.MODEL_YEAR ?? '',
+        WHEEL_SIZE: row.wheel_size ?? row.WHEEL_SIZE ?? '',
+        GEAR: row.gear ?? row.GEAR ?? '',
+        LOCATION: row.location ?? row.LOCATION ?? '',
+        _type: 'fiets',
+        _source: 'vendit',
+      }))
+
+      let data = aggregeerOpBarcodeEnLeverancierArt(items)
+
+      if (zoekterm && Array.isArray(data)) {
+        const gefilterd = data.filter((item: any) => matchesSearch(item, zoekterm))
+        return NextResponse.json(gefilterd)
+      }
+      return NextResponse.json(data)
+    }
 
     // Wilmar branch
     if (bron === 'wilmar') {

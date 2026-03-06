@@ -883,7 +883,7 @@ export default function Dashboard() {
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>#{dealer}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
-                        {bron === 'wilmar' ? 'Wilmar' : 'CycleSoftware'}
+                        {bron === 'wilmar' ? 'Wilmar' : bron === 'vendit' ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                       {geselecteerdeWinkel.land && (
