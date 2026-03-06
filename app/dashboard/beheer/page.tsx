@@ -1263,8 +1263,10 @@ export default function BeheerPage() {
                                   {w.vendit_laatst_datum
                                     ? (() => {
                                         const d = new Date(w.vendit_laatst_datum)
-                                        const datum = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-                                        const tijd = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.')
+                                        // Database slaat tijd op als Amsterdam-lokaal (maar met +00); toon als-is
+                                        const opts = { timeZone: 'UTC' as const }
+                                        const datum = d.toLocaleDateString('nl-NL', { ...opts, day: 'numeric', month: 'long', year: 'numeric' })
+                                        const tijd = d.toLocaleTimeString('nl-NL', { ...opts, hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.')
                                         return `Laatst: ${datum} ${tijd} uur`
                                       })()
                                     : '— Datum onbekend'}
