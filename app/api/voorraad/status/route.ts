@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/api-middleware'
 
 function isAuthBodyError(data: unknown): boolean {
   if (!data || typeof data !== 'object') return false
@@ -11,6 +12,8 @@ function isAuthBodyError(data: unknown): boolean {
 
 /** Check of CycleSoftware API rechten heeft voor een dealer. */
 export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   try {
     const supabase = await createClient()
     const {

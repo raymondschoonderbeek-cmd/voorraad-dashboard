@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isIpTrusted, getClientIp } from '@/lib/trusted-ips'
+import { withRateLimit } from '@/lib/api-middleware'
 
 /**
  * Retourneert sessie-info voor MFA/IP-logica.
  * Client roept dit aan om te bepalen of MFA-verificatie nodig is.
  */
 export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

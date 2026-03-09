@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
+import { withRateLimit } from '@/lib/api-middleware'
 
 function isAuthBodyError(data: unknown): boolean {
   if (!data || typeof data !== 'object') return false
@@ -33,6 +34,8 @@ async function checkDealer(dealer: string): Promise<boolean> {
 
 /** Batch-check CycleSoftware API-status en update cache in DB (admin + viewer) */
 export async function POST(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   try {
     const { user, supabase } = await requireAuth()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

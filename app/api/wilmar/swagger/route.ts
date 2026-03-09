@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth'
+import { withRateLimit } from '@/lib/api-middleware'
 
-console.log('WILMAR_API_KEY set?', !!process.env.WILMAR_API_KEY)
-console.log('WILMAR_PASSWORD set?', !!process.env.WILMAR_PASSWORD)
 const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
 const WILMAR_KEY = process.env.WILMAR_API_KEY!
 const WILMAR_PASSWORD = process.env.WILMAR_PASSWORD!
@@ -18,7 +18,11 @@ async function getWilmarToken(): Promise<string> {
   return data.accessToken
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
+  const auth = await requireAdmin()
+  if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang (admin vereist)' }, { status: auth.status })
   try {
     const token = await getWilmarToken()
     const res = await fetch(`${WILMAR_BASE}/swagger.json`, {

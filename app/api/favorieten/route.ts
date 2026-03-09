@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/api-middleware'
 
 /** Haal favoriete winkel-ids op voor de ingelogde gebruiker */
 export async function GET(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,6 +21,8 @@ export async function GET(request: NextRequest) {
 
 /** Voeg winkel toe aan favorieten of verwijder (toggle) */
 export async function POST(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
