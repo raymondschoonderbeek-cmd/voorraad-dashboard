@@ -143,7 +143,7 @@ function DataTableView({ data }: { data: unknown[] }) {
 export default function VenditApiTesterPage() {
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
-  const { data: gebruikersData } = useSWR(isAdmin ? '/api/gebruikers' : null, fetcher)
+  const { data: gebruikersData, mutate: mutateGebruikers } = useSWR(isAdmin ? '/api/gebruikers' : null, fetcher, { revalidateOnFocus: true })
   const winkels = (gebruikersData?.winkels ?? []) as { id: number; naam: string; api_type?: string; dealer_nummer?: string; has_vendit_api_credentials?: boolean }[]
   const venditWinkels = winkels.filter(w => w.api_type === 'vendit_api' && w.has_vendit_api_credentials === true)
 
@@ -263,21 +263,38 @@ export default function VenditApiTesterPage() {
       <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Gedeelde winkelkeuze */}
         <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)', boxShadow: '0 2px 12px rgba(13,31,78,0.04)' }}>
-          <label className="block text-xs font-semibold mb-2" style={{ color: 'rgba(13,31,78,0.6)' }}>Winkel</label>
-          <select
-            value={selectedWinkelId}
-            onChange={e => setSelectedWinkelId(e.target.value ? Number(e.target.value) : '')}
-            className="rounded-xl px-3 py-2.5 text-sm border"
-            style={{ background: 'rgba(13,31,78,0.02)', borderColor: 'rgba(13,31,78,0.12)', color: DYNAMO_BLUE, minWidth: 220 }}
-          >
-            <option value="">— Selecteer winkel —</option>
-            {venditWinkels.map(w => (
-              <option key={w.id} value={w.id}>{w.naam} (#{w.dealer_nummer})</option>
-            ))}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <label className="block text-xs font-semibold mb-2" style={{ color: 'rgba(13,31,78,0.6)' }}>Winkel</label>
+              <select
+                value={selectedWinkelId}
+                onChange={e => setSelectedWinkelId(e.target.value ? Number(e.target.value) : '')}
+                className="rounded-xl px-3 py-2.5 text-sm border"
+                style={{ background: 'rgba(13,31,78,0.02)', borderColor: 'rgba(13,31,78,0.12)', color: DYNAMO_BLUE, minWidth: 220 }}
+              >
+                <option value="">— Selecteer winkel —</option>
+                {venditWinkels.map(w => (
+                  <option key={w.id} value={w.id}>{w.naam} (#{w.dealer_nummer})</option>
+                ))}
                 {venditWinkels.length === 0 && (
-                  <option value="" disabled>Geen Vendit API-winkels. Selecteer systeem "Vendit API" en vul credentials in bij Beheer.</option>
+                  <option value="" disabled>Geen Vendit API-winkels. Sla de winkel op in Beheer en klik op Ververs.</option>
                 )}
-          </select>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => mutateGebruikers()}
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-80"
+              style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.12)' }}
+            >
+              Ververs
+            </button>
+          </div>
+          {venditWinkels.length === 0 && (
+            <p className="mt-3 text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>
+              Zorg dat de winkel systeem &quot;Vendit API&quot; heeft, alle drie de credentials zijn ingevuld, en je op <strong>Opslaan</strong> hebt geklikt in Beheer.
+            </p>
+          )}
         </div>
 
         {/* Discovery scan */}
