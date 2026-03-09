@@ -26,6 +26,18 @@ export async function GET(request: NextRequest) {
   const venditLaatstPerDealer = new Map<string, string>()
   if (venditWinkels.length > 0) {
     try {
+      const { data: statsObj } = await supabase.rpc('get_vendit_dealer_stats_json')
+      if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
+        for (const [k, dt] of Object.entries(statsObj)) {
+          if (dt) {
+            const kNorm = normalizeDealer(k)
+            const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
+            venditLaatstPerDealer.set(k.trim(), dtStr)
+            venditLaatstPerDealer.set(kNorm, dtStr)
+          }
+        }
+      }
+    } catch {
       const { data: stats } = await supabase.rpc('get_vendit_dealer_stats')
       for (const row of stats ?? []) {
         const d = (row as { dealer_nummer: string })?.dealer_nummer
@@ -36,8 +48,6 @@ export async function GET(request: NextRequest) {
           venditLaatstPerDealer.set(normalizeDealer(d), dt)
         }
       }
-    } catch {
-      // RPC mogelijk nog niet uitgevoerd
     }
   }
 

@@ -900,7 +900,7 @@ export default function Dashboard() {
                         {bron === 'wilmar' ? 'Wilmar' : bron === 'vendit' ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {bron === 'vendit' && geselecteerdeWinkel.vendit_laatst_datum && (
-                        <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)', fontFamily: F }} title="Laatste voorraadsync">
                           Laatst {(() => {
                             const d = new Date(geselecteerdeWinkel.vendit_laatst_datum!)
                             const dag = d.getUTCDate()
