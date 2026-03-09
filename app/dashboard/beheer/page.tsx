@@ -102,6 +102,8 @@ export default function BeheerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [cycleStatusLoading, setCycleStatusLoading] = useState(false)
+  const [venditTestLoading, setVenditTestLoading] = useState(false)
+  const [venditTestResult, setVenditTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
 
@@ -330,6 +332,27 @@ export default function BeheerPage() {
       setWilmarStores([])
     }
     setWilmarStoresLoading(false)
+  }
+
+  async function testVenditCredentials(payload: { api_key: string; username: string; password: string } | { winkel_id: number }) {
+    setVenditTestLoading(true)
+    setVenditTestResult(null)
+    try {
+      const res = await fetch('/api/vendit-credentials-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setVenditTestResult({ ok: true, message: data.message ?? 'Credentials zijn geldig' })
+      } else {
+        setVenditTestResult({ ok: false, message: data.error ?? 'Test mislukt' })
+      }
+    } catch {
+      setVenditTestResult({ ok: false, message: 'Netwerkfout' })
+    }
+    setVenditTestLoading(false)
   }
 
   async function haalAdresOp(isNieuw: boolean) {
@@ -1078,18 +1101,38 @@ export default function BeheerPage() {
                   </div>
                   {nieuwWinkelApiType === 'vendit_api' && (
                     <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                      <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API credentials</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API credentials</p>
+                        <button
+                          type="button"
+                          onClick={() => testVenditCredentials({
+                            api_key: nieuwWinkelVenditApiKey,
+                            username: nieuwWinkelVenditApiUsername,
+                            password: nieuwWinkelVenditApiPassword,
+                          })}
+                          disabled={venditTestLoading || !nieuwWinkelVenditApiKey.trim() || !nieuwWinkelVenditApiUsername.trim() || !nieuwWinkelVenditApiPassword.trim()}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
+                          style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', border: '1px solid rgba(22,163,74,0.3)', fontFamily: F }}
+                        >
+                          {venditTestLoading ? 'Bezig...' : 'Test credentials'}
+                        </button>
+                      </div>
+                      {venditTestResult && (
+                        <p className={`text-xs font-medium ${venditTestResult.ok ? 'text-green-600' : 'text-red-600'}`} style={{ fontFamily: F }}>
+                          {venditTestResult.ok ? '✓ ' : '✗ '}{venditTestResult.message}
+                        </p>
+                      )}
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>API Key *</label>
-                        <input type="text" placeholder="Vendit API key" value={nieuwWinkelVenditApiKey} onChange={e => setNieuwWinkelVenditApiKey(e.target.value)} className={inputClass} style={inputStyle} autoComplete="off" />
+                        <input type="text" placeholder="Vendit API key" value={nieuwWinkelVenditApiKey} onChange={e => { setNieuwWinkelVenditApiKey(e.target.value); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Username *</label>
-                        <input type="text" placeholder="API username" value={nieuwWinkelVenditApiUsername} onChange={e => setNieuwWinkelVenditApiUsername(e.target.value)} className={inputClass} style={inputStyle} autoComplete="off" />
+                        <input type="text" placeholder="API username" value={nieuwWinkelVenditApiUsername} onChange={e => { setNieuwWinkelVenditApiUsername(e.target.value); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Wachtwoord *</label>
-                        <input type="password" placeholder="API wachtwoord" value={nieuwWinkelVenditApiPassword} onChange={e => setNieuwWinkelVenditApiPassword(e.target.value)} className={inputClass} style={inputStyle} autoComplete="new-password" />
+                        <input type="password" placeholder="API wachtwoord" value={nieuwWinkelVenditApiPassword} onChange={e => { setNieuwWinkelVenditApiPassword(e.target.value); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="new-password" />
                       </div>
                     </div>
                   )}
@@ -1201,19 +1244,47 @@ export default function BeheerPage() {
                   {/* Vendit API toegang (alleen bij api_type vendit_api) */}
                   {(bewerkWinkel.api_type ?? 'cyclesoftware') === 'vendit_api' && (
                     <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                      <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API toegang</p>
-                      <p className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Credentials voor de Vendit Public API. Gebruik in module Vendit API Tester.</p>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API toegang</p>
+                          <p className="text-xs mb-0" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Credentials voor de Vendit Public API. Gebruik in module Vendit API Tester.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const key = (bewerkWinkel.vendit_api_key ?? '').trim()
+                            const user = (bewerkWinkel.vendit_api_username ?? '').trim()
+                            const pass = (bewerkWinkel.vendit_api_password ?? '').trim()
+                            if (key && user && pass) {
+                              testVenditCredentials({ api_key: key, username: user, password: pass })
+                            } else if (bewerkWinkel.id) {
+                              testVenditCredentials({ winkel_id: bewerkWinkel.id })
+                            }
+                          }}
+                          title={(!((bewerkWinkel.vendit_api_key ?? '').trim() && (bewerkWinkel.vendit_api_username ?? '').trim() && (bewerkWinkel.vendit_api_password ?? '').trim()) && bewerkWinkel.id) ? 'Test opgeslagen credentials' : 'Test ingevulde credentials'}
+                          disabled={venditTestLoading || (!((bewerkWinkel.vendit_api_key ?? '').trim() && (bewerkWinkel.vendit_api_username ?? '').trim() && (bewerkWinkel.vendit_api_password ?? '').trim()) && !bewerkWinkel.id)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0"
+                          style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', border: '1px solid rgba(22,163,74,0.3)', fontFamily: F }}
+                        >
+                          {venditTestLoading ? 'Bezig...' : 'Test credentials'}
+                        </button>
+                      </div>
+                      {venditTestResult && (
+                        <p className={`text-xs font-medium ${venditTestResult.ok ? 'text-green-600' : 'text-red-600'}`} style={{ fontFamily: F }}>
+                          {venditTestResult.ok ? '✓ ' : '✗ '}{venditTestResult.message}
+                        </p>
+                      )}
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>API Key</label>
-                        <input type="text" placeholder="Vendit API key" value={bewerkWinkel.vendit_api_key ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, vendit_api_key: e.target.value })} className={inputClass} style={inputStyle} autoComplete="off" />
+                        <input type="text" placeholder="Vendit API key" value={bewerkWinkel.vendit_api_key ?? ''} onChange={e => { setBewerkWinkel({ ...bewerkWinkel, vendit_api_key: e.target.value }); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Username</label>
-                        <input type="text" placeholder="API username" value={bewerkWinkel.vendit_api_username ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, vendit_api_username: e.target.value })} className={inputClass} style={inputStyle} autoComplete="off" />
+                        <input type="text" placeholder="API username" value={bewerkWinkel.vendit_api_username ?? ''} onChange={e => { setBewerkWinkel({ ...bewerkWinkel, vendit_api_username: e.target.value }); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Wachtwoord</label>
-                        <input type="password" placeholder="Laat leeg om niet te wijzigen" value={bewerkWinkel.vendit_api_password ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, vendit_api_password: e.target.value })} className={inputClass} style={inputStyle} autoComplete="new-password" />
+                        <input type="password" placeholder="Laat leeg om niet te wijzigen" value={bewerkWinkel.vendit_api_password ?? ''} onChange={e => { setBewerkWinkel({ ...bewerkWinkel, vendit_api_password: e.target.value }); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="new-password" />
                       </div>
                     </div>
                   )}
@@ -1299,7 +1370,7 @@ export default function BeheerPage() {
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null); setFormError('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null); setFormError(''); setVenditTestResult(null) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
