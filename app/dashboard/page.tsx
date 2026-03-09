@@ -429,8 +429,7 @@ export default function Dashboard() {
   const winkelsGefilterd = useMemo(() => {
     return winkels.filter(w => {
       if (kaartFilterLand !== 'alle') {
-        if (kaartFilterLand === 'Belgium' && !isBelgischeWinkel(w)) return false
-        if (kaartFilterLand === 'Netherlands' && isBelgischeWinkel(w)) return false
+        if (w.land !== kaartFilterLand) return false
       }
       if (kaartFilterKassaPakket !== 'alle') {
         const at = w.api_type ?? (w.wilmar_organisation_id && w.wilmar_branch_id ? 'wilmar' : 'cyclesoftware')
