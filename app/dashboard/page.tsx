@@ -899,16 +899,16 @@ export default function Dashboard() {
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
                         {bron === 'wilmar' ? 'Wilmar' : bron === 'vendit' ? 'Vendit' : 'CycleSoftware'}
                       </span>
-                      {bron === 'vendit' && geselecteerdeWinkel.vendit_laatst_datum && (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)', fontFamily: F }} title="Laatste voorraadsync">
-                          Laatst {(() => {
-                            const d = new Date(geselecteerdeWinkel.vendit_laatst_datum!)
+                      {bron === 'vendit' && (
+                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title="Laatste voorraadsync uit vendit_stock">
+                          {geselecteerdeWinkel.vendit_laatst_datum ? (() => {
+                            const d = new Date(geselecteerdeWinkel.vendit_laatst_datum)
                             const dag = d.getUTCDate()
                             const maand = d.toLocaleDateString('nl-NL', { month: 'long', timeZone: 'UTC' })
                             const uur = String(d.getUTCHours()).padStart(2, '0')
                             const min = String(d.getUTCMinutes()).padStart(2, '0')
-                            return `${dag} ${maand} ${uur}.${min}`
-                          })()}
+                            return `Laatst ${dag} ${maand} ${uur}.${min}`
+                          })() : '— Datum onbekend'}
                         </span>
                       )}
                       {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
