@@ -418,10 +418,33 @@ export default function Dashboard() {
   const isAdmin = sessionData?.isAdmin === true
   const [geocodeLoading, setGeocodeLoading] = useState(false)
   const [geocodeResult, setGeocodeResult] = useState<{ bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null>(null)
+  const [kaartFilterLand, setKaartFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
+  const [kaartFilterKassaPakket, setKaartFilterKassaPakket] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
+  const [kaartFilterBikeTotaal, setKaartFilterBikeTotaal] = useState<'alle' | 'ja' | 'nee'>('alle')
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+
+  const winkelsGefilterd = useMemo(() => {
+    return winkels.filter(w => {
+      if (kaartFilterLand !== 'alle') {
+        if (kaartFilterLand === 'Belgium' && !isBelgischeWinkel(w)) return false
+        if (kaartFilterLand === 'Netherlands' && isBelgischeWinkel(w)) return false
+      }
+      if (kaartFilterKassaPakket !== 'alle') {
+        const at = w.api_type ?? (w.wilmar_organisation_id && w.wilmar_branch_id ? 'wilmar' : 'cyclesoftware')
+        if (at !== kaartFilterKassaPakket) return false
+      }
+      if (kaartFilterBikeTotaal !== 'alle') {
+        const bt = isBikeTotaal(w.naam)
+        if (kaartFilterBikeTotaal === 'ja' && !bt) return false
+        if (kaartFilterBikeTotaal === 'nee' && bt) return false
+      }
+      return true
+    })
+  }, [winkels, kaartFilterLand, kaartFilterKassaPakket, kaartFilterBikeTotaal])
+
 
   // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
   useEffect(() => {
@@ -818,18 +841,36 @@ export default function Dashboard() {
 
               {/* KAART */}
               <div className="s3">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Locaties</span>
-                  <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
-                  <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.filter(w => w.lat && w.lng).length} van {winkels.length} op kaart</span>
+                  <div className="flex-1 min-w-0 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: 'rgba(13,31,78,0.8)', fontFamily: F }}>
+                      <option value="alle">Alle landen</option>
+                      <option value="Netherlands">Nederland</option>
+                      <option value="Belgium">België</option>
+                    </select>
+                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: 'rgba(13,31,78,0.8)', fontFamily: F }}>
+                      <option value="alle">Kassa pakket: alle</option>
+                      <option value="cyclesoftware">CycleSoftware</option>
+                      <option value="wilmar">Wilmar</option>
+                      <option value="vendit">Vendit</option>
+                    </select>
+                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: 'rgba(13,31,78,0.8)', fontFamily: F }}>
+                      <option value="alle">Bike Totaal: alle</option>
+                      <option value="ja">Bike Totaal: ja</option>
+                      <option value="nee">Bike Totaal: nee</option>
+                    </select>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => w.lat && w.lng).length} van {winkelsGefilterd.length} op kaart</span>
                 </div>
                 <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(13,31,78,0.08)', border: '1px solid rgba(13,31,78,0.07)' }}>
-                  <WinkelKaart winkels={winkels} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
+                  <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
                 </div>
               </div>
 
               {/* WINKELKAARTEN */}
-              {winkels.length > 0 && (
+              {winkelsGefilterd.length > 0 && (
                 <div className="s4 space-y-6">
 
                   {/* Favorieten */}
@@ -838,11 +879,11 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3 mb-4">
                         <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_GOLD, fontFamily: F }}>★ Mijn winkels</span>
                         <div className="flex-1 h-px" style={{ background: `${DYNAMO_GOLD}40` }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{favorieten.length} favoriet{favorieten.length !== 1 ? 'en' : ''}</span>
+                        <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {winkels.filter(w => favorieten.includes(w.id)).map(w => (
-                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkels.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                        {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
+                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkelsGefilterd.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
                         ))}
                       </div>
                     </div>
@@ -853,10 +894,10 @@ export default function Dashboard() {
                     <div className="flex items-center gap-3 mb-4">
                       <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Alle winkels</span>
                       <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
-                      <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkels.length} locaties</span>
+                      <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {winkels.map((w, i) => (
+                      {winkelsGefilterd.map((w, i) => (
                         <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
                       ))}
                     </div>
