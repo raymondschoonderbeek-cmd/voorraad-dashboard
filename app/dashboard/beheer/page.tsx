@@ -55,6 +55,7 @@ export default function BeheerPage() {
   const [bewerkWinkel, setBewerkWinkel] = useState<Winkel | null>(null)
   const [toonWinkelForm, setToonWinkelForm] = useState(false)
   const [winkelLoading, setWinkelLoading] = useState(false)
+  const [winkelRefreshLoading, setWinkelRefreshLoading] = useState(false)
 
   // Nieuw gebruiker
   const [nieuwEmail, setNieuwEmail] = useState('')
@@ -150,6 +151,32 @@ export default function BeheerPage() {
     setWinkels(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [])
+
+  const verversWinkels = useCallback(async () => {
+    setWinkelRefreshLoading(true)
+    setError('')
+    if (isAdmin) {
+      const res = await fetch('/api/gebruikers')
+      if (res.status === 403) {
+        setError('Geen toegang. Alleen admins.')
+      } else {
+        const data = await res.json()
+        setRollen(data.rollen ?? [])
+        setWinkelToegang(data.winkelToegang ?? [])
+        setWinkels(data.winkels ?? [])
+        setMfaStatus(data.mfaStatus ?? {})
+        setUserEmails(data.userEmails ?? {})
+      }
+    } else {
+      const res = await fetch('/api/winkels')
+      if (!res.ok) setError('Kon winkels niet laden.')
+      else {
+        const data = await res.json()
+        setWinkels(Array.isArray(data) ? data : [])
+      }
+    }
+    setWinkelRefreshLoading(false)
+  }, [isAdmin])
 
   useEffect(() => {
     if (searchParams.get('locatie') === 'zonder') {
@@ -411,7 +438,7 @@ export default function BeheerPage() {
   async function voegWinkelToe(e: React.FormEvent) {
     e.preventDefault()
     setWinkelLoading(true)
-    await fetch('/api/winkels', {
+    const res = await fetch('/api/winkels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -434,7 +461,10 @@ export default function BeheerPage() {
     setNieuwWinkelLand('')
     setNieuwWinkelApiType('cyclesoftware')
     setToonWinkelForm(false); setWinkelLoading(false)
-    await haalGebruikersOp()
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.id) setWinkels(prev => [...prev, data].sort((a, b) => (a.naam ?? '').localeCompare(b.naam ?? '')))
+    }
   }
 
   async function slaWinkelOp(e: React.FormEvent) {
@@ -479,13 +509,13 @@ export default function BeheerPage() {
     setBewerkWinkel(null)
     setWilmarBranchId(null)
     setWilmarOrganisationId(null)
-    await haalGebruikersOp()
+    setWinkels(prev => prev.map(w => w.id === payload.id ? { ...w, ...payload } : w))
   }
 
   async function verwijderWinkel(id: number, naam: string) {
     if (!confirm(`Winkel "${naam}" verwijderen?`)) return
-    await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
-    await haalGebruikersOp()
+    const res = await fetch(`/api/winkels?id=${id}`, { method: 'DELETE' })
+    if (res.ok) setWinkels(prev => prev.filter(w => w.id !== id))
   }
 
   function toggleWinkel(id: number) {
@@ -607,10 +637,10 @@ export default function BeheerPage() {
     const parts = []
     if (toegevoegd > 0) parts.push(`${toegevoegd} toegevoegd`)
     if (bijgewerkt > 0) parts.push(`${bijgewerkt} bijgewerkt`)
-    setImportSuccess(parts.length > 0 ? `${parts.join(', ')} (${toegevoegd + bijgewerkt} van ${importData.length} winkels)` : `${toegevoegd + bijgewerkt} van ${importData.length} winkels verwerkt`)
+    const verversHint = (toegevoegd + bijgewerkt) > 0 ? ' Klik op Ververs om de wijzigingen te zien.' : ''
+    setImportSuccess(parts.length > 0 ? `${parts.join(', ')} (${toegevoegd + bijgewerkt} van ${importData.length} winkels).${verversHint}` : `${toegevoegd + bijgewerkt} van ${importData.length} winkels verwerkt.${verversHint}`)
     setImportData([])
     if (fileInputRef.current) fileInputRef.current.value = ''
-    await haalGebruikersOp()
   }
 
   async function wilmarAutoKoppelen() {
@@ -622,8 +652,7 @@ export default function BeheerPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Fout: ${res.status}`)
       const n = data.gekoppeld ?? 0
-      setFormSuccess(n > 0 ? `${n} winkels automatisch gekoppeld aan Wilmar` : 'Geen nieuwe koppelingen gevonden')
-      await haalGebruikersOp()
+      setFormSuccess(n > 0 ? `${n} winkels automatisch gekoppeld aan Wilmar. Klik op Ververs om de wijzigingen te zien.` : 'Geen nieuwe koppelingen gevonden.')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Auto-koppelen mislukt')
     }
@@ -1219,6 +1248,19 @@ export default function BeheerPage() {
                   <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
                   <div className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{loading ? 'Laden...' : `${gefilterdeWinkels.length} van ${winkels.length} winkels`}</div>
                 </div>
+                <button onClick={verversWinkels} disabled={winkelRefreshLoading || loading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0 flex items-center gap-1.5" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }} title="Winkels opnieuw laden">
+                  {winkelRefreshLoading ? (
+                    <>
+                      <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Ververs...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>
+                      Ververs
+                    </>
+                  )}
+                </button>
                 <input
                   type="text"
                   placeholder="Zoek op naam, stad, dealer, straat..."
