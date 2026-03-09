@@ -58,14 +58,15 @@ begin
   select c.column_name into ts_col
   from information_schema.columns c
   where c.table_schema = 'public' and c.table_name = 'vendit_stock'
-    and c.column_name in ('file_date_time', 'file_datetime', 'sync_date', 'created_at', 'updated_at', 'import_date', 'stock_date')
+    and c.column_name in ('file_date_time', 'synced_at', 'file_datetime', 'sync_date', 'created_at', 'updated_at', 'import_date', 'stock_date')
   order by case c.column_name
     when 'file_date_time' then 1
-    when 'file_datetime' then 2
-    when 'sync_date' then 3
-    when 'updated_at' then 4
-    when 'created_at' then 5
-    else 6
+    when 'synced_at' then 2
+    when 'file_datetime' then 3
+    when 'sync_date' then 4
+    when 'updated_at' then 5
+    when 'created_at' then 6
+    else 7
   end
   limit 1;
 
