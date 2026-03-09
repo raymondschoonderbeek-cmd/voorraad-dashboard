@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { WinkelSelect, type WinkelSelectRef } from '@/components/WinkelSelect'
@@ -420,16 +420,24 @@ export default function Dashboard() {
   const [geocodeResult, setGeocodeResult] = useState<{ bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null>(null)
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
+  // Herstel geselecteerde winkel uit URL of localStorage bij laden
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem('dynamo_geen_winkel_restore')) {
-        sessionStorage.removeItem('dynamo_geen_winkel_restore')
-      }
-      localStorage.removeItem(WINKEL_STORAGE_KEY)
-    } catch {}
-  }, [])
+    if (winkels.length === 0 || geselecteerdeWinkel) return
+    const idParam = searchParams.get('winkel')
+    const id = idParam ? Number(idParam) : (() => {
+      try {
+        const s = localStorage.getItem(WINKEL_STORAGE_KEY)
+        return s ? Number(s) : 0
+      } catch { return 0 }
+    })()
+    const w = id ? winkels.find(x => x.id === id) : null
+    if (w) {
+      setGeselecteerdeWinkel(w)
+    }
+  }, [winkels, geselecteerdeWinkel, searchParams])
 
   useEffect(() => {
     try {
@@ -659,7 +667,7 @@ export default function Dashboard() {
       {/* NAVIGATIE */}
       <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-[100]">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <Link href="/dashboard" className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+          <Link href={geselecteerdeWinkel ? `/dashboard?winkel=${geselecteerdeWinkel.id}` : '/dashboard'} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>
               <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '13px' }} className="sm:text-[15px]">D</span>
             </div>
@@ -867,7 +875,7 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <button onClick={() => setGeselecteerdeWinkel(null)} className="flex items-center gap-2 text-sm font-semibold transition hover:opacity-70" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+              <button onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}; setGeselecteerdeWinkel(null); router.push('/dashboard') }} className="flex items-center gap-2 text-sm font-semibold transition hover:opacity-70" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                 <IconArrowLeft /> Terug naar startscherm
               </button>
 

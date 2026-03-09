@@ -157,11 +157,12 @@ export default function BrandGroepPage() {
   useEffect(() => {
     if (winkels.length === 0 || geselecteerdeWinkel) return
     const idParam = searchParams.get('winkel')
-    if (!idParam) {
-      try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}
-      return
-    }
-    const id = Number(idParam)
+    const id = idParam ? Number(idParam) : (() => {
+      try {
+        const s = localStorage.getItem(WINKEL_STORAGE_KEY)
+        return s ? Number(s) : 0
+      } catch { return 0 }
+    })()
     const w = id ? winkels.find(x => x.id === id) : null
     if (w) {
       setGeselecteerdeWinkel(w)
@@ -356,7 +357,7 @@ export default function BrandGroepPage() {
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100] shadow-lg">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0 min-h-[56px]">
-          <Link href="/dashboard" onClick={() => { try { sessionStorage.setItem('dynamo_geen_winkel_restore', '1'); localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
+          <Link href={geselecteerdeWinkel ? `/dashboard?winkel=${geselecteerdeWinkel.id}` : '/dashboard'} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
             <div style={{ background: DYNAMO_GOLD }} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
@@ -391,8 +392,7 @@ export default function BrandGroepPage() {
               {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten` : ''}
             </span>
             <Link
-              href="/dashboard"
-              onClick={() => { try { sessionStorage.setItem('dynamo_geen_winkel_restore', '1'); localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }}
+              href={geselecteerdeWinkel ? `/dashboard?winkel=${geselecteerdeWinkel.id}` : '/dashboard'}
               className="rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold transition hover:opacity-90 border border-white/20 text-white hover:bg-white/10"
             >
               ← Dashboard
