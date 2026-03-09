@@ -9,9 +9,10 @@ type Props = {
   onClose: () => void
   winkels: Winkel[]
   onSelect: (w: Winkel) => void
+  loading?: boolean
 }
 
-export function WinkelModal({ open, onClose, winkels, onSelect }: Props) {
+export function WinkelModal({ open, onClose, winkels, onSelect, loading = false }: Props) {
   const [zoek, setZoek] = useState('')
 
   const gefilterd = useMemo(() => {
@@ -52,7 +53,12 @@ export function WinkelModal({ open, onClose, winkels, onSelect }: Props) {
           />
         </div>
         <div className="overflow-y-auto max-h-[50vh]">
-          {gefilterd.length === 0 ? (
+          {loading ? (
+            <div className="p-6 flex items-center justify-center gap-3">
+              <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
+              <span className="text-sm font-medium" style={{ color: DYNAMO_BLUE }}>Winkels laden...</span>
+            </div>
+          ) : gefilterd.length === 0 ? (
             <div className="p-6 text-center text-sm text-gray-500">
               {zoek ? 'Geen winkels gevonden' : 'Geen winkels beschikbaar'}
             </div>

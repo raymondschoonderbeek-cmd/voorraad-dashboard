@@ -394,7 +394,7 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
 }
 
 export default function Dashboard() {
-  const { data: winkelsData = [], mutate: mutateWinkels } = useSWR<Winkel[]>('/api/winkels', fetcher)
+  const { data: winkelsData = [], isLoading: winkelsLoading, mutate: mutateWinkels } = useSWR<Winkel[]>('/api/winkels', fetcher)
   const winkels = Array.isArray(winkelsData) ? winkelsData : []
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
   const [producten, setProducten] = useState<Product[]>([])
@@ -709,6 +709,7 @@ export default function Dashboard() {
         onClose={() => setWinkelModalOpen(false)}
         winkels={winkels}
         onSelect={selecteerWinkel}
+        loading={winkelModalOpen && winkelsLoading}
       />
 
       <main className="flex-1 min-w-0 p-3 sm:p-5 pb-6 sm:pb-5 space-y-4 sm:space-y-6 overflow-auto">
@@ -859,6 +860,13 @@ export default function Dashboard() {
 
           ) : (
             <>
+              {loading && (
+                <div className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4" style={{ background: 'rgba(13,31,78,0.06)', border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
+                  <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden...</span>
+                </div>
+              )}
+
               <button onClick={() => setGeselecteerdeWinkel(null)} className="flex items-center gap-2 text-sm font-semibold transition hover:opacity-70" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                 <IconArrowLeft /> Terug naar startscherm
               </button>
@@ -874,8 +882,8 @@ export default function Dashboard() {
                   <div key={s.label} className="rounded-2xl px-3 sm:px-5 py-3 sm:py-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
                     <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.08em', fontFamily: F }}>{s.label}</div>
                     <div className="flex items-baseline gap-1">
-                      <div className="text-2xl font-bold" style={{ color: s.color, fontFamily: F, letterSpacing: '-0.03em' }}>{s.value.toLocaleString('nl-NL')}</div>
-                      {trendPijl(s.value, (s as any).vorig)}
+                      <div className="text-2xl font-bold" style={{ color: s.color, fontFamily: F, letterSpacing: '-0.03em' }}>{loading ? '...' : s.value.toLocaleString('nl-NL')}</div>
+                      {!loading && trendPijl(s.value, (s as any).vorig)}
                     </div>
                   </div>
                 ))}

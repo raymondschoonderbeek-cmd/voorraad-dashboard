@@ -94,40 +94,51 @@ export async function GET(request: NextRequest) {
     return withoutLeadingZeros
   }
   if (venditWinkels.length > 0) {
-    try {
-      const { data: venditDealers } = await client.rpc('get_vendit_dealer_numbers')
-      for (const row of venditDealers ?? []) {
-        const d = (row as { dealer_nummer: string })?.dealer_nummer
+    const BATCH = 1000
+    let offset = 0
+    let hasMore = true
+    while (hasMore) {
+      const { data: batch } = await client
+        .from('vendit_stock')
+        .select('dealer_number')
+        .range(offset, offset + BATCH - 1)
+      const rows = batch ?? []
+      for (const row of rows) {
+        const d = row?.dealer_number
         if (d != null) {
           const n = normalizeDealer(d)
           venditDealerNummers.add(n)
           venditDealerNummers.add(String(d).trim())
         }
       }
-    } catch {
-      // Fallback: select (max 1000 rijen)
-      const { data: fallback } = await client.from('vendit_stock').select('dealer_number')
-      for (const row of fallback ?? []) {
-        const d = row?.dealer_number
-        if (d != null) {
-          venditDealerNummers.add(normalizeDealer(d))
-          venditDealerNummers.add(String(d).trim())
-        }
-      }
+      hasMore = rows.length === BATCH
+      offset += BATCH
     }
-    try {
-      const { data: stats } = await client.rpc('get_vendit_dealer_stats')
-      for (const row of stats ?? []) {
-        const d = (row as { dealer_nummer: string })?.dealer_nummer
-        const dt = (row as { last_updated: string })?.last_updated
+    const BATCH_STATS = 1000
+    let offsetStats = 0
+    let hasMoreStats = true
+    while (hasMoreStats) {
+      const { data: statsBatch } = await client
+        .from('vendit_stock')
+        .select('dealer_number, file_date_time')
+        .range(offsetStats, offsetStats + BATCH_STATS - 1)
+      const statsRows = statsBatch ?? []
+      for (const row of statsRows) {
+        const d = row?.dealer_number
+        const dt = row?.file_date_time
         if (d != null && dt) {
           const k = String(d).trim()
-          venditLaatstPerDealer.set(k, dt)
-          venditLaatstPerDealer.set(normalizeDealer(d), dt)
+          const kNorm = normalizeDealer(d)
+          const existing = venditLaatstPerDealer.get(k) ?? venditLaatstPerDealer.get(kNorm)
+          const dtStr = typeof dt === 'string' ? dt : (dt ? new Date(dt).toISOString() : '')
+          if (dtStr && (!existing || dtStr > existing)) {
+            venditLaatstPerDealer.set(k, dtStr)
+            venditLaatstPerDealer.set(kNorm, dtStr)
+          }
         }
       }
-    } catch {
-      // RPC mogelijk nog niet uitgevoerd
+      hasMoreStats = statsRows.length === BATCH_STATS
+      offsetStats += BATCH_STATS
     }
   }
 

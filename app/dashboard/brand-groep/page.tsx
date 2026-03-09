@@ -96,6 +96,7 @@ type GroupIndex = {
 export default function BrandGroepPage() {
   const searchParams = useSearchParams()
   const [winkels, setWinkels] = useState<Winkel[]>([])
+  const [winkelsLoading, setWinkelsLoading] = useState(true)
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
   const [producten, setProducten] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
@@ -120,9 +121,14 @@ export default function BrandGroepPage() {
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
 
   const haalWinkelsOp = useCallback(async () => {
-    const res = await fetch('/api/winkels')
-    const data = await res.json()
-    setWinkels(data)
+    setWinkelsLoading(true)
+    try {
+      const res = await fetch('/api/winkels')
+      const data = await res.json()
+      setWinkels(Array.isArray(data) ? data : [])
+    } finally {
+      setWinkelsLoading(false)
+    }
   }, [])
 
   const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string) => {
@@ -401,6 +407,7 @@ export default function BrandGroepPage() {
         onClose={() => setWinkelModalOpen(false)}
         winkels={winkels}
         onSelect={selecteerWinkel}
+        loading={winkelModalOpen && winkelsLoading}
       />
 
       <main className="flex-1 p-3 sm:p-5 space-y-4 overflow-x-hidden">
