@@ -171,17 +171,19 @@ export async function GET(request: NextRequest) {
   }
 
   const winkels = (winkelsRaw ?? []).map((w: any) => {
-    if (w.api_type === 'vendit') {
+    const { vendit_api_password: _p, ...rest } = w
+    const base = rest as any
+    if (base.api_type === 'vendit') {
       const key = String(w.dealer_nummer ?? '').trim()
       const inDataset = venditDealerNummers.has(key)
       const laatstDatum = venditLaatstPerDealer.get(key) ?? null
       return {
-        ...w,
+        ...base,
         vendit_in_dataset: inDataset,
         vendit_laatst_datum: laatstDatum,
       }
     }
-    return w
+    return base
   })
 
   const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)

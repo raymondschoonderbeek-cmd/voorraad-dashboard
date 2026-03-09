@@ -70,13 +70,15 @@ export async function GET(request: NextRequest) {
   }
 
   const winkels = (winkelsRaw ?? []).map((w: any) => {
-    if (w.api_type === 'vendit') {
-      const key = String(w.dealer_nummer ?? '').trim()
-      const keyNorm = normalizeDealer(w.dealer_nummer)
+    const { vendit_api_password: _p, ...rest } = w
+    const base = rest as any
+    if (base.api_type === 'vendit') {
+      const key = String(base.dealer_nummer ?? '').trim()
+      const keyNorm = normalizeDealer(base.dealer_nummer)
       const laatstDatum = venditLaatstPerDealer.get(key) ?? venditLaatstPerDealer.get(keyNorm) ?? null
-      return { ...w, vendit_laatst_datum: laatstDatum }
+      return { ...base, vendit_laatst_datum: laatstDatum }
     }
-    return w
+    return base
   })
 
   return NextResponse.json(winkels, {
@@ -163,7 +165,7 @@ export async function PUT(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json()
-  const { id, naam, dealer_nummer, postcode, straat, huisnummer, stad, land, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type } = body
+  const { id, naam, dealer_nummer, postcode, straat, huisnummer, stad, land, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type, vendit_api_key, vendit_api_username, vendit_api_password } = body
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
 
@@ -191,6 +193,9 @@ export async function PUT(request: NextRequest) {
   if (api_type) {
     updateData.api_type = api_type
   }
+  if (vendit_api_key !== undefined) updateData.vendit_api_key = vendit_api_key === '' ? null : vendit_api_key
+  if (vendit_api_username !== undefined) updateData.vendit_api_username = vendit_api_username === '' ? null : vendit_api_username
+  if (vendit_api_password !== undefined && vendit_api_password !== '') updateData.vendit_api_password = vendit_api_password
 
   const { error } = await supabase
     .from('winkels')

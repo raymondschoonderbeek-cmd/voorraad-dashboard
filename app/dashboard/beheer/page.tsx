@@ -28,6 +28,9 @@ type Winkel = {
   wilmar_branch_id?: number
   wilmar_store_naam?: string
   api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | null
+  vendit_api_key?: string | null
+  vendit_api_username?: string | null
+  vendit_api_password?: string | null
   cycle_api_authorized?: boolean | null
   vendit_in_dataset?: boolean
   vendit_laatst_datum?: string | null
@@ -493,6 +496,9 @@ export default function BeheerPage() {
       wilmar_branch_id: wilmarBranchId ?? null,
       wilmar_store_naam: heeftWilmarKoppeling ? (wilmarNaam ?? bewerkWinkel.wilmar_store_naam ?? null) : null,
       api_type: heeftWilmarKoppeling ? 'wilmar' : (bewerkWinkel.api_type ?? 'cyclesoftware'),
+      vendit_api_key: (bewerkWinkel.vendit_api_key ?? '').trim() || null,
+      vendit_api_username: (bewerkWinkel.vendit_api_username ?? '').trim() || null,
+      ...((bewerkWinkel.vendit_api_password ?? '').trim() ? { vendit_api_password: (bewerkWinkel.vendit_api_password ?? '').trim() } : {}),
     }
     const res = await fetch('/api/winkels', {
       method: 'PUT',
@@ -746,6 +752,11 @@ export default function BeheerPage() {
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-5 shrink-0">
+            {isAdmin && (
+              <Link href="/dashboard/vendit-api-tester" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(59,130,246,0.2)', color: 'rgba(255,255,255,0.95)', border: '1px solid rgba(59,130,246,0.4)', fontFamily: F }} title="Vendit Public API testen">
+                Vendit API
+              </Link>
+            )}
             <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
               <IconArrowLeft /> Dashboard
             </Link>
@@ -1154,6 +1165,26 @@ export default function BeheerPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Vendit API toegang (alleen bij api_type vendit) */}
+                  {(bewerkWinkel.api_type ?? 'cyclesoftware') === 'vendit' && (
+                    <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                      <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API toegang</p>
+                      <p className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Credentials voor de Vendit Public API. Gebruik in module Vendit API Tester.</p>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>API Key</label>
+                        <input type="text" placeholder="Vendit API key" value={bewerkWinkel.vendit_api_key ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, vendit_api_key: e.target.value })} className={inputClass} style={inputStyle} autoComplete="off" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Username</label>
+                        <input type="text" placeholder="API username" value={bewerkWinkel.vendit_api_username ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, vendit_api_username: e.target.value })} className={inputClass} style={inputStyle} autoComplete="off" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Wachtwoord</label>
+                        <input type="password" placeholder="Laat leeg om niet te wijzigen" value={bewerkWinkel.vendit_api_password ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, vendit_api_password: e.target.value })} className={inputClass} style={inputStyle} autoComplete="new-password" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Wilmar koppeling */}
                   <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.08)' }}>

@@ -15,6 +15,9 @@ export type Winkel = {
   wilmar_branch_id?: number
   wilmar_store_naam?: string
   api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | null
+  vendit_api_key?: string | null
+  vendit_api_username?: string | null
+  vendit_api_password?: string | null
   cycle_api_authorized?: boolean | null
   cycle_api_checked_at?: string | null
   vendit_laatst_datum?: string | null
