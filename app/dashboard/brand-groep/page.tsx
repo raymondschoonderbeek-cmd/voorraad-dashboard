@@ -117,7 +117,11 @@ export default function BrandGroepPage() {
 
   const [minAvailable, setMinAvailable] = useState<number>(0)
   const [top10Brands, setTop10Brands] = useState<boolean>(false)
-  const [winkelModalOpen, setWinkelModalOpen] = useState(true)
+  const [winkelModalOpen, setWinkelModalOpen] = useState(() => {
+    if (searchParams.get('winkel')) return false
+    try { if (typeof window !== 'undefined' && localStorage.getItem(WINKEL_STORAGE_KEY)) return false } catch {}
+    return true
+  })
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
 
   const haalWinkelsOp = useCallback(async () => {
