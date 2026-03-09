@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
       paginationOffset?: number
     }
     if (!findRes.ok) {
-      return NextResponse.json({ error: findData?.message ?? `Orders ophalen mislukt: ${findRes.status}` }, { status: 502 })
+      const errMsg = (findData as { message?: string })?.message ?? `Orders ophalen mislukt: ${findRes.status}`
+      return NextResponse.json({ error: errMsg }, { status: 502 })
     }
 
     const orders = Array.isArray(findData.entities) ? findData.entities : []
