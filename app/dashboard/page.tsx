@@ -423,21 +423,18 @@ export default function Dashboard() {
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  // Herstel geselecteerde winkel uit URL of localStorage bij laden
+  // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
   useEffect(() => {
-    if (winkels.length === 0 || geselecteerdeWinkel) return
+    if (winkels.length === 0) return
     const idParam = searchParams.get('winkel')
-    const id = idParam ? Number(idParam) : (() => {
-      try {
-        const s = localStorage.getItem(WINKEL_STORAGE_KEY)
-        return s ? Number(s) : 0
-      } catch { return 0 }
-    })()
-    const w = id ? winkels.find(x => x.id === id) : null
-    if (w) {
-      setGeselecteerdeWinkel(w)
+    if (!idParam) {
+      setGeselecteerdeWinkel(null)
+      return
     }
-  }, [winkels, geselecteerdeWinkel, searchParams])
+    const id = Number(idParam)
+    const w = id ? winkels.find(x => x.id === id) : null
+    if (w) setGeselecteerdeWinkel(w)
+  }, [winkels, searchParams])
 
   useEffect(() => {
     try {
@@ -667,7 +664,7 @@ export default function Dashboard() {
       {/* NAVIGATIE */}
       <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-[100]">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <Link href={geselecteerdeWinkel ? `/dashboard?winkel=${geselecteerdeWinkel.id}` : '/dashboard'} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+          <Link href="/dashboard" onClick={(e) => { e.preventDefault(); try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}; setGeselecteerdeWinkel(null); router.push('/dashboard') }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>
               <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '13px' }} className="sm:text-[15px]">D</span>
             </div>

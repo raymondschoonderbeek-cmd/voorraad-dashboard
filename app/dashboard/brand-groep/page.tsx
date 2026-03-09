@@ -357,7 +357,7 @@ export default function BrandGroepPage() {
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100] shadow-lg">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0 min-h-[56px]">
-          <Link href={geselecteerdeWinkel ? `/dashboard?winkel=${geselecteerdeWinkel.id}` : '/dashboard'} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
+          <Link href="/dashboard" onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
             <div style={{ background: DYNAMO_GOLD }} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0">
               <span style={{ color: DYNAMO_BLUE }}>D</span>
             </div>
@@ -388,11 +388,13 @@ export default function BrandGroepPage() {
           <div className="flex-1 hidden sm:block" />
 
           <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-5 shrink-0 w-full sm:w-auto justify-end">
-            <span className="text-white/50 text-xs hidden md:block truncate max-w-[140px]">
+            <span className="text-xs truncate max-w-[140px] flex items-center gap-2" style={loading ? { color: DYNAMO_GOLD, fontWeight: 600 } : { color: 'rgba(255,255,255,0.5)' }}>
+              {loading && <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: 'currentColor' }} />}
               {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten` : ''}
             </span>
             <Link
-              href={geselecteerdeWinkel ? `/dashboard?winkel=${geselecteerdeWinkel.id}` : '/dashboard'}
+              href="/dashboard"
+              onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }}
               className="rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold transition hover:opacity-90 border border-white/20 text-white hover:bg-white/10"
             >
               ← Dashboard
@@ -412,6 +414,12 @@ export default function BrandGroepPage() {
 
       <main className="flex-1 p-3 sm:p-5 space-y-4 overflow-x-hidden">
         {!geselecteerdeWinkel ? (
+          searchParams.get('winkel') && winkelsLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
+              <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Winkel en voorraad laden...</p>
+            </div>
+          ) : (
           <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
             <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style={{ background: DYNAMO_BLUE }}>📊</div>
             <p className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Kies een winkel</p>
@@ -423,8 +431,15 @@ export default function BrandGroepPage() {
               Kies een winkel
             </button>
           </div>
+          )
         ) : (
           <div className="space-y-4">
+            {loading && (
+              <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(13,31,78,0.06)', border: '1px solid rgba(13,31,78,0.1)' }}>
+                <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
+                <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden voor Merk/Groep...</span>
+              </div>
+            )}
             {authRequired && (
               <div className="rounded-2xl p-4 text-sm" style={{ background: '#fffbeb', border: '1px solid rgba(240,192,64,0.4)' }}>
                 <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Toestemming vereist</p>
