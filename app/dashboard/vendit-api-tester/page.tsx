@@ -157,6 +157,19 @@ export default function VenditApiTesterPage() {
   const [scanResult, setScanResult] = useState<ScanResult[] | null>(null)
   const [scanning, setScanning] = useState(false)
 
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [orders, setOrders] = useState<{ customerOrderHeaderId?: number; customerOrderNumber?: string; creationDatetime?: string; customerId?: number; customerName?: string; orderStatusId?: number; [key: string]: unknown }[]>([])
+  const [ordersTotalCount, setOrdersTotalCount] = useState(0)
+  const [ordersPaginationOffset, setOrdersPaginationOffset] = useState(0)
+  const [ordersError, setOrdersError] = useState<string | null>(null)
+  const [ordersSearch, setOrdersSearch] = useState('')
+  const ORDERS_PAGE_SIZE = 100
+
+  const [stockLoading, setStockLoading] = useState(false)
+  const [stock, setStock] = useState<{ productId?: number; productName?: string; availableStock?: number; sizeColorId?: number; officeId?: number; [key: string]: unknown }[]>([])
+  const [stockError, setStockError] = useState<string | null>(null)
+  const [stockSearch, setStockSearch] = useState('')
+
   const endpoint = VENDIT_GET_ENDPOINTS.find(e => e.path === selectedEndpoint)
   const hasParams = (endpoint?.params?.length ?? 0) > 0
 
@@ -210,6 +223,78 @@ export default function VenditApiTesterPage() {
       setScanResult(results)
     } finally {
       setScanning(false)
+    }
+  }
+
+  async function loadOrders(offset: number) {
+    if (!selectedWinkelId) return
+    setOrdersLoading(true)
+    setOrdersError(null)
+    try {
+      const res = await fetch('/api/vendit-orders-overview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ winkel_id: selectedWinkelId, paginationOffset: offset }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setOrdersError(data.error ?? `HTTP ${res.status}`)
+        setOrders([])
+      } else {
+        setOrders(data.orders ?? [])
+        setOrdersTotalCount(data.totalCount ?? 0)
+        setOrdersPaginationOffset(data.paginationOffset ?? offset)
+      }
+    } catch (err) {
+      setOrdersError(err instanceof Error ? err.message : 'Netwerkfout')
+      setOrders([])
+    }
+    setOrdersLoading(false)
+  }
+
+  const ordersFiltered = useMemo(() => {
+    if (!ordersSearch.trim()) return orders
+    const q = ordersSearch.toLowerCase()
+    return orders.filter(o => JSON.stringify(o).toLowerCase().includes(q))
+  }, [orders, ordersSearch])
+
+  async function loadStock() {
+    if (!selectedWinkelId) return
+    setStockLoading(true)
+    setStockError(null)
+    try {
+      const res = await fetch('/api/vendit-stock-overview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ winkel_id: selectedWinkelId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setStockError(data.error ?? `HTTP ${res.status}`)
+        setStock([])
+      } else {
+        setStock(data.stock ?? [])
+      }
+    } catch (err) {
+      setStockError(err instanceof Error ? err.message : 'Netwerkfout')
+      setStock([])
+    }
+    setStockLoading(false)
+  }
+
+  const stockFiltered = useMemo(() => {
+    if (!stockSearch.trim()) return stock
+    const q = stockSearch.toLowerCase()
+    return stock.filter(s => JSON.stringify(s).toLowerCase().includes(q))
+  }, [stock, stockSearch])
+
+  function formatOrderDate(s: string | undefined) {
+    if (!s) return '—'
+    try {
+      const d = new Date(s)
+      return isNaN(d.getTime()) ? s : d.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return s
     }
   }
 
@@ -305,6 +390,162 @@ export default function VenditApiTesterPage() {
             <p className="mt-3 text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>
               Zorg dat de winkel systeem &quot;Vendit API&quot; heeft, alle drie de credentials zijn ingevuld, en je op <strong>Opslaan</strong> hebt geklikt in Beheer.
             </p>
+          )}
+        </div>
+
+        {/* Orders overzicht */}
+        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)', boxShadow: '0 2px 12px rgba(13,31,78,0.04)' }}>
+          <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Orders overzicht (met klanten)</h2>
+          <p className="text-sm mb-4" style={{ color: 'rgba(13,31,78,0.5)' }}>
+            Haal alle orders op met klantnamen voor de geselecteerde winkel.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => loadOrders(0)}
+              disabled={ordersLoading || !selectedWinkelId}
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
+              style={{ background: DYNAMO_BLUE, color: 'white' }}
+            >
+              {ordersLoading ? 'Laden...' : 'Orders ophalen'}
+            </button>
+          </div>
+          {ordersError && (
+            <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
+              {ordersError}
+            </div>
+          )}
+          {orders.length > 0 && (
+            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
+              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(13,31,78,0.04)', borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
+                <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
+                  {ordersTotalCount} orders totaal · Pagina {Math.floor(ordersPaginationOffset / ORDERS_PAGE_SIZE) + 1}
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="search"
+                    placeholder="Zoeken..."
+                    value={ordersSearch}
+                    onChange={e => setOrdersSearch(e.target.value)}
+                    className="rounded-lg px-3 py-1.5 text-sm border"
+                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 160 }}
+                  />
+                  <button
+                    onClick={() => loadOrders(Math.max(0, ordersPaginationOffset - ORDERS_PAGE_SIZE))}
+                    disabled={ordersLoading || ordersPaginationOffset === 0}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                    style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE }}
+                  >
+                    ← Vorige
+                  </button>
+                  <button
+                    onClick={() => loadOrders(ordersPaginationOffset + ORDERS_PAGE_SIZE)}
+                    disabled={ordersLoading || orders.length < ORDERS_PAGE_SIZE}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                    style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE }}
+                  >
+                    Volgende →
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(13,31,78,0.02)' }}>
+                      <th className="px-3 py-2 text-left font-semibold">Order nr</th>
+                      <th className="px-3 py-2 text-left font-semibold">Datum</th>
+                      <th className="px-3 py-2 text-left font-semibold">Klant</th>
+                      <th className="px-3 py-2 text-left font-semibold">Klant ID</th>
+                      <th className="px-3 py-2 text-left font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordersFiltered.map((o, i) => (
+                      <tr key={o.customerOrderHeaderId ?? i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+                        <td className="px-3 py-2 font-mono">{o.customerOrderNumber ?? o.customerOrderHeaderId ?? '—'}</td>
+                        <td className="px-3 py-2">{formatOrderDate(o.creationDatetime as string)}</td>
+                        <td className="px-3 py-2 font-medium">{o.customerName ?? '—'}</td>
+                        <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.5)' }}>{o.customerId ?? '—'}</td>
+                        <td className="px-3 py-2">{o.orderStatusId != null ? String(o.orderStatusId) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {ordersFiltered.length !== orders.length && (
+                <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                  {ordersFiltered.length} van {orders.length} getoond (gefilterd)
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Voorraad overzicht */}
+        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)', boxShadow: '0 2px 12px rgba(13,31,78,0.04)' }}>
+          <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Voorraad overzicht (producten op voorraad)</h2>
+          <p className="text-sm mb-4" style={{ color: 'rgba(13,31,78,0.5)' }}>
+            Haal alle producten met voorraad op voor de geselecteerde winkel.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={loadStock}
+              disabled={stockLoading || !selectedWinkelId}
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
+              style={{ background: DYNAMO_BLUE, color: 'white' }}
+            >
+              {stockLoading ? 'Laden...' : 'Voorraad ophalen'}
+            </button>
+          </div>
+          {stockError && (
+            <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
+              {stockError}
+            </div>
+          )}
+          {stock.length > 0 && (
+            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
+              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(13,31,78,0.04)', borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
+                <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
+                  {stock.length} producten met voorraad
+                </span>
+                <input
+                  type="search"
+                  placeholder="Zoeken..."
+                  value={stockSearch}
+                  onChange={e => setStockSearch(e.target.value)}
+                  className="rounded-lg px-3 py-1.5 text-sm border"
+                  style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 160 }}
+                />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(13,31,78,0.02)' }}>
+                      <th className="px-3 py-2 text-left font-semibold">Product</th>
+                      <th className="px-3 py-2 text-left font-semibold">Product ID</th>
+                      <th className="px-3 py-2 text-left font-semibold">Beschikbaar</th>
+                      <th className="px-3 py-2 text-left font-semibold">Variant</th>
+                      <th className="px-3 py-2 text-left font-semibold">Vestiging</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockFiltered.map((s, i) => (
+                      <tr key={`${s.productId}-${s.sizeColorId ?? 0}-${s.officeId ?? 0}-${i}`} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+                        <td className="px-3 py-2 font-medium">{s.productName ?? '—'}</td>
+                        <td className="px-3 py-2 font-mono" style={{ color: 'rgba(13,31,78,0.5)' }}>{s.productId ?? '—'}</td>
+                        <td className="px-3 py-2 font-semibold">{s.availableStock != null ? Number(s.availableStock) : '—'}</td>
+                        <td className="px-3 py-2">{s.sizeColorId != null ? String(s.sizeColorId) : '—'}</td>
+                        <td className="px-3 py-2">{s.officeId != null ? String(s.officeId) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {stockFiltered.length !== stock.length && (
+                <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                  {stockFiltered.length} van {stock.length} getoond (gefilterd)
+                </div>
+              )}
+            </div>
           )}
         </div>
 
