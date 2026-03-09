@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
+import { getCachedVenditStats, setCachedVenditStats } from '@/lib/vendit-cache'
 
 function normalizeDealer(v: unknown): string {
   const s = String(v ?? '').trim()
@@ -25,31 +26,44 @@ export async function GET(request: NextRequest) {
   const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
   const venditLaatstPerDealer = new Map<string, string>()
   if (venditWinkels.length > 0) {
-    try {
-      let statsObj = await supabase.rpc('get_vendit_dealer_stats_json').then(r => r.data)
-      if (Array.isArray(statsObj) && statsObj.length > 0 && typeof statsObj[0] === 'object') {
-        const first = statsObj[0] as Record<string, unknown>
-        statsObj = first.get_vendit_dealer_stats_json ?? Object.values(first)[0] ?? statsObj
-      }
-      if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
-        for (const [k, dt] of Object.entries(statsObj)) {
-          if (dt) {
-            const kNorm = normalizeDealer(k)
-            const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
-            venditLaatstPerDealer.set(k.trim(), dtStr)
-            venditLaatstPerDealer.set(kNorm, dtStr)
-          }
+    const cached = getCachedVenditStats()
+    if (cached) {
+      for (const [k, dt] of Object.entries(cached)) {
+        if (dt) {
+          venditLaatstPerDealer.set(k.trim(), dt)
+          venditLaatstPerDealer.set(normalizeDealer(k), dt)
         }
       }
-    } catch {
-      const { data: stats } = await supabase.rpc('get_vendit_dealer_stats')
-      for (const row of stats ?? []) {
-        const d = (row as { dealer_nummer: string })?.dealer_nummer
-        const dt = (row as { last_updated: string })?.last_updated
-        if (d != null && dt) {
-          const k = String(d).trim()
-          venditLaatstPerDealer.set(k, dt)
-          venditLaatstPerDealer.set(normalizeDealer(d), dt)
+    } else {
+      try {
+        let statsObj = await supabase.rpc('get_vendit_dealer_stats_json').then(r => r.data)
+        if (Array.isArray(statsObj) && statsObj.length > 0 && typeof statsObj[0] === 'object') {
+          const first = statsObj[0] as Record<string, unknown>
+          statsObj = first.get_vendit_dealer_stats_json ?? Object.values(first)[0] ?? statsObj
+        }
+        if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
+          const toCache: Record<string, string> = {}
+          for (const [k, dt] of Object.entries(statsObj)) {
+            if (dt) {
+              const kNorm = normalizeDealer(k)
+              const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
+              venditLaatstPerDealer.set(k.trim(), dtStr)
+              venditLaatstPerDealer.set(kNorm, dtStr)
+              toCache[k.trim()] = dtStr
+            }
+          }
+          setCachedVenditStats(toCache)
+        }
+      } catch {
+        const { data: stats } = await supabase.rpc('get_vendit_dealer_stats')
+        for (const row of stats ?? []) {
+          const d = (row as { dealer_nummer: string })?.dealer_nummer
+          const dt = (row as { last_updated: string })?.last_updated
+          if (d != null && dt) {
+            const k = String(d).trim()
+            venditLaatstPerDealer.set(k, dt)
+            venditLaatstPerDealer.set(normalizeDealer(d), dt)
+          }
         }
       }
     }

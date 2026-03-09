@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
+import { getCachedVenditStats, setCachedVenditStats, getCachedVenditDealerNumbers, setCachedVenditDealerNumbers } from '@/lib/vendit-cache'
 
 // Controleer of gebruiker admin is
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -88,69 +89,83 @@ export async function GET(request: NextRequest) {
   const venditLaatstPerDealer = new Map<string, string>() // dealer_nummer -> ISO datum
   const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
   if (venditWinkels.length > 0) {
-    try {
-      const [dealersRes, statsRes] = await Promise.all([
-        client.rpc('get_vendit_dealer_numbers_json'),
-        client.rpc('get_vendit_dealer_stats_json'),
-      ])
-      if (dealersRes?.error) throw new Error(dealersRes.error.message)
-      // Supabase kan json direct of gewrapped retourneren
-      let dealersArr: unknown[] = []
-      let rawDealers = dealersRes?.data as unknown
-      if (typeof rawDealers === 'string') {
-        try { rawDealers = JSON.parse(rawDealers) } catch { rawDealers = null }
-      }
-      if (Array.isArray(rawDealers)) {
-        const first = rawDealers[0]
-        if (first != null && typeof first === 'object' && !Array.isArray(first)) {
-          const val = (first as Record<string, unknown>).get_vendit_dealer_numbers_json ?? Object.values(first)[0]
-          dealersArr = Array.isArray(val) ? val : rawDealers
-        } else if (Array.isArray(first)) {
-          dealersArr = first
-        } else {
-          dealersArr = rawDealers
-        }
-      }
-      for (const d of dealersArr) {
-        if (d != null) {
-          const k = String(d).trim()
-          venditDealerNummers.add(k)
-        }
-      }
-      let statsObj = statsRes?.data as unknown
-      if (Array.isArray(statsObj) && statsObj.length > 0 && typeof statsObj[0] === 'object') {
-        const first = statsObj[0] as Record<string, unknown>
-        statsObj = first.get_vendit_dealer_stats_json ?? Object.values(first)[0] ?? statsObj
-      }
-      if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
-        for (const [k, dt] of Object.entries(statsObj)) {
-          if (dt) {
-            const key = String(k).trim()
-            const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
-            venditLaatstPerDealer.set(key, dtStr)
-          }
-        }
-      }
-    } catch {
-      // Nieuwe RPCs nog niet uitgevoerd – gebruik oude RPC (max 1000 dealers)
+    const cachedNumbers = getCachedVenditDealerNumbers()
+    const cachedStats = getCachedVenditStats()
+    if (cachedNumbers) {
+      cachedNumbers.forEach(k => venditDealerNummers.add(k))
+    }
+    if (cachedStats) {
+      Object.entries(cachedStats).forEach(([k, dt]) => { if (dt) venditLaatstPerDealer.set(k, dt) })
+    }
+    if (!cachedNumbers || !cachedStats) {
       try {
-        const { data: dealers } = await client.rpc('get_vendit_dealer_numbers')
-        for (const row of dealers ?? []) {
-          const d = (row as { dealer_nummer: string })?.dealer_nummer
-          if (d != null) {
-            venditDealerNummers.add(String(d).trim())
+        const [dealersRes, statsRes] = await Promise.all([
+          client.rpc('get_vendit_dealer_numbers_json'),
+          client.rpc('get_vendit_dealer_stats_json'),
+        ])
+        if (dealersRes?.error) throw new Error(dealersRes.error.message)
+        if (!cachedNumbers) {
+          let dealersArr: unknown[] = []
+          let rawDealers = dealersRes?.data as unknown
+          if (typeof rawDealers === 'string') {
+            try { rawDealers = JSON.parse(rawDealers) } catch { rawDealers = null }
           }
+          if (Array.isArray(rawDealers)) {
+            const first = rawDealers[0]
+            if (first != null && typeof first === 'object' && !Array.isArray(first)) {
+              const val = (first as Record<string, unknown>).get_vendit_dealer_numbers_json ?? Object.values(first)[0]
+              dealersArr = Array.isArray(val) ? val : rawDealers
+            } else if (Array.isArray(first)) {
+              dealersArr = first
+            } else {
+              dealersArr = rawDealers
+            }
+          }
+          const numbersSet = new Set<string>()
+          for (const d of dealersArr) {
+            if (d != null) {
+              const k = String(d).trim()
+              venditDealerNummers.add(k)
+              numbersSet.add(k)
+            }
+          }
+          setCachedVenditDealerNumbers(numbersSet)
         }
-        const { data: stats } = await client.rpc('get_vendit_dealer_stats')
-        for (const row of stats ?? []) {
-          const d = (row as { dealer_nummer: string })?.dealer_nummer
-          const dt = (row as { last_updated: string })?.last_updated
-          if (d != null && dt) {
-            venditLaatstPerDealer.set(String(d).trim(), dt)
+        if (!cachedStats) {
+          let statsObj = statsRes?.data as unknown
+          if (Array.isArray(statsObj) && statsObj.length > 0 && typeof statsObj[0] === 'object') {
+            const first = statsObj[0] as Record<string, unknown>
+            statsObj = first.get_vendit_dealer_stats_json ?? Object.values(first)[0] ?? statsObj
+          }
+          if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
+            const toCache: Record<string, string> = {}
+            for (const [k, dt] of Object.entries(statsObj)) {
+              if (dt) {
+                const key = String(k).trim()
+                const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
+                venditLaatstPerDealer.set(key, dtStr)
+                toCache[key] = dtStr
+              }
+            }
+            setCachedVenditStats(toCache)
           }
         }
       } catch {
-        // Geen vendit-data
+        try {
+          const { data: dealers } = await client.rpc('get_vendit_dealer_numbers')
+          for (const row of dealers ?? []) {
+            const d = (row as { dealer_nummer: string })?.dealer_nummer
+            if (d != null) venditDealerNummers.add(String(d).trim())
+          }
+        } catch {}
+        try {
+          const { data: stats } = await client.rpc('get_vendit_dealer_stats')
+          for (const row of stats ?? []) {
+            const d = (row as { dealer_nummer: string })?.dealer_nummer
+            const dt = (row as { last_updated: string })?.last_updated
+            if (d != null && dt) venditLaatstPerDealer.set(String(d).trim(), dt)
+          }
+        } catch {}
       }
     }
   }
