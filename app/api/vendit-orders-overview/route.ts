@@ -107,18 +107,25 @@ export async function POST(request: NextRequest) {
       orders = Array.isArray(findData.entities) ? findData.entities : []
       totalCount = findData.paginationRowCount ?? orders.length
       currentOffset = findData.paginationOffset ?? currentOffset
-    } else if (findRes.status === 400) {
-      // Fallback: GetAllIds + GetMultiple
+    } else if (findRes.status === 400 || findRes.status === 500) {
+      // Fallback: GetAllIds + GetMultiple (Find faalt vaak met lege filters of 500)
       const idsRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetAllIds`, {
         method: 'GET',
         headers: { ApiKey: key, Token: token, Accept: 'application/json' },
         cache: 'no-store',
       })
+      const idsRaw = await idsRes.text()
       if (!idsRes.ok) {
-        const idsData = (await idsRes.json().catch(() => ({}))) as { message?: string }
-        return NextResponse.json({ error: idsData?.message ?? `Order-IDs ophalen mislukt: ${idsRes.status}` }, { status: 502 })
+        let errDetail: string
+        try {
+          const parsed = JSON.parse(idsRaw) as { message?: string; error?: string; Message?: string }
+          errDetail = parsed?.message ?? parsed?.error ?? parsed?.Message ?? idsRaw.slice(0, 200)
+        } catch {
+          errDetail = idsRaw.slice(0, 200)
+        }
+        return NextResponse.json({ error: `Order-IDs ophalen mislukt (${idsRes.status}): ${errDetail}` }, { status: 502 })
       }
-      const idsData = (await idsRes.json().catch(() => ({}))) as number[] | { items?: number[] }
+      const idsData = (() => { try { return JSON.parse(idsRaw) } catch { return [] } })() as number[] | { items?: number[] }
       const allIds = Array.isArray(idsData) ? idsData : (Array.isArray(idsData?.items) ? idsData.items : [])
       const offset = Number(paginationOffset) || 0
       const pageIds = allIds.slice(offset, offset + 100)
@@ -138,15 +145,22 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({ primaryKeys: pageIds }),
         cache: 'no-store',
       })
+      const multRaw = await multRes.text()
       if (!multRes.ok) {
-        const multData = (await multRes.json().catch(() => ({}))) as { message?: string }
-        return NextResponse.json({ error: multData?.message ?? `Orders ophalen mislukt: ${multRes.status}` }, { status: 502 })
+        let errDetail: string
+        try {
+          const parsed = JSON.parse(multRaw) as { message?: string; error?: string; Message?: string }
+          errDetail = parsed?.message ?? parsed?.error ?? parsed?.Message ?? multRaw.slice(0, 200)
+        } catch {
+          errDetail = multRaw.slice(0, 200)
+        }
+        return NextResponse.json({ error: `Orders ophalen mislukt (${multRes.status}): ${errDetail}` }, { status: 502 })
       }
-      const multData = (await multRes.json().catch(() => ({}))) as { items?: OrderEntity[] }
+      const multData = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { items?: OrderEntity[] }
       orders = Array.isArray(multData?.items) ? multData.items : (Array.isArray(multData) ? multData : [])
       currentOffset = offset
     } else {
-      const errMsg = findData?.message ?? findData?.error ?? `Orders ophalen mislukt: ${findRes.status}`
+      const errMsg = findData?.message ?? findData?.error ?? (findData as { Message?: string })?.Message ?? `Orders ophalen mislukt: ${findRes.status}. Probeer het later opnieuw.`
       return NextResponse.json({ error: errMsg }, { status: 502 })
     }
 
