@@ -65,7 +65,9 @@ export async function GET(request: NextRequest) {
     return w
   })
 
-  return NextResponse.json(winkels)
+  return NextResponse.json(winkels, {
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
+  })
 }
 
 function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' | 'Netherlands' {

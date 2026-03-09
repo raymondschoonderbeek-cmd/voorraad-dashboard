@@ -394,7 +394,7 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
 }
 
 export default function Dashboard() {
-  const { data: winkelsData = [], isLoading: winkelsLoading, mutate: mutateWinkels } = useSWR<Winkel[]>('/api/winkels', fetcher)
+  const { data: winkelsData = [], isLoading: winkelsLoading, mutate: mutateWinkels } = useSWR<Winkel[]>('/api/winkels', fetcher, { revalidateOnFocus: true })
   const winkels = Array.isArray(winkelsData) ? winkelsData : []
   const [geselecteerdeWinkel, setGeselecteerdeWinkel] = useState<Winkel | null>(null)
   const [producten, setProducten] = useState<Product[]>([])
@@ -534,6 +534,7 @@ export default function Dashboard() {
 
   async function selecteerWinkel(winkel: Winkel) {
     try { localStorage.setItem(WINKEL_STORAGE_KEY, String(winkel.id)) } catch {}
+    if (winkel.api_type === 'vendit') mutateWinkels()
     setVorigeStats(producten.length > 0 ? {
       producten: producten.length,
       voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
@@ -602,6 +603,7 @@ export default function Dashboard() {
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
+  const venditLaatstDatum = geselecteerdeWinkel ? (winkels.find(w => w.id === geselecteerdeWinkel!.id)?.vendit_laatst_datum ?? geselecteerdeWinkel.vendit_laatst_datum) : null
   const bron =
     geselecteerdeWinkel?.api_type ??
     (geselecteerdeWinkel?.wilmar_branch_id && geselecteerdeWinkel?.wilmar_organisation_id
@@ -905,9 +907,9 @@ export default function Dashboard() {
                         {bron === 'wilmar' ? 'Wilmar' : bron === 'vendit' ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {bron === 'vendit' && (
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title={geselecteerdeWinkel.vendit_laatst_datum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
-                          {geselecteerdeWinkel.vendit_laatst_datum ? (() => {
-                            const d = new Date(geselecteerdeWinkel.vendit_laatst_datum)
+                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
+                          {venditLaatstDatum ? (() => {
+                            const d = new Date(venditLaatstDatum)
                             const dag = d.getUTCDate()
                             const maand = d.toLocaleDateString('nl-NL', { month: 'long', timeZone: 'UTC' })
                             const uur = String(d.getUTCHours()).padStart(2, '0')
