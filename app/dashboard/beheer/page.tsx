@@ -27,7 +27,7 @@ type Winkel = {
   wilmar_organisation_id?: number
   wilmar_branch_id?: number
   wilmar_store_naam?: string
-  api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | null
+  api_type?: 'cyclesoftware' | 'wilmar' | 'vendit' | 'vendit_api' | null
   vendit_api_key?: string | null
   vendit_api_username?: string | null
   vendit_api_password?: string | null
@@ -77,7 +77,10 @@ export default function BeheerPage() {
   const [nieuwWinkelHuisnummer, setNieuwWinkelHuisnummer] = useState('')
   const [nieuwWinkelStad, setNieuwWinkelStad] = useState('')
   const [nieuwWinkelStraat, setNieuwWinkelStraat] = useState('')
-  const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar' | 'vendit'>('cyclesoftware')
+  const [nieuwWinkelApiType, setNieuwWinkelApiType] = useState<'cyclesoftware' | 'wilmar' | 'vendit' | 'vendit_api'>('cyclesoftware')
+  const [nieuwWinkelVenditApiKey, setNieuwWinkelVenditApiKey] = useState('')
+  const [nieuwWinkelVenditApiUsername, setNieuwWinkelVenditApiUsername] = useState('')
+  const [nieuwWinkelVenditApiPassword, setNieuwWinkelVenditApiPassword] = useState('')
   const [nieuwWinkelLand, setNieuwWinkelLand] = useState<'Netherlands' | 'Belgium' | ''>('')
   const [adresLoading, setAdresLoading] = useState(false)
   const [bewerkHuisnummer, setBewerkHuisnummer] = useState('')
@@ -441,19 +444,25 @@ export default function BeheerPage() {
   async function voegWinkelToe(e: React.FormEvent) {
     e.preventDefault()
     setWinkelLoading(true)
+    const payload: Record<string, unknown> = {
+      naam: nieuwWinkelNaam,
+      dealer_nummer: nieuwWinkelDealer,
+      postcode: nieuwWinkelPostcode,
+      straat: nieuwWinkelStraat || undefined,
+      huisnummer: nieuwWinkelHuisnummer || undefined,
+      stad: nieuwWinkelStad,
+      land: nieuwWinkelLand || undefined,
+      api_type: nieuwWinkelApiType,
+    }
+    if (nieuwWinkelApiType === 'vendit_api') {
+      payload.vendit_api_key = nieuwWinkelVenditApiKey.trim() || null
+      payload.vendit_api_username = nieuwWinkelVenditApiUsername.trim() || null
+      if (nieuwWinkelVenditApiPassword.trim()) payload.vendit_api_password = nieuwWinkelVenditApiPassword.trim()
+    }
     const res = await fetch('/api/winkels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        naam: nieuwWinkelNaam,
-        dealer_nummer: nieuwWinkelDealer,
-        postcode: nieuwWinkelPostcode,
-        straat: nieuwWinkelStraat || undefined,
-        huisnummer: nieuwWinkelHuisnummer || undefined,
-        stad: nieuwWinkelStad,
-        land: nieuwWinkelLand || undefined,
-        api_type: nieuwWinkelApiType,
-      }),
+      body: JSON.stringify(payload),
     })
     setNieuwWinkelNaam('')
     setNieuwWinkelDealer('')
@@ -463,6 +472,9 @@ export default function BeheerPage() {
     setNieuwWinkelStraat('')
     setNieuwWinkelLand('')
     setNieuwWinkelApiType('cyclesoftware')
+    setNieuwWinkelVenditApiKey('')
+    setNieuwWinkelVenditApiUsername('')
+    setNieuwWinkelVenditApiPassword('')
     setToonWinkelForm(false); setWinkelLoading(false)
     if (res.ok) {
       const data = await res.json()
@@ -564,7 +576,7 @@ export default function BeheerPage() {
           huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
           stad: String(r.stad || r.Stad || r.STAD || '').trim(),
           land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
-          api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined)),
+          api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'vendit_api' ? 'vendit_api' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined))),
         }
       }).filter(r => r.dealer_nummer)
       if (parsed.length === 0) {
@@ -680,9 +692,10 @@ export default function BeheerPage() {
     return winkels.filter(w => {
       const isWilmar = w.api_type === 'wilmar' || (w.wilmar_organisation_id != null && w.wilmar_branch_id != null)
       const isVendit = w.api_type === 'vendit'
-      const isCycle = !isWilmar && !isVendit
-      if (winkelFilterSysteem === 'cyclesoftware' && (isWilmar || isVendit)) return false
-      if (winkelFilterSysteem === 'wilmar' && (isCycle || isVendit)) return false
+      const isVenditApi = w.api_type === 'vendit_api'
+      const isCycle = !isWilmar && !isVendit && !isVenditApi
+      if (winkelFilterSysteem === 'cyclesoftware' && (isWilmar || isVendit || isVenditApi)) return false
+      if (winkelFilterSysteem === 'wilmar' && (isCycle || isVendit || isVenditApi)) return false
       if (winkelFilterSysteem === 'vendit' && (isWilmar || isCycle)) return false
       if (winkelFilterLand !== 'alle' && w.land !== winkelFilterLand) return false
       if (winkelFilterLocatie === 'zonder' && (w.lat != null || w.lng != null)) return false
@@ -1031,6 +1044,7 @@ export default function BeheerPage() {
                         { value: 'cyclesoftware', label: 'CycleSoftware', info: 'Standaard koppeling via dealer nummer' },
                         { value: 'wilmar', label: 'Wilmar', info: 'Gebruik Wilmar API met branch koppeling' },
                         { value: 'vendit', label: 'Vendit', info: 'Voorraad uit Supabase vendit_stock (dealer nummer)' },
+                        { value: 'vendit_api', label: 'Vendit API', info: 'Vendit Public API met eigen credentials' },
                       ].map(opt => (
                         <label key={opt.value} className="flex-1 min-w-[140px] cursor-pointer">
                           <input
@@ -1039,7 +1053,7 @@ export default function BeheerPage() {
                             value={opt.value}
                             checked={nieuwWinkelApiType === opt.value}
                             onChange={() =>
-                              setNieuwWinkelApiType(opt.value as 'cyclesoftware' | 'wilmar' | 'vendit')
+                              setNieuwWinkelApiType(opt.value as 'cyclesoftware' | 'wilmar' | 'vendit' | 'vendit_api')
                             }
                             className="sr-only"
                           />
@@ -1062,6 +1076,23 @@ export default function BeheerPage() {
                       ))}
                     </div>
                   </div>
+                  {nieuwWinkelApiType === 'vendit_api' && (
+                    <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                      <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API credentials</p>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>API Key *</label>
+                        <input type="text" placeholder="Vendit API key" value={nieuwWinkelVenditApiKey} onChange={e => setNieuwWinkelVenditApiKey(e.target.value)} className={inputClass} style={inputStyle} autoComplete="off" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Username *</label>
+                        <input type="text" placeholder="API username" value={nieuwWinkelVenditApiUsername} onChange={e => setNieuwWinkelVenditApiUsername(e.target.value)} className={inputClass} style={inputStyle} autoComplete="off" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Wachtwoord *</label>
+                        <input type="password" placeholder="API wachtwoord" value={nieuwWinkelVenditApiPassword} onChange={e => setNieuwWinkelVenditApiPassword(e.target.value)} className={inputClass} style={inputStyle} autoComplete="new-password" />
+                      </div>
+                    </div>
+                  )}
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
@@ -1124,6 +1155,7 @@ export default function BeheerPage() {
                         { value: 'cyclesoftware' as const, label: 'CycleSoftware', info: 'Gebruik dealer nummer voor voorraad' },
                         { value: 'wilmar' as const, label: 'Wilmar', info: 'Gebruik Wilmar koppeling (branch/organisation)' },
                         { value: 'vendit' as const, label: 'Vendit', info: 'Voorraad uit Supabase vendit_stock (dealer nummer)' },
+                        { value: 'vendit_api' as const, label: 'Vendit API', info: 'Vendit Public API met eigen credentials' },
                       ].map(opt => (
                         <label key={opt.value} className="flex-1 min-w-[140px] cursor-pointer">
                           <input
@@ -1166,8 +1198,8 @@ export default function BeheerPage() {
                     </div>
                   </div>
 
-                  {/* Vendit API toegang (alleen bij api_type vendit) */}
-                  {(bewerkWinkel.api_type ?? 'cyclesoftware') === 'vendit' && (
+                  {/* Vendit API toegang (alleen bij api_type vendit_api) */}
+                  {(bewerkWinkel.api_type ?? 'cyclesoftware') === 'vendit_api' && (
                     <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)' }}>
                       <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API toegang</p>
                       <p className="text-xs" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Credentials voor de Vendit Public API. Gebruik in module Vendit API Tester.</p>
@@ -1396,6 +1428,8 @@ export default function BeheerPage() {
                                 </span>
                               )}
                             </>
+                          ) : w.api_type === 'vendit_api' ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(99,102,241,0.15)', color: '#4f46e5', fontFamily: F }}>Vendit API</span>
                           ) : (
                             <>
                               <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)', fontFamily: F }}>CycleSoftware</span>
@@ -1520,7 +1554,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
               <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware of wilmar). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>

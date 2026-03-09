@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
   if (winkelError || !winkel) {
     return NextResponse.json({ error: 'Winkel niet gevonden' }, { status: 404 })
   }
-  if (winkel.api_type !== 'vendit') {
-    return NextResponse.json({ error: 'Winkel is geen Vendit-winkel' }, { status: 400 })
+  if (winkel.api_type !== 'vendit_api') {
+    return NextResponse.json({ error: 'Winkel is geen Vendit API-winkel. Selecteer systeem "Vendit API" en vul credentials in bij Beheer.' }, { status: 400 })
   }
   const key = (winkel.vendit_api_key ?? '').trim()
   const username = (winkel.vendit_api_username ?? '').trim()

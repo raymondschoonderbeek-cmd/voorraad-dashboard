@@ -183,6 +183,13 @@ export async function GET(request: NextRequest) {
         vendit_laatst_datum: laatstDatum,
       }
     }
+    if (base.api_type === 'vendit_api') {
+      const hasVenditApiCreds =
+        (w.vendit_api_key ?? '').trim() !== '' &&
+        (w.vendit_api_username ?? '').trim() !== '' &&
+        (w.vendit_api_password ?? '').trim() !== ''
+      return { ...base, has_vendit_api_credentials: hasVenditApiCreds }
+    }
     return base
   })
 

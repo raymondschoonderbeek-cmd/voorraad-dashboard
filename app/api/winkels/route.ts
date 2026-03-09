@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json()
-  const { naam, dealer_nummer, postcode, straat, huisnummer, stad, land, api_type } = body
+  const { naam, dealer_nummer, postcode, straat, huisnummer, stad, land, api_type, vendit_api_key, vendit_api_username, vendit_api_password } = body
 
   if (!naam || !dealer_nummer) {
     return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
@@ -137,20 +137,27 @@ export async function POST(request: NextRequest) {
   const straatVoorCoords = straat && huisnummer ? `${straat} ${huisnummer}` : straat
   const { lat, lng } = (postcode || straatVoorCoords) ? await haalCoordsOp(postcode, straatVoorCoords, stad, landVal) : { lat: null, lng: null }
 
+  const insertData: Record<string, unknown> = {
+    naam,
+    dealer_nummer,
+    postcode: postcode ?? null,
+    straat: straat ?? null,
+    huisnummer: huisnummer ?? null,
+    stad: stad ?? null,
+    land: landVal,
+    lat,
+    lng,
+    api_type: api_type ?? 'cyclesoftware',
+  }
+  if (api_type === 'vendit_api') {
+    insertData.vendit_api_key = (vendit_api_key ?? '').trim() || null
+    insertData.vendit_api_username = (vendit_api_username ?? '').trim() || null
+    if ((vendit_api_password ?? '').trim()) insertData.vendit_api_password = (vendit_api_password ?? '').trim()
+  }
+
   const { data, error } = await supabase
     .from('winkels')
-    .insert([{
-      naam,
-      dealer_nummer,
-      postcode: postcode ?? null,
-      straat: straat ?? null,
-      huisnummer: huisnummer ?? null,
-      stad: stad ?? null,
-      land: landVal,
-      lat,
-      lng,
-      api_type: api_type ?? 'cyclesoftware',
-    }])
+    .insert([insertData])
     .select()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

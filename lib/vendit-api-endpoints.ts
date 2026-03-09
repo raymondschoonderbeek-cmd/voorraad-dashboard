@@ -32,3 +32,6 @@ export const VENDIT_GET_ENDPOINTS: VenditEndpoint[] = [
   { path: '/VenditPublicApi/Lookups/AvailabilityStatuses/GetAll', label: 'Lookups – AvailabilityStatuses GetAll', params: [] },
   { path: '/VenditPublicApi/Utils/CheckApiKeyAndToken', label: 'Utils – CheckApiKeyAndToken', params: [] },
 ]
+
+/** Endpoints zonder parameters, geschikt voor Discovery-scan */
+export const VENDIT_DISCOVERY_ENDPOINTS = VENDIT_GET_ENDPOINTS.filter(e => !e.params?.length)
