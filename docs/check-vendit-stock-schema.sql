@@ -11,3 +11,6 @@ ORDER BY ordinal_position;
 SELECT *
 FROM vendit_stock
 LIMIT 1;
+
+-- 3. Unieke dealer nummers (controleer kolomnaam in stap 1)
+-- SELECT DISTINCT dealer_number FROM vendit_stock LIMIT 10;

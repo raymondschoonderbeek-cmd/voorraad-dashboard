@@ -26,7 +26,11 @@ export async function GET(request: NextRequest) {
   const venditLaatstPerDealer = new Map<string, string>()
   if (venditWinkels.length > 0) {
     try {
-      const { data: statsObj } = await supabase.rpc('get_vendit_dealer_stats_json')
+      let statsObj = await supabase.rpc('get_vendit_dealer_stats_json').then(r => r.data)
+      if (Array.isArray(statsObj) && statsObj.length > 0 && typeof statsObj[0] === 'object') {
+        const first = statsObj[0] as Record<string, unknown>
+        statsObj = first.get_vendit_dealer_stats_json ?? Object.values(first)[0] ?? statsObj
+      }
       if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
         for (const [k, dt] of Object.entries(statsObj)) {
           if (dt) {

@@ -99,17 +99,32 @@ export async function GET(request: NextRequest) {
         client.rpc('get_vendit_dealer_numbers_json'),
         client.rpc('get_vendit_dealer_stats_json'),
       ])
-      const dealersArr = dealersRes?.data as unknown
-      if (Array.isArray(dealersArr)) {
-        for (const d of dealersArr) {
-          if (d != null) {
-            const n = normalizeDealer(d)
-            venditDealerNummers.add(n)
-            venditDealerNummers.add(String(d).trim())
-          }
+      // Supabase kan json direct of gewrapped retourneren
+      let dealersArr: unknown[] = []
+      const rawDealers = dealersRes?.data as unknown
+      if (Array.isArray(rawDealers)) {
+        const first = rawDealers[0]
+        if (first != null && typeof first === 'object' && !Array.isArray(first)) {
+          const val = (first as Record<string, unknown>).get_vendit_dealer_numbers_json ?? Object.values(first)[0]
+          dealersArr = Array.isArray(val) ? val : rawDealers
+        } else if (Array.isArray(first)) {
+          dealersArr = first
+        } else {
+          dealersArr = rawDealers
         }
       }
-      const statsObj = statsRes?.data as unknown
+      for (const d of dealersArr) {
+        if (d != null) {
+          const n = normalizeDealer(d)
+          venditDealerNummers.add(n)
+          venditDealerNummers.add(String(d).trim())
+        }
+      }
+      let statsObj = statsRes?.data as unknown
+      if (Array.isArray(statsObj) && statsObj.length > 0 && typeof statsObj[0] === 'object') {
+        const first = statsObj[0] as Record<string, unknown>
+        statsObj = first.get_vendit_dealer_stats_json ?? Object.values(first)[0] ?? statsObj
+      }
       if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
         for (const [k, dt] of Object.entries(statsObj)) {
           if (dt) {
