@@ -13,12 +13,12 @@ declare
   q text;
   res json;
 begin
-  -- Zoek dealer-kolom (dealer_number of dealer_nummer)
+  -- Zoek dealer-kolom (volgorde: dealer_number, dealer_nummer, dealer_id)
   select column_name into dealer_col
   from information_schema.columns
   where table_schema = 'public' and table_name = 'vendit_stock'
-    and column_name in ('dealer_number', 'dealer_nummer')
-  order by case column_name when 'dealer_number' then 1 else 2 end
+    and column_name in ('dealer_number', 'dealer_nummer', 'dealer_id')
+  order by case column_name when 'dealer_number' then 1 when 'dealer_nummer' then 2 else 3 end
   limit 1;
 
   if dealer_col is null then
@@ -51,8 +51,8 @@ begin
   select column_name into dealer_col
   from information_schema.columns
   where table_schema = 'public' and table_name = 'vendit_stock'
-    and column_name in ('dealer_number', 'dealer_nummer')
-  order by case column_name when 'dealer_number' then 1 else 2 end
+    and column_name in ('dealer_number', 'dealer_nummer', 'dealer_id')
+  order by case column_name when 'dealer_number' then 1 when 'dealer_nummer' then 2 else 3 end
   limit 1;
 
   select c.column_name into ts_col

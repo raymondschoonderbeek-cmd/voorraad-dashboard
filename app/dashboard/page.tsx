@@ -900,7 +900,7 @@ export default function Dashboard() {
                         {bron === 'wilmar' ? 'Wilmar' : bron === 'vendit' ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {bron === 'vendit' && (
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title="Laatste voorraadsync uit vendit_stock">
+                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title={geselecteerdeWinkel.vendit_laatst_datum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
                           {geselecteerdeWinkel.vendit_laatst_datum ? (() => {
                             const d = new Date(geselecteerdeWinkel.vendit_laatst_datum)
                             const dag = d.getUTCDate()

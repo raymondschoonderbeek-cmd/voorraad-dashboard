@@ -1305,10 +1305,10 @@ export default function BeheerPage() {
                                 <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="Winkel staat in vendit_stock dataset">✓ In dataset</span>
                               )}
                               {w.vendit_in_dataset === false && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Geen data voor dit dealer nummer in vendit_stock">— Niet in dataset</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title={`Geen data beschikbaar: dealer #${w.dealer_nummer ?? ''} komt niet voor in vendit_stock. Controleer of het nummer exact overeenkomt (bijv. 094 ≠ 94).`}>— Niet in dataset</span>
                               )}
                               {w.vendit_in_dataset && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.55)', fontFamily: F }} title="Laatste datum voorraad in vendit_stock">
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.55)', fontFamily: F }} title={w.vendit_laatst_datum ? 'Laatste datum voorraad in vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
                                   {w.vendit_laatst_datum
                                     ? (() => {
                                         const d = new Date(w.vendit_laatst_datum)

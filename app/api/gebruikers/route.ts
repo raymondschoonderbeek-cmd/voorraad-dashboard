@@ -87,21 +87,19 @@ export async function GET(request: NextRequest) {
   const venditDealerNummers = new Set<string>()
   const venditLaatstPerDealer = new Map<string, string>() // dealer_nummer -> ISO datum
   const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
-  function normalizeDealer(v: unknown): string {
-    const s = String(v ?? '').trim()
-    if (!s) return s
-    const withoutLeadingZeros = s.replace(/^0+/, '') || '0'
-    return withoutLeadingZeros
-  }
   if (venditWinkels.length > 0) {
     try {
       const [dealersRes, statsRes] = await Promise.all([
         client.rpc('get_vendit_dealer_numbers_json'),
         client.rpc('get_vendit_dealer_stats_json'),
       ])
+      if (dealersRes?.error) throw new Error(dealersRes.error.message)
       // Supabase kan json direct of gewrapped retourneren
       let dealersArr: unknown[] = []
-      const rawDealers = dealersRes?.data as unknown
+      let rawDealers = dealersRes?.data as unknown
+      if (typeof rawDealers === 'string') {
+        try { rawDealers = JSON.parse(rawDealers) } catch { rawDealers = null }
+      }
       if (Array.isArray(rawDealers)) {
         const first = rawDealers[0]
         if (first != null && typeof first === 'object' && !Array.isArray(first)) {
@@ -115,9 +113,8 @@ export async function GET(request: NextRequest) {
       }
       for (const d of dealersArr) {
         if (d != null) {
-          const n = normalizeDealer(d)
-          venditDealerNummers.add(n)
-          venditDealerNummers.add(String(d).trim())
+          const k = String(d).trim()
+          venditDealerNummers.add(k)
         }
       }
       let statsObj = statsRes?.data as unknown
@@ -128,10 +125,9 @@ export async function GET(request: NextRequest) {
       if (statsObj && typeof statsObj === 'object' && !Array.isArray(statsObj)) {
         for (const [k, dt] of Object.entries(statsObj)) {
           if (dt) {
-            const kNorm = normalizeDealer(k)
+            const key = String(k).trim()
             const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
-            venditLaatstPerDealer.set(k.trim(), dtStr)
-            venditLaatstPerDealer.set(kNorm, dtStr)
+            venditLaatstPerDealer.set(key, dtStr)
           }
         }
       }
@@ -142,7 +138,6 @@ export async function GET(request: NextRequest) {
         for (const row of dealers ?? []) {
           const d = (row as { dealer_nummer: string })?.dealer_nummer
           if (d != null) {
-            venditDealerNummers.add(normalizeDealer(d))
             venditDealerNummers.add(String(d).trim())
           }
         }
@@ -151,9 +146,7 @@ export async function GET(request: NextRequest) {
           const d = (row as { dealer_nummer: string })?.dealer_nummer
           const dt = (row as { last_updated: string })?.last_updated
           if (d != null && dt) {
-            const k = String(d).trim()
-            venditLaatstPerDealer.set(k, dt)
-            venditLaatstPerDealer.set(normalizeDealer(d), dt)
+            venditLaatstPerDealer.set(String(d).trim(), dt)
           }
         }
       } catch {
@@ -165,9 +158,8 @@ export async function GET(request: NextRequest) {
   const winkels = (winkelsRaw ?? []).map((w: any) => {
     if (w.api_type === 'vendit') {
       const key = String(w.dealer_nummer ?? '').trim()
-      const keyNorm = normalizeDealer(w.dealer_nummer)
-      const inDataset = venditDealerNummers.has(key) || venditDealerNummers.has(keyNorm)
-      const laatstDatum = venditLaatstPerDealer.get(key) ?? venditLaatstPerDealer.get(keyNorm) ?? null
+      const inDataset = venditDealerNummers.has(key)
+      const laatstDatum = venditLaatstPerDealer.get(key) ?? null
       return {
         ...w,
         vendit_in_dataset: inDataset,
