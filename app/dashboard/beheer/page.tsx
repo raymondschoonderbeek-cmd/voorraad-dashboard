@@ -509,7 +509,7 @@ export default function BeheerPage() {
     setBewerkWinkel(null)
     setWilmarBranchId(null)
     setWilmarOrganisationId(null)
-    setWinkels(prev => prev.map(w => w.id === payload.id ? { ...w, ...payload } : w))
+    setWinkels(prev => prev.map(w => w.id === payload.id ? { ...w, ...payload, huisnummer: payload.huisnummer ?? undefined } as Winkel : w))
   }
 
   async function verwijderWinkel(id: number, naam: string) {
