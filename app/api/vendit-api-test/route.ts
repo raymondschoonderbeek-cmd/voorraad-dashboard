@@ -27,7 +27,13 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json().catch(() => ({}))
-  const { winkel_id, path, params: pathParams } = body as { winkel_id?: number; path?: string; params?: Record<string, string> }
+  const { winkel_id, path, params: pathParams, method: reqMethod, body: reqBody } = body as {
+    winkel_id?: number
+    path?: string
+    params?: Record<string, string>
+    method?: 'GET' | 'POST'
+    body?: string
+  }
 
   if (!winkel_id || !path?.trim()) {
     return NextResponse.json({ error: 'winkel_id en path zijn verplicht' }, { status: 400 })
@@ -61,16 +67,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const isPost = reqMethod === 'POST'
   try {
     const token = await getVenditToken(key, username, password)
     const url = `${VENDIT_BASE}${resolvedPath}`
+    const headers: Record<string, string> = {
+      ApiKey: key,
+      Token: token,
+      Accept: 'application/json',
+    }
+    if (isPost) headers['Content-Type'] = 'application/json'
     const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        ApiKey: key,
-        Token: token,
-        Accept: 'application/json',
-      },
+      method: isPost ? 'POST' : 'GET',
+      headers,
+      body: isPost && reqBody != null ? reqBody : undefined,
       cache: 'no-store',
     })
     const text = await res.text()

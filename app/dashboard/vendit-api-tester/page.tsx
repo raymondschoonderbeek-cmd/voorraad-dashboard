@@ -150,6 +150,7 @@ export default function VenditApiTesterPage() {
   const [selectedWinkelId, setSelectedWinkelId] = useState<number | ''>('')
   const [selectedEndpoint, setSelectedEndpoint] = useState<string>('')
   const [params, setParams] = useState<Record<string, string>>({})
+  const [postBody, setPostBody] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ status?: number; statusText?: string; url?: string; data?: unknown; error?: string } | null>(null)
 
@@ -172,6 +173,14 @@ export default function VenditApiTesterPage() {
       setParams({})
     }
   }, [selectedEndpoint, endpoint?.params])
+
+  useEffect(() => {
+    if (endpoint?.method === 'POST' && endpoint?.bodyPlaceholder) {
+      setPostBody(endpoint.bodyPlaceholder)
+    } else {
+      setPostBody('')
+    }
+  }, [selectedEndpoint, endpoint?.method, endpoint?.bodyPlaceholder])
 
   async function runScan() {
     if (!selectedWinkelId) return
@@ -216,6 +225,8 @@ export default function VenditApiTesterPage() {
           winkel_id: selectedWinkelId,
           path: selectedEndpoint,
           params: endpoint?.params?.length ? params : undefined,
+          method: endpoint?.method,
+          body: endpoint?.method === 'POST' && postBody.trim() ? postBody.trim() : undefined,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -344,12 +355,12 @@ export default function VenditApiTesterPage() {
         <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)', boxShadow: '0 2px 12px rgba(13,31,78,0.04)' }}>
           <h1 className="text-lg font-bold mb-4" style={{ color: DYNAMO_BLUE }}>Vendit Public API testen</h1>
           <p className="text-sm mb-6" style={{ color: 'rgba(13,31,78,0.5)' }}>
-            Selecteer een Vendit-winkel met geconfigureerde API-credentials en een GET-endpoint. Vul eventuele parameters in en voer de call uit.
+            Selecteer een Vendit-winkel met geconfigureerde API-credentials en een endpoint. Vul eventuele parameters of request body in en voer de call uit.
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(13,31,78,0.6)' }}>GET Endpoint</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(13,31,78,0.6)' }}>Endpoint</label>
               <select
                 value={selectedEndpoint}
                 onChange={e => setSelectedEndpoint(e.target.value)}
@@ -362,6 +373,20 @@ export default function VenditApiTesterPage() {
                 ))}
               </select>
             </div>
+
+            {endpoint?.method === 'POST' && (
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(13,31,78,0.6)' }}>Request body (JSON)</label>
+                <textarea
+                  placeholder={endpoint?.bodyPlaceholder}
+                  value={postBody}
+                  onChange={e => setPostBody(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-lg px-3 py-2 text-sm font-mono border"
+                  style={{ background: 'rgba(13,31,78,0.02)', borderColor: 'rgba(13,31,78,0.12)' }}
+                />
+              </div>
+            )}
 
             {hasParams && endpoint?.params && (
               <div className="space-y-3">

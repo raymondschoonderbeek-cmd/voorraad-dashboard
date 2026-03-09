@@ -7,6 +7,8 @@ export type VenditEndpoint = {
   path: string
   label: string
   params: { name: string; placeholder: string }[]
+  method?: 'GET' | 'POST'
+  bodyPlaceholder?: string
 }
 
 export const VENDIT_GET_ENDPOINTS: VenditEndpoint[] = [
@@ -32,6 +34,10 @@ export const VENDIT_GET_ENDPOINTS: VenditEndpoint[] = [
   { path: '/VenditPublicApi/Orders/GetWithDetails/{id}', label: 'Orders – Met details (producten, aanbetalingen)', params: [{ name: 'id', placeholder: 'Order ID' }] },
   { path: '/VenditPublicApi/Orders/GetForCustomer/{customerId}', label: 'Orders – Per klant', params: [{ name: 'customerId', placeholder: 'Customer ID' }] },
   { path: '/VenditPublicApi/Orders/GetAllIds', label: 'Orders – GetAllIds', params: [] },
+  { path: '/VenditPublicApi/Orders/Find', label: 'Orders – Find (POST, overzicht zonder IDs)', params: [], method: 'POST', bodyPlaceholder: '{"fieldFilters": [], "paginationOffset": 0, "includeEntities": true}' },
+  { path: '/VenditPublicApi/Orders/GetMultiple', label: 'Orders – GetMultiple (POST)', params: [], method: 'POST', bodyPlaceholder: '{"primaryKeys": [1, 2, 3]}' },
+  { path: '/VenditPublicApi/StockOfficeOrders/GetAll', label: 'StockOfficeOrders – GetAll (stock transfers)', params: [] },
+  { path: '/VenditPublicApi/StockOfficeTransfers/GetAll', label: 'StockOfficeTransfers – GetAll (lopende transfers)', params: [] },
   { path: '/VenditPublicApi/Suppliers/GetAllIds', label: 'Suppliers – GetAllIds', params: [] },
   { path: '/VenditPublicApi/Suppliers/{id}', label: 'Suppliers – By ID', params: [{ name: 'id', placeholder: 'Supplier ID' }] },
   { path: '/VenditPublicApi/PurchaseOrders/{id}', label: 'PurchaseOrders – By ID', params: [{ name: 'id', placeholder: 'PurchaseOrder ID' }] },
@@ -69,5 +75,5 @@ export const VENDIT_GET_ENDPOINTS: VenditEndpoint[] = [
   { path: '/VenditPublicApi/Utils/CheckApiKeyAndToken', label: 'Utils – CheckApiKeyAndToken', params: [] },
 ]
 
-/** Endpoints zonder parameters, geschikt voor Discovery-scan */
-export const VENDIT_DISCOVERY_ENDPOINTS = VENDIT_GET_ENDPOINTS.filter(e => !e.params?.length)
+/** Endpoints zonder parameters, geschikt voor Discovery-scan (alleen GET) */
+export const VENDIT_DISCOVERY_ENDPOINTS = VENDIT_GET_ENDPOINTS.filter(e => !e.params?.length && e.method !== 'POST')
