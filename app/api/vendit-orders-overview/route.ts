@@ -79,15 +79,19 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'application/json',
     }
 
-    // 1. Orders/Find met includeEntities: true
+    let orders: OrderEntity[] = []
+    let totalCount = 0
+    let currentOffset = Number(paginationOffset) || 0
+
+    // Probeer eerst Orders/Find; bij 400 gebruik GetAllIds + GetMultiple
+    const findBody = {
+      paginationOffset: Number(paginationOffset) || 0,
+      includeEntities: true,
+    }
     const findRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/Find`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        fieldFilters: [],
-        paginationOffset: Number(paginationOffset) || 0,
-        includeEntities: true,
-      }),
+      body: JSON.stringify(findBody),
       cache: 'no-store',
     })
     const findData = (await findRes.json().catch(() => ({}))) as {
@@ -95,20 +99,62 @@ export async function POST(request: NextRequest) {
       results?: number[]
       paginationRowCount?: number
       paginationOffset?: number
-    }
-    if (!findRes.ok) {
-      const errMsg = (findData as { message?: string })?.message ?? `Orders ophalen mislukt: ${findRes.status}`
-      return NextResponse.json({ error: errMsg }, { status: 502 })
+      message?: string
+      error?: string
     }
 
-    const orders = Array.isArray(findData.entities) ? findData.entities : []
-    const totalCount = findData.paginationRowCount ?? orders.length
+    if (findRes.ok) {
+      orders = Array.isArray(findData.entities) ? findData.entities : []
+      totalCount = findData.paginationRowCount ?? orders.length
+      currentOffset = findData.paginationOffset ?? currentOffset
+    } else if (findRes.status === 400) {
+      // Fallback: GetAllIds + GetMultiple
+      const idsRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetAllIds`, {
+        method: 'GET',
+        headers: { ApiKey: key, Token: token, Accept: 'application/json' },
+        cache: 'no-store',
+      })
+      if (!idsRes.ok) {
+        const idsData = (await idsRes.json().catch(() => ({}))) as { message?: string }
+        return NextResponse.json({ error: idsData?.message ?? `Order-IDs ophalen mislukt: ${idsRes.status}` }, { status: 502 })
+      }
+      const idsData = (await idsRes.json().catch(() => ({}))) as number[] | { items?: number[] }
+      const allIds = Array.isArray(idsData) ? idsData : (Array.isArray(idsData?.items) ? idsData.items : [])
+      const offset = Number(paginationOffset) || 0
+      const pageIds = allIds.slice(offset, offset + 100)
+      totalCount = allIds.length
+
+      if (pageIds.length === 0) {
+        return NextResponse.json({
+          orders: [],
+          totalCount,
+          paginationOffset: offset,
+        })
+      }
+
+      const multRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetMultiple`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ primaryKeys: pageIds }),
+        cache: 'no-store',
+      })
+      if (!multRes.ok) {
+        const multData = (await multRes.json().catch(() => ({}))) as { message?: string }
+        return NextResponse.json({ error: multData?.message ?? `Orders ophalen mislukt: ${multRes.status}` }, { status: 502 })
+      }
+      const multData = (await multRes.json().catch(() => ({}))) as { items?: OrderEntity[] }
+      orders = Array.isArray(multData?.items) ? multData.items : (Array.isArray(multData) ? multData : [])
+      currentOffset = offset
+    } else {
+      const errMsg = findData?.message ?? findData?.error ?? `Orders ophalen mislukt: ${findRes.status}`
+      return NextResponse.json({ error: errMsg }, { status: 502 })
+    }
 
     if (orders.length === 0) {
       return NextResponse.json({
         orders: [],
         totalCount,
-        paginationOffset: findData.paginationOffset ?? paginationOffset,
+        paginationOffset: currentOffset,
       })
     }
 
@@ -142,7 +188,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       orders: enriched,
       totalCount,
-      paginationOffset: findData.paginationOffset ?? paginationOffset,
+      paginationOffset: currentOffset,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Onbekende fout'
