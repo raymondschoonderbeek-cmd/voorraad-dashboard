@@ -163,6 +163,8 @@ export default function VenditApiTesterPage() {
 
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [orders, setOrders] = useState<{ customerOrderHeaderId?: number; customerOrderNumber?: string; creationDatetime?: string; customerId?: number; customerName?: string; orderStatusId?: number; [key: string]: unknown }[]>([])
+  const [orderLines, setOrderLines] = useState<Record<string, unknown>[]>([])
+  const [ordersIncludeDetails, setOrdersIncludeDetails] = useState(false)
   const [ordersTotalCount, setOrdersTotalCount] = useState(0)
   const [ordersPaginationOffset, setOrdersPaginationOffset] = useState(0)
   const [ordersError, setOrdersError] = useState<string | null>(null)
@@ -238,29 +240,33 @@ export default function VenditApiTesterPage() {
       const res = await fetch('/api/vendit-orders-overview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ winkel_id: selectedWinkelId, paginationOffset: offset }),
+        body: JSON.stringify({ winkel_id: selectedWinkelId, paginationOffset: offset, includeDetails: ordersIncludeDetails }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setOrdersError(data.error ?? `HTTP ${res.status}`)
         setOrders([])
+        setOrderLines([])
       } else {
         setOrders(data.orders ?? [])
+        setOrderLines(data.orderLines ?? [])
         setOrdersTotalCount(data.totalCount ?? 0)
         setOrdersPaginationOffset(data.paginationOffset ?? offset)
       }
     } catch (err) {
       setOrdersError(err instanceof Error ? err.message : 'Netwerkfout')
       setOrders([])
+      setOrderLines([])
     }
     setOrdersLoading(false)
   }
 
+  const ordersDisplayData = orderLines.length > 0 ? orderLines : orders
   const ordersFiltered = useMemo(() => {
-    if (!ordersSearch.trim()) return orders
+    if (!ordersSearch.trim()) return ordersDisplayData
     const q = ordersSearch.toLowerCase()
-    return orders.filter(o => JSON.stringify(o).toLowerCase().includes(q))
-  }, [orders, ordersSearch])
+    return ordersDisplayData.filter(o => JSON.stringify(o).toLowerCase().includes(q))
+  }, [ordersDisplayData, ordersSearch])
 
   async function loadStock() {
     if (!selectedWinkelId) return
@@ -396,7 +402,16 @@ export default function VenditApiTesterPage() {
           <p className="text-sm mb-4" style={{ color: 'rgba(13,31,78,0.5)' }}>
             Haal alle orders op met klantnamen voor de geselecteerde winkel.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ordersIncludeDetails}
+                onChange={e => setOrdersIncludeDetails(e.target.checked)}
+                className="rounded accent-blue-600"
+              />
+              <span className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.8)' }}>Inclusief artikel details</span>
+            </label>
             <button
               onClick={() => loadOrders(0)}
               disabled={ordersLoading || !selectedWinkelId}
@@ -415,7 +430,9 @@ export default function VenditApiTesterPage() {
             <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
               <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(13,31,78,0.04)', borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
                 <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
-                  {ordersTotalCount} orders totaal · Pagina {Math.floor(ordersPaginationOffset / ORDERS_PAGE_SIZE) + 1}
+                  {ordersTotalCount} orders totaal
+                  {orderLines.length > 0 && ` · ${orderLines.length} regels (artikelen)`}
+                  {' · Pagina '}{Math.floor(ordersPaginationOffset / ORDERS_PAGE_SIZE) + 1}
                 </span>
                 <div className="flex items-center gap-2">
                   <input

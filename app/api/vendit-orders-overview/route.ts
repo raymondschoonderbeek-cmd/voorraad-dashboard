@@ -25,6 +25,7 @@ type OrderEntity = {
   creationDatetime?: string
   customerId?: number
   orderStatusId?: number
+  orderDetails?: { items?: Record<string, unknown>[] }
   [key: string]: unknown
 }
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json().catch(() => ({}))
-  const { winkel_id, paginationOffset = 0 } = body as { winkel_id?: number; paginationOffset?: number }
+  const { winkel_id, paginationOffset = 0, includeDetails = false } = body as { winkel_id?: number; paginationOffset?: number; includeDetails?: boolean }
 
   if (!winkel_id) {
     return NextResponse.json({ error: 'winkel_id is verplicht' }, { status: 400 })
@@ -172,7 +173,44 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 2. Unieke customer IDs verzamelen
+    // 2. Optioneel: GetWithDetails per order voor artikel details (orderDetails)
+    if (includeDetails) {
+      const CONCURRENCY = 5
+      const orderIds = orders.map(o => o.customerOrderHeaderId).filter((id): id is number => typeof id === 'number' && id > 0)
+      const detailsResults: OrderEntity[] = []
+      for (let i = 0; i < orderIds.length; i += CONCURRENCY) {
+        const batch = orderIds.slice(i, i + CONCURRENCY)
+        const batchResults = await Promise.all(
+          batch.map(async (id) => {
+            try {
+              const res = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetWithDetails/${id}`, {
+                method: 'GET',
+                headers: { ApiKey: key, Token: token, Accept: 'application/json' },
+                cache: 'no-store',
+              })
+              if (!res.ok) return null
+              return (await res.json().catch(() => null)) as OrderEntity
+            } catch {
+              return null
+            }
+          })
+        )
+        detailsResults.push(...batchResults.filter((r): r is OrderEntity => r != null))
+      }
+      const detailsMap = new Map<number, OrderEntity>()
+      for (const d of detailsResults) {
+        const id = d.customerOrderHeaderId
+        if (id != null) detailsMap.set(id, d)
+      }
+      for (let i = 0; i < orders.length; i++) {
+        const o = orders[i]
+        const id = o.customerOrderHeaderId
+        const full = id != null ? detailsMap.get(id) : null
+        if (full) orders[i] = { ...o, ...full }
+      }
+    }
+
+    // 3. Unieke customer IDs verzamelen
     const customerIds = [...new Set(orders.map(o => o.customerId).filter((id): id is number => typeof id === 'number' && id > 0))]
 
     const customersMap: Record<number, string> = {}
@@ -199,8 +237,30 @@ export async function POST(request: NextRequest) {
       customerName: o.customerId ? (customersMap[o.customerId] ?? `Klant #${o.customerId}`) : '—',
     }))
 
+    // Platgeslagen orderregels voor tabelweergave (één rij per artikel)
+    let orderLines: Record<string, unknown>[] = []
+    if (includeDetails) {
+      for (const o of enriched) {
+        const od = o.orderDetails as { items?: Record<string, unknown>[] } | Record<string, unknown>[] | undefined
+        const items = Array.isArray(od) ? od : (od?.items ?? [])
+        if (items.length === 0) {
+          orderLines.push({ ...o, _rowType: 'order_only' })
+        } else {
+          for (const item of items) {
+            const { orderDetails: _od, ...orderWithoutDetails } = o
+            orderLines.push({
+              ...orderWithoutDetails,
+              ...item,
+              _rowType: 'order_line',
+            })
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       orders: enriched,
+      orderLines: includeDetails ? orderLines : undefined,
       totalCount,
       paginationOffset: currentOffset,
     })
