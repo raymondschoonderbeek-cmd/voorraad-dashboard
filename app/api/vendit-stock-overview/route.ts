@@ -148,12 +148,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Brands, Offices, Verkoopprijzen, ProductKinds, ProductGroups ophalen (parallel)
+    // 3. Brands, Offices, ProductKinds, ProductGroups ophalen (parallel)
     const groupIds = [...new Set(Object.values(productsMap).map(p => p.groupId).filter((id): id is number => typeof id === 'number' && id > 0))]
-    const [brandsRes, officesRes, pricesRes, kindsRes, groupsRes] = await Promise.all([
+    const [brandsRes, officesRes, kindsRes, groupsRes] = await Promise.all([
       fetch(`${VENDIT_BASE}/VenditPublicApi/Brands/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
       fetch(`${VENDIT_BASE}/VenditPublicApi/Offices/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
-      fetch(`${VENDIT_BASE}/VenditPublicApi/Products/GetProductSalePricesChangedSince/0`, { method: 'GET', headers, cache: 'no-store' }),
       fetch(`${VENDIT_BASE}/VenditPublicApi/Lookups/ProductKinds/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
       groupIds.length > 0
         ? fetch(`${VENDIT_BASE}/VenditPublicApi/ProductGroups/GetMultiple`, {
@@ -164,6 +163,44 @@ export async function POST(request: NextRequest) {
           })
         : Promise.resolve({ ok: true, json: async () => ({ items: [] }) }),
     ])
+
+    // 4. Prijzen per product ophalen (GetPrices + GetPurchasePrices) - betrouwbaarder dan GetProductSalePricesChangedSince
+    const pricesMap = new Map<string, { salesPriceEx?: number; recommendedSalesPriceEx?: number; purchasePriceEx?: number }>()
+    const pricePromises = productIds.map(async pid => {
+      const [salesRes, purchaseRes] = await Promise.all([
+        fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetPrices/0/-1`, { method: 'GET', headers, cache: 'no-store' }),
+        fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetPurchasePrices/0/-1`, { method: 'GET', headers, cache: 'no-store' }),
+      ])
+      return { pid, salesRes, purchaseRes }
+    })
+    const priceResults = await Promise.all(pricePromises)
+    for (const { pid, salesRes, purchaseRes } of priceResults) {
+      const salesData = (await salesRes.json().catch(() => ({}))) as { items?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>
+      const salesItems = Array.isArray(salesData) ? salesData : (Array.isArray((salesData as { items?: unknown }).items) ? (salesData as { items: Array<Record<string, unknown>> }).items : [])
+      for (const pr of salesItems) {
+        const oid = (pr.officeId ?? pr.OfficeId ?? 0) as number
+        const scid = (pr.productSizeColorId ?? pr.ProductSizeColorId ?? 0) as number
+        const key = `${pid}|${oid}|${scid}`
+        const salesEx = (pr.salesPriceEx ?? pr.SalesPriceEx) as number | undefined
+        const recEx = (pr.recommendedSalesPriceEx ?? pr.RecommendedSalesPriceEx) as number | undefined
+        if (pid > 0) {
+          const existing = pricesMap.get(key) ?? {}
+          pricesMap.set(key, { ...existing, salesPriceEx: salesEx, recommendedSalesPriceEx: recEx })
+        }
+      }
+      const purchaseData = (await purchaseRes.json().catch(() => ({}))) as { items?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>
+      const purchaseItems = Array.isArray(purchaseData) ? purchaseData : (Array.isArray((purchaseData as { items?: unknown }).items) ? (purchaseData as { items: Array<Record<string, unknown>> }).items : [])
+      for (const pr of purchaseItems) {
+        const oid = (pr.officeId ?? pr.OfficeId ?? 0) as number
+        const scid = (pr.productSizeColorId ?? pr.ProductSizeColorId ?? 0) as number
+        const key = `${pid}|${oid}|${scid}`
+        const purchEx = (pr.purchasePriceEx ?? pr.PurchasePriceEx ?? pr.avgPurchasePriceEx ?? pr.AvgPurchasePriceEx) as number | undefined
+        if (pid > 0 && purchEx != null) {
+          const existing = pricesMap.get(key) ?? {}
+          pricesMap.set(key, { ...existing, purchasePriceEx: purchEx })
+        }
+      }
+    }
 
     const brandsMap: Record<number, string> = {}
     const brandData = (await brandsRes.json().catch(() => ({}))) as { items?: { brandId?: number; id?: number; brandName?: string; BrandName?: string }[] }
@@ -181,17 +218,6 @@ export async function POST(request: NextRequest) {
       const id = o.officeId ?? (o as { id?: number }).id
       const name = o.officeName ?? (o as { OfficeName?: string }).OfficeName
       if (id != null && name) officesMap[id] = String(name)
-    }
-
-    const pricesMap = new Map<string, { salesPriceEx?: number; recommendedSalesPriceEx?: number }>()
-    const pricesData = (await pricesRes.json().catch(() => ({}))) as { items?: { productId?: number; officeId?: number; productSizeColorId?: number; salesPriceEx?: number; recommendedSalesPriceEx?: number }[] }
-    const priceItems = Array.isArray(pricesData?.items) ? pricesData.items : []
-    for (const pr of priceItems) {
-      const pid = pr.productId ?? 0
-      const oid = pr.officeId ?? 0
-      const scid = pr.productSizeColorId ?? 0
-      const key = `${pid}|${oid}|${scid}`
-      if (pid > 0) pricesMap.set(key, { salesPriceEx: pr.salesPriceEx, recommendedSalesPriceEx: pr.recommendedSalesPriceEx })
     }
 
     const kindsMap: Record<number, string> = {}
@@ -252,12 +278,12 @@ export async function POST(request: NextRequest) {
         set('productType', get(['productType', 'ProductType']))
         set('modelSeason', get(['modelSeason', 'ModelSeason']))
         const pid = s.productId ?? 0
-        const oid = s.officeId ?? 0
-        const scid = s.sizeColorId ?? 0
-        const priceInfo = pricesMap.get(`${pid}|${oid}|${scid}`) ?? pricesMap.get(`${pid}|${oid}|0`)
+        const oid = (s.officeId ?? (s as Record<string, unknown>).officeId ?? 0) as number
+        const scid = (s.sizeColorId ?? (s as Record<string, unknown>).productSizeColorId ?? 0) as number
+        const priceInfo = pricesMap.get(`${pid}|${oid}|${scid}`) ?? pricesMap.get(`${pid}|${oid}|0`) ?? pricesMap.get(`${pid}|0|${scid}`) ?? pricesMap.get(`${pid}|0|0`)
         set('recommendedSalesPriceEx', priceInfo?.recommendedSalesPriceEx ?? get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx']))
         set('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
-        set('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
+        set('purchasePriceEx', priceInfo?.purchasePriceEx ?? get(['purchasePriceEx', 'PurchasePriceEx']))
         set('salesPriceEx', priceInfo?.salesPriceEx ?? get(['salesPriceEx', 'SalesPriceEx']))
         set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
         set('productDescription', get(['productDescription', 'ProductDescription']))
