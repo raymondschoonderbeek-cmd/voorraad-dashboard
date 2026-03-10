@@ -186,6 +186,7 @@ export async function POST(request: NextRequest) {
         set('salesPriceEx', get(['salesPriceEx', 'SalesPriceEx']))
         set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
         set('productDescription', get(['productDescription', 'ProductDescription']))
+        set('productImageUrl', get(['productImageUrl', 'ProductImageUrl']))
         Object.entries(p).forEach(([k, v]) => {
           if (!['productId', 'id', 'ProductId', 'Id'].includes(k) && v != null && v !== '' && !(k in result)) {
             result[k] = typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Date)

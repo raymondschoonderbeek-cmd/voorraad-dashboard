@@ -22,16 +22,105 @@ function extractArray(data: unknown): unknown[] | null {
 
 const STOCK_PREFERRED_COLUMNS = [
   'productName', 'productNumber', 'articleNumber', 'barcode', 'brandName', 'productDescription', 'productSubdescription',
-  'frameNumber', 'serialNumber', 'productSize', 'productColor', 'productType', 'modelSeason',
+  'frameNumber', 'serialNumber', 'productSize', 'productColor', 'productType', 'modelSeason', 'productImageUrl',
   'availableStock', 'reserved', 'productStock', 'officeId', 'sizeColorId', 'productId',
   'purchasePriceEx', 'salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc',
 ]
+
+function isImageUrlColumn(col: string) {
+  return /imageurl|image_url|imageUrl|productImageUrl/i.test(col)
+}
+
+function isValidImageUrl(v: unknown): v is string {
+  if (typeof v !== 'string' || !v.trim()) return false
+  try {
+    const u = new URL(v.trim())
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function ImageUrlCell({ url, onPreview }: { url: string; onPreview: () => void }) {
+  const [thumbError, setThumbError] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={e => { e.stopPropagation(); onPreview() }}
+      className="inline-flex items-center gap-2 text-left min-w-0 hover:opacity-90 transition group rounded-lg p-1 -m-1 hover:bg-blue-50"
+      title="Klik om afbeelding te bekijken"
+    >
+      <span className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-gray-100 flex items-center justify-center border border-gray-200 group-hover:border-blue-400 group-hover:ring-2 group-hover:ring-blue-200">
+        {thumbError ? (
+          <span className="text-gray-400 text-lg">🖼</span>
+        ) : (
+          <img src={url} alt="" className="w-full h-full object-cover" onError={() => setThumbError(true)} />
+        )}
+      </span>
+      <span className="text-xs font-medium text-blue-600 group-hover:text-blue-700" style={{ maxWidth: 120 }}>Bekijk</span>
+    </button>
+  )
+}
+
+function ImageModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition font-bold text-lg"
+          aria-label="Sluiten"
+        >
+          ✕
+        </button>
+        {error ? (
+          <div className="rounded-xl px-8 py-6 bg-white/95 border border-red-200 text-red-700 text-sm shadow-xl">
+            Afbeelding laden mislukt. De URL is mogelijk niet bereikbaar.
+          </div>
+        ) : (
+          <>
+            {!loaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              </div>
+            )}
+            <img
+              src={url}
+              alt="Productafbeelding"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              style={{ opacity: loaded ? 1 : 0.3, transition: 'opacity 0.2s' }}
+              onLoad={() => setLoaded(true)}
+              onError={() => setError(true)}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredColumns?: string[] }) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(0)
+  const [imageModalUrl, setImageModalUrl] = useState<string | null>(null)
   const PAGE_SIZE = 25
 
   const columns = useMemo(() => {
@@ -83,6 +172,18 @@ function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredC
     return String(v)
   }
 
+  const renderCell = (row: unknown, col: string) => {
+    const v = (row as Record<string, unknown>)?.[col]
+    const str = cellValue(row, col)
+    if (isImageUrlColumn(col) && isValidImageUrl(v)) {
+      const url = String(v).trim()
+      return (
+        <ImageUrlCell url={url} onPreview={() => setImageModalUrl(url)} />
+      )
+    }
+    return str
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -120,8 +221,8 @@ function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredC
             {paginated.map((row, i) => (
               <tr key={i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
                 {columns.map(col => (
-                  <td key={col} className="px-3 py-2 max-w-[200px] truncate" title={cellValue(row, col)}>
-                    {cellValue(row, col)}
+                  <td key={col} className="px-3 py-2 max-w-[200px] align-middle" title={typeof renderCell(row, col) === 'string' ? String(renderCell(row, col)) : undefined}>
+                    {renderCell(row, col)}
                   </td>
                 ))}
               </tr>
@@ -149,6 +250,9 @@ function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredC
             Volgende →
           </button>
         </div>
+      )}
+      {imageModalUrl && (
+        <ImageModal url={imageModalUrl} onClose={() => setImageModalUrl(null)} />
       )}
     </div>
   )
