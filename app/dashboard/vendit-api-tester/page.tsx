@@ -24,7 +24,9 @@ const STOCK_PREFERRED_COLUMNS = [
   'productName', 'productNumber', 'articleNumber', 'barcode', 'brandName', 'groupName', 'kindDescription', 'productDescription', 'productSubdescription',
   'frameNumber', 'serialNumber', 'productSize', 'productColor', 'productType', 'modelSeason', 'productImageUrl',
   'availableStock', 'reserved', 'productStock', 'officeName', 'officeId', 'sizeColorId', 'productId',
-  'purchasePriceEx', 'salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc',
+  'salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc', 'minSalesPriceEx', 'internetSalesPriceEx',
+  'purchasePriceEx', 'productPurchasePriceEx', 'avgPurchasePriceEx', 'brutoPurchasePriceEx',
+  'productSalesPriceEx', 'productSalesPriceInc',
 ]
 
 function isImageUrlColumn(col: string) {

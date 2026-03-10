@@ -280,11 +280,36 @@ export async function POST(request: NextRequest) {
         const oid = (s.officeId ?? (s as Record<string, unknown>).officeId ?? 0) as number
         const scid = (s.sizeColorId ?? (s as Record<string, unknown>).productSizeColorId ?? 0) as number
         const priceInfo = pricesMap.get(`${pid}|${oid}|${scid}`) ?? pricesMap.get(`${pid}|${oid}|0`) ?? pricesMap.get(`${pid}|0|${scid}`) ?? pricesMap.get(`${pid}|0|0`)
-        set('recommendedSalesPriceEx', priceInfo?.recommendedSalesPriceEx ?? get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx']))
+
+        // Prijs uit API, anders uit product.salesPrices (geneste array), anders uit product zelf
+        let salesEx = priceInfo?.salesPriceEx ?? get(['salesPriceEx', 'SalesPriceEx'])
+        let recEx = priceInfo?.recommendedSalesPriceEx ?? get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx'])
+        const salesPrices = (p as Record<string, unknown>).salesPrices ?? (p as Record<string, unknown>).productSalesPrices
+        if ((salesEx == null || recEx == null) && Array.isArray(salesPrices) && salesPrices.length > 0) {
+          const first = salesPrices[0] as Record<string, unknown>
+          const match = salesPrices.find((sp: unknown) => {
+            const x = sp as Record<string, unknown>
+            const so = (x.officeId ?? x.OfficeId ?? 0) as number
+            const sc = (x.productSizeColorId ?? x.ProductSizeColorId ?? 0) as number
+            return (oid === 0 || so === oid) && (scid === 0 || sc === scid)
+          }) as Record<string, unknown> | undefined
+          const sp = match ?? (salesPrices[0] as Record<string, unknown>)
+          if (salesEx == null) salesEx = (sp.salesPriceEx ?? sp.SalesPriceEx) as number | undefined
+          if (recEx == null) recEx = (sp.recommendedSalesPriceEx ?? sp.RecommendedSalesPriceEx) as number | undefined
+        }
+
+        set('salesPriceEx', salesEx)
+        set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
+        set('recommendedSalesPriceEx', recEx)
         set('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
         set('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
-        set('salesPriceEx', priceInfo?.salesPriceEx ?? get(['salesPriceEx', 'SalesPriceEx']))
-        set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
+        set('minSalesPriceEx', get(['minSalesPriceEx', 'MinSalesPriceEx']))
+        set('internetSalesPriceEx', get(['internetSalesPriceEx', 'InternetSalesPriceEx']))
+        set('productSalesPriceEx', get(['productSalesPriceEx', 'ProductSalesPriceEx']))
+        set('productSalesPriceInc', get(['productSalesPriceInc', 'ProductSalesPriceInc']))
+        set('productPurchasePriceEx', get(['productPurchasePriceEx', 'ProductPurchasePriceEx']))
+        set('avgPurchasePriceEx', get(['avgPurchasePriceEx', 'AvgPurchasePriceEx', 'productAvgPurchasePriceEx']))
+        set('brutoPurchasePriceEx', get(['brutoPurchasePriceEx', 'BrutoPurchasePriceEx']))
         set('productDescription', get(['productDescription', 'ProductDescription']))
         set('productImageUrl', get(['productImageUrl', 'ProductImageUrl']))
         Object.entries(p).forEach(([k, v]) => {
