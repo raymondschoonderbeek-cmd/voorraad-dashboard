@@ -4,12 +4,6 @@ import { requireAuth, requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { getCachedVenditStats, setCachedVenditStats } from '@/lib/vendit-cache'
 
-function normalizeDealer(v: unknown): string {
-  const s = String(v ?? '').trim()
-  if (!s) return s
-  return s.replace(/^0+/, '') || '0'
-}
-
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -29,10 +23,7 @@ export async function GET(request: NextRequest) {
     const cached = getCachedVenditStats()
     if (cached) {
       for (const [k, dt] of Object.entries(cached)) {
-        if (dt) {
-          venditLaatstPerDealer.set(k.trim(), dt)
-          venditLaatstPerDealer.set(normalizeDealer(k), dt)
-        }
+        if (dt) venditLaatstPerDealer.set(String(k).trim(), dt)
       }
     } else {
       try {
@@ -45,11 +36,10 @@ export async function GET(request: NextRequest) {
           const toCache: Record<string, string> = {}
           for (const [k, dt] of Object.entries(statsObj)) {
             if (dt) {
-              const kNorm = normalizeDealer(k)
+              const key = String(k).trim()
               const dtStr = typeof dt === 'string' ? dt : new Date(dt as Date).toISOString()
-              venditLaatstPerDealer.set(k.trim(), dtStr)
-              venditLaatstPerDealer.set(kNorm, dtStr)
-              toCache[k.trim()] = dtStr
+              venditLaatstPerDealer.set(key, dtStr)
+              toCache[key] = dtStr
             }
           }
           setCachedVenditStats(toCache)
@@ -59,11 +49,7 @@ export async function GET(request: NextRequest) {
         for (const row of stats ?? []) {
           const d = (row as { dealer_nummer: string })?.dealer_nummer
           const dt = (row as { last_updated: string })?.last_updated
-          if (d != null && dt) {
-            const k = String(d).trim()
-            venditLaatstPerDealer.set(k, dt)
-            venditLaatstPerDealer.set(normalizeDealer(d), dt)
-          }
+          if (d != null && dt) venditLaatstPerDealer.set(String(d).trim(), dt)
         }
       }
     }
@@ -74,8 +60,7 @@ export async function GET(request: NextRequest) {
     const base = rest as any
     if (base.api_type === 'vendit') {
       const key = String(base.dealer_nummer ?? '').trim()
-      const keyNorm = normalizeDealer(base.dealer_nummer)
-      const laatstDatum = venditLaatstPerDealer.get(key) ?? venditLaatstPerDealer.get(keyNorm) ?? null
+      const laatstDatum = venditLaatstPerDealer.get(key) ?? null
       return { ...base, vendit_laatst_datum: laatstDatum }
     }
     return base

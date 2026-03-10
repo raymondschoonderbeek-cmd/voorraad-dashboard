@@ -143,7 +143,11 @@ function DataTableView({ data }: { data: unknown[] }) {
 export default function VenditApiTesterPage() {
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
-  const { data: gebruikersData, mutate: mutateGebruikers } = useSWR(isAdmin ? '/api/gebruikers' : null, fetcher, { revalidateOnFocus: true })
+  const { data: gebruikersData, mutate: mutateGebruikers, isValidating: gebruikersValidating } = useSWR(
+    isAdmin ? '/api/gebruikers' : null,
+    (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json()),
+    { revalidateOnFocus: true }
+  )
   const winkels = (gebruikersData?.winkels ?? []) as { id: number; naam: string; api_type?: string; dealer_nummer?: string; has_vendit_api_credentials?: boolean }[]
   const venditWinkels = winkels.filter(w => w.api_type === 'vendit_api' && w.has_vendit_api_credentials === true)
 
@@ -379,11 +383,14 @@ export default function VenditApiTesterPage() {
             </div>
             <button
               type="button"
-              onClick={() => mutateGebruikers()}
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-80"
+              onClick={async () => {
+                await mutateGebruikers(undefined, { revalidate: true })
+              }}
+              disabled={gebruikersValidating}
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50 disabled:cursor-wait"
               style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.12)' }}
             >
-              Ververs
+              {gebruikersValidating ? 'Verversen...' : 'Ververs'}
             </button>
           </div>
           {venditWinkels.length === 0 && (

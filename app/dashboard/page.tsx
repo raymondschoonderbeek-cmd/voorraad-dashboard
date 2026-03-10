@@ -951,7 +951,7 @@ export default function Dashboard() {
                         {bron === 'wilmar' ? 'Wilmar' : (bron === 'vendit' || bron === 'vendit_api') ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {bron === 'vendit' && (
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
+                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen data voor dit dealer_nummer of de timestamp-kolom is leeg'}>
                           {venditLaatstDatum ? (() => {
                             const d = new Date(venditLaatstDatum)
                             const dag = d.getUTCDate()

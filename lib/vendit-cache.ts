@@ -4,7 +4,7 @@
  * doen full table scans op vendit_stock; caching beperkt de frequentie.
  */
 
-const TTL_MS = 60_000 // 1 minuut
+const TTL_MS = 10_000 // 10 seconden
 
 type CacheEntry<T> = { data: T; expiresAt: number }
 
