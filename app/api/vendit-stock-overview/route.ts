@@ -34,8 +34,23 @@ type ProductEntity = {
   productId?: number
   id?: number
   productDescription?: string
+  productSubdescription?: string
+  productNumber?: string
   articleNumber?: string
   barcode?: string
+  brandName?: string
+  brandId?: number
+  frameNumber?: string
+  serialNumber?: string
+  productSize?: string
+  productColor?: string
+  productType?: string
+  modelSeason?: string
+  recommendedSalesPriceEx?: number
+  recommendedSalesPriceInc?: number
+  purchasePriceEx?: number
+  salesPriceEx?: number
+  salesPriceInc?: number
   [key: string]: unknown
 }
 
@@ -115,7 +130,7 @@ export async function POST(request: NextRequest) {
     // 2. Unieke product IDs
     const productIds = [...new Set(stockWithAvailable.map(s => s.productId).filter((id): id is number => typeof id === 'number' && id > 0))]
 
-    const productsMap: Record<number, string> = {}
+    const productsMap: Record<number, ProductEntity> = {}
     if (productIds.length > 0) {
       const prodRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Products/GetMultiple`, {
         method: 'POST',
@@ -127,17 +142,39 @@ export async function POST(request: NextRequest) {
       const items = Array.isArray(prodData?.items) ? prodData.items : []
       for (const p of items) {
         const id = p.productId ?? p.id
-        if (id != null) {
-          const name = p.productDescription?.trim() || p.articleNumber?.trim() || p.barcode?.trim() || `Product #${id}`
-          productsMap[id] = name
-        }
+        if (id != null) productsMap[id] = p
       }
     }
 
-    const enriched = stockWithAvailable.map(s => ({
-      ...s,
-      productName: s.productId ? (productsMap[s.productId] ?? `Product #${s.productId}`) : '—',
-    }))
+    const enriched = stockWithAvailable.map(s => {
+      const p = s.productId ? productsMap[s.productId] : undefined
+      const productName = p
+        ? (p.productDescription?.trim() || p.productNumber?.trim() || p.articleNumber?.trim() || p.barcode?.trim() || `Product #${s.productId}`)
+        : (s.productId ? `Product #${s.productId}` : '—')
+      const barcode = (s as { barcode?: string }).barcode ?? p?.barcode?.trim()
+        ?? (Array.isArray(p?.barcodes) && p.barcodes[0] && typeof p.barcodes[0] === 'object'
+          ? (p.barcodes[0] as { barcode?: string })?.barcode : undefined)
+      return {
+        ...s,
+        productName,
+        barcode: barcode || undefined,
+        productNumber: (s as { productNumber?: string }).productNumber ?? p?.productNumber ?? p?.articleNumber,
+        articleNumber: (s as { articleNumber?: string }).articleNumber ?? p?.articleNumber ?? p?.productNumber,
+        brandName: (s as { brandName?: string }).brandName ?? p?.brandName,
+        frameNumber: (s as { frameNumber?: string }).frameNumber ?? p?.frameNumber,
+        serialNumber: (s as { serialNumber?: string }).serialNumber ?? p?.serialNumber,
+        productSubdescription: (s as { productSubdescription?: string }).productSubdescription ?? p?.productSubdescription,
+        productSize: (s as { productSize?: string }).productSize ?? p?.productSize,
+        productColor: (s as { productColor?: string }).productColor ?? p?.productColor,
+        productType: (s as { productType?: string }).productType ?? p?.productType,
+        modelSeason: (s as { modelSeason?: string }).modelSeason ?? p?.modelSeason,
+        recommendedSalesPriceEx: (s as { recommendedSalesPriceEx?: number }).recommendedSalesPriceEx ?? p?.recommendedSalesPriceEx,
+        recommendedSalesPriceInc: (s as { recommendedSalesPriceInc?: number }).recommendedSalesPriceInc ?? p?.recommendedSalesPriceInc,
+        purchasePriceEx: (s as { purchasePriceEx?: number }).purchasePriceEx ?? p?.purchasePriceEx,
+        salesPriceEx: (s as { salesPriceEx?: number }).salesPriceEx ?? p?.salesPriceEx,
+        salesPriceInc: (s as { salesPriceInc?: number }).salesPriceInc ?? p?.salesPriceInc,
+      }
+    })
 
     return NextResponse.json({
       stock: enriched,

@@ -289,104 +289,6 @@ function Orderweergave({ orders, search }: { orders: OrderWithDetails[]; search:
   )
 }
 
-type StockRow = {
-  productId?: number
-  productName?: string
-  availableStock?: number
-  sizeColorId?: number
-  officeId?: number
-  [key: string]: unknown
-}
-
-function StockProductCard({ productName, productId, variants }: { productName: string; productId: number; variants: StockRow[] }) {
-  const totaalBeschikbaar = variants.reduce((s, v) => s + (Number(v.availableStock) || 0), 0)
-
-  return (
-    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)', background: 'white', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-      {/* Product header */}
-      <div className="px-4 py-3 flex flex-wrap items-center gap-4" style={{ background: DYNAMO_BLUE }}>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.6)' }}>Product</span>
-          <span className="font-bold text-lg" style={{ color: 'white', fontFamily: F }}>{productName}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>
-          <span className="font-mono text-xs">ID {productId}</span>
-          <span className="font-semibold">{totaalBeschikbaar} stuks totaal</span>
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{variants.length} variant{variants.length !== 1 ? 'en' : ''}</span>
-        </div>
-      </div>
-      {/* Voorraadregels per variant/vestiging */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
-          <thead>
-            <tr style={{ background: 'rgba(13,31,78,0.03)' }}>
-              <th className="px-4 py-2.5 text-left font-semibold">Vestiging</th>
-              <th className="px-4 py-2.5 text-left font-semibold">Variant</th>
-              <th className="px-4 py-2.5 text-right font-semibold">Beschikbaar</th>
-              <th className="px-4 py-2.5 text-right font-semibold">Gereserveerd</th>
-              <th className="px-4 py-2.5 text-right font-semibold">Totaal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {variants.map((v, i) => (
-              <tr key={i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
-                <td className="px-4 py-2.5 font-medium" style={{ color: DYNAMO_BLUE }}>{v.officeId != null ? `Vestiging ${v.officeId}` : '—'}</td>
-                <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'rgba(13,31,78,0.6)' }}>{v.sizeColorId != null ? String(v.sizeColorId) : '—'}</td>
-                <td className="px-4 py-2.5 text-right font-semibold" style={{ color: (v.availableStock ?? 0) > 0 ? '#16a34a' : 'rgba(13,31,78,0.5)' }}>
-                  {v.availableStock != null ? Number(v.availableStock) : '—'}
-                </td>
-                <td className="px-4 py-2.5 text-right">{v.reserved != null ? Number(v.reserved) : '—'}</td>
-                <td className="px-4 py-2.5 text-right">{v.productStock != null ? Number(v.productStock) : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function Stockweergave({ stock, search }: { stock: StockRow[]; search: string }) {
-  const grouped = useMemo(() => {
-    const byProduct = new Map<number, { name: string; rows: StockRow[] }>()
-    for (const row of stock) {
-      const pid = row.productId ?? 0
-      if (pid <= 0) continue
-      const existing = byProduct.get(pid)
-      const name = (row.productName as string) ?? `Product #${pid}`
-      if (existing) {
-        existing.rows.push(row)
-      } else {
-        byProduct.set(pid, { name, rows: [row] })
-      }
-    }
-    return Array.from(byProduct.entries()).map(([productId, { name, rows }]) => ({ productId, productName: name, variants: rows }))
-  }, [stock])
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return grouped
-    const q = search.toLowerCase()
-    return grouped.filter(g => {
-      const name = (g.productName ?? '').toLowerCase()
-      const id = String(g.productId).toLowerCase()
-      const variantMatch = g.variants.some(v => {
-        const sc = String(v.sizeColorId ?? '').toLowerCase()
-        const off = String(v.officeId ?? '').toLowerCase()
-        return sc.includes(q) || off.includes(q)
-      })
-      return name.includes(q) || id.includes(q) || variantMatch
-    })
-  }, [grouped, search])
-
-  return (
-    <div className="space-y-4">
-      {filtered.map(g => (
-        <StockProductCard key={g.productId} productId={g.productId} productName={g.productName} variants={g.variants} />
-      ))}
-    </div>
-  )
-}
-
 export default function VenditApiTesterPage() {
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
@@ -427,7 +329,6 @@ export default function VenditApiTesterPage() {
   const [stock, setStock] = useState<{ productId?: number; productName?: string; availableStock?: number; sizeColorId?: number; officeId?: number; [key: string]: unknown }[]>([])
   const [stockError, setStockError] = useState<string | null>(null)
   const [stockSearch, setStockSearch] = useState('')
-  const [stockViewMode, setStockViewMode] = useState<'producten' | 'tabel'>('producten')
   const [stockResponseTime, setStockResponseTime] = useState<number | null>(null)
 
   const endpoint = VENDIT_GET_ENDPOINTS.find(e => e.path === selectedEndpoint)
@@ -839,28 +740,6 @@ export default function VenditApiTesterPage() {
                   )}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
-                    <button
-                      onClick={() => setStockViewMode('producten')}
-                      className="px-3 py-1.5 text-xs font-semibold transition"
-                      style={{
-                        background: stockViewMode === 'producten' ? DYNAMO_BLUE : 'white',
-                        color: stockViewMode === 'producten' ? 'white' : 'rgba(13,31,78,0.6)',
-                      }}
-                    >
-                      Productweergave
-                    </button>
-                    <button
-                      onClick={() => setStockViewMode('tabel')}
-                      className="px-3 py-1.5 text-xs font-semibold transition"
-                      style={{
-                        background: stockViewMode === 'tabel' ? DYNAMO_BLUE : 'white',
-                        color: stockViewMode === 'tabel' ? 'white' : 'rgba(13,31,78,0.6)',
-                      }}
-                    >
-                      Tabel
-                    </button>
-                  </div>
                   <input
                     type="search"
                     placeholder="Zoeken op product, ID, vestiging..."
@@ -872,13 +751,9 @@ export default function VenditApiTesterPage() {
                 </div>
               </div>
               <div className="p-4">
-                {stockViewMode === 'producten' ? (
-                  <Stockweergave stock={stock} search={stockSearch} />
-                ) : (
-                  <DataTableView data={stockFiltered} />
-                )}
+                <DataTableView data={stockFiltered} />
               </div>
-              {stockViewMode === 'tabel' && stockFiltered.length !== stock.length && (
+              {stockFiltered.length !== stock.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
                   {stockFiltered.length} van {stock.length} getoond (gefilterd)
                 </div>
