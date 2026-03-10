@@ -46,7 +46,13 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json().catch(() => ({}))
-  const { winkel_id, paginationOffset = 0, includeDetails = false } = body as { winkel_id?: number; paginationOffset?: number; includeDetails?: boolean }
+  const { winkel_id, paginationOffset = 0, includeDetails = false, dateFrom, dateTo } = body as {
+    winkel_id?: number
+    paginationOffset?: number
+    includeDetails?: boolean
+    dateFrom?: string
+    dateTo?: string
+  }
 
   if (!winkel_id) {
     return NextResponse.json({ error: 'winkel_id is verplicht' }, { status: 400 })
@@ -85,9 +91,19 @@ export async function POST(request: NextRequest) {
     let currentOffset = Number(paginationOffset) || 0
 
     // Probeer eerst Orders/Find; bij 400 gebruik GetAllIds + GetMultiple
+    const fieldFilters: { field: number; filterComparison: number; value?: string }[] = []
+    if (dateFrom) {
+      const v = new Date(dateFrom).toISOString()
+      if (!isNaN(new Date(dateFrom).getTime())) fieldFilters.push({ field: 402, filterComparison: 4, value: v }) // OrderDate >= dateFrom
+    }
+    if (dateTo) {
+      const v = new Date(dateTo + 'T23:59:59.999Z').toISOString()
+      if (!isNaN(new Date(dateTo).getTime())) fieldFilters.push({ field: 402, filterComparison: 5, value: v }) // OrderDate <= dateTo
+    }
     const findBody = {
       paginationOffset: Number(paginationOffset) || 0,
       includeEntities: true,
+      ...(fieldFilters.length > 0 && { fieldFilters }),
     }
     const findRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/Find`, {
       method: 'POST',
@@ -158,7 +174,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Orders ophalen mislukt (${multRes.status}): ${errDetail}` }, { status: 502 })
       }
       const multData = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { items?: OrderEntity[] }
-      orders = Array.isArray(multData?.items) ? multData.items : (Array.isArray(multData) ? multData : [])
+      let rawOrders = Array.isArray(multData?.items) ? multData.items : (Array.isArray(multData) ? multData : [])
+      if (dateFrom || dateTo) {
+        rawOrders = rawOrders.filter((o: OrderEntity) => {
+          const dt = o.creationDatetime ? new Date(o.creationDatetime as string).getTime() : NaN
+          if (isNaN(dt)) return true
+          if (dateFrom && dt < new Date(dateFrom).getTime()) return false
+          if (dateTo && dt > new Date(dateTo + 'T23:59:59.999').getTime()) return false
+          return true
+        })
+      }
+      orders = rawOrders
       currentOffset = offset
     } else {
       const errMsg = findData?.message ?? findData?.error ?? (findData as { Message?: string })?.Message ?? `Orders ophalen mislukt: ${findRes.status}. Probeer het later opnieuw.`
@@ -232,9 +258,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 4. Order status namen ophalen
+    const statusIds = [...new Set(orders.map(o => o.orderStatusId).filter((id): id is number => typeof id === 'number' && id > 0))]
+    const statusMap: Record<number, string> = {}
+    if (statusIds.length > 0) {
+      try {
+        const statusRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Lookups/OrderStatuses/GetAll`, {
+          method: 'GET',
+          headers: { ApiKey: key, Token: token, Accept: 'application/json' },
+          cache: 'no-store',
+        })
+        if (statusRes.ok) {
+          const raw = await statusRes.json().catch(() => [])
+          const statusList = Array.isArray(raw) ? raw : (Array.isArray((raw as { items?: unknown[] })?.items) ? (raw as { items: unknown[] }).items : [])
+          for (const s of statusList) {
+            const item = s as Record<string, unknown>
+            const id = (item.orderStatusId ?? item.id) as number | undefined
+            const desc = (item.description ?? item.orderStatusDescription ?? item.name) as string | undefined
+            if (id != null && desc) statusMap[id] = String(desc)
+          }
+        }
+      } catch {}
+    }
+
     const enriched = orders.map(o => ({
       ...o,
       customerName: o.customerId ? (customersMap[o.customerId] ?? `Klant #${o.customerId}`) : '—',
+      orderStatusName: o.orderStatusId != null ? (statusMap[o.orderStatusId] ?? `Status ${o.orderStatusId}`) : undefined,
     }))
 
     // Platgeslagen orderregels voor tabelweergave (één rij per artikel)

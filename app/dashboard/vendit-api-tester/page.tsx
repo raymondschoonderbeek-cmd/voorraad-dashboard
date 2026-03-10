@@ -149,6 +149,7 @@ type OrderWithDetails = {
   customerId?: number
   customerName?: string
   orderStatusId?: number
+  orderStatusName?: string
   orderDetails?: { items?: Record<string, unknown>[] }
   [key: string]: unknown
 }
@@ -169,15 +170,23 @@ function formatPrice(n: unknown) {
   return Number.isFinite(num) ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(num) : String(n)
 }
 
-function OrderCard({ order }: { order: OrderWithDetails }) {
+function OrderCard({ order, collapsed, onToggle }: { order: OrderWithDetails; collapsed: boolean; onToggle: () => void }) {
   const od = order.orderDetails as { items?: Record<string, unknown>[] } | Record<string, unknown>[] | undefined
   const items = Array.isArray(od) ? od : (od?.items ?? [])
   const orderNr = order.customerOrderNumber ?? String(order.customerOrderHeaderId ?? '—')
+  const statusLabel = order.orderStatusName ?? (order.orderStatusId != null ? `Status ${order.orderStatusId}` : null)
 
   return (
     <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)', background: 'white', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-      {/* Order header */}
-      <div className="px-4 py-3 flex flex-wrap items-center gap-4" style={{ background: DYNAMO_BLUE }}>
+      {/* Order header - klikbaar om in/uit te klappen */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}
+        className="px-4 py-3 flex flex-wrap items-center gap-4 cursor-pointer hover:opacity-95 transition"
+        style={{ background: DYNAMO_BLUE }}
+      >
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.6)' }}>Order</span>
           <span className="font-bold text-lg" style={{ color: 'white', fontFamily: F }}>{orderNr}</span>
@@ -185,12 +194,14 @@ function OrderCard({ order }: { order: OrderWithDetails }) {
         <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>
           <span>{formatOrderDate(order.creationDatetime as string)}</span>
           <span className="font-medium">{order.customerName ?? '—'}</span>
-          {order.orderStatusId != null && (
-            <span className="px-2 py-0.5 rounded text-xs" style={{ background: 'rgba(255,255,255,0.2)' }}>Status {order.orderStatusId}</span>
+          {statusLabel && (
+            <span className="px-2 py-0.5 rounded text-xs" style={{ background: 'rgba(255,255,255,0.2)' }}>{statusLabel}</span>
           )}
         </div>
+        <span className="ml-auto text-lg" style={{ color: 'rgba(255,255,255,0.8)' }}>{collapsed ? '▶' : '▼'}</span>
       </div>
       {/* Artikelregels */}
+      {!collapsed && (
       <div className="overflow-x-auto">
         <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
           <thead>
@@ -228,11 +239,22 @@ function OrderCard({ order }: { order: OrderWithDetails }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }
 
 function Orderweergave({ orders, search }: { orders: OrderWithDetails[]; search: string }) {
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+
+  const toggleCollapsed = (key: string) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
   const filtered = useMemo(() => {
     if (!search.trim()) return orders
     const q = search.toLowerCase()
@@ -252,8 +274,114 @@ function Orderweergave({ orders, search }: { orders: OrderWithDetails[]; search:
 
   return (
     <div className="space-y-4">
-      {filtered.map((o, i) => (
-        <OrderCard key={o.customerOrderNumber ?? o.customerOrderHeaderId ?? i} order={o} />
+      {filtered.map((o, i) => {
+        const key = String(o.customerOrderNumber ?? o.customerOrderHeaderId ?? i)
+        return (
+          <OrderCard
+            key={key}
+            order={o}
+            collapsed={collapsedIds.has(key)}
+            onToggle={() => toggleCollapsed(key)}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+type StockRow = {
+  productId?: number
+  productName?: string
+  availableStock?: number
+  sizeColorId?: number
+  officeId?: number
+  [key: string]: unknown
+}
+
+function StockProductCard({ productName, productId, variants }: { productName: string; productId: number; variants: StockRow[] }) {
+  const totaalBeschikbaar = variants.reduce((s, v) => s + (Number(v.availableStock) || 0), 0)
+
+  return (
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)', background: 'white', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+      {/* Product header */}
+      <div className="px-4 py-3 flex flex-wrap items-center gap-4" style={{ background: DYNAMO_BLUE }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.6)' }}>Product</span>
+          <span className="font-bold text-lg" style={{ color: 'white', fontFamily: F }}>{productName}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>
+          <span className="font-mono text-xs">ID {productId}</span>
+          <span className="font-semibold">{totaalBeschikbaar} stuks totaal</span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>{variants.length} variant{variants.length !== 1 ? 'en' : ''}</span>
+        </div>
+      </div>
+      {/* Voorraadregels per variant/vestiging */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
+          <thead>
+            <tr style={{ background: 'rgba(13,31,78,0.03)' }}>
+              <th className="px-4 py-2.5 text-left font-semibold">Vestiging</th>
+              <th className="px-4 py-2.5 text-left font-semibold">Variant</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Beschikbaar</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Gereserveerd</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Totaal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {variants.map((v, i) => (
+              <tr key={i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
+                <td className="px-4 py-2.5 font-medium" style={{ color: DYNAMO_BLUE }}>{v.officeId != null ? `Vestiging ${v.officeId}` : '—'}</td>
+                <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'rgba(13,31,78,0.6)' }}>{v.sizeColorId != null ? String(v.sizeColorId) : '—'}</td>
+                <td className="px-4 py-2.5 text-right font-semibold" style={{ color: (v.availableStock ?? 0) > 0 ? '#16a34a' : 'rgba(13,31,78,0.5)' }}>
+                  {v.availableStock != null ? Number(v.availableStock) : '—'}
+                </td>
+                <td className="px-4 py-2.5 text-right">{v.reserved != null ? Number(v.reserved) : '—'}</td>
+                <td className="px-4 py-2.5 text-right">{v.productStock != null ? Number(v.productStock) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function Stockweergave({ stock, search }: { stock: StockRow[]; search: string }) {
+  const grouped = useMemo(() => {
+    const byProduct = new Map<number, { name: string; rows: StockRow[] }>()
+    for (const row of stock) {
+      const pid = row.productId ?? 0
+      if (pid <= 0) continue
+      const existing = byProduct.get(pid)
+      const name = (row.productName as string) ?? `Product #${pid}`
+      if (existing) {
+        existing.rows.push(row)
+      } else {
+        byProduct.set(pid, { name, rows: [row] })
+      }
+    }
+    return Array.from(byProduct.entries()).map(([productId, { name, rows }]) => ({ productId, productName: name, variants: rows }))
+  }, [stock])
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return grouped
+    const q = search.toLowerCase()
+    return grouped.filter(g => {
+      const name = (g.productName ?? '').toLowerCase()
+      const id = String(g.productId).toLowerCase()
+      const variantMatch = g.variants.some(v => {
+        const sc = String(v.sizeColorId ?? '').toLowerCase()
+        const off = String(v.officeId ?? '').toLowerCase()
+        return sc.includes(q) || off.includes(q)
+      })
+      return name.includes(q) || id.includes(q) || variantMatch
+    })
+  }, [grouped, search])
+
+  return (
+    <div className="space-y-4">
+      {filtered.map(g => (
+        <StockProductCard key={g.productId} productId={g.productId} productName={g.productName} variants={g.variants} />
       ))}
     </div>
   )
@@ -275,10 +403,11 @@ export default function VenditApiTesterPage() {
   const [params, setParams] = useState<Record<string, string>>({})
   const [postBody, setPostBody] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ status?: number; statusText?: string; url?: string; data?: unknown; error?: string } | null>(null)
+  const [result, setResult] = useState<{ status?: number; statusText?: string; url?: string; data?: unknown; error?: string; responseTime?: number } | null>(null)
 
   const [scanResult, setScanResult] = useState<ScanResult[] | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [scanResponseTime, setScanResponseTime] = useState<number | null>(null)
 
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [orders, setOrders] = useState<{ customerOrderHeaderId?: number; customerOrderNumber?: string; creationDatetime?: string; customerId?: number; customerName?: string; orderStatusId?: number; [key: string]: unknown }[]>([])
@@ -289,12 +418,17 @@ export default function VenditApiTesterPage() {
   const [ordersPaginationOffset, setOrdersPaginationOffset] = useState(0)
   const [ordersError, setOrdersError] = useState<string | null>(null)
   const [ordersSearch, setOrdersSearch] = useState('')
+  const [ordersResponseTime, setOrdersResponseTime] = useState<number | null>(null)
+  const [ordersDateFrom, setOrdersDateFrom] = useState('')
+  const [ordersDateTo, setOrdersDateTo] = useState('')
   const ORDERS_PAGE_SIZE = 100
 
   const [stockLoading, setStockLoading] = useState(false)
   const [stock, setStock] = useState<{ productId?: number; productName?: string; availableStock?: number; sizeColorId?: number; officeId?: number; [key: string]: unknown }[]>([])
   const [stockError, setStockError] = useState<string | null>(null)
   const [stockSearch, setStockSearch] = useState('')
+  const [stockViewMode, setStockViewMode] = useState<'producten' | 'tabel'>('producten')
+  const [stockResponseTime, setStockResponseTime] = useState<number | null>(null)
 
   const endpoint = VENDIT_GET_ENDPOINTS.find(e => e.path === selectedEndpoint)
   const hasParams = (endpoint?.params?.length ?? 0) > 0
@@ -325,6 +459,8 @@ export default function VenditApiTesterPage() {
     if (!selectedWinkelId) return
     setScanning(true)
     setScanResult(null)
+    setScanResponseTime(null)
+    const t0 = performance.now()
     try {
       const results: ScanResult[] = await Promise.all(
         VENDIT_DISCOVERY_ENDPOINTS.map(async ep => {
@@ -347,6 +483,7 @@ export default function VenditApiTesterPage() {
         })
       )
       setScanResult(results)
+      setScanResponseTime(Math.round(performance.now() - t0))
     } finally {
       setScanning(false)
     }
@@ -356,13 +493,22 @@ export default function VenditApiTesterPage() {
     if (!selectedWinkelId) return
     setOrdersLoading(true)
     setOrdersError(null)
+    setOrdersResponseTime(null)
+    const t0 = performance.now()
     try {
       const res = await fetch('/api/vendit-orders-overview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ winkel_id: selectedWinkelId, paginationOffset: offset, includeDetails: ordersIncludeDetails }),
+        body: JSON.stringify({
+          winkel_id: selectedWinkelId,
+          paginationOffset: offset,
+          includeDetails: ordersIncludeDetails,
+          dateFrom: ordersDateFrom || undefined,
+          dateTo: ordersDateTo || undefined,
+        }),
       })
       const data = await res.json().catch(() => ({}))
+      setOrdersResponseTime(Math.round(performance.now() - t0))
       if (!res.ok) {
         setOrdersError(data.error ?? `HTTP ${res.status}`)
         setOrders([])
@@ -374,6 +520,7 @@ export default function VenditApiTesterPage() {
         setOrdersPaginationOffset(data.paginationOffset ?? offset)
       }
     } catch (err) {
+      setOrdersResponseTime(Math.round(performance.now() - t0))
       setOrdersError(err instanceof Error ? err.message : 'Netwerkfout')
       setOrders([])
       setOrderLines([])
@@ -392,6 +539,8 @@ export default function VenditApiTesterPage() {
     if (!selectedWinkelId) return
     setStockLoading(true)
     setStockError(null)
+    setStockResponseTime(null)
+    const t0 = performance.now()
     try {
       const res = await fetch('/api/vendit-stock-overview', {
         method: 'POST',
@@ -399,6 +548,7 @@ export default function VenditApiTesterPage() {
         body: JSON.stringify({ winkel_id: selectedWinkelId }),
       })
       const data = await res.json().catch(() => ({}))
+      setStockResponseTime(Math.round(performance.now() - t0))
       if (!res.ok) {
         setStockError(data.error ?? `HTTP ${res.status}`)
         setStock([])
@@ -406,6 +556,7 @@ export default function VenditApiTesterPage() {
         setStock(data.stock ?? [])
       }
     } catch (err) {
+      setStockResponseTime(Math.round(performance.now() - t0))
       setStockError(err instanceof Error ? err.message : 'Netwerkfout')
       setStock([])
     }
@@ -422,6 +573,7 @@ export default function VenditApiTesterPage() {
     if (!selectedWinkelId || !selectedEndpoint) return
     setLoading(true)
     setResult(null)
+    const t0 = performance.now()
     try {
       const res = await fetch('/api/vendit-api-test', {
         method: 'POST',
@@ -435,13 +587,14 @@ export default function VenditApiTesterPage() {
         }),
       })
       const data = await res.json().catch(() => ({}))
+      const responseTime = Math.round(performance.now() - t0)
       if (!res.ok) {
-        setResult({ error: data.error ?? data.message ?? `HTTP ${res.status}` })
+        setResult({ error: data.error ?? data.message ?? `HTTP ${res.status}`, responseTime })
       } else {
-        setResult(data)
+        setResult({ ...data, responseTime })
       }
     } catch (err) {
-      setResult({ error: err instanceof Error ? err.message : 'Netwerkfout' })
+      setResult({ error: err instanceof Error ? err.message : 'Netwerkfout', responseTime: Math.round(performance.now() - t0) })
     }
     setLoading(false)
   }
@@ -468,6 +621,9 @@ export default function VenditApiTesterPage() {
             Vendit API Tester
           </Link>
           <div className="flex items-center gap-3">
+            <a href="https://api2.vendit.online/VenditPublicApiSpec/index.html" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}>
+              API Docs
+            </a>
             <Link href="/dashboard/beheer" className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}>
               Beheer
             </Link>
@@ -532,6 +688,26 @@ export default function VenditApiTesterPage() {
               />
               <span className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.8)' }}>Inclusief artikel details</span>
             </label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium" style={{ color: 'rgba(13,31,78,0.6)' }}>Vanaf</label>
+              <input
+                type="date"
+                value={ordersDateFrom}
+                onChange={e => setOrdersDateFrom(e.target.value)}
+                className="rounded-lg px-2.5 py-1.5 text-sm border"
+                style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)' }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium" style={{ color: 'rgba(13,31,78,0.6)' }}>Tot</label>
+              <input
+                type="date"
+                value={ordersDateTo}
+                onChange={e => setOrdersDateTo(e.target.value)}
+                className="rounded-lg px-2.5 py-1.5 text-sm border"
+                style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)' }}
+              />
+            </div>
             <button
               onClick={() => loadOrders(0)}
               disabled={ordersLoading || !selectedWinkelId}
@@ -553,6 +729,9 @@ export default function VenditApiTesterPage() {
                   {ordersTotalCount} orders totaal
                   {orderLines.length > 0 && ` · ${orderLines.length} regels (artikelen)`}
                   {' · Pagina '}{Math.floor(ordersPaginationOffset / ORDERS_PAGE_SIZE) + 1}
+                  {ordersResponseTime != null && (
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>({ordersResponseTime} ms)</span>
+                  )}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                   {orderLines.length > 0 && (
@@ -654,21 +833,52 @@ export default function VenditApiTesterPage() {
             <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
               <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(13,31,78,0.04)', borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
                 <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
-                  {stock.length} producten met voorraad
+                  {stock.length} voorraadregels
+                  {stockResponseTime != null && (
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>({stockResponseTime} ms)</span>
+                  )}
                 </span>
-                <input
-                  type="search"
-                  placeholder="Zoeken..."
-                  value={stockSearch}
-                  onChange={e => setStockSearch(e.target.value)}
-                  className="rounded-lg px-3 py-1.5 text-sm border"
-                  style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 160 }}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
+                    <button
+                      onClick={() => setStockViewMode('producten')}
+                      className="px-3 py-1.5 text-xs font-semibold transition"
+                      style={{
+                        background: stockViewMode === 'producten' ? DYNAMO_BLUE : 'white',
+                        color: stockViewMode === 'producten' ? 'white' : 'rgba(13,31,78,0.6)',
+                      }}
+                    >
+                      Productweergave
+                    </button>
+                    <button
+                      onClick={() => setStockViewMode('tabel')}
+                      className="px-3 py-1.5 text-xs font-semibold transition"
+                      style={{
+                        background: stockViewMode === 'tabel' ? DYNAMO_BLUE : 'white',
+                        color: stockViewMode === 'tabel' ? 'white' : 'rgba(13,31,78,0.6)',
+                      }}
+                    >
+                      Tabel
+                    </button>
+                  </div>
+                  <input
+                    type="search"
+                    placeholder="Zoeken op product, ID, vestiging..."
+                    value={stockSearch}
+                    onChange={e => setStockSearch(e.target.value)}
+                    className="rounded-lg px-3 py-1.5 text-sm border"
+                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 200 }}
+                  />
+                </div>
               </div>
               <div className="p-4">
-                <DataTableView data={stockFiltered} />
+                {stockViewMode === 'producten' ? (
+                  <Stockweergave stock={stock} search={stockSearch} />
+                ) : (
+                  <DataTableView data={stockFiltered} />
+                )}
               </div>
-              {stockFiltered.length !== stock.length && (
+              {stockViewMode === 'tabel' && stockFiltered.length !== stock.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
                   {stockFiltered.length} van {stock.length} getoond (gefilterd)
                 </div>
@@ -699,6 +909,9 @@ export default function VenditApiTesterPage() {
           >
             {scanning ? 'Scannen...' : 'Scan endpoints'}
           </button>
+          {scanResponseTime != null && !scanning && (
+            <span className="text-sm" style={{ color: 'rgba(13,31,78,0.5)' }}>{scanResponseTime} ms</span>
+          )}
           {scanResult && (
             <div className="mt-4 overflow-x-auto rounded-lg border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
               <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
@@ -799,13 +1012,18 @@ export default function VenditApiTesterPage() {
 
         {result && (
           <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)', boxShadow: '0 2px 12px rgba(13,31,78,0.04)' }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.04)', borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
+            <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ background: 'rgba(13,31,78,0.04)', borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
               <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Resultaat</span>
-              {result.status != null && (
-                <span className={`text-xs font-mono px-2 py-0.5 rounded ${result.status >= 200 && result.status < 300 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {result.status} {result.statusText ?? ''}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {result.responseTime != null && (
+                  <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>{result.responseTime} ms</span>
+                )}
+                {result.status != null && (
+                  <span className={`text-xs font-mono px-2 py-0.5 rounded ${result.status >= 200 && result.status < 300 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {result.status} {result.statusText ?? ''}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="p-4 overflow-x-auto">
               {result.error ? (
