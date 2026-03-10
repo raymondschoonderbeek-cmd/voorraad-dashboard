@@ -151,29 +151,49 @@ export async function POST(request: NextRequest) {
       const productName = p
         ? (p.productDescription?.trim() || p.productNumber?.trim() || p.articleNumber?.trim() || p.barcode?.trim() || `Product #${s.productId}`)
         : (s.productId ? `Product #${s.productId}` : '—')
-      const barcode = (s as { barcode?: string }).barcode ?? p?.barcode?.trim()
-        ?? (Array.isArray(p?.barcodes) && p.barcodes[0] && typeof p.barcodes[0] === 'object'
-          ? (p.barcodes[0] as { barcode?: string })?.barcode : undefined)
-      return {
-        ...s,
-        productName,
-        barcode: barcode || undefined,
-        productNumber: (s as { productNumber?: string }).productNumber ?? p?.productNumber ?? p?.articleNumber,
-        articleNumber: (s as { articleNumber?: string }).articleNumber ?? p?.articleNumber ?? p?.productNumber,
-        brandName: (s as { brandName?: string }).brandName ?? p?.brandName,
-        frameNumber: (s as { frameNumber?: string }).frameNumber ?? p?.frameNumber,
-        serialNumber: (s as { serialNumber?: string }).serialNumber ?? p?.serialNumber,
-        productSubdescription: (s as { productSubdescription?: string }).productSubdescription ?? p?.productSubdescription,
-        productSize: (s as { productSize?: string }).productSize ?? p?.productSize,
-        productColor: (s as { productColor?: string }).productColor ?? p?.productColor,
-        productType: (s as { productType?: string }).productType ?? p?.productType,
-        modelSeason: (s as { modelSeason?: string }).modelSeason ?? p?.modelSeason,
-        recommendedSalesPriceEx: (s as { recommendedSalesPriceEx?: number }).recommendedSalesPriceEx ?? p?.recommendedSalesPriceEx,
-        recommendedSalesPriceInc: (s as { recommendedSalesPriceInc?: number }).recommendedSalesPriceInc ?? p?.recommendedSalesPriceInc,
-        purchasePriceEx: (s as { purchasePriceEx?: number }).purchasePriceEx ?? p?.purchasePriceEx,
-        salesPriceEx: (s as { salesPriceEx?: number }).salesPriceEx ?? p?.salesPriceEx,
-        salesPriceInc: (s as { salesPriceInc?: number }).salesPriceInc ?? p?.salesPriceInc,
+
+      const result: Record<string, unknown> = { ...s, productName }
+
+      if (p) {
+        const get = (keys: string[]) => {
+          for (const k of keys) {
+            const v = (s as Record<string, unknown>)[k] ?? (p as Record<string, unknown>)[k]
+            if (v != null && v !== '') return v
+          }
+          return undefined
+        }
+        const set = (key: string, val: unknown) => {
+          if (val != null && val !== '') result[key] = val
+        }
+        const barcode = get(['barcode', 'Barcode'])
+          ?? (Array.isArray(p.barcodes) && p.barcodes[0] && typeof p.barcodes[0] === 'object'
+            ? (p.barcodes[0] as { barcode?: string; Barcode?: string })?.barcode ?? (p.barcodes[0] as { barcode?: string; Barcode?: string })?.Barcode : undefined)
+        set('barcode', barcode)
+        set('productNumber', get(['productNumber', 'ProductNumber', 'articleNumber', 'ArticleNumber']))
+        set('articleNumber', get(['articleNumber', 'ArticleNumber', 'productNumber', 'ProductNumber']))
+        set('brandName', get(['brandName', 'BrandName'])
+          ?? (p.brand && typeof p.brand === 'object' ? (p.brand as { name?: string; brandName?: string }).name ?? (p.brand as { name?: string; brandName?: string }).brandName : undefined))
+        set('frameNumber', get(['frameNumber', 'FrameNumber']))
+        set('serialNumber', get(['serialNumber', 'SerialNumber']))
+        set('productSubdescription', get(['productSubdescription', 'ProductSubdescription']))
+        set('productSize', get(['productSize', 'ProductSize']))
+        set('productColor', get(['productColor', 'ProductColor']))
+        set('productType', get(['productType', 'ProductType']))
+        set('modelSeason', get(['modelSeason', 'ModelSeason']))
+        set('recommendedSalesPriceEx', get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx']))
+        set('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
+        set('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
+        set('salesPriceEx', get(['salesPriceEx', 'SalesPriceEx']))
+        set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
+        set('productDescription', get(['productDescription', 'ProductDescription']))
+        Object.entries(p).forEach(([k, v]) => {
+          if (!['productId', 'id', 'ProductId', 'Id'].includes(k) && v != null && v !== '' && !(k in result)) {
+            result[k] = typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Date)
+              ? JSON.stringify(v) : v
+          }
+        })
       }
+      return result
     })
 
     return NextResponse.json({

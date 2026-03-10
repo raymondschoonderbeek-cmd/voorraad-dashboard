@@ -20,7 +20,14 @@ function extractArray(data: unknown): unknown[] | null {
   return null
 }
 
-function DataTableView({ data }: { data: unknown[] }) {
+const STOCK_PREFERRED_COLUMNS = [
+  'productName', 'productNumber', 'articleNumber', 'barcode', 'brandName', 'productDescription', 'productSubdescription',
+  'frameNumber', 'serialNumber', 'productSize', 'productColor', 'productType', 'modelSeason',
+  'availableStock', 'reserved', 'productStock', 'officeId', 'sizeColorId', 'productId',
+  'purchasePriceEx', 'salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc',
+]
+
+function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredColumns?: string[] }) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -32,8 +39,15 @@ function DataTableView({ data }: { data: unknown[] }) {
     for (const item of data) {
       if (item && typeof item === 'object') Object.keys(item as object).forEach(k => keys.add(k))
     }
-    return Array.from(keys).sort()
-  }, [data])
+    const all = Array.from(keys)
+    if (preferredColumns?.length) {
+      const pref = new Set(preferredColumns)
+      const ordered = preferredColumns.filter(c => all.includes(c))
+      const rest = all.filter(c => !pref.has(c)).sort()
+      return [...ordered, ...rest]
+    }
+    return all.sort()
+  }, [data, preferredColumns])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return data
@@ -751,7 +765,7 @@ export default function VenditApiTesterPage() {
                 </div>
               </div>
               <div className="p-4">
-                <DataTableView data={stockFiltered} />
+                <DataTableView data={stockFiltered} preferredColumns={STOCK_PREFERRED_COLUMNS} />
               </div>
               {stockFiltered.length !== stock.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
