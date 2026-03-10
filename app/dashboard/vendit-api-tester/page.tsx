@@ -140,6 +140,125 @@ function DataTableView({ data }: { data: unknown[] }) {
   )
 }
 
+const DYNAMO_GOLD = '#f0c040'
+
+type OrderWithDetails = {
+  customerOrderNumber?: string
+  customerOrderHeaderId?: number
+  creationDatetime?: string
+  customerId?: number
+  customerName?: string
+  orderStatusId?: number
+  orderDetails?: { items?: Record<string, unknown>[] }
+  [key: string]: unknown
+}
+
+function formatOrderDate(s: string | undefined) {
+  if (!s) return '—'
+  try {
+    const d = new Date(s)
+    return isNaN(d.getTime()) ? s : d.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return s
+  }
+}
+
+function formatPrice(n: unknown) {
+  if (n == null || n === '') return '—'
+  const num = Number(n)
+  return Number.isFinite(num) ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(num) : String(n)
+}
+
+function OrderCard({ order }: { order: OrderWithDetails }) {
+  const od = order.orderDetails as { items?: Record<string, unknown>[] } | Record<string, unknown>[] | undefined
+  const items = Array.isArray(od) ? od : (od?.items ?? [])
+  const orderNr = order.customerOrderNumber ?? String(order.customerOrderHeaderId ?? '—')
+
+  return (
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)', background: 'white', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+      {/* Order header */}
+      <div className="px-4 py-3 flex flex-wrap items-center gap-4" style={{ background: DYNAMO_BLUE }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.6)' }}>Order</span>
+          <span className="font-bold text-lg" style={{ color: 'white', fontFamily: F }}>{orderNr}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>
+          <span>{formatOrderDate(order.creationDatetime as string)}</span>
+          <span className="font-medium">{order.customerName ?? '—'}</span>
+          {order.orderStatusId != null && (
+            <span className="px-2 py-0.5 rounded text-xs" style={{ background: 'rgba(255,255,255,0.2)' }}>Status {order.orderStatusId}</span>
+          )}
+        </div>
+      </div>
+      {/* Artikelregels */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
+          <thead>
+            <tr style={{ background: 'rgba(13,31,78,0.03)' }}>
+              <th className="px-4 py-2.5 text-left font-semibold">Product</th>
+              <th className="px-4 py-2.5 text-left font-semibold">Art.nr</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Aantal</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Prijs excl.</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Totaal excl.</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Totaal incl.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-4 text-center" style={{ color: 'rgba(13,31,78,0.45)' }}>Geen artikelregels</td>
+              </tr>
+            ) : (
+              items.map((item, i) => (
+                <tr key={i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.06)' }}>
+                  <td className="px-4 py-2.5">
+                    <div className="font-medium" style={{ color: DYNAMO_BLUE }}>{(item.productDescription as string) ?? '—'}</div>
+                    {(item.productSubdescription as string) && (
+                      <div className="text-xs mt-0.5" style={{ color: 'rgba(13,31,78,0.5)' }}>{item.productSubdescription as string}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'rgba(13,31,78,0.6)' }}>{(item.productNumber as string) ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold">{item.productQuantity != null ? Number(item.productQuantity) : '—'}</td>
+                  <td className="px-4 py-2.5 text-right">{formatPrice(item.productSalesPriceEx)}</td>
+                  <td className="px-4 py-2.5 text-right font-medium">{formatPrice(item.productTotalSalesPriceEx)}</td>
+                  <td className="px-4 py-2.5 text-right font-medium">{formatPrice(item.productTotalSalesPriceInc)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function Orderweergave({ orders, search }: { orders: OrderWithDetails[]; search: string }) {
+  const filtered = useMemo(() => {
+    if (!search.trim()) return orders
+    const q = search.toLowerCase()
+    return orders.filter(o => {
+      const orderNr = (o.customerOrderNumber ?? '').toLowerCase()
+      const customer = (o.customerName ?? '').toLowerCase()
+      const items = Array.isArray((o.orderDetails as { items?: unknown[] })?.items) ? (o.orderDetails as { items: unknown[] }).items : []
+      const productMatch = items.some((it: unknown) => {
+        const item = it as Record<string, unknown>
+        const desc = String(item?.productDescription ?? '').toLowerCase()
+        const nr = String(item?.productNumber ?? '').toLowerCase()
+        return desc.includes(q) || nr.includes(q)
+      })
+      return orderNr.includes(q) || customer.includes(q) || productMatch
+    })
+  }, [orders, search])
+
+  return (
+    <div className="space-y-4">
+      {filtered.map((o, i) => (
+        <OrderCard key={o.customerOrderNumber ?? o.customerOrderHeaderId ?? i} order={o} />
+      ))}
+    </div>
+  )
+}
+
 export default function VenditApiTesterPage() {
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
@@ -164,7 +283,8 @@ export default function VenditApiTesterPage() {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [orders, setOrders] = useState<{ customerOrderHeaderId?: number; customerOrderNumber?: string; creationDatetime?: string; customerId?: number; customerName?: string; orderStatusId?: number; [key: string]: unknown }[]>([])
   const [orderLines, setOrderLines] = useState<Record<string, unknown>[]>([])
-  const [ordersIncludeDetails, setOrdersIncludeDetails] = useState(false)
+  const [ordersIncludeDetails, setOrdersIncludeDetails] = useState(true)
+  const [ordersViewMode, setOrdersViewMode] = useState<'orders' | 'tabel'>('orders')
   const [ordersTotalCount, setOrdersTotalCount] = useState(0)
   const [ordersPaginationOffset, setOrdersPaginationOffset] = useState(0)
   const [ordersError, setOrdersError] = useState<string | null>(null)
@@ -434,14 +554,38 @@ export default function VenditApiTesterPage() {
                   {orderLines.length > 0 && ` · ${orderLines.length} regels (artikelen)`}
                   {' · Pagina '}{Math.floor(ordersPaginationOffset / ORDERS_PAGE_SIZE) + 1}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {orderLines.length > 0 && (
+                    <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(13,31,78,0.12)' }}>
+                      <button
+                        onClick={() => setOrdersViewMode('orders')}
+                        className="px-3 py-1.5 text-xs font-semibold transition"
+                        style={{
+                          background: ordersViewMode === 'orders' ? DYNAMO_BLUE : 'white',
+                          color: ordersViewMode === 'orders' ? 'white' : 'rgba(13,31,78,0.6)',
+                        }}
+                      >
+                        Orderweergave
+                      </button>
+                      <button
+                        onClick={() => setOrdersViewMode('tabel')}
+                        className="px-3 py-1.5 text-xs font-semibold transition"
+                        style={{
+                          background: ordersViewMode === 'tabel' ? DYNAMO_BLUE : 'white',
+                          color: ordersViewMode === 'tabel' ? 'white' : 'rgba(13,31,78,0.6)',
+                        }}
+                      >
+                        Tabel
+                      </button>
+                    </div>
+                  )}
                   <input
                     type="search"
-                    placeholder="Zoeken..."
+                    placeholder="Zoeken op ordernr, klant, product..."
                     value={ordersSearch}
                     onChange={e => setOrdersSearch(e.target.value)}
                     className="rounded-lg px-3 py-1.5 text-sm border"
-                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 160 }}
+                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 200 }}
                   />
                   <button
                     onClick={() => loadOrders(Math.max(0, ordersPaginationOffset - ORDERS_PAGE_SIZE))}
@@ -462,11 +606,15 @@ export default function VenditApiTesterPage() {
                 </div>
               </div>
               <div className="p-4">
-                <DataTableView data={ordersFiltered} />
+                {orderLines.length > 0 && ordersViewMode === 'orders' ? (
+                  <Orderweergave orders={orders as OrderWithDetails[]} search={ordersSearch} />
+                ) : (
+                  <DataTableView data={ordersFiltered} />
+                )}
               </div>
-              {ordersFiltered.length !== orders.length && (
+              {ordersViewMode === 'tabel' && ordersFiltered.length !== ordersDisplayData.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
-                  {ordersFiltered.length} van {orders.length} getoond (gefilterd)
+                  {ordersFiltered.length} van {ordersDisplayData.length} getoond (gefilterd)
                 </div>
               )}
               <details className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
@@ -474,7 +622,7 @@ export default function VenditApiTesterPage() {
                   Raw JSON (alle velden en details)
                 </summary>
                 <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(13,31,78,0.02)', color: 'rgba(13,31,78,0.85)' }}>
-                  {JSON.stringify(ordersFiltered, null, 2)}
+                  {JSON.stringify(ordersViewMode === 'orders' ? orders : ordersFiltered, null, 2)}
                 </pre>
               </details>
             </div>
