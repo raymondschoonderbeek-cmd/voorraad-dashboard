@@ -40,6 +40,8 @@ type ProductEntity = {
   barcode?: string
   brandName?: string
   brandId?: number
+  groupId?: number
+  productKindId?: number
   frameNumber?: string
   serialNumber?: string
   productSize?: string
@@ -146,6 +148,70 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 3. Brands, Offices, Verkoopprijzen, ProductKinds, ProductGroups ophalen (parallel)
+    const groupIds = [...new Set(Object.values(productsMap).map(p => p.groupId).filter((id): id is number => typeof id === 'number' && id > 0))]
+    const [brandsRes, officesRes, pricesRes, kindsRes, groupsRes] = await Promise.all([
+      fetch(`${VENDIT_BASE}/VenditPublicApi/Brands/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
+      fetch(`${VENDIT_BASE}/VenditPublicApi/Offices/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
+      fetch(`${VENDIT_BASE}/VenditPublicApi/Products/GetProductSalePricesChangedSince/0`, { method: 'GET', headers, cache: 'no-store' }),
+      fetch(`${VENDIT_BASE}/VenditPublicApi/Lookups/ProductKinds/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
+      groupIds.length > 0
+        ? fetch(`${VENDIT_BASE}/VenditPublicApi/ProductGroups/GetMultiple`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ primaryKeys: groupIds }),
+            cache: 'no-store',
+          })
+        : Promise.resolve({ ok: true, json: async () => ({ items: [] }) }),
+    ])
+
+    const brandsMap: Record<number, string> = {}
+    const brandData = (await brandsRes.json().catch(() => ({}))) as { items?: { brandId?: number; id?: number; brandName?: string; BrandName?: string }[] }
+    const brandItems = Array.isArray(brandData?.items) ? brandData.items : (Array.isArray(brandData) ? brandData : [])
+    for (const b of brandItems) {
+      const id = b.brandId ?? (b as { id?: number }).id
+      const name = b.brandName ?? (b as { BrandName?: string }).BrandName
+      if (id != null && name) brandsMap[id] = String(name)
+    }
+
+    const officesMap: Record<number, string> = {}
+    const officeData = (await officesRes.json().catch(() => ({}))) as { items?: { officeId?: number; id?: number; officeName?: string; OfficeName?: string }[] }
+    const officeItems = Array.isArray(officeData?.items) ? officeData.items : (Array.isArray(officeData) ? officeData : [])
+    for (const o of officeItems) {
+      const id = o.officeId ?? (o as { id?: number }).id
+      const name = o.officeName ?? (o as { OfficeName?: string }).OfficeName
+      if (id != null && name) officesMap[id] = String(name)
+    }
+
+    const pricesMap = new Map<string, { salesPriceEx?: number; recommendedSalesPriceEx?: number }>()
+    const pricesData = (await pricesRes.json().catch(() => ({}))) as { items?: { productId?: number; officeId?: number; productSizeColorId?: number; salesPriceEx?: number; recommendedSalesPriceEx?: number }[] }
+    const priceItems = Array.isArray(pricesData?.items) ? pricesData.items : []
+    for (const pr of priceItems) {
+      const pid = pr.productId ?? 0
+      const oid = pr.officeId ?? 0
+      const scid = pr.productSizeColorId ?? 0
+      const key = `${pid}|${oid}|${scid}`
+      if (pid > 0) pricesMap.set(key, { salesPriceEx: pr.salesPriceEx, recommendedSalesPriceEx: pr.recommendedSalesPriceEx })
+    }
+
+    const kindsMap: Record<number, string> = {}
+    const kindsData = (await kindsRes.json().catch(() => ({}))) as { items?: { productKindId?: number; id?: number; kindDescription?: string }[] }
+    const kindItems = Array.isArray(kindsData?.items) ? kindsData.items : (Array.isArray(kindsData) ? kindsData : [])
+    for (const k of kindItems) {
+      const id = k.productKindId ?? (k as { id?: number }).id
+      const name = k.kindDescription
+      if (id != null && name) kindsMap[id] = String(name)
+    }
+
+    const groupsMap: Record<number, string> = {}
+    const groupsData = (await groupsRes.json().catch(() => ({}))) as { items?: { groupId?: number; id?: number; groupDescription?: string; groupName?: string }[] }
+    const groupItems = Array.isArray(groupsData?.items) ? groupsData.items : []
+    for (const g of groupItems) {
+      const id = g.groupId ?? (g as { id?: number }).id
+      const name = g.groupDescription ?? g.groupName
+      if (id != null && name) groupsMap[id] = String(name)
+    }
+
     const enriched = stockWithAvailable.map(s => {
       const p = s.productId ? productsMap[s.productId] : undefined
       const productName = p
@@ -153,6 +219,8 @@ export async function POST(request: NextRequest) {
         : (s.productId ? `Product #${s.productId}` : '—')
 
       const result: Record<string, unknown> = { ...s, productName }
+      const officeIdVal = s.officeId ?? (s as Record<string, unknown>).officeId
+      if (typeof officeIdVal === 'number' && officesMap[officeIdVal]) result.officeName = officesMap[officeIdVal]
 
       if (p) {
         const get = (keys: string[]) => {
@@ -172,7 +240,10 @@ export async function POST(request: NextRequest) {
         set('productNumber', get(['productNumber', 'ProductNumber', 'articleNumber', 'ArticleNumber']))
         set('articleNumber', get(['articleNumber', 'ArticleNumber', 'productNumber', 'ProductNumber']))
         set('brandName', get(['brandName', 'BrandName'])
+          ?? (p.brandId ? brandsMap[p.brandId] : undefined)
           ?? (p.brand && typeof p.brand === 'object' ? (p.brand as { name?: string; brandName?: string }).name ?? (p.brand as { name?: string; brandName?: string }).brandName : undefined))
+        set('groupName', get(['groupName', 'GroupName']) ?? (p.groupId ? groupsMap[p.groupId] : undefined))
+        set('kindDescription', get(['kindDescription', 'KindDescription']) ?? (p.productKindId ? kindsMap[p.productKindId] : undefined))
         set('frameNumber', get(['frameNumber', 'FrameNumber']))
         set('serialNumber', get(['serialNumber', 'SerialNumber']))
         set('productSubdescription', get(['productSubdescription', 'ProductSubdescription']))
@@ -180,10 +251,14 @@ export async function POST(request: NextRequest) {
         set('productColor', get(['productColor', 'ProductColor']))
         set('productType', get(['productType', 'ProductType']))
         set('modelSeason', get(['modelSeason', 'ModelSeason']))
-        set('recommendedSalesPriceEx', get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx']))
+        const pid = s.productId ?? 0
+        const oid = s.officeId ?? 0
+        const scid = s.sizeColorId ?? 0
+        const priceInfo = pricesMap.get(`${pid}|${oid}|${scid}`) ?? pricesMap.get(`${pid}|${oid}|0`)
+        set('recommendedSalesPriceEx', priceInfo?.recommendedSalesPriceEx ?? get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx']))
         set('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
         set('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
-        set('salesPriceEx', get(['salesPriceEx', 'SalesPriceEx']))
+        set('salesPriceEx', priceInfo?.salesPriceEx ?? get(['salesPriceEx', 'SalesPriceEx']))
         set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
         set('productDescription', get(['productDescription', 'ProductDescription']))
         set('productImageUrl', get(['productImageUrl', 'ProductImageUrl']))

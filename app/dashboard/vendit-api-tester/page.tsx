@@ -21,9 +21,9 @@ function extractArray(data: unknown): unknown[] | null {
 }
 
 const STOCK_PREFERRED_COLUMNS = [
-  'productName', 'productNumber', 'articleNumber', 'barcode', 'brandName', 'productDescription', 'productSubdescription',
+  'productName', 'productNumber', 'articleNumber', 'barcode', 'brandName', 'groupName', 'kindDescription', 'productDescription', 'productSubdescription',
   'frameNumber', 'serialNumber', 'productSize', 'productColor', 'productType', 'modelSeason', 'productImageUrl',
-  'availableStock', 'reserved', 'productStock', 'officeId', 'sizeColorId', 'productId',
+  'availableStock', 'reserved', 'productStock', 'officeName', 'officeId', 'sizeColorId', 'productId',
   'purchasePriceEx', 'salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc',
 ]
 
