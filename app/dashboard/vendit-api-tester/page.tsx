@@ -292,16 +292,6 @@ export default function VenditApiTesterPage() {
     return stock.filter(s => JSON.stringify(s).toLowerCase().includes(q))
   }, [stock, stockSearch])
 
-  function formatOrderDate(s: string | undefined) {
-    if (!s) return '—'
-    try {
-      const d = new Date(s)
-      return isNaN(d.getTime()) ? s : d.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    } catch {
-      return s
-    }
-  }
-
   async function runTest() {
     if (!selectedWinkelId || !selectedEndpoint) return
     setLoading(true)
@@ -454,35 +444,22 @@ export default function VenditApiTesterPage() {
                   </button>
                 </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(13,31,78,0.02)' }}>
-                      <th className="px-3 py-2 text-left font-semibold">Order nr</th>
-                      <th className="px-3 py-2 text-left font-semibold">Datum</th>
-                      <th className="px-3 py-2 text-left font-semibold">Klant</th>
-                      <th className="px-3 py-2 text-left font-semibold">Klant ID</th>
-                      <th className="px-3 py-2 text-left font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ordersFiltered.map((o, i) => (
-                      <tr key={o.customerOrderHeaderId ?? i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
-                        <td className="px-3 py-2 font-mono">{o.customerOrderNumber ?? o.customerOrderHeaderId ?? '—'}</td>
-                        <td className="px-3 py-2">{formatOrderDate(o.creationDatetime as string)}</td>
-                        <td className="px-3 py-2 font-medium">{o.customerName ?? '—'}</td>
-                        <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.5)' }}>{o.customerId ?? '—'}</td>
-                        <td className="px-3 py-2">{o.orderStatusId != null ? String(o.orderStatusId) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="p-4">
+                <DataTableView data={ordersFiltered} />
               </div>
               {ordersFiltered.length !== orders.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
                   {ordersFiltered.length} van {orders.length} getoond (gefilterd)
                 </div>
               )}
+              <details className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+                <summary className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-black/5" style={{ color: 'rgba(13,31,78,0.6)' }}>
+                  Raw JSON (alle velden en details)
+                </summary>
+                <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(13,31,78,0.02)', color: 'rgba(13,31,78,0.85)' }}>
+                  {JSON.stringify(ordersFiltered, null, 2)}
+                </pre>
+              </details>
             </div>
           )}
         </div>
@@ -523,35 +500,22 @@ export default function VenditApiTesterPage() {
                   style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 160 }}
                 />
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm" style={{ color: '#0d1f4e' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(13,31,78,0.02)' }}>
-                      <th className="px-3 py-2 text-left font-semibold">Product</th>
-                      <th className="px-3 py-2 text-left font-semibold">Product ID</th>
-                      <th className="px-3 py-2 text-left font-semibold">Beschikbaar</th>
-                      <th className="px-3 py-2 text-left font-semibold">Variant</th>
-                      <th className="px-3 py-2 text-left font-semibold">Vestiging</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stockFiltered.map((s, i) => (
-                      <tr key={`${s.productId}-${s.sizeColorId ?? 0}-${s.officeId ?? 0}-${i}`} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
-                        <td className="px-3 py-2 font-medium">{s.productName ?? '—'}</td>
-                        <td className="px-3 py-2 font-mono" style={{ color: 'rgba(13,31,78,0.5)' }}>{s.productId ?? '—'}</td>
-                        <td className="px-3 py-2 font-semibold">{s.availableStock != null ? Number(s.availableStock) : '—'}</td>
-                        <td className="px-3 py-2">{s.sizeColorId != null ? String(s.sizeColorId) : '—'}</td>
-                        <td className="px-3 py-2">{s.officeId != null ? String(s.officeId) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="p-4">
+                <DataTableView data={stockFiltered} />
               </div>
               {stockFiltered.length !== stock.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
                   {stockFiltered.length} van {stock.length} getoond (gefilterd)
                 </div>
               )}
+              <details className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+                <summary className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-black/5" style={{ color: 'rgba(13,31,78,0.6)' }}>
+                  Raw JSON (alle velden en details)
+                </summary>
+                <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(13,31,78,0.02)', color: 'rgba(13,31,78,0.85)' }}>
+                  {JSON.stringify(stockFiltered, null, 2)}
+                </pre>
+              </details>
             </div>
           )}
         </div>
