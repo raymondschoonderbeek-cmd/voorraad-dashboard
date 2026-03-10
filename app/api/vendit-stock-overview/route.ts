@@ -164,21 +164,38 @@ export async function POST(request: NextRequest) {
         : Promise.resolve({ ok: true, json: async () => ({ items: [] }) }),
     ])
 
-    // 4. Verkoopprijzen + adviesprijs in 1 API-call (GetProductSalePricesChangedSince/0 = alle prijzen)
-    // Inkoopprijzen: Vendit heeft geen bulk-endpoint, zou N calls kosten → we laten die weg voor snelheid
+    // 4. Verkoopprijzen + adviesprijs: eerst bulk (1 call), anders per-product als fallback
     const pricesMap = new Map<string, { salesPriceEx?: number; recommendedSalesPriceEx?: number }>()
+    const addPrice = (pr: Record<string, unknown>) => {
+      const pid = (pr.productId ?? pr.ProductId ?? 0) as number
+      const oid = (pr.officeId ?? pr.OfficeId ?? 0) as number
+      const scid = (pr.productSizeColorId ?? pr.ProductSizeColorId ?? 0) as number
+      const key = `${pid}|${oid}|${scid}`
+      const salesEx = (pr.salesPriceEx ?? pr.SalesPriceEx) as number | undefined
+      const recEx = (pr.recommendedSalesPriceEx ?? pr.RecommendedSalesPriceEx) as number | undefined
+      if (pid > 0) pricesMap.set(key, { salesPriceEx: salesEx, recommendedSalesPriceEx: recEx })
+    }
     try {
       const pricesRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Products/GetProductSalePricesChangedSince/0`, { method: 'GET', headers, cache: 'no-store' })
       const pricesData = (await pricesRes.json().catch(() => ({}))) as { items?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>
       const priceItems = Array.isArray(pricesData) ? pricesData : (Array.isArray((pricesData as { items?: unknown }).items) ? (pricesData as { items: Array<Record<string, unknown>> }).items : [])
-      for (const pr of priceItems) {
-        const pid = (pr.productId ?? pr.ProductId ?? 0) as number
-        const oid = (pr.officeId ?? pr.OfficeId ?? 0) as number
-        const scid = (pr.productSizeColorId ?? pr.ProductSizeColorId ?? 0) as number
-        const key = `${pid}|${oid}|${scid}`
-        const salesEx = (pr.salesPriceEx ?? pr.SalesPriceEx) as number | undefined
-        const recEx = (pr.recommendedSalesPriceEx ?? pr.RecommendedSalesPriceEx) as number | undefined
-        if (pid > 0) pricesMap.set(key, { salesPriceEx: salesEx, recommendedSalesPriceEx: recEx })
+      for (const pr of priceItems) addPrice(pr as Record<string, unknown>)
+
+      // Fallback: GetProductSalePricesChangedSince levert vaak niets op → per-product GetPrices
+      if (priceItems.length === 0 && productIds.length > 0) {
+        const BATCH = 8
+        for (let i = 0; i < productIds.length; i += BATCH) {
+          const batch = productIds.slice(i, i + BATCH)
+          const results = await Promise.all(batch.map(pid =>
+            fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetPrices/0/-1`, { method: 'GET', headers, cache: 'no-store' }).then(r => r.json().catch(() => ({})))
+          ))
+          for (let j = 0; j < batch.length; j++) {
+            const pid = batch[j]
+            const data = results[j]
+            const items = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : [])
+            for (const pr of items) addPrice({ ...(pr as Record<string, unknown>), productId: (pr as Record<string, unknown>).productId ?? pid })
+          }
+        }
       }
     } catch {
       // Prijzen overslaan bij netwerkfout
