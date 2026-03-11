@@ -23,10 +23,20 @@ type OrderEntity = {
   customerOrderHeaderId?: number
   customerOrderNumber?: string
   creationDatetime?: string
+  customerOrderCreationDatetime?: string
+  orderDate?: string
   customerId?: number
   orderStatusId?: number
   orderDetails?: { items?: Record<string, unknown>[] }
   [key: string]: unknown
+}
+
+/** Order datum: creationDatetime, customerOrderCreationDatetime of orderDate (Vendit API) */
+function getOrderDate(o: OrderEntity): Date | null {
+  const raw = o.creationDatetime ?? o.customerOrderCreationDatetime ?? o.orderDate
+  if (!raw) return null
+  const d = new Date(raw as string)
+  return isNaN(d.getTime()) ? null : d
 }
 
 type CustomerEntity = {
@@ -91,14 +101,20 @@ export async function POST(request: NextRequest) {
     let currentOffset = Number(paginationOffset) || 0
 
     // Probeer eerst Orders/Find; bij 400 gebruik GetAllIds + GetMultiple
-    const fieldFilters: { field: number; filterComparison: number; value?: string }[] = []
-    if (dateFrom) {
-      const v = new Date(dateFrom).toISOString()
-      if (!isNaN(new Date(dateFrom).getTime())) fieldFilters.push({ field: 402, filterComparison: 4, value: v }) // OrderDate >= dateFrom
-    }
-    if (dateTo) {
-      const v = new Date(dateTo + 'T23:59:59.999Z').toISOString()
-      if (!isNaN(new Date(dateTo).getTime())) fieldFilters.push({ field: 402, filterComparison: 5, value: v }) // OrderDate <= dateTo
+    const fieldFilters: { field: number; filterComparison: number; value?: string; value2?: string }[] = []
+    const fromDate = dateFrom ? new Date(dateFrom) : null
+    const toDate = dateTo ? new Date(dateTo + 'T23:59:59.999Z') : null
+    if (fromDate && toDate && !isNaN(fromDate.getTime()) && !isNaN(toDate.getTime())) {
+      fieldFilters.push({
+        field: 402,
+        filterComparison: 12,
+        value: fromDate.toISOString(),
+        value2: toDate.toISOString(),
+      })
+    } else if (fromDate && !isNaN(fromDate.getTime())) {
+      fieldFilters.push({ field: 402, filterComparison: 4, value: fromDate.toISOString() })
+    } else if (toDate && !isNaN(toDate.getTime())) {
+      fieldFilters.push({ field: 402, filterComparison: 5, value: toDate.toISOString() })
     }
     const findBody = {
       paginationOffset: Number(paginationOffset) || 0,
@@ -124,8 +140,19 @@ export async function POST(request: NextRequest) {
       orders = Array.isArray(findData.entities) ? findData.entities : []
       totalCount = findData.paginationRowCount ?? orders.length
       currentOffset = findData.paginationOffset ?? currentOffset
+      if (fieldFilters.length > 0) {
+        const fromTs = dateFrom ? new Date(dateFrom).getTime() : 0
+        const toTs = dateTo ? new Date(dateTo + 'T23:59:59.999Z').getTime() : Number.MAX_SAFE_INTEGER
+        orders = orders.filter((o) => {
+          const d = getOrderDate(o)
+          if (!d) return false
+          const ts = d.getTime()
+          return ts >= fromTs && ts <= toTs
+        })
+        totalCount = orders.length
+      }
     } else if (findRes.status === 400 || findRes.status === 500) {
-      // Fallback: GetAllIds + GetMultiple (Find faalt vaak met lege filters of 500)
+      // Fallback: GetAllIds + GetMultiple (Find faalt vaak met filters of 500)
       const idsRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetAllIds`, {
         method: 'GET',
         headers: { ApiKey: key, Token: token, Accept: 'application/json' },
@@ -145,47 +172,60 @@ export async function POST(request: NextRequest) {
       const idsData = (() => { try { return JSON.parse(idsRaw) } catch { return [] } })() as number[] | { items?: number[] }
       const allIds = Array.isArray(idsData) ? idsData : (Array.isArray(idsData?.items) ? idsData.items : [])
       const offset = Number(paginationOffset) || 0
-      const pageIds = allIds.slice(offset, offset + 100)
-      totalCount = allIds.length
+      const hasDateFilter = !!(dateFrom || dateTo)
+      const fromTs = dateFrom ? new Date(dateFrom).getTime() : 0
+      const toTs = dateTo ? new Date(dateTo + 'T23:59:59.999Z').getTime() : Number.MAX_SAFE_INTEGER
 
-      if (pageIds.length === 0) {
-        return NextResponse.json({
-          orders: [],
-          totalCount,
-          paginationOffset: offset,
-        })
-      }
-
-      const multRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetMultiple`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ primaryKeys: pageIds }),
-        cache: 'no-store',
-      })
-      const multRaw = await multRes.text()
-      if (!multRes.ok) {
-        let errDetail: string
-        try {
-          const parsed = JSON.parse(multRaw) as { message?: string; error?: string; Message?: string }
-          errDetail = parsed?.message ?? parsed?.error ?? parsed?.Message ?? multRaw.slice(0, 200)
-        } catch {
-          errDetail = multRaw.slice(0, 200)
+      if (hasDateFilter) {
+        // Met datumfilter: haal orders in batches op, filter op orderdatum, pagineer correct
+        const BATCH = 100
+        const filtered: OrderEntity[] = []
+        for (let i = 0; i < allIds.length; i += BATCH) {
+          const batchIds = allIds.slice(i, i + BATCH)
+          const multRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetMultiple`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ primaryKeys: batchIds }),
+            cache: 'no-store',
+          })
+          const multRaw = await multRes.text()
+          if (!multRes.ok) {
+            const parsed = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { message?: string }
+            return NextResponse.json({ error: `Orders ophalen mislukt: ${parsed?.message ?? multRaw.slice(0, 150)}` }, { status: 502 })
+          }
+          const multData = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { items?: OrderEntity[] }
+          const batch = Array.isArray(multData?.items) ? multData.items : []
+          for (const o of batch) {
+            const d = getOrderDate(o)
+            if (!d) continue
+            const ts = d.getTime()
+            if (ts >= fromTs && ts <= toTs) filtered.push(o)
+          }
         }
-        return NextResponse.json({ error: `Orders ophalen mislukt (${multRes.status}): ${errDetail}` }, { status: 502 })
-      }
-      const multData = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { items?: OrderEntity[] }
-      let rawOrders = Array.isArray(multData?.items) ? multData.items : (Array.isArray(multData) ? multData : [])
-      if (dateFrom || dateTo) {
-        rawOrders = rawOrders.filter((o: OrderEntity) => {
-          const dt = o.creationDatetime ? new Date(o.creationDatetime as string).getTime() : NaN
-          if (isNaN(dt)) return true
-          if (dateFrom && dt < new Date(dateFrom).getTime()) return false
-          if (dateTo && dt > new Date(dateTo + 'T23:59:59.999').getTime()) return false
-          return true
+        totalCount = filtered.length
+        orders = filtered.slice(offset, offset + 100)
+        currentOffset = offset
+      } else {
+        const pageIds = allIds.slice(offset, offset + 100)
+        totalCount = allIds.length
+        if (pageIds.length === 0) {
+          return NextResponse.json({ orders: [], totalCount, paginationOffset: offset })
+        }
+        const multRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Orders/GetMultiple`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ primaryKeys: pageIds }),
+          cache: 'no-store',
         })
+        const multRaw = await multRes.text()
+        if (!multRes.ok) {
+          const parsed = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { message?: string }
+          return NextResponse.json({ error: `Orders ophalen mislukt: ${parsed?.message ?? multRaw.slice(0, 150)}` }, { status: 502 })
+        }
+        const multData = (() => { try { return JSON.parse(multRaw) } catch { return {} } })() as { items?: OrderEntity[] }
+        orders = Array.isArray(multData?.items) ? multData.items : []
+        currentOffset = offset
       }
-      orders = rawOrders
-      currentOffset = offset
     } else {
       const errMsg = findData?.message ?? findData?.error ?? (findData as { Message?: string })?.Message ?? `Orders ophalen mislukt: ${findRes.status}. Probeer het later opnieuw.`
       return NextResponse.json({ error: errMsg }, { status: 502 })
