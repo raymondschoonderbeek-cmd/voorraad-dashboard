@@ -507,6 +507,7 @@ export default function VenditApiTesterPage() {
   const [stockError, setStockError] = useState<string | null>(null)
   const [stockSearch, setStockSearch] = useState('')
   const [stockResponseTime, setStockResponseTime] = useState<number | null>(null)
+  const [stockFilterProductUrl, setStockFilterProductUrl] = useState<'all' | 'has_url' | 'no_url'>('all')
   const [selectedArticle, setSelectedArticle] = useState<Record<string, unknown> | null>(null)
 
   const endpoint = VENDIT_GET_ENDPOINTS.find(e => e.path === selectedEndpoint)
@@ -643,10 +644,24 @@ export default function VenditApiTesterPage() {
   }
 
   const stockFiltered = useMemo(() => {
-    if (!stockSearch.trim()) return stock
-    const q = stockSearch.toLowerCase()
-    return stock.filter(s => JSON.stringify(s).toLowerCase().includes(q))
-  }, [stock, stockSearch])
+    let out = stock
+    if (stockFilterProductUrl === 'has_url') {
+      out = out.filter(s => {
+        const url = (s.productImageUrl ?? s.ProductImageUrl ?? s.productUrl ?? s.ProductUrl) as string | undefined
+        return typeof url === 'string' && url.trim().length > 0
+      })
+    } else if (stockFilterProductUrl === 'no_url') {
+      out = out.filter(s => {
+        const url = (s.productImageUrl ?? s.ProductImageUrl ?? s.productUrl ?? s.ProductUrl) as string | undefined
+        return !url || (typeof url === 'string' && !url.trim())
+      })
+    }
+    if (stockSearch.trim()) {
+      const q = stockSearch.toLowerCase()
+      out = out.filter(s => JSON.stringify(s).toLowerCase().includes(q))
+    }
+    return out
+  }, [stock, stockSearch, stockFilterProductUrl])
 
   async function runTest() {
     if (!selectedWinkelId || !selectedEndpoint) return
@@ -914,6 +929,17 @@ export default function VenditApiTesterPage() {
             >
               {stockLoading ? 'Laden...' : 'Voorraad ophalen'}
             </button>
+            <select
+              value={stockFilterProductUrl}
+              onChange={e => setStockFilterProductUrl(e.target.value as 'all' | 'has_url' | 'no_url')}
+              disabled={stock.length === 0}
+              className="rounded-xl px-4 py-2.5 text-sm border disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e' }}
+            >
+              <option value="all">Alle artikelen</option>
+              <option value="has_url">Alleen met product URL</option>
+              <option value="no_url">Alleen zonder product URL</option>
+            </select>
             <input
               type="search"
               placeholder="Zoeken op product, artikelnummer, barcode, merk..."
@@ -937,7 +963,7 @@ export default function VenditApiTesterPage() {
                   {stockResponseTime != null && (
                     <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>({stockResponseTime} ms)</span>
                   )}
-                  {stockSearch && (
+                  {(stockSearch || stockFilterProductUrl !== 'all') && (
                     <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>→ {stockFiltered.length} gevonden</span>
                   )}
                 </span>
