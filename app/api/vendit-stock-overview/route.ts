@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   const { supabase } = auth
 
   const body = await request.json().catch(() => ({}))
-  const { winkel_id, officeId = -1 } = body as { winkel_id?: number; officeId?: number }
+  const { winkel_id, officeId = 0 } = body as { winkel_id?: number; officeId?: number }
 
   if (!winkel_id) {
     return NextResponse.json({ error: 'winkel_id is verplicht' }, { status: 400 })
@@ -108,8 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. ProductStock/GetChangedStockFromDate - unixMillisec=0 = alle wijzigingen, ensureZeroIncluded=true
-    // officeId=-1 = alle vestigingen, 0 = API-key vestiging
-    const stockUrl = `${VENDIT_BASE}/VenditPublicApi/ProductStock/GetChangedStockFromDate/0/true?officeId=${officeId}`
+    const stockUrl = `${VENDIT_BASE}/VenditPublicApi/ProductStock/GetChangedStockFromDate/0/true${Number(officeId) ? `?officeId=${officeId}` : ''}`
     const stockRes = await fetch(stockUrl, {
       method: 'GET',
       headers,
