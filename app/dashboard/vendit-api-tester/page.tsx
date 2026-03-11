@@ -253,7 +253,7 @@ function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(0) }}
           className="rounded-lg px-3 py-2 text-sm border"
-          style={{ background: 'rgba(13,31,78,0.02)', borderColor: 'rgba(13,31,78,0.12)', minWidth: 200 }}
+          style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e', minWidth: 200 }}
         />
         <span className="text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>
           {filtered.length} van {data.length} rijen
@@ -774,7 +774,7 @@ export default function VenditApiTesterPage() {
                 value={ordersDateFrom}
                 onChange={e => setOrdersDateFrom(e.target.value)}
                 className="rounded-lg px-2.5 py-1.5 text-sm border"
-                style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)' }}
+                style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e' }}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -784,7 +784,7 @@ export default function VenditApiTesterPage() {
                 value={ordersDateTo}
                 onChange={e => setOrdersDateTo(e.target.value)}
                 className="rounded-lg px-2.5 py-1.5 text-sm border"
-                style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)' }}
+                style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e' }}
               />
             </div>
             <button
@@ -843,7 +843,7 @@ export default function VenditApiTesterPage() {
                     value={ordersSearch}
                     onChange={e => setOrdersSearch(e.target.value)}
                     className="rounded-lg px-3 py-1.5 text-sm border"
-                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 200 }}
+                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e', minWidth: 200 }}
                   />
                   <button
                     onClick={() => loadOrders(Math.max(0, ordersPaginationOffset - ORDERS_PAGE_SIZE))}
@@ -902,6 +902,15 @@ export default function VenditApiTesterPage() {
             >
               {stockLoading ? 'Laden...' : 'Voorraad ophalen'}
             </button>
+            <input
+              type="search"
+              placeholder="Zoeken op product, artikelnummer, barcode, merk..."
+              value={stockSearch}
+              onChange={e => setStockSearch(e.target.value)}
+              disabled={stock.length === 0}
+              className="rounded-xl px-4 py-2.5 text-sm border disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e', minWidth: 260 }}
+            />
           </div>
           {stockError && (
             <div className="mt-4 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
@@ -916,17 +925,10 @@ export default function VenditApiTesterPage() {
                   {stockResponseTime != null && (
                     <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>({stockResponseTime} ms)</span>
                   )}
+                  {stockSearch && (
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}→ {stockFiltered.length} gevonden</span>
+                  )}
                 </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="search"
-                    placeholder="Zoeken op product, ID, vestiging..."
-                    value={stockSearch}
-                    onChange={e => setStockSearch(e.target.value)}
-                    className="rounded-lg px-3 py-1.5 text-sm border"
-                    style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', minWidth: 200 }}
-                  />
-                </div>
               </div>
               <div className="p-4">
                 <DataTableView
@@ -1033,7 +1035,7 @@ export default function VenditApiTesterPage() {
                   onChange={e => setPostBody(e.target.value)}
                   rows={4}
                   className="w-full rounded-lg px-3 py-2 text-sm font-mono border"
-                  style={{ background: 'rgba(13,31,78,0.02)', borderColor: 'rgba(13,31,78,0.12)' }}
+                  style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e' }}
                 />
               </div>
             )}
@@ -1051,7 +1053,7 @@ export default function VenditApiTesterPage() {
                         value={params[p.name] ?? ''}
                         onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
                         className="w-full rounded-lg px-3 py-2 text-sm border"
-                        style={{ background: 'rgba(13,31,78,0.02)', borderColor: 'rgba(13,31,78,0.12)' }}
+                        style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: '#0d1f4e' }}
                       />
                     </div>
                   ))}
