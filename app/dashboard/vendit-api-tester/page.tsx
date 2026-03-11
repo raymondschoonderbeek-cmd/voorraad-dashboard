@@ -690,8 +690,20 @@ export default function VenditApiTesterPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: F }}>
+    <div className="vendit-tester min-h-screen" style={{ background: '#f4f6fb', fontFamily: F }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
+      <style>{`
+        .vendit-tester input, .vendit-tester textarea {
+          color: #0d1f4e !important;
+          -webkit-text-fill-color: #0d1f4e !important;
+          caret-color: #0d1f4e !important;
+        }
+        .vendit-tester input::placeholder, .vendit-tester textarea::placeholder {
+          color: rgba(13,31,78,0.5) !important;
+          -webkit-text-fill-color: rgba(13,31,78,0.5) !important;
+          opacity: 1;
+        }
+      `}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -926,7 +938,7 @@ export default function VenditApiTesterPage() {
                     <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>({stockResponseTime} ms)</span>
                   )}
                   {stockSearch && (
-                    <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}→ {stockFiltered.length} gevonden</span>
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(13,31,78,0.5)' }}>→ {stockFiltered.length} gevonden</span>
                   )}
                 </span>
               </div>
