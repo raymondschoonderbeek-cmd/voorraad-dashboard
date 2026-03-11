@@ -41,6 +41,7 @@ type ProductEntity = {
   brandName?: string
   brandId?: number
   groupId?: number
+  brancheId?: number
   productKindId?: number
   frameNumber?: string
   serialNumber?: string
@@ -177,9 +178,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Brands, Offices, ProductKinds, ProductGroups ophalen (parallel)
+    // 3. Brands, Offices, ProductKinds, ProductGroups, Branches ophalen (parallel)
     const groupIds = [...new Set(Object.values(productsMap).map(p => p.groupId).filter((id): id is number => typeof id === 'number' && id > 0))]
-    const [brandsRes, officesRes, kindsRes, groupsRes] = await Promise.all([
+    const [brandsRes, officesRes, kindsRes, groupsRes, branchesRes] = await Promise.all([
       fetch(`${VENDIT_BASE}/VenditPublicApi/Brands/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
       fetch(`${VENDIT_BASE}/VenditPublicApi/Offices/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
       fetch(`${VENDIT_BASE}/VenditPublicApi/Lookups/ProductKinds/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
@@ -191,6 +192,7 @@ export async function POST(request: NextRequest) {
             cache: 'no-store',
           })
         : Promise.resolve({ ok: true, json: async () => ({ items: [] }) }),
+      fetch(`${VENDIT_BASE}/VenditPublicApi/Lookups/Branches/GetAll`, { method: 'GET', headers, cache: 'no-store' }),
     ])
 
     // 4. Verkoopprijzen + adviesprijs: eerst bulk (1 call), anders per-product als fallback
@@ -266,6 +268,15 @@ export async function POST(request: NextRequest) {
       if (id != null && name) groupsMap[id] = String(name)
     }
 
+    const branchesMap: Record<number, string> = {}
+    const branchesData = (await branchesRes.json().catch(() => ({}))) as { items?: { brancheId?: number; id?: number; brancheName?: string; BrancheName?: string; brancheDescription?: string }[] }
+    const branchItems = Array.isArray(branchesData?.items) ? branchesData.items : (Array.isArray(branchesData) ? branchesData : [])
+    for (const br of branchItems) {
+      const id = br.brancheId ?? (br as { id?: number }).id
+      const name = br.brancheName ?? (br as { BrancheName?: string }).BrancheName ?? br.brancheDescription
+      if (id != null && name) branchesMap[id] = String(name)
+    }
+
     const enriched = stockWithAvailable.map(s => {
       const pid = s.productId ?? (s as Record<string, unknown>).ProductId
       const p = pid ? productsMap[pid as number] : undefined
@@ -302,11 +313,20 @@ export async function POST(request: NextRequest) {
         setAlways('barcode', barcode)
         set('productNumber', get(['productNumber', 'ProductNumber', 'articleNumber', 'ArticleNumber']))
         set('articleNumber', get(['articleNumber', 'ArticleNumber', 'productNumber', 'ProductNumber']))
-        set('brandName', get(['brandName', 'BrandName'])
+        const brandName = get(['brandName', 'BrandName'])
           ?? (p.brandId ? brandsMap[p.brandId] : undefined)
-          ?? (p.brand && typeof p.brand === 'object' ? (p.brand as { name?: string; brandName?: string }).name ?? (p.brand as { name?: string; brandName?: string }).brandName : undefined))
-        set('groupName', get(['groupName', 'GroupName']) ?? (p.groupId ? groupsMap[p.groupId] : undefined))
+          ?? (p.brand && typeof p.brand === 'object' ? (p.brand as { name?: string; brandName?: string }).name ?? (p.brand as { name?: string; brandName?: string }).brandName : undefined)
+        setAlways('brandName', brandName)
+        const groupName = get(['groupName', 'GroupName']) ?? (p.groupId ? groupsMap[p.groupId] : undefined)
+        setAlways('groupName', groupName)
+        const brancheId = p.brancheId ?? (p as Record<string, unknown>).brancheId
+        const brancheName = get(['brancheName', 'BrancheName', 'brancheDescription']) ?? (typeof brancheId === 'number' ? branchesMap[brancheId] : undefined)
+        setAlways('brancheName', brancheName)
         set('kindDescription', get(['kindDescription', 'KindDescription']) ?? (p.productKindId ? kindsMap[p.productKindId] : undefined))
+        const supplierProductNumber = get(['supplierProductNumber', 'SupplierProductNumber', 'supplier_product_number'])
+          ?? (Array.isArray((p as Record<string, unknown>).productSuppliers) && (p as Record<string, unknown>).productSuppliers?.[0]
+            ? ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.supplierProductNumber ?? ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.SupplierProductNumber : undefined)
+        set('supplierProductNumber', supplierProductNumber)
         const frameNumber = get(['frameNumber', 'FrameNumber', 'stockDetailFrameNumber', 'StockDetailFrameNumber'])
         setAlways('frameNumber', frameNumber)
         set('serialNumber', get(['serialNumber', 'SerialNumber']))
@@ -351,17 +371,21 @@ export async function POST(request: NextRequest) {
         set('productDescription', get(['productDescription', 'ProductDescription']))
         set('productImageUrl', get(['productImageUrl', 'ProductImageUrl']))
         Object.entries(p).forEach(([k, v]) => {
-          if (!['productId', 'id', 'ProductId', 'Id'].includes(k) && v != null && v !== '' && !(k in result)) {
+          if (['productId', 'id', 'ProductId', 'Id', 'brandId', 'groupId', 'brancheId'].includes(k)) return
+          if (v != null && v !== '' && !(k in result)) {
             result[k] = typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Date)
               ? JSON.stringify(v) : v
           }
         })
       } else {
-        // Zonder product: prijsvelden + barcode/frameNumber altijd tonen (als null) zodat kolommen zichtbaar zijn
+        // Zonder product: prijsvelden + barcode/frameNumber/brandName/groupName/brancheName altijd tonen (als null) zodat kolommen zichtbaar zijn
         const priceCols = ['salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc', 'purchasePriceEx', 'minSalesPriceEx', 'internetSalesPriceEx', 'productSalesPriceEx', 'productSalesPriceInc', 'productPurchasePriceEx', 'avgPurchasePriceEx', 'brutoPurchasePriceEx']
         for (const k of priceCols) result[k] = null
         result.barcode = result.barcode ?? null
         result.frameNumber = result.frameNumber ?? null
+        result.brandName = result.brandName ?? null
+        result.groupName = result.groupName ?? null
+        result.brancheName = result.brancheName ?? null
       }
       return result
     })
