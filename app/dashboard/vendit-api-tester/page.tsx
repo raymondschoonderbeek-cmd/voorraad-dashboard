@@ -64,6 +64,64 @@ function ImageUrlCell({ url, onPreview }: { url: string; onPreview: () => void }
   )
 }
 
+function formatPrice(n: unknown) {
+  if (n == null || n === '') return '—'
+  const num = Number(n)
+  return Number.isFinite(num) ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(num) : String(n)
+}
+
+function ArticleDetailModal({ item, onClose }: { item: Record<string, unknown>; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const priceKeys = ['salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc', 'purchasePriceEx', 'minSalesPriceEx', 'internetSalesPriceEx', 'productSalesPriceEx', 'productSalesPriceInc', 'productPurchasePriceEx', 'avgPurchasePriceEx', 'brutoPurchasePriceEx']
+  const entries = Object.entries(item).filter(([k]) => !k.startsWith('_'))
+  const productName = (item.productName ?? item.productDescription ?? item.productNumber ?? 'Artikel') as string
+  const imageUrl = item.productImageUrl as string | undefined
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: 'white', color: '#0d1f4e' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 flex items-center justify-between" style={{ background: DYNAMO_BLUE }}>
+          <h3 className="font-bold text-lg truncate pr-4" style={{ color: 'white', fontFamily: F }}>{productName}</h3>
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/20 transition font-bold text-white text-lg" aria-label="Sluiten">✕</button>
+        </div>
+        <div className="p-6 max-h-[75vh] overflow-y-auto">
+          {imageUrl && isValidImageUrl(imageUrl) && (
+            <div className="mb-6 flex justify-center">
+              <img src={imageUrl} alt="" className="max-h-48 rounded-xl object-contain border" style={{ borderColor: 'rgba(13,31,78,0.12)' }} />
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {entries.map(([key, value]) => {
+              const isPrice = priceKeys.some(p => key.toLowerCase().includes(p.toLowerCase())) || key.toLowerCase().includes('price')
+              const displayValue = value == null || value === '' ? '—' : isPrice ? formatPrice(value) : (typeof value === 'object' ? JSON.stringify(value) : String(value))
+              const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
+              return (
+                <div key={key} className="rounded-lg px-4 py-3" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.08)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(13,31,78,0.5)' }}>{label}</div>
+                  <div className="text-sm font-medium break-words" style={{ color: '#0d1f4e' }}>{displayValue}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ImageModal({ url, onClose }: { url: string; onClose: () => void }) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
@@ -117,7 +175,7 @@ function ImageModal({ url, onClose }: { url: string; onClose: () => void }) {
   )
 }
 
-function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredColumns?: string[] }) {
+function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]; preferredColumns?: string[]; onRowClick?: (row: unknown) => void }) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -221,7 +279,12 @@ function DataTableView({ data, preferredColumns }: { data: unknown[]; preferredC
           </thead>
           <tbody>
             {paginated.map((row, i) => (
-              <tr key={i} className="border-t" style={{ borderColor: 'rgba(13,31,78,0.08)' }}>
+              <tr
+                key={i}
+                className={`border-t ${onRowClick ? 'cursor-pointer hover:bg-blue-50/50 transition' : ''}`}
+                style={{ borderColor: 'rgba(13,31,78,0.08)' }}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map(col => (
                   <td key={col} className="px-3 py-2 max-w-[200px] align-middle" title={typeof renderCell(row, col) === 'string' ? String(renderCell(row, col)) : undefined}>
                     {renderCell(row, col)}
@@ -282,12 +345,6 @@ function formatOrderDate(s: string | undefined) {
   } catch {
     return s
   }
-}
-
-function formatPrice(n: unknown) {
-  if (n == null || n === '') return '—'
-  const num = Number(n)
-  return Number.isFinite(num) ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(num) : String(n)
 }
 
 function OrderCard({ order, collapsed, onToggle }: { order: OrderWithDetails; collapsed: boolean; onToggle: () => void }) {
@@ -450,6 +507,7 @@ export default function VenditApiTesterPage() {
   const [stockError, setStockError] = useState<string | null>(null)
   const [stockSearch, setStockSearch] = useState('')
   const [stockResponseTime, setStockResponseTime] = useState<number | null>(null)
+  const [selectedArticle, setSelectedArticle] = useState<Record<string, unknown> | null>(null)
 
   const endpoint = VENDIT_GET_ENDPOINTS.find(e => e.path === selectedEndpoint)
   const hasParams = (endpoint?.params?.length ?? 0) > 0
@@ -871,8 +929,15 @@ export default function VenditApiTesterPage() {
                 </div>
               </div>
               <div className="p-4">
-                <DataTableView data={stockFiltered} preferredColumns={STOCK_PREFERRED_COLUMNS} />
+                <DataTableView
+                  data={stockFiltered}
+                  preferredColumns={STOCK_PREFERRED_COLUMNS}
+                  onRowClick={row => setSelectedArticle(row as Record<string, unknown>)}
+                />
               </div>
+              {selectedArticle && (
+                <ArticleDetailModal item={selectedArticle} onClose={() => setSelectedArticle(null)} />
+              )}
               {stockFiltered.length !== stock.length && (
                 <div className="px-4 py-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
                   {stockFiltered.length} van {stock.length} getoond (gefilterd)

@@ -258,6 +258,9 @@ export async function POST(request: NextRequest) {
         const set = (key: string, val: unknown) => {
           if (val != null && val !== '') result[key] = val
         }
+        const setPrice = (key: string, val: unknown) => {
+          result[key] = val != null && val !== '' ? val : null
+        }
         const barcode = get(['barcode', 'Barcode'])
           ?? (Array.isArray(p.barcodes) && p.barcodes[0] && typeof p.barcodes[0] === 'object'
             ? (p.barcodes[0] as { barcode?: string; Barcode?: string })?.barcode ?? (p.barcodes[0] as { barcode?: string; Barcode?: string })?.Barcode : undefined)
@@ -298,18 +301,18 @@ export async function POST(request: NextRequest) {
           if (recEx == null) recEx = (sp.recommendedSalesPriceEx ?? sp.RecommendedSalesPriceEx) as number | undefined
         }
 
-        set('salesPriceEx', salesEx)
-        set('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
-        set('recommendedSalesPriceEx', recEx)
-        set('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
-        set('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
-        set('minSalesPriceEx', get(['minSalesPriceEx', 'MinSalesPriceEx']))
-        set('internetSalesPriceEx', get(['internetSalesPriceEx', 'InternetSalesPriceEx']))
-        set('productSalesPriceEx', get(['productSalesPriceEx', 'ProductSalesPriceEx']))
-        set('productSalesPriceInc', get(['productSalesPriceInc', 'ProductSalesPriceInc']))
-        set('productPurchasePriceEx', get(['productPurchasePriceEx', 'ProductPurchasePriceEx']))
-        set('avgPurchasePriceEx', get(['avgPurchasePriceEx', 'AvgPurchasePriceEx', 'productAvgPurchasePriceEx']))
-        set('brutoPurchasePriceEx', get(['brutoPurchasePriceEx', 'BrutoPurchasePriceEx']))
+        setPrice('salesPriceEx', salesEx)
+        setPrice('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
+        setPrice('recommendedSalesPriceEx', recEx)
+        setPrice('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
+        setPrice('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
+        setPrice('minSalesPriceEx', get(['minSalesPriceEx', 'MinSalesPriceEx']))
+        setPrice('internetSalesPriceEx', get(['internetSalesPriceEx', 'InternetSalesPriceEx']))
+        setPrice('productSalesPriceEx', get(['productSalesPriceEx', 'ProductSalesPriceEx']))
+        setPrice('productSalesPriceInc', get(['productSalesPriceInc', 'ProductSalesPriceInc']))
+        setPrice('productPurchasePriceEx', get(['productPurchasePriceEx', 'ProductPurchasePriceEx']))
+        setPrice('avgPurchasePriceEx', get(['avgPurchasePriceEx', 'AvgPurchasePriceEx', 'productAvgPurchasePriceEx']))
+        setPrice('brutoPurchasePriceEx', get(['brutoPurchasePriceEx', 'BrutoPurchasePriceEx']))
         set('productDescription', get(['productDescription', 'ProductDescription']))
         set('productImageUrl', get(['productImageUrl', 'ProductImageUrl']))
         Object.entries(p).forEach(([k, v]) => {
@@ -318,6 +321,10 @@ export async function POST(request: NextRequest) {
               ? JSON.stringify(v) : v
           }
         })
+      } else {
+        // Zonder product: prijsvelden altijd tonen (als null) zodat kolommen zichtbaar zijn
+        const priceCols = ['salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc', 'purchasePriceEx', 'minSalesPriceEx', 'internetSalesPriceEx', 'productSalesPriceEx', 'productSalesPriceInc', 'productPurchasePriceEx', 'avgPurchasePriceEx', 'brutoPurchasePriceEx']
+        for (const k of priceCols) result[k] = null
       }
       return result
     })
