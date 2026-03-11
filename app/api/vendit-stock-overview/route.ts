@@ -151,8 +151,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2b. Barcodes ophalen voor producten zonder barcode (Products/GetBarcodes)
+    // 2b. Barcodes + artikelnummer leverancier ophalen voor producten die het missen
     const barcodesMap: Record<number, string> = {}
+    const supplierProductNumbersMap: Record<number, string> = {}
     const productsWithoutBarcode = productIds.filter(pid => {
       const p = productsMap[pid]
       const hasBarcode = p && (
@@ -175,6 +176,34 @@ export async function POST(request: NextRequest) {
         const first = items[0] as { barcode?: string; Barcode?: string } | undefined
         const bc = first?.barcode ?? first?.Barcode
         if (bc) barcodesMap[pid] = bc
+      }
+    }
+
+    // 2c. Artikelnummer leverancier ophalen (Products/GetSuppliers) voor producten die het missen
+    const productsWithoutSupplierProductNumber = productIds.filter(pid => {
+      const p = productsMap[pid]
+      const hasIt = p && (
+        (typeof (p as Record<string, unknown>).supplierProductNumber === 'string' && (p as Record<string, unknown>).supplierProductNumber) ||
+        (typeof (p as Record<string, unknown>).SupplierProductNumber === 'string' && (p as Record<string, unknown>).SupplierProductNumber) ||
+        (Array.isArray((p as Record<string, unknown>).productSuppliers) && (p as Record<string, unknown>).productSuppliers?.[0] &&
+          (typeof ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.supplierProductNumber === 'string' ||
+           typeof ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.SupplierProductNumber === 'string'))
+      )
+      return !hasIt
+    })
+    const SUPPLIER_BATCH = 5
+    for (let i = 0; i < productsWithoutSupplierProductNumber.length; i += SUPPLIER_BATCH) {
+      const batch = productsWithoutSupplierProductNumber.slice(i, i + SUPPLIER_BATCH)
+      const results = await Promise.all(batch.map(pid =>
+        fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetSuppliers/0/0`, { method: 'GET', headers, cache: 'no-store' }).then(r => r.json().catch(() => ({})))
+      ))
+      for (let j = 0; j < batch.length; j++) {
+        const pid = batch[j]
+        const data = results[j]
+        const items = Array.isArray(data) ? data : (Array.isArray((data as { items?: unknown[] })?.items) ? (data as { items: unknown[] }).items : [])
+        const first = items[0] as { supplierProductNumber?: string; SupplierProductNumber?: string } | undefined
+        const spn = first?.supplierProductNumber ?? first?.SupplierProductNumber
+        if (spn) supplierProductNumbersMap[pid] = spn
       }
     }
 
@@ -326,7 +355,8 @@ export async function POST(request: NextRequest) {
         const supplierProductNumber = get(['supplierProductNumber', 'SupplierProductNumber', 'supplier_product_number'])
           ?? (Array.isArray((p as Record<string, unknown>).productSuppliers) && (p as Record<string, unknown>).productSuppliers?.[0]
             ? ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.supplierProductNumber ?? ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.SupplierProductNumber : undefined)
-        set('supplierProductNumber', supplierProductNumber)
+          ?? (pid ? supplierProductNumbersMap[pid] : undefined)
+        setAlways('supplierProductNumber', supplierProductNumber)
         const frameNumber = get(['frameNumber', 'FrameNumber', 'stockDetailFrameNumber', 'StockDetailFrameNumber'])
         setAlways('frameNumber', frameNumber)
         set('serialNumber', get(['serialNumber', 'SerialNumber']))
@@ -386,6 +416,7 @@ export async function POST(request: NextRequest) {
         result.brandName = result.brandName ?? null
         result.groupName = result.groupName ?? null
         result.brancheName = result.brancheName ?? null
+        result.supplierProductNumber = result.supplierProductNumber ?? null
       }
       return result
     })

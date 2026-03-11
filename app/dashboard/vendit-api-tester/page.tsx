@@ -107,7 +107,8 @@ function ArticleDetailModal({ item, onClose }: { item: Record<string, unknown>; 
             {entries.map(([key, value]) => {
               const isPrice = priceKeys.some(p => key.toLowerCase().includes(p.toLowerCase())) || key.toLowerCase().includes('price')
               const displayValue = value == null || value === '' ? '—' : isPrice ? formatPrice(value) : (typeof value === 'object' ? JSON.stringify(value) : String(value))
-              const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
+              const labelMap: Record<string, string> = { supplierProductNumber: 'Artikelnummer leverancier' }
+              const label = labelMap[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
               return (
                 <div key={key} className="rounded-lg px-4 py-3" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.08)' }}>
                   <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(13,31,78,0.5)' }}>{label}</div>
@@ -173,6 +174,10 @@ function ImageModal({ url, onClose }: { url: string; onClose: () => void }) {
       </div>
     </div>
   )
+}
+
+const COLUMN_LABELS: Record<string, string> = {
+  supplierProductNumber: 'Artikelnummer leverancier',
 }
 
 function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]; preferredColumns?: string[]; onRowClick?: (row: unknown) => void }) {
@@ -272,7 +277,7 @@ function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]
                     setSortDir(d => (sortKey === col ? (d === 'asc' ? 'desc' : 'asc') : 'asc'))
                   }}
                 >
-                  {col} {sortKey === col && (sortDir === 'asc' ? '↑' : '↓')}
+                  {COLUMN_LABELS[col] ?? col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()} {sortKey === col && (sortDir === 'asc' ? '↑' : '↓')}
                 </th>
               ))}
             </tr>
