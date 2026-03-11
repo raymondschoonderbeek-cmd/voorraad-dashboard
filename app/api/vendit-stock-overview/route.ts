@@ -181,15 +181,16 @@ export async function POST(request: NextRequest) {
 
     // 2c. Artikelnummer leverancier ophalen (Products/GetSuppliers) voor producten die het missen
     const productsWithoutSupplierProductNumber = productIds.filter(pid => {
-      const p = productsMap[pid]
-      const hasIt = p && (
-        (typeof (p as Record<string, unknown>).supplierProductNumber === 'string' && (p as Record<string, unknown>).supplierProductNumber) ||
-        (typeof (p as Record<string, unknown>).SupplierProductNumber === 'string' && (p as Record<string, unknown>).SupplierProductNumber) ||
-        (Array.isArray((p as Record<string, unknown>).productSuppliers) && (p as Record<string, unknown>).productSuppliers?.[0] &&
-          (typeof ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.supplierProductNumber === 'string' ||
-           typeof ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.SupplierProductNumber === 'string'))
-      )
-      return !hasIt
+      const p = productsMap[pid] as Record<string, unknown> | undefined
+      if (!p) return true
+      if (typeof p.supplierProductNumber === 'string' && p.supplierProductNumber) return false
+      if (typeof p.SupplierProductNumber === 'string' && p.SupplierProductNumber) return false
+      const ps = p.productSuppliers
+      if (Array.isArray(ps) && ps.length > 0) {
+        const first = ps[0] as Record<string, unknown>
+        if (typeof first?.supplierProductNumber === 'string' || typeof first?.SupplierProductNumber === 'string') return false
+      }
+      return true
     })
     const SUPPLIER_BATCH = 5
     for (let i = 0; i < productsWithoutSupplierProductNumber.length; i += SUPPLIER_BATCH) {
@@ -352,9 +353,10 @@ export async function POST(request: NextRequest) {
         const brancheName = get(['brancheName', 'BrancheName', 'brancheDescription']) ?? (typeof brancheId === 'number' ? branchesMap[brancheId] : undefined)
         setAlways('brancheName', brancheName)
         set('kindDescription', get(['kindDescription', 'KindDescription']) ?? (p.productKindId ? kindsMap[p.productKindId] : undefined))
+        const psArr = (p as Record<string, unknown>).productSuppliers
+        const firstSupplier = Array.isArray(psArr) && psArr.length > 0 ? (psArr[0] as Record<string, unknown>) : undefined
         const supplierProductNumber = get(['supplierProductNumber', 'SupplierProductNumber', 'supplier_product_number'])
-          ?? (Array.isArray((p as Record<string, unknown>).productSuppliers) && (p as Record<string, unknown>).productSuppliers?.[0]
-            ? ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.supplierProductNumber ?? ((p as Record<string, unknown>).productSuppliers[0] as Record<string, unknown>)?.SupplierProductNumber : undefined)
+          ?? (firstSupplier?.supplierProductNumber ?? firstSupplier?.SupplierProductNumber)
           ?? (pid ? supplierProductNumbersMap[pid] : undefined)
         setAlways('supplierProductNumber', supplierProductNumber)
         const frameNumber = get(['frameNumber', 'FrameNumber', 'stockDetailFrameNumber', 'StockDetailFrameNumber'])
