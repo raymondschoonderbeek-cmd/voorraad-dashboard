@@ -150,6 +150,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 2b. Barcodes ophalen voor producten zonder barcode (Products/GetBarcodes)
+    const barcodesMap: Record<number, string> = {}
+    const productsWithoutBarcode = productIds.filter(pid => {
+      const p = productsMap[pid]
+      const hasBarcode = p && (
+        (typeof (p as Record<string, unknown>).barcode === 'string' && (p as Record<string, unknown>).barcode) ||
+        (typeof (p as Record<string, unknown>).Barcode === 'string' && (p as Record<string, unknown>).Barcode) ||
+        (Array.isArray(p.barcodes) && p.barcodes[0] && typeof (p.barcodes[0] as Record<string, unknown>).barcode === 'string')
+      )
+      return !hasBarcode
+    })
+    const BARCODE_BATCH = 5
+    for (let i = 0; i < productsWithoutBarcode.length; i += BARCODE_BATCH) {
+      const batch = productsWithoutBarcode.slice(i, i + BARCODE_BATCH)
+      const results = await Promise.all(batch.map(pid =>
+        fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetBarcodes/0`, { method: 'GET', headers, cache: 'no-store' }).then(r => r.json().catch(() => ({})))
+      ))
+      for (let j = 0; j < batch.length; j++) {
+        const pid = batch[j]
+        const data = results[j]
+        const items = Array.isArray(data) ? data : (Array.isArray((data as { items?: unknown[] })?.items) ? (data as { items: unknown[] }).items : [])
+        const first = items[0] as { barcode?: string; Barcode?: string } | undefined
+        const bc = first?.barcode ?? first?.Barcode
+        if (bc) barcodesMap[pid] = bc
+      }
+    }
+
     // 3. Brands, Offices, ProductKinds, ProductGroups ophalen (parallel)
     const groupIds = [...new Set(Object.values(productsMap).map(p => p.groupId).filter((id): id is number => typeof id === 'number' && id > 0))]
     const [brandsRes, officesRes, kindsRes, groupsRes] = await Promise.all([
@@ -261,13 +288,18 @@ export async function POST(request: NextRequest) {
         const set = (key: string, val: unknown) => {
           if (val != null && val !== '') result[key] = val
         }
+        const setAlways = (key: string, val: unknown) => {
+          result[key] = val != null && val !== '' ? val : null
+        }
         const setPrice = (key: string, val: unknown) => {
           result[key] = val != null && val !== '' ? val : null
         }
-        const barcode = get(['barcode', 'Barcode'])
+        const pid = (s.productId ?? (s as Record<string, unknown>).ProductId ?? 0) as number
+        const barcode = get(['barcode', 'Barcode', 'eanCode', 'EanCode', 'ean', 'EAN', 'stockDetailBarcode', 'StockDetailBarcode'])
           ?? (Array.isArray(p.barcodes) && p.barcodes[0] && typeof p.barcodes[0] === 'object'
             ? (p.barcodes[0] as { barcode?: string; Barcode?: string })?.barcode ?? (p.barcodes[0] as { barcode?: string; Barcode?: string })?.Barcode : undefined)
-        set('barcode', barcode)
+          ?? (pid ? barcodesMap[pid] : undefined)
+        setAlways('barcode', barcode)
         set('productNumber', get(['productNumber', 'ProductNumber', 'articleNumber', 'ArticleNumber']))
         set('articleNumber', get(['articleNumber', 'ArticleNumber', 'productNumber', 'ProductNumber']))
         set('brandName', get(['brandName', 'BrandName'])
@@ -275,14 +307,14 @@ export async function POST(request: NextRequest) {
           ?? (p.brand && typeof p.brand === 'object' ? (p.brand as { name?: string; brandName?: string }).name ?? (p.brand as { name?: string; brandName?: string }).brandName : undefined))
         set('groupName', get(['groupName', 'GroupName']) ?? (p.groupId ? groupsMap[p.groupId] : undefined))
         set('kindDescription', get(['kindDescription', 'KindDescription']) ?? (p.productKindId ? kindsMap[p.productKindId] : undefined))
-        set('frameNumber', get(['frameNumber', 'FrameNumber']))
+        const frameNumber = get(['frameNumber', 'FrameNumber', 'stockDetailFrameNumber', 'StockDetailFrameNumber'])
+        setAlways('frameNumber', frameNumber)
         set('serialNumber', get(['serialNumber', 'SerialNumber']))
         set('productSubdescription', get(['productSubdescription', 'ProductSubdescription']))
         set('productSize', get(['productSize', 'ProductSize']))
         set('productColor', get(['productColor', 'ProductColor']))
         set('productType', get(['productType', 'ProductType']))
         set('modelSeason', get(['modelSeason', 'ModelSeason']))
-        const pid = (s.productId ?? (s as Record<string, unknown>).ProductId ?? 0) as number
         const oid = (s.officeId ?? (s as Record<string, unknown>).officeId ?? 0) as number
         const scid = (s.sizeColorId ?? (s as Record<string, unknown>).productSizeColorId ?? 0) as number
         const priceInfo = pricesMap.get(`${pid}|${oid}|${scid}`) ?? pricesMap.get(`${pid}|${oid}|0`) ?? pricesMap.get(`${pid}|0|${scid}`) ?? pricesMap.get(`${pid}|0|0`)
@@ -325,9 +357,11 @@ export async function POST(request: NextRequest) {
           }
         })
       } else {
-        // Zonder product: prijsvelden altijd tonen (als null) zodat kolommen zichtbaar zijn
+        // Zonder product: prijsvelden + barcode/frameNumber altijd tonen (als null) zodat kolommen zichtbaar zijn
         const priceCols = ['salesPriceEx', 'salesPriceInc', 'recommendedSalesPriceEx', 'recommendedSalesPriceInc', 'purchasePriceEx', 'minSalesPriceEx', 'internetSalesPriceEx', 'productSalesPriceEx', 'productSalesPriceInc', 'productPurchasePriceEx', 'avgPurchasePriceEx', 'brutoPurchasePriceEx']
         for (const k of priceCols) result[k] = null
+        result.barcode = result.barcode ?? null
+        result.frameNumber = result.frameNumber ?? null
       }
       return result
     })
