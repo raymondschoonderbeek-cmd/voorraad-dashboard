@@ -129,15 +129,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 2. Unieke product IDs
-    const productIds = [...new Set(stockWithAvailable.map(s => s.productId).filter((id): id is number => typeof id === 'number' && id > 0))]
+    // 2. Unieke product IDs - ophalen in batches (API-limiet vaak ~100-200 per call)
+    const productIds = [...new Set(stockWithAvailable.map(s => s.productId ?? (s as Record<string, unknown>).ProductId).filter((id): id is number => typeof id === 'number' && id > 0))]
 
     const productsMap: Record<number, ProductEntity> = {}
-    if (productIds.length > 0) {
+    const PRODUCT_BATCH = 100
+    for (let i = 0; i < productIds.length; i += PRODUCT_BATCH) {
+      const batch = productIds.slice(i, i + PRODUCT_BATCH)
       const prodRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Products/GetMultiple`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ primaryKeys: productIds }),
+        body: JSON.stringify({ primaryKeys: batch }),
         cache: 'no-store',
       })
       const prodData = (await prodRes.json().catch(() => ({}))) as { items?: ProductEntity[] }
@@ -238,10 +240,11 @@ export async function POST(request: NextRequest) {
     }
 
     const enriched = stockWithAvailable.map(s => {
-      const p = s.productId ? productsMap[s.productId] : undefined
+      const pid = s.productId ?? (s as Record<string, unknown>).ProductId
+      const p = pid ? productsMap[pid as number] : undefined
       const productName = p
-        ? (p.productDescription?.trim() || p.productNumber?.trim() || p.articleNumber?.trim() || p.barcode?.trim() || `Product #${s.productId}`)
-        : (s.productId ? `Product #${s.productId}` : '—')
+        ? (p.productDescription?.trim() || p.productNumber?.trim() || p.articleNumber?.trim() || p.barcode?.trim() || `Product #${pid}`)
+        : (pid ? `Product #${pid}` : '—')
 
       const result: Record<string, unknown> = { ...s, productName }
       const officeIdVal = s.officeId ?? (s as Record<string, unknown>).officeId
@@ -279,7 +282,7 @@ export async function POST(request: NextRequest) {
         set('productColor', get(['productColor', 'ProductColor']))
         set('productType', get(['productType', 'ProductType']))
         set('modelSeason', get(['modelSeason', 'ModelSeason']))
-        const pid = s.productId ?? 0
+        const pid = (s.productId ?? (s as Record<string, unknown>).ProductId ?? 0) as number
         const oid = (s.officeId ?? (s as Record<string, unknown>).officeId ?? 0) as number
         const scid = (s.sizeColorId ?? (s as Record<string, unknown>).productSizeColorId ?? 0) as number
         const priceInfo = pricesMap.get(`${pid}|${oid}|${scid}`) ?? pricesMap.get(`${pid}|${oid}|0`) ?? pricesMap.get(`${pid}|0|${scid}`) ?? pricesMap.get(`${pid}|0|0`)
