@@ -1,0 +1,26 @@
+-- Seed: Panini Italiani belegde broodjes (bron: paniniitaliani.nl)
+
+insert into lunch_products (name, description, price_cents, category, sort_order) values
+('Amalfi', 'Pikante salami, gorgonzola met ui', 500, 'italiaanse_bol', 1),
+('Bergamo', '3 soorten Italiaanse kaas en kruiden', 550, 'italiaanse_bol', 2),
+('Capri', 'Mozzarella, tomaat, pesto en basilicum', 500, 'italiaanse_bol', 3),
+('Carlo', 'Salami Milano, provolone, sla, tomaat, paprika en groene pepers', 550, 'italiaanse_bol', 4),
+('Como', 'Pikante salami, provolone (italiaanse jonge kaas), paprika en groene pepers', 500, 'italiaanse_bol', 5),
+('DolceVita', 'Provolone (jonge kaas), sla, tomaat, paprika, komkommer en groene pepers', 550, 'italiaanse_bol', 6),
+('Etna', 'Pikante salami en groene pepers', 450, 'italiaanse_bol', 7),
+('Firenze', 'Mozzarella, ansjovis en groene pepers', 475, 'italiaanse_bol', 8),
+('Gargano', 'Gerookte zalm, roomkaas en sla', 600, 'italiaanse_bol', 9),
+('Latina', 'Mozzarella, gedroogde tomaat en ui', 500, 'italiaanse_bol', 10),
+('Marino', 'Parmaham, tomaat, rucola en parmesan', 550, 'italiaanse_bol', 11),
+('Milano', 'Salami, provolone (italiaanse jonge kaas), ham en tomaat', 500, 'italiaanse_bol', 12),
+('MonaLisa', 'Carpaccio, rucola, pijnboompitten, parmesan, pesto en dressing', 625, 'italiaanse_bol', 13),
+('Monza', 'Bresaola, parmesan, gedroogde tomaten, rucola en dressing', 625, 'italiaanse_bol', 14),
+('Palermo', 'Salami, gorgonzola en paprika', 500, 'italiaanse_bol', 15),
+('Piccante', 'Pittige salami, provolone (italiaanse jonge kaas) en groene pepers', 500, 'italiaanse_bol', 16),
+('Pisa', 'Broodje ei', 400, 'italiaanse_bol', 17),
+('Pollo speciaal', 'Kiprollade, roomkaas, komkommer, rucola', 500, 'italiaanse_bol', 18),
+('Roma', 'Parmaham, tomaat, geitenkaas, rucola en rode pesto', 550, 'italiaanse_bol', 19),
+('Rimini', 'Tonijn, sla, ui, komkommer en tomaat', 550, 'italiaanse_bol', 20),
+('Sorrento', 'Parmaham, mozzarella, ui en tomaat', 550, 'italiaanse_bol', 21),
+('Verona', 'Ham, provolone (italiaanse jonge kaas), tomaat en ui', 500, 'italiaanse_bol', 22),
+('Vitello Tonnato', 'Fricandeau, tonijnmayonaise, tomaat, kappertjes en rucola', 550, 'italiaanse_bol', 23);

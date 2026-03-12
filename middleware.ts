@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
-  const publicPaths = ['/login', '/update-password', '/auth/callback', '/api/auth/session-info']
+  const publicPaths = ['/login', '/update-password', '/auth/callback', '/api/auth/session-info', '/api/payments/tikkie/webhook']
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {
     const redirect = NextResponse.redirect(new URL('/login', request.url))

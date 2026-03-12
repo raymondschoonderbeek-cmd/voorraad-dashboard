@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import useSWR from 'swr'
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 export default function InstellingenPage() {
   const searchParams = useSearchParams()
@@ -15,7 +18,27 @@ export default function InstellingenPage() {
   const [mfaVerifyCode, setMfaVerifyCode] = useState('')
   const [mfaError, setMfaError] = useState('')
   const [mfaSuccess, setMfaSuccess] = useState('')
+  const [lunchSaving, setLunchSaving] = useState(false)
   const supabase = createClient()
+
+  const { data: profileData, mutate: mutateProfile } = useSWR<{ lunch_module_enabled?: boolean }>('/api/profile', fetcher)
+  const lunchModuleEnabled = profileData?.lunch_module_enabled === true
+
+  async function toggleLunchModule(enabled: boolean) {
+    setLunchSaving(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lunch_module_enabled: enabled }),
+      })
+      if (!res.ok) throw new Error('Opslaan mislukt')
+      mutateProfile({ lunch_module_enabled: enabled })
+    } catch {
+      setMfaError('Lunch-module voorkeur kon niet worden opgeslagen.')
+    }
+    setLunchSaving(false)
+  }
 
   async function loadMfaFactors() {
     const { data } = await supabase.auth.mfa.listFactors()
@@ -88,7 +111,43 @@ export default function InstellingenPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-4 sm:p-6">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto space-y-6">
+        {/* Lunch module */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">🥪 Lunch bestellingen</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Schakel de lunch-module in om broodjes te kunnen bestellen op kantoor.
+              </p>
+            </div>
+            <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900 shrink-0">
+              ← Dashboard
+            </Link>
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">Lunch module aan</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={lunchModuleEnabled}
+              disabled={lunchSaving}
+              onClick={() => toggleLunchModule(!lunchModuleEnabled)}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                lunchModuleEnabled ? 'bg-blue-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  lunchModuleEnabled ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {lunchSaving && <p className="mt-2 text-xs text-gray-500">Opslaan...</p>}
+        </div>
+
+        {/* MFA */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -97,9 +156,6 @@ export default function InstellingenPage() {
                 Voeg een extra beveiligingslaag toe. Vanaf kantoor (vertrouwd IP) is geen MFA nodig. Vanaf thuis of elders wel.
               </p>
             </div>
-            <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900 shrink-0">
-              ← Dashboard
-            </Link>
           </div>
 
           {mfaVerplicht && mfaFactors.length === 0 && (

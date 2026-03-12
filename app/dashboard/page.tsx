@@ -414,8 +414,9 @@ export default function Dashboard() {
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchModuleEnabled?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
+  const lunchModuleEnabled = sessionData?.lunchModuleEnabled === true
   const [geocodeLoading, setGeocodeLoading] = useState(false)
   const [geocodeResult, setGeocodeResult] = useState<{ bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null>(null)
   const [kaartFilterLand, setKaartFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
@@ -812,6 +813,22 @@ export default function Dashboard() {
                       <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkels.length} locaties</span>
                     </div>
                   </div>
+
+                  {lunchModuleEnabled && (
+                    <Link href="/dashboard/lunch" className="mod-card block rounded-2xl overflow-hidden cursor-pointer" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
+                      <div className="p-6">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
+                          <span style={{ color: DYNAMO_GOLD, fontSize: '20px' }}>🥪</span>
+                        </div>
+                        <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Lunch bestellen</div>
+                        <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
+                      </div>
+                      <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                        <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
+                        <span style={{ color: DYNAMO_BLUE, opacity: 0.6, fontSize: '18px' }}>🥪</span>
+                      </div>
+                    </Link>
+                  )}
 
                   <Link href="/dashboard/brand-groep" className="mod-card block rounded-2xl overflow-hidden cursor-pointer" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
                     <div className="p-6">

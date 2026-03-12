@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false })
+      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchModuleEnabled: false })
     }
 
     const { data: rolData } = await supabase
@@ -25,6 +25,18 @@ export async function GET(request: NextRequest) {
       .single()
     const isAdmin = rolData?.rol === 'admin'
     const mfaVerplicht = rolData?.mfa_verplicht === true
+
+    let lunchModuleEnabled = false
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('lunch_module_enabled')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      lunchModuleEnabled = profileData?.lunch_module_enabled === true
+    } catch {
+      // profiles tabel bestaat mogelijk nog niet
+    }
 
     const clientIp = getClientIp(request)
     const { data: dbIps, error: dbErr } = await supabase.from('trusted_ips').select('ip_or_cidr')
@@ -59,9 +71,10 @@ export async function GET(request: NextRequest) {
       requiresMfaSetup,
       hasMfaEnrolled,
       isAdmin,
+      lunchModuleEnabled,
     })
   } catch (err) {
     console.error('Session info error:', err)
-    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false })
+    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchModuleEnabled: false })
   }
 }
