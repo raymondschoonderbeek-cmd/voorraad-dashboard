@@ -15,6 +15,7 @@ type LunchProduct = {
   category: string
   active: boolean
   sort_order: number
+  image_url?: string | null
 }
 
 type CartItem = { product: LunchProduct; quantity: number }
@@ -182,6 +183,18 @@ export default function LunchPage() {
           </div>
         )}
 
+        <div className="rounded-xl p-3" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.08)' }}>
+          <a
+            href="https://www.paniniitaliani.nl/webshop/panini-italiani-belegde-broodjes-amersfoort/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium hover:underline"
+            style={{ color: DYNAMO_BLUE }}
+          >
+            🥪 Bekijk het volledige assortiment op Panini Italiani →
+          </a>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Productcatalogus */}
           <div className="lg:col-span-2">
@@ -209,13 +222,20 @@ export default function LunchPage() {
                       {items.map(p => (
                         <div
                           key={p.id}
-                          className="flex items-center justify-between gap-3 rounded-xl p-3 sm:p-4"
+                          className="flex items-start gap-3 rounded-xl p-3 sm:p-4"
                           style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)', boxShadow: '0 1px 3px rgba(13,31,78,0.04)' }}
                         >
+                          <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-2xl">🥪</span>
+                            )}
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold" style={{ color: DYNAMO_BLUE }}>{p.name}</div>
                             {p.description && (
-                              <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.5)' }}>
+                              <div className="text-sm mt-0.5" style={{ color: 'rgba(13,31,78,0.6)' }}>
                                 {p.description}
                               </div>
                             )}

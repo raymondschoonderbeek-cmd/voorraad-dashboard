@@ -18,6 +18,7 @@ export async function PATCH(
     const updates: Record<string, unknown> = {}
     if (body.name !== undefined) updates.name = String(body.name).trim()
     if (body.description !== undefined) updates.description = body.description ? String(body.description).trim() : null
+    if (body.image_url !== undefined) updates.image_url = body.image_url ? String(body.image_url).trim() : null
     if (typeof body.price_cents === 'number' && body.price_cents >= 0) updates.price_cents = Math.round(body.price_cents)
     if (['italiaanse_bol', 'bruine_driehoek', 'ciabatta'].includes(body.category)) updates.category = body.category
     if (typeof body.active === 'boolean') updates.active = body.active

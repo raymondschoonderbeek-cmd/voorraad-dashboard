@@ -34,6 +34,7 @@ type LunchProduct = {
   category: string
   active: boolean
   sort_order: number
+  image_url?: string | null
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -337,7 +338,7 @@ function ProductBeheer({
   newProduct: boolean
   setNewProduct: (v: boolean) => void
 }) {
-  const [form, setForm] = useState({ name: '', description: '', price_cents: 500, category: 'italiaanse_bol', active: true })
+  const [form, setForm] = useState({ name: '', description: '', image_url: '', price_cents: 500, category: 'italiaanse_bol', active: true })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -347,6 +348,7 @@ function ProductBeheer({
     setForm({
       name: p.name,
       description: p.description ?? '',
+      image_url: p.image_url ?? '',
       price_cents: p.price_cents,
       category: p.category,
       active: p.active,
@@ -356,7 +358,7 @@ function ProductBeheer({
   const handleNew = () => {
     setNewProduct(true)
     setEditingProduct(null)
-    setForm({ name: '', description: '', price_cents: 500, category: 'italiaanse_bol', active: true })
+    setForm({ name: '', description: '', image_url: '', price_cents: 500, category: 'italiaanse_bol', active: true })
   }
 
   async function save() {
@@ -367,7 +369,7 @@ function ProductBeheer({
         const res = await fetch(`/api/lunch/products/${editingProduct.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, image_url: form.image_url || null }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
@@ -376,14 +378,14 @@ function ProductBeheer({
         const res = await fetch('/api/lunch/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, image_url: form.image_url || null }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error ?? 'Aanmaken mislukt')
         setNewProduct(false)
       }
       mutate()
-      setForm({ name: '', description: '', price_cents: 500, category: 'italiaanse_bol', active: true })
+      setForm({ name: '', description: '', image_url: '', price_cents: 500, category: 'italiaanse_bol', active: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Er ging iets mis')
     } finally {
@@ -447,9 +449,17 @@ function ProductBeheer({
             />
             <input
               type="text"
-              placeholder="Beschrijving"
+              placeholder="Ingrediënten / beleg"
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="rounded-lg px-3 py-2 text-sm border sm:col-span-2"
+              style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+            />
+            <input
+              type="url"
+              placeholder="Afbeelding URL"
+              value={form.image_url}
+              onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
               className="rounded-lg px-3 py-2 text-sm border sm:col-span-2"
               style={{ borderColor: 'rgba(13,31,78,0.2)' }}
             />
@@ -498,15 +508,25 @@ function ProductBeheer({
         {products.map(p => (
           <div
             key={p.id}
-            className="flex items-center justify-between gap-3 rounded-xl p-3"
+            className="flex items-center gap-3 rounded-xl p-3"
             style={{ background: 'white', border: '1px solid rgba(13,31,78,0.08)' }}
           >
+            <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+              {p.image_url ? (
+                <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg">🥪</span>
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold" style={{ color: DYNAMO_BLUE }}>{p.name}</div>
               <div className="text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>
                 {CATEGORY_LABELS[p.category] ?? p.category} · {formatPrice(p.price_cents)}
                 {!p.active && ' · Inactief'}
               </div>
+              {p.description && (
+                <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.4)' }}>{p.description}</div>
+              )}
             </div>
             <div className="flex gap-2 shrink-0">
               <button

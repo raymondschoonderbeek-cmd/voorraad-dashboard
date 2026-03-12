@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('lunch_products')
-      .select('id, name, description, price_cents, category, active, sort_order')
+      .select('id, name, description, price_cents, category, active, sort_order, image_url')
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true })
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   if (!admin.ok) return NextResponse.json({ error: 'Forbidden' }, { status: admin.status })
   try {
     const body = await request.json().catch(() => ({}))
-    const { name, description, price_cents, category, active, sort_order } = body
+    const { name, description, price_cents, category, active, sort_order, image_url } = body
     if (!name || typeof price_cents !== 'number' || price_cents < 0) {
       return NextResponse.json({ error: 'Naam en prijs verplicht' }, { status: 400 })
     }
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       .insert({
         name: String(name).trim(),
         description: description ? String(description).trim() : null,
+        image_url: image_url ? String(image_url).trim() || null : null,
         price_cents: Math.round(price_cents),
         category: ['italiaanse_bol', 'bruine_driehoek', 'ciabatta'].includes(category) ? category : 'italiaanse_bol',
         active: active !== false,
