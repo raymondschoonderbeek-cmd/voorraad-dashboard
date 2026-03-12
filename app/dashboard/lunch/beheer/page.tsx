@@ -61,8 +61,9 @@ export default function LunchBeheerPage() {
   const router = useRouter()
   const [tab, setTab] = useState<'orders' | 'products' | 'instellingen'>('orders')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
+  const lunchOnly = sessionData?.lunchOnly === true
 
   useEffect(() => {
     if (sessionData && !sessionData.isAdmin) {
@@ -142,9 +143,9 @@ export default function LunchBeheerPage() {
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
-          <Link href="/dashboard/lunch" className="flex items-center gap-2 text-white hover:opacity-90">
+          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="flex items-center gap-2 text-white hover:opacity-90">
             <span>←</span>
-            <span className="font-bold">Lunch beheer</span>
+            <span className="font-bold">{lunchOnly ? 'Lunch beheer' : 'Dashboard'}</span>
           </Link>
         </div>
       </header>

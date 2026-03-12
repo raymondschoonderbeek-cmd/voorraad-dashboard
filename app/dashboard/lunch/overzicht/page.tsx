@@ -40,8 +40,9 @@ function formatDate(s: string) {
 export default function LunchOverzichtPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const { data: orders = [], isLoading } = useSWR<Order[]>(`/api/lunch/orders?date=${date}`, fetcher)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
+  const lunchOnly = sessionData?.lunchOnly === true
 
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
@@ -53,9 +54,9 @@ export default function LunchOverzichtPage() {
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/lunch" className="flex items-center gap-2 text-white hover:opacity-90">
+            <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="flex items-center gap-2 text-white hover:opacity-90">
               <span>←</span>
-              <span className="font-bold">Mijn bestellingen</span>
+              <span className="font-bold">{lunchOnly ? 'Mijn bestellingen' : 'Dashboard'}</span>
             </Link>
             {isAdmin && (
               <Link

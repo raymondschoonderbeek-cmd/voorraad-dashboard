@@ -46,8 +46,9 @@ export default function LunchPage() {
   const [error, setError] = useState('')
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
+  const lunchOnly = sessionData?.lunchOnly === true
 
   const addToCart = useCallback((product: LunchProduct, qty = 1) => {
     setCart(prev => {
@@ -135,9 +136,9 @@ export default function LunchPage() {
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
-          <Link href="/dashboard/lunch" className="flex items-center gap-2 text-white hover:opacity-90">
+          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="flex items-center gap-2 text-white hover:opacity-90">
             <span>←</span>
-            <span className="font-bold">Lunch bestellen</span>
+            <span className="font-bold">{lunchOnly ? 'Lunch bestellen' : 'Dashboard'}</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link
