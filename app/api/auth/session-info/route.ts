@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchModuleEnabled: false })
+      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false })
     }
 
     const { data: rolData } = await supabase
@@ -24,16 +24,17 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
     const isAdmin = rolData?.rol === 'admin'
+    const lunchOnly = rolData?.rol === 'lunch'
     const mfaVerplicht = rolData?.mfa_verplicht === true
 
-    let lunchModuleEnabled = false
+    let lunchModuleEnabled = lunchOnly
     try {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('lunch_module_enabled')
         .eq('user_id', user.id)
         .maybeSingle()
-      lunchModuleEnabled = profileData?.lunch_module_enabled === true
+      if (!lunchOnly) lunchModuleEnabled = profileData?.lunch_module_enabled === true
     } catch {
       // profiles tabel bestaat mogelijk nog niet
     }
@@ -71,10 +72,11 @@ export async function GET(request: NextRequest) {
       requiresMfaSetup,
       hasMfaEnrolled,
       isAdmin,
+      lunchOnly,
       lunchModuleEnabled,
     })
   } catch (err) {
     console.error('Session info error:', err)
-    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchModuleEnabled: false })
+    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false })
   }
 }

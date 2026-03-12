@@ -35,6 +35,13 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
           router.replace('/mfa-verify')
           return
         }
+        // Lunch-only gebruikers: alleen lunch en instellingen
+        const isLunchPath = pathname === '/dashboard/lunch' || pathname.startsWith('/dashboard/lunch/')
+        const isInstellingen = pathname === '/dashboard/instellingen'
+        if (data?.lunchOnly && !isLunchPath && !isInstellingen) {
+          router.replace('/dashboard/lunch')
+          return
+        }
         setReady(true)
       })
       .catch(() => setReady(true))

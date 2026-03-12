@@ -419,7 +419,7 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, rol: nieuwRol, mfa_verplicht: nieuwMfaVerplicht, winkel_ids: geselecteerdeWinkels }),
+      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, rol: nieuwRol, mfa_verplicht: nieuwMfaVerplicht, winkel_ids: nieuwRol === 'lunch' ? [] : geselecteerdeWinkels }),
     })
     const data = await res.json()
     setFormLoading(false)
@@ -443,7 +443,7 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers/rollen', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: emailChanged ? newEmail : undefined, mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false, winkel_ids: geselecteerdeWinkels }),
+      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: emailChanged ? newEmail : undefined, mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false, winkel_ids: bewerkGebruiker.rol === 'lunch' ? [] : geselecteerdeWinkels }),
     })
     const data = await res.json().catch(() => ({}))
     setFormLoading(false)
@@ -871,7 +871,7 @@ export default function BeheerPage() {
                   <div>
                     <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Rol</label>
                     <div className="flex gap-3">
-                      {[{ value: 'viewer', label: 'Viewer', info: 'Kan voorraad bekijken' }, { value: 'admin', label: 'Admin', info: 'Volledige toegang' }].map(r => (
+                      {[{ value: 'viewer', label: 'Viewer', info: 'Kan voorraad bekijken' }, { value: 'lunch', label: 'Lunch', info: 'Alleen lunch bestellen' }, { value: 'admin', label: 'Admin', info: 'Volledige toegang' }].map(r => (
                         <label key={r.value} className="flex-1 cursor-pointer">
                           <input type="radio" name="rol" value={r.value} checked={nieuwRol === r.value} onChange={() => setNieuwRol(r.value)} className="sr-only" />
                           <div className="rounded-xl border-2 p-3 transition" style={nieuwRol === r.value ? { borderColor: DYNAMO_BLUE, background: 'rgba(13,31,78,0.04)' } : { borderColor: 'rgba(13,31,78,0.1)' }}>
@@ -886,6 +886,7 @@ export default function BeheerPage() {
                     <input type="checkbox" id="nieuw_mfa_verplicht" checked={nieuwMfaVerplicht} onChange={e => setNieuwMfaVerplicht(e.target.checked)} className="accent-blue-600" />
                     <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                   </div>
+                  {nieuwRol !== 'lunch' && (
                   <div>
                     <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -900,6 +901,7 @@ export default function BeheerPage() {
                       ))}
                     </div>
                   </div>
+                  )}
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Versturen...' : 'Uitnodiging versturen'}</button>
@@ -926,6 +928,7 @@ export default function BeheerPage() {
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Rol</label>
                       <select value={bewerkGebruiker.rol} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, rol: e.target.value })} className={inputClass} style={inputStyle}>
                         <option value="viewer">Viewer</option>
+                        <option value="lunch">Lunch</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>
@@ -934,6 +937,7 @@ export default function BeheerPage() {
                       <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                     </div>
                   </div>
+                  {bewerkGebruiker.rol !== 'lunch' && (
                   <div>
                     <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -948,6 +952,7 @@ export default function BeheerPage() {
                       ))}
                     </div>
                   </div>
+                  )}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
                     <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
@@ -975,8 +980,8 @@ export default function BeheerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(240,192,64,0.15)', color: '#92660a' } : { background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)' }}>
-                            {rol.rol === 'admin' ? '👑 Admin' : '👁 Viewer'}
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(240,192,64,0.15)', color: '#92660a' } : rol.rol === 'lunch' ? { background: 'rgba(34,197,94,0.15)', color: '#15803d' } : { background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.6)' }}>
+                            {rol.rol === 'admin' ? '👑 Admin' : rol.rol === 'lunch' ? '🥪 Lunch' : '👁 Viewer'}
                           </span>
                           {mfaStatus[rol.user_id] === true && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.12)', color: '#15803d' }} title="MFA ingeschakeld">✓ MFA</span>
