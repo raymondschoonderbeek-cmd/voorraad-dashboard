@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -9,9 +9,17 @@ export default function UpdatePassword() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [mustChange, setMustChange] = useState<boolean | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    fetch('/api/auth/session-info')
+      .then(r => r.json())
+      .then(d => setMustChange(d?.mustChangePassword === true))
+      .catch(() => setMustChange(false))
+  }, [])
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault()
@@ -24,6 +32,7 @@ export default function UpdatePassword() {
     if (error) {
       setError(error.message)
     } else {
+      await fetch('/api/profile/clear-must-change-password', { method: 'POST' })
       setMessage('Wachtwoord succesvol gewijzigd.')
       setTimeout(() => router.push('/dashboard'), 1500)
     }
@@ -38,8 +47,13 @@ export default function UpdatePassword() {
         className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-200 space-y-5"
       >
         <h1 className="text-2xl font-bold text-gray-900">
-          Nieuw wachtwoord instellen
+          {mustChange ? 'Wijzig je wachtwoord' : 'Nieuw wachtwoord instellen'}
         </h1>
+        {mustChange && (
+          <p className="text-sm text-gray-600">
+            Na je eerste inlog moet je een nieuw wachtwoord kiezen.
+          </p>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3">

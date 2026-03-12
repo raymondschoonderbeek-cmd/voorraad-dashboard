@@ -63,6 +63,7 @@ export default function BeheerPage() {
   // Nieuw gebruiker
   const [nieuwEmail, setNieuwEmail] = useState('')
   const [nieuwNaam, setNieuwNaam] = useState('')
+  const [nieuwWachtwoord, setNieuwWachtwoord] = useState('')
   const [nieuwRol, setNieuwRol] = useState('viewer')
   const [nieuwMfaVerplicht, setNieuwMfaVerplicht] = useState(false)
   const [geselecteerdeWinkels, setGeselecteerdeWinkels] = useState<number[]>([])
@@ -422,7 +423,7 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, rol: nieuwRol, mfa_verplicht: nieuwMfaVerplicht, winkel_ids: nieuwRol === 'lunch' ? [] : geselecteerdeWinkels }),
+      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, wachtwoord: nieuwWachtwoord || undefined, rol: nieuwRol, mfa_verplicht: nieuwMfaVerplicht, winkel_ids: nieuwRol === 'lunch' ? [] : geselecteerdeWinkels }),
     })
     const data = await res.json()
     setFormLoading(false)
@@ -430,8 +431,10 @@ export default function BeheerPage() {
     else {
       setFormSuccess(data.existingUser
         ? `${nieuwNaam || nieuwEmail} toegevoegd (was al geregistreerd).`
-        : `Uitnodiging verstuurd naar ${nieuwEmail}!`)
-      setNieuwEmail(''); setNieuwNaam(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setGeselecteerdeWinkels([])
+        : nieuwWachtwoord
+          ? `Gebruiker aangemaakt. E-mail met wachtwoord verstuurd naar ${nieuwEmail}.`
+          : `Uitnodiging verstuurd naar ${nieuwEmail}!`)
+      setNieuwEmail(''); setNieuwNaam(''); setNieuwWachtwoord(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setGeselecteerdeWinkels([])
       setToonForm(false)
       await haalGebruikersOp()
     }
@@ -869,7 +872,7 @@ export default function BeheerPage() {
 
             {toonForm && (
               <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_GOLD}`, boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe gebruiker uitnodigen</h2>
+                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe gebruiker aanmaken</h2>
                 <form onSubmit={voegGebruikerToe} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -879,6 +882,13 @@ export default function BeheerPage() {
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Naam</label>
                       <input type="text" placeholder="Volledige naam" value={nieuwNaam} onChange={e => setNieuwNaam(e.target.value)} className={inputClass} style={inputStyle} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Wachtwoord <span style={{ fontWeight: 400, opacity: 0.6 }}>(min. 8 tekens; wordt per e-mail verstuurd)</span></label>
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="Kies of genereer wachtwoord" value={nieuwWachtwoord} onChange={e => setNieuwWachtwoord(e.target.value)} className={inputClass} style={{ ...inputStyle, flex: 1 }} minLength={8} autoComplete="off" />
+                      <button type="button" onClick={() => setNieuwWachtwoord(Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 32]).join(''))} className="rounded-xl px-4 py-2.5 text-sm font-semibold shrink-0" style={{ border: '1px solid rgba(13,31,78,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>Genereer</button>
                     </div>
                   </div>
                   <div>
@@ -917,7 +927,7 @@ export default function BeheerPage() {
                   )}
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3">
-                    <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Versturen...' : 'Uitnodiging versturen'}</button>
+                    <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Bezig...' : nieuwWachtwoord ? 'Aanmaken en e-mail versturen' : 'Uitnodiging versturen'}</button>
                     <button type="button" onClick={() => setToonForm(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>

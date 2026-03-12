@@ -17,6 +17,10 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
       setReady(true)
       return
     }
+    if (pathname === '/update-password') {
+      setReady(true)
+      return
+    }
 
     setReady(false)
     let cancelled = false
@@ -24,6 +28,10 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
       .then(res => res.json())
       .then(data => {
         if (cancelled) return
+        if (data?.mustChangePassword) {
+          router.replace('/update-password')
+          return
+        }
         if (data?.requiresMfaSetup) {
           if (pathname !== '/dashboard/instellingen') {
             router.replace('/dashboard/instellingen?mfa=verplicht')

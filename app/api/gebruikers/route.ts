@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
+import { sendWelcomeEmail } from '@/lib/send-welcome-email'
 import { getCachedVenditStats, setCachedVenditStats, getCachedVenditDealerNumbers, setCachedVenditDealerNumbers } from '@/lib/vendit-cache'
 
 // Controleer of gebruiker admin is
@@ -241,52 +242,105 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { email, rol, naam, mfa_verplicht, winkel_ids } = await request.json()
+  const { email, rol, naam, mfa_verplicht, winkel_ids, wachtwoord } = await request.json()
+  const emailTrim = String(email ?? '').trim().toLowerCase()
+  const naamTrim = String(naam ?? email ?? '').trim() || emailTrim
 
   if (!hasAdminKey()) {
     return NextResponse.json({
-      error: 'Uitnodigen vereist SUPABASE_SERVICE_ROLE_KEY. Voeg deze toe aan .env.local en herstart de server.',
+      error: 'Aanmaken vereist SUPABASE_SERVICE_ROLE_KEY. Voeg deze toe aan .env.local en herstart de server.',
     }, { status: 400 })
   }
   const adminClient = createAdminClient()
-  const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email)
 
   let newUserId: string
+  let isNewUser = false
+  let isExistingUser = false
 
-  if (inviteError) {
-    const isAlreadyRegistered =
-      inviteError.message?.toLowerCase().includes('already been registered') ||
-      inviteError.message?.toLowerCase().includes('already registered')
-    if (isAlreadyRegistered) {
-      // Gebruiker bestaat al in Auth – zoek op en voeg toe aan gebruiker_rollen
-      const { data: { users } } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
-      const existing = users?.find(u => u.email?.toLowerCase() === String(email).toLowerCase().trim())
-      if (!existing) {
-        return NextResponse.json({
-          error: 'E-mailadres bestaat al in het systeem, maar kon niet worden gevonden. Probeer de gebruiker handmatig toe te voegen via Supabase.',
-        }, { status: 400 })
-      }
-      newUserId = existing.id
-      // Controleer of al in gebruiker_rollen (admin client omzeilt RLS)
-      const { data: bestaand } = await adminClient.from('gebruiker_rollen').select('id').eq('user_id', newUserId).single()
-      if (bestaand) {
-        return NextResponse.json({
-          error: 'Deze gebruiker staat al in de lijst. Bewerk de bestaande gebruiker.',
-        }, { status: 400 })
+  // Nieuwe gebruiker: wachtwoord verplicht, createUser + e-mail
+  const hasPassword = typeof wachtwoord === 'string' && wachtwoord.trim().length >= 8
+  if (hasPassword) {
+    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+      email: emailTrim,
+      password: wachtwoord.trim(),
+      email_confirm: true,
+    })
+    if (createError) {
+      const isAlreadyRegistered =
+        createError.message?.toLowerCase().includes('already been registered') ||
+        createError.message?.toLowerCase().includes('already registered')
+      if (isAlreadyRegistered) {
+        isExistingUser = true
+        const { data: { users } } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
+        const existing = users?.find(u => u.email?.toLowerCase() === emailTrim)
+        if (!existing) {
+          return NextResponse.json({
+            error: 'E-mailadres bestaat al in het systeem, maar kon niet worden gevonden.',
+          }, { status: 400 })
+        }
+        newUserId = existing.id
+        const { data: bestaand } = await adminClient.from('gebruiker_rollen').select('id').eq('user_id', newUserId).single()
+        if (bestaand) {
+          return NextResponse.json({
+            error: 'Deze gebruiker staat al in de lijst. Bewerk de bestaande gebruiker.',
+          }, { status: 400 })
+        }
+      } else {
+        return NextResponse.json({ error: createError.message }, { status: 400 })
       }
     } else {
-      return NextResponse.json({ error: inviteError.message }, { status: 400 })
+      newUserId = created!.user.id
+      isNewUser = true
+      const loginUrl = `${request.nextUrl.origin}/login`
+      const emailResult = await sendWelcomeEmail({
+        to: emailTrim,
+        naam: naamTrim,
+        wachtwoord: wachtwoord.trim(),
+        loginUrl,
+      })
+      if (!emailResult.ok) {
+        // Gebruiker is aangemaakt, maar e-mail mislukt – log maar blokkeer niet
+        console.warn('Welcome email failed:', emailResult.error)
+      }
     }
   } else {
-    newUserId = invited!.user.id
+    // Geen wachtwoord: legacy invite-flow (magic link)
+    const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(emailTrim)
+    if (inviteError) {
+      const isAlreadyRegistered =
+        inviteError.message?.toLowerCase().includes('already been registered') ||
+        inviteError.message?.toLowerCase().includes('already registered')
+      if (isAlreadyRegistered) {
+        isExistingUser = true
+        const { data: { users } } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
+        const existing = users?.find(u => u.email?.toLowerCase() === emailTrim)
+        if (!existing) {
+          return NextResponse.json({
+            error: 'E-mailadres bestaat al in het systeem, maar kon niet worden gevonden.',
+          }, { status: 400 })
+        }
+        newUserId = existing.id
+        const { data: bestaand } = await adminClient.from('gebruiker_rollen').select('id').eq('user_id', newUserId).single()
+        if (bestaand) {
+          return NextResponse.json({
+            error: 'Deze gebruiker staat al in de lijst. Bewerk de bestaande gebruiker.',
+          }, { status: 400 })
+        }
+      } else {
+        return NextResponse.json({ error: inviteError.message }, { status: 400 })
+      }
+    } else {
+      newUserId = invited!.user.id
+    }
   }
 
   // Sla rol op (admin client omzeilt RLS)
   const rolData = {
     user_id: newUserId,
     rol: rol ?? 'viewer',
-    naam: naam ?? email,
+    naam: naamTrim,
     mfa_verplicht: mfa_verplicht === true,
+    must_change_password: isNewUser,
   }
   const { error: rolError } = await adminClient
     .from('gebruiker_rollen')
@@ -312,7 +366,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    existingUser: !!inviteError,
+    existingUser: isExistingUser,
   })
 }
 

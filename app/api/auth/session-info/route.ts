@@ -15,16 +15,17 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false })
+      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false, mustChangePassword: false })
     }
 
     const { data: rolData } = await supabase
       .from('gebruiker_rollen')
-      .select('rol, mfa_verplicht')
+      .select('rol, mfa_verplicht, must_change_password')
       .eq('user_id', user.id)
       .single()
     const isAdmin = rolData?.rol === 'admin'
     const lunchOnly = rolData?.rol === 'lunch'
+    const mustChangePassword = rolData?.must_change_password === true
     const mfaVerplicht = rolData?.mfa_verplicht === true
 
     let lunchModuleEnabled = lunchOnly
@@ -74,9 +75,10 @@ export async function GET(request: NextRequest) {
       isAdmin,
       lunchOnly,
       lunchModuleEnabled,
+      mustChangePassword,
     })
   } catch (err) {
     console.error('Session info error:', err)
-    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false })
+    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false, mustChangePassword: false })
   }
 }

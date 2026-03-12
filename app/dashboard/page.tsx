@@ -16,6 +16,9 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'meer'] as const
+type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
+
 const WINKEL_KLEUREN = [
   '#2563eb', '#16a34a', '#dc2626', '#9333ea',
   '#ea580c', '#0891b2', '#65a30d', '#db2777',
@@ -128,6 +131,13 @@ const IconMap = () => (
     <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
     <line x1="9" y1="3" x2="9" y2="18" />
     <line x1="15" y1="6" x2="15" y2="21" />
+  </svg>
+)
+
+const IconGrip = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="9" cy="9" r="1.5" /><circle cx="15" cy="9" r="1.5" />
+    <circle cx="9" cy="15" r="1.5" /><circle cx="15" cy="15" r="1.5" />
   </svg>
 )
 
@@ -417,6 +427,17 @@ export default function Dashboard() {
   const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchModuleEnabled?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
   const lunchModuleEnabled = sessionData?.lunchModuleEnabled === true
+
+  const { data: profileData, mutate: mutateProfile } = useSWR<{ modules_order?: string[] }>('/api/profile', fetcher)
+  const savedOrder = profileData?.modules_order
+  const [moduleOrder, setModuleOrder] = useState<ModuleId[]>(() => [...DEFAULT_MODULE_ORDER])
+  useEffect(() => {
+    if (!Array.isArray(savedOrder) || savedOrder.length === 0) return
+    const valid = savedOrder.filter((id): id is ModuleId => DEFAULT_MODULE_ORDER.includes(id as ModuleId))
+    const missing = DEFAULT_MODULE_ORDER.filter(id => !valid.includes(id))
+    const next = valid.length ? [...valid, ...missing] : [...DEFAULT_MODULE_ORDER]
+    setModuleOrder(prev => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+  }, [savedOrder])
   const [geocodeLoading, setGeocodeLoading] = useState(false)
   const [geocodeResult, setGeocodeResult] = useState<{ bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null>(null)
   const [kaartFilterLand, setKaartFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
@@ -627,6 +648,30 @@ export default function Dashboard() {
     if (res.ok) await mutateFavorieten()
   }
 
+  const orderedModules = useMemo(() => {
+    const available: ModuleId[] = ['voorraad', ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []), 'brand-groep', 'meer']
+    const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
+    return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
+  }, [moduleOrder, lunchModuleEnabled])
+
+  async function moveModule(fromIndex: number, toIndex: number) {
+    const arr = [...orderedModules]
+    const [dragged] = arr.splice(fromIndex, 1)
+    arr.splice(toIndex, 0, dragged)
+    const next = [...arr, ...moduleOrder.filter(id => !orderedModules.includes(id))]
+    setModuleOrder(next)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modules_order: next }),
+      })
+      if (res.ok) mutateProfile()
+    } catch {
+      // fallback: volgorde lokaal behouden, volgende keer opnieuw proberen
+    }
+  }
+
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
@@ -798,64 +843,106 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3 mb-4">
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Modules</span>
                   <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
+                  <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Sleep om te herschikken</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="mod-card rounded-2xl overflow-hidden cursor-pointer" style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={openWinkelSelect}>
-                    <div className="p-6">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
-                        <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
+                  {orderedModules.map((id, idx) => {
+                    const modCard = 'mod-card rounded-2xl overflow-hidden'
+                    const isBlue = id === 'voorraad'
+                    const dragHandle = (
+                      <div
+                        draggable
+                        onDragStart={e => { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move'; e.stopPropagation() }}
+                        onDragOver={e => e.preventDefault()}
+                        onClick={e => { e.preventDefault(); e.stopPropagation() }}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing opacity-50 hover:opacity-90 transition-opacity"
+                        style={isBlue ? { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' } : { background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)' }}
+                        title="Sleep om volgorde te wijzigen"
+                      >
+                        <IconGrip />
                       </div>
-                      <div style={{ fontFamily: F, color: 'white', fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Voorraad</div>
-                      <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Zoek en filter producten per winkel</div>
-                    </div>
-                    <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                      <span style={{ color: DYNAMO_GOLD, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Selecteer winkel →</span>
-                      <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkels.length} locaties</span>
-                    </div>
-                  </div>
-
-                  {lunchModuleEnabled && (
-                    <Link href="/dashboard/lunch" className="mod-card block rounded-2xl overflow-hidden cursor-pointer" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
-                      <div className="p-6">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
-                          <span style={{ color: DYNAMO_GOLD, fontSize: '20px' }}>🥪</span>
+                    )
+                    if (id === 'voorraad') {
+                      return (
+                        <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <div className={`${modCard} cursor-pointer`} style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={openWinkelSelect}>
+                            {dragHandle}
+                            <div className="p-6">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
+                                <div style={{ color: DYNAMO_GOLD }}><IconBox /></div>
+                              </div>
+                              <div style={{ fontFamily: F, color: 'white', fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Voorraad</div>
+                              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Zoek en filter producten per winkel</div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                              <span style={{ color: DYNAMO_GOLD, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Selecteer winkel →</span>
+                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkels.length} locaties</span>
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Lunch bestellen</div>
-                        <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
-                      </div>
-                      <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
-                        <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
-                        <span style={{ color: DYNAMO_BLUE, opacity: 0.6, fontSize: '18px' }}>🥪</span>
-                      </div>
-                    </Link>
-                  )}
-
-                  <Link href="/dashboard/brand-groep" className="mod-card block rounded-2xl overflow-hidden cursor-pointer" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
-                    <div className="p-6">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
-                        <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
-                      </div>
-                      <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Merk / Groep</div>
-                      <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
-                    </div>
-                    <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
-                      <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
-                      <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
-                    </div>
-                  </Link>
-
-                  <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.07)' }}>
-                    <div className="p-6">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(13,31,78,0.06)' }}>
-                        <div style={{ color: 'rgba(13,31,78,0.25)' }}><IconMap /></div>
-                      </div>
-                      <div style={{ fontFamily: F, color: 'rgba(13,31,78,0.35)', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
-                      <div style={{ color: 'rgba(13,31,78,0.25)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
-                    </div>
-                    <div className="px-6 py-3" style={{ background: 'rgba(13,31,78,0.02)', borderTop: '1px solid rgba(13,31,78,0.05)' }}>
-                      <span style={{ color: 'rgba(13,31,78,0.25)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
-                    </div>
-                  </div>
+                      )
+                    }
+                    if (id === 'lunch') {
+                      return (
+                        <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
+                            {dragHandle}
+                            <div className="p-6">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
+                                <span style={{ color: DYNAMO_GOLD, fontSize: '20px' }}>🥪</span>
+                              </div>
+                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Lunch bestellen</div>
+                              <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                              <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
+                              <span style={{ color: DYNAMO_BLUE, opacity: 0.6, fontSize: '18px' }}>🥪</span>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
+                    if (id === 'brand-groep') {
+                      return (
+                        <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
+                            {dragHandle}
+                            <div className="p-6">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
+                                <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
+                              </div>
+                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Merk / Groep</div>
+                              <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                              <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
+                              <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
+                    if (id === 'meer') {
+                      return (
+                        <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.07)' }}>
+                            {dragHandle}
+                            <div className="p-6">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(13,31,78,0.06)' }}>
+                                <div style={{ color: 'rgba(13,31,78,0.25)' }}><IconMap /></div>
+                              </div>
+                              <div style={{ fontFamily: F, color: 'rgba(13,31,78,0.35)', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
+                              <div style={{ color: 'rgba(13,31,78,0.25)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
+                            </div>
+                            <div className="px-6 py-3" style={{ background: 'rgba(13,31,78,0.02)', borderTop: '1px solid rgba(13,31,78,0.05)' }}>
+                              <span style={{ color: 'rgba(13,31,78,0.25)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })}
                 </div>
               </div>
 
