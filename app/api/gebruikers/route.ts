@@ -267,8 +267,8 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
       newUserId = existing.id
-      // Controleer of al in gebruiker_rollen
-      const { data: bestaand } = await supabase.from('gebruiker_rollen').select('id').eq('user_id', newUserId).single()
+      // Controleer of al in gebruiker_rollen (admin client omzeilt RLS)
+      const { data: bestaand } = await adminClient.from('gebruiker_rollen').select('id').eq('user_id', newUserId).single()
       if (bestaand) {
         return NextResponse.json({
           error: 'Deze gebruiker staat al in de lijst. Bewerk de bestaande gebruiker.',
@@ -281,20 +281,20 @@ export async function POST(request: NextRequest) {
     newUserId = invited!.user.id
   }
 
-  // Sla rol op (upsert: altijd zichtbaar in Beheer, ook bij dubbele of herhaalde actie)
+  // Sla rol op (admin client omzeilt RLS)
   const rolData = {
     user_id: newUserId,
     rol: rol ?? 'viewer',
     naam: naam ?? email,
     mfa_verplicht: mfa_verplicht === true,
   }
-  const { error: rolError } = await supabase
+  const { error: rolError } = await adminClient
     .from('gebruiker_rollen')
     .upsert(rolData, { onConflict: 'user_id' })
 
   if (rolError) {
     // Fallback: probeer insert als upsert faalt (bijv. oude schema zonder unique)
-    const { error: insertError } = await supabase.from('gebruiker_rollen').insert([rolData])
+    const { error: insertError } = await adminClient.from('gebruiker_rollen').insert([rolData])
     if (insertError) {
       return NextResponse.json({
         error: `Kon gebruiker niet toevoegen: ${insertError.message}`,
@@ -302,10 +302,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Sla winkeltoegang op
+  // Sla winkeltoegang op (admin client omzeilt RLS)
   if (winkel_ids && winkel_ids.length > 0) {
-    await supabase.from('gebruiker_winkels').delete().eq('user_id', newUserId)
-    await supabase.from('gebruiker_winkels').insert(
+    await adminClient.from('gebruiker_winkels').delete().eq('user_id', newUserId)
+    await adminClient.from('gebruiker_winkels').insert(
       winkel_ids.map((wid: number) => ({ user_id: newUserId, winkel_id: wid }))
     )
   }
