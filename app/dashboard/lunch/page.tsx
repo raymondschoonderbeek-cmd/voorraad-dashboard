@@ -135,7 +135,7 @@ export default function LunchPage() {
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white hover:opacity-90">
+          <Link href="/dashboard/lunch" className="flex items-center gap-2 text-white hover:opacity-90">
             <span>←</span>
             <span className="font-bold">Lunch bestellen</span>
           </Link>

@@ -18,6 +18,7 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
       return
     }
 
+    setReady(false)
     let cancelled = false
     fetch('/api/auth/session-info')
       .then(res => res.json())
