@@ -42,6 +42,7 @@ export default function LunchPage() {
     user_name?: string | null
     items?: { product_name: string | null; quantity: number; unit_price_cents: number }[]
   } | null>(null)
+  const [heeftTikkieGeklikt, setHeeftTikkieGeklikt] = useState(false)
   const [error, setError] = useState('')
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
@@ -81,6 +82,7 @@ export default function LunchPage() {
     if (cart.length === 0 || totalCents <= 0) return
     setError('')
     setCheckoutResult(null)
+    setHeeftTikkieGeklikt(false)
     setCheckoutLoading(true)
     try {
       const res = await fetch('/api/lunch/orders', {
@@ -189,32 +191,45 @@ export default function LunchPage() {
             </div>
 
             <div className="px-6 sm:px-8 py-6">
-              <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(240,192,64,0.12)', border: '2px solid rgba(240,192,64,0.4)' }}>
-                <div className="text-sm font-semibold mb-1" style={{ color: DYNAMO_BLUE }}>Te betalen bedrag</div>
-                <div className="text-3xl font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
-                  {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0
-                    ? formatPrice(checkoutResult.amount_cents)
-                    : '—'}
+              {heeftTikkieGeklikt ? (
+                <div className="rounded-xl p-6 text-center" style={{ background: 'rgba(34,197,94,0.08)', border: '2px solid rgba(34,197,94,0.3)' }}>
+                  <div className="text-4xl mb-3">🥪</div>
+                  <h3 className="font-bold text-lg mb-2" style={{ color: DYNAMO_BLUE }}>Top, betaling ontvangen!</h3>
+                  <p className="text-sm" style={{ color: 'rgba(13,31,78,0.7)' }}>
+                    Je broodje staat op de lijst. Eet smakelijk alvast! 🥪
+                  </p>
                 </div>
-                <p className="text-xs font-semibold" style={{ color: 'rgba(13,31,78,0.7)' }}>
-                  LET OP: vul dit bedrag zelf in bij Tikkie!
-                </p>
-              </div>
-
-              {checkoutResult.tikkie_url ? (
-                <a
-                  href={checkoutResult.tikkie_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full py-4 rounded-xl font-bold text-center text-lg transition hover:opacity-90"
-                  style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-                >
-                  Betaal via Tikkie
-                </a>
               ) : (
-                <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.12)' }}>
-                  <p style={{ color: 'rgba(13,31,78,0.7)' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
-                </div>
+                <>
+                  <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(240,192,64,0.12)', border: '2px solid rgba(240,192,64,0.4)' }}>
+                    <div className="text-sm font-semibold mb-1" style={{ color: DYNAMO_BLUE }}>Te betalen bedrag</div>
+                    <div className="text-3xl font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
+                      {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0
+                        ? formatPrice(checkoutResult.amount_cents)
+                        : '—'}
+                    </div>
+                    <p className="text-xs font-semibold" style={{ color: 'rgba(13,31,78,0.7)' }}>
+                      LET OP: vul dit bedrag zelf in bij Tikkie!
+                    </p>
+                  </div>
+
+                  {checkoutResult.tikkie_url ? (
+                    <a
+                      href={checkoutResult.tikkie_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setHeeftTikkieGeklikt(true)}
+                      className="block w-full py-4 rounded-xl font-bold text-center text-lg transition hover:opacity-90"
+                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+                    >
+                      Betaal via Tikkie
+                    </a>
+                  ) : (
+                    <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.12)' }}>
+                      <p style={{ color: 'rgba(13,31,78,0.7)' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
+                    </div>
+                  )}
+                </>
               )}
 
               {checkoutResult.items && checkoutResult.items.length > 0 && (
