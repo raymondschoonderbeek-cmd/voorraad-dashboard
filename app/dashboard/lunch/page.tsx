@@ -2,7 +2,9 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
+import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -31,6 +33,8 @@ function formatPrice(cents: number) {
 }
 
 export default function LunchPage() {
+  const router = useRouter()
+  const supabase = createClient()
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -157,6 +161,13 @@ export default function LunchPage() {
                 Beheer
               </Link>
             )}
+            <button
+              onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg"
+              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+            >
+              Uitloggen
+            </button>
           </div>
         </div>
       </header>

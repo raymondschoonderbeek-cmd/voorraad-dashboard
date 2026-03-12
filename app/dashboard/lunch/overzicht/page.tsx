@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
+import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -38,6 +40,8 @@ function formatDate(s: string) {
 }
 
 export default function LunchOverzichtPage() {
+  const router = useRouter()
+  const supabase = createClient()
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const { data: orders = [], isLoading } = useSWR<Order[]>(`/api/lunch/orders?date=${date}`, fetcher)
   const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
@@ -67,6 +71,13 @@ export default function LunchOverzichtPage() {
                 Beheer
               </Link>
             )}
+            <button
+              onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg ml-auto"
+              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+            >
+              Uitloggen
+            </button>
           </div>
         </div>
       </header>
