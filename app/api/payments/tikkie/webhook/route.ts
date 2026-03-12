@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 
 /**
  * Tikkie webhook: ontvangt betalingsstatus updates.
@@ -9,6 +8,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!hasAdminKey()) {
+      return NextResponse.json({ error: 'Server configuratie: SUPABASE_SERVICE_ROLE_KEY ontbreekt' }, { status: 500 })
+    }
     const body = await request.json().catch(() => ({}))
     const tikkieId = body.tikkie_id ?? body.paymentRequestToken
     const status = body.status ?? body.state
