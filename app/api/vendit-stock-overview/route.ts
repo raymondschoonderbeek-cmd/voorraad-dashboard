@@ -179,7 +179,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2c. Artikelnummer leverancier ophalen (Products/GetSuppliers) voor producten die het missen
+    // 2c. Artikelnummer leverancier + inkoopprijs ophalen (Products/GetSuppliers) voor producten die het missen
+    type PriceEntry = { salesPriceEx?: number; recommendedSalesPriceEx?: number; minSalesPriceEx?: number; internetSalesPriceEx?: number; purchasePriceEx?: number }
+    const pricesMap = new Map<string, PriceEntry>()
     const productsWithoutSupplierProductNumber = productIds.filter(pid => {
       const p = productsMap[pid] as Record<string, unknown> | undefined
       if (!p) return true
@@ -202,9 +204,15 @@ export async function POST(request: NextRequest) {
         const pid = batch[j]
         const data = results[j]
         const items = Array.isArray(data) ? data : (Array.isArray((data as { items?: unknown[] })?.items) ? (data as { items: unknown[] }).items : [])
-        const first = items[0] as { supplierProductNumber?: string; SupplierProductNumber?: string } | undefined
+        const first = items[0] as { supplierProductNumber?: string; SupplierProductNumber?: string; purchasePriceEx?: number; PurchasePriceEx?: number } | undefined
         const spn = first?.supplierProductNumber ?? first?.SupplierProductNumber
         if (spn) supplierProductNumbersMap[pid] = spn
+        const purchEx = first?.purchasePriceEx ?? first?.PurchasePriceEx
+        if (typeof purchEx === 'number') {
+          const key = `${pid}|0|0`
+          const existing = pricesMap.get(key) ?? {}
+          pricesMap.set(key, { ...existing, purchasePriceEx: purchEx })
+        }
       }
     }
 
@@ -226,7 +234,6 @@ export async function POST(request: NextRequest) {
     ])
 
     // 4. Verkoopprijzen + adviesprijs: eerst bulk (1 call), anders per-product als fallback
-    const pricesMap = new Map<string, { salesPriceEx?: number; recommendedSalesPriceEx?: number }>()
     const addPrice = (pr: Record<string, unknown>) => {
       const pid = (pr.productId ?? pr.ProductId ?? 0) as number
       const oid = (pr.officeId ?? pr.OfficeId ?? 0) as number
@@ -234,7 +241,13 @@ export async function POST(request: NextRequest) {
       const key = `${pid}|${oid}|${scid}`
       const salesEx = (pr.salesPriceEx ?? pr.SalesPriceEx) as number | undefined
       const recEx = (pr.recommendedSalesPriceEx ?? pr.RecommendedSalesPriceEx) as number | undefined
-      if (pid > 0) pricesMap.set(key, { salesPriceEx: salesEx, recommendedSalesPriceEx: recEx })
+      const minEx = (pr.minSalesPriceEx ?? pr.MinSalesPriceEx) as number | undefined
+      const internetEx = (pr.internetSalesPriceEx ?? pr.InternetSalesPriceEx) as number | undefined
+      const purchEx = (pr.purchasePriceEx ?? pr.PurchasePriceEx) as number | undefined
+      if (pid > 0) {
+        const existing = pricesMap.get(key) ?? {}
+        pricesMap.set(key, { ...existing, salesPriceEx: salesEx, recommendedSalesPriceEx: recEx, minSalesPriceEx: minEx, internetSalesPriceEx: internetEx, purchasePriceEx: purchEx ?? existing.purchasePriceEx })
+      }
     }
     try {
       const pricesRes = await fetch(`${VENDIT_BASE}/VenditPublicApi/Products/GetProductSalePricesChangedSince/0`, { method: 'GET', headers, cache: 'no-store' })
@@ -243,12 +256,14 @@ export async function POST(request: NextRequest) {
       for (const pr of priceItems) addPrice(pr as Record<string, unknown>)
 
       // Fallback: GetProductSalePricesChangedSince levert vaak niets op → per-product GetPrices
+      // officeId: 0 = vestiging van API-key, -1 = alle vestigingen
       if (priceItems.length === 0 && productIds.length > 0) {
         const BATCH = 8
+        const priceOfficeId = Number(officeId) || 0
         for (let i = 0; i < productIds.length; i += BATCH) {
           const batch = productIds.slice(i, i + BATCH)
           const results = await Promise.all(batch.map(pid =>
-            fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetPrices/0/-1`, { method: 'GET', headers, cache: 'no-store' }).then(r => r.json().catch(() => ({})))
+            fetch(`${VENDIT_BASE}/VenditPublicApi/Products/${pid}/GetPrices/0/${priceOfficeId}`, { method: 'GET', headers, cache: 'no-store' }).then(r => r.json().catch(() => ({})))
           ))
           for (let j = 0; j < batch.length; j++) {
             const pid = batch[j]
@@ -374,6 +389,9 @@ export async function POST(request: NextRequest) {
         // Prijs uit API, anders uit product.salesPrices (geneste array), anders uit product zelf
         let salesEx = priceInfo?.salesPriceEx ?? get(['salesPriceEx', 'SalesPriceEx'])
         let recEx = priceInfo?.recommendedSalesPriceEx ?? get(['recommendedSalesPriceEx', 'RecommendedSalesPriceEx'])
+        let minEx = priceInfo?.minSalesPriceEx ?? get(['minSalesPriceEx', 'MinSalesPriceEx'])
+        let internetEx = priceInfo?.internetSalesPriceEx ?? get(['internetSalesPriceEx', 'InternetSalesPriceEx'])
+        let purchEx = priceInfo?.purchasePriceEx ?? get(['purchasePriceEx', 'PurchasePriceEx'])
         const salesPrices = (p as Record<string, unknown>).salesPrices ?? (p as Record<string, unknown>).productSalesPrices
         if ((salesEx == null || recEx == null) && Array.isArray(salesPrices) && salesPrices.length > 0) {
           const first = salesPrices[0] as Record<string, unknown>
@@ -386,15 +404,17 @@ export async function POST(request: NextRequest) {
           const sp = match ?? (salesPrices[0] as Record<string, unknown>)
           if (salesEx == null) salesEx = (sp.salesPriceEx ?? sp.SalesPriceEx) as number | undefined
           if (recEx == null) recEx = (sp.recommendedSalesPriceEx ?? sp.RecommendedSalesPriceEx) as number | undefined
+          if (minEx == null) minEx = (sp.minSalesPriceEx ?? sp.MinSalesPriceEx) as number | undefined
+          if (internetEx == null) internetEx = (sp.internetSalesPriceEx ?? sp.InternetSalesPriceEx) as number | undefined
         }
 
         setPrice('salesPriceEx', salesEx)
         setPrice('salesPriceInc', get(['salesPriceInc', 'SalesPriceInc']))
         setPrice('recommendedSalesPriceEx', recEx)
         setPrice('recommendedSalesPriceInc', get(['recommendedSalesPriceInc', 'RecommendedSalesPriceInc']))
-        setPrice('purchasePriceEx', get(['purchasePriceEx', 'PurchasePriceEx']))
-        setPrice('minSalesPriceEx', get(['minSalesPriceEx', 'MinSalesPriceEx']))
-        setPrice('internetSalesPriceEx', get(['internetSalesPriceEx', 'InternetSalesPriceEx']))
+        setPrice('purchasePriceEx', purchEx)
+        setPrice('minSalesPriceEx', minEx)
+        setPrice('internetSalesPriceEx', internetEx)
         setPrice('productSalesPriceEx', get(['productSalesPriceEx', 'ProductSalesPriceEx']))
         setPrice('productSalesPriceInc', get(['productSalesPriceInc', 'ProductSalesPriceInc']))
         setPrice('productPurchasePriceEx', get(['productPurchasePriceEx', 'ProductPurchasePriceEx']))
