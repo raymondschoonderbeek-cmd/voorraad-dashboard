@@ -45,7 +45,10 @@ export default function LunchOverzichtPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        input, select { color: #0d1f4e !important; }
+        input::placeholder { color: #6b7280 !important; }
+      `}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
@@ -74,8 +77,8 @@ export default function LunchOverzichtPage() {
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
-            className="rounded-xl px-3 py-2 text-sm border"
-            style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white' }}
+            className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
+            style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
           />
         </div>
 

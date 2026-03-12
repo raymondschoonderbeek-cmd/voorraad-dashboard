@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
@@ -34,7 +34,14 @@ export default function LunchPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [checkoutResult, setCheckoutResult] = useState<{ tikkie_url?: string; order_id?: string; amount_cents?: number } | null>(null)
+  const checkoutRef = useRef<HTMLDivElement>(null)
+  const [checkoutResult, setCheckoutResult] = useState<{
+    tikkie_url?: string
+    order_id?: string
+    amount_cents?: number
+    user_name?: string | null
+    items?: { product_name: string | null; quantity: number; unit_price_cents: number }[]
+  } | null>(null)
   const [error, setError] = useState('')
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
@@ -95,6 +102,8 @@ export default function LunchPage() {
         tikkie_url: checkoutData.tikkie_url,
         order_id: data.id,
         amount_cents: checkoutData.amount_cents ?? data.total_cents ?? totalCents,
+        user_name: data.user_name ?? null,
+        items: data.items ?? cart.map(i => ({ product_name: i.product.name, quantity: i.quantity, unit_price_cents: i.product.price_cents })),
       })
       setCart([])
     } catch (e) {
@@ -103,6 +112,10 @@ export default function LunchPage() {
       setCheckoutLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (checkoutResult) checkoutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [checkoutResult])
 
   const byCategory = products.reduce<Record<string, LunchProduct[]>>((acc, p) => {
     const c = p.category || 'italiaanse_bol'
@@ -113,7 +126,10 @@ export default function LunchPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        input, select { color: #0d1f4e !important; }
+        input::placeholder { color: #6b7280 !important; }
+      `}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
@@ -151,8 +167,8 @@ export default function LunchPage() {
             type="date"
             value={orderDate}
             onChange={e => setOrderDate(e.target.value)}
-            className="rounded-xl px-3 py-2 text-sm border"
-            style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white' }}
+            className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
+            style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
           />
         </div>
 
@@ -163,29 +179,64 @@ export default function LunchPage() {
         )}
 
         {checkoutResult && (
-          <div className="rounded-xl p-4" style={{ background: checkoutResult.tikkie_url ? '#ecfdf5' : '#fef3c7', border: checkoutResult.tikkie_url ? '1px solid #10b981' : '1px solid #f59e0b' }}>
-            <p className="font-semibold" style={{ color: checkoutResult.tikkie_url ? '#047857' : '#92400e' }}>Bestelling geplaatst!</p>
-            {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0 && (
-              <p className="text-sm mt-1 font-bold" style={{ color: checkoutResult.tikkie_url ? '#047857' : '#92400e' }}>
-                Te betalen: {formatPrice(checkoutResult.amount_cents)}
+          <div ref={checkoutRef} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)', boxShadow: '0 4px 24px rgba(13,31,78,0.12)' }}>
+            <div className="p-6 sm:p-8 text-center">
+              <div className="text-5xl mb-3">🎉</div>
+              <h2 className="text-2xl font-bold mb-1" style={{ color: DYNAMO_BLUE }}>Bedankt topper!</h2>
+              <p className="text-sm" style={{ color: 'rgba(13,31,78,0.6)' }}>
+                Je bestelling is geplaatst{checkoutResult.user_name ? `, ${checkoutResult.user_name}` : ''}. Betaal hieronder via Tikkie.
               </p>
-            )}
-            <p className="text-sm mt-1" style={{ color: checkoutResult.tikkie_url ? '#065f46' : '#78350f' }}>
-              {checkoutResult.tikkie_url
-                ? 'Klik op de knop om het Tikkie betaalscherm te openen. Betaal daar met iDEAL.'
-                : 'Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.'}
-            </p>
-            {checkoutResult.tikkie_url && (
-              <a
-                href={checkoutResult.tikkie_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 px-4 py-2 rounded-lg font-semibold text-sm"
-                style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-              >
-                Betaal nu →
-              </a>
-            )}
+            </div>
+
+            <div className="px-6 sm:px-8 pb-6">
+              <div className="rounded-xl p-4 mb-4" style={{ background: '#fff7ed', border: '2px solid #fb923c' }}>
+                <div className="text-sm font-semibold mb-1" style={{ color: '#9a3412' }}>Te betalen bedrag</div>
+                <div className="text-3xl font-bold mb-2" style={{ color: '#ea580c' }}>
+                  {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0
+                    ? formatPrice(checkoutResult.amount_cents)
+                    : '—'}
+                </div>
+                <p className="text-xs font-semibold" style={{ color: '#b91c1c' }}>
+                  LET OP: vul dit bedrag zelf in bij Tikkie!
+                </p>
+              </div>
+
+              {checkoutResult.tikkie_url ? (
+                <a
+                  href={checkoutResult.tikkie_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full py-4 rounded-xl font-bold text-center text-lg transition hover:opacity-90"
+                  style={{ background: '#ea580c', color: 'white' }}
+                >
+                  Betaal via Tikkie
+                </a>
+              ) : (
+                <div className="rounded-xl p-4 text-sm" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
+                  <p style={{ color: '#92400e' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
+                </div>
+              )}
+
+              {checkoutResult.items && checkoutResult.items.length > 0 && (
+                <div className="mt-6 pt-6" style={{ borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                  <h3 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Je bestelling</h3>
+                  <ul className="space-y-2">
+                    {checkoutResult.items.map((item, i) => (
+                      <li key={i} className="flex justify-between text-sm">
+                        <span style={{ color: 'rgba(13,31,78,0.8)' }}>
+                          {item.quantity}x {item.product_name ?? 'Product'}
+                        </span>
+                        <span style={{ color: DYNAMO_BLUE }}>{formatPrice(item.unit_price_cents * item.quantity)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex justify-between font-bold mt-2 pt-2" style={{ borderTop: '1px solid rgba(13,31,78,0.06)' }}>
+                    <span style={{ color: DYNAMO_BLUE }}>Totaal</span>
+                    <span style={{ color: DYNAMO_BLUE }}>{formatPrice(checkoutResult.amount_cents ?? 0)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

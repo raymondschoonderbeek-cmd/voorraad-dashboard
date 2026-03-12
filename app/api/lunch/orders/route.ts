@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const productIds = [...new Set(items.map((i: { product_id: string }) => i.product_id))]
     const { data: products, error: prodErr } = await supabase
       .from('lunch_products')
-      .select('id, price_cents')
+      .select('id, name, price_cents')
       .eq('active', true)
       .in('id', productIds)
     if (prodErr || !products?.length) {
@@ -135,7 +135,11 @@ export async function POST(request: NextRequest) {
       order_date: order.order_date,
       status: order.status,
       total_cents: order.total_cents,
-      items: validItems,
+      user_name: order.user_name ?? null,
+      items: validItems.map(i => {
+        const p = products.find((x: { id: string }) => x.id === i.product_id) as { name?: string } | undefined
+        return { ...i, product_name: p?.name ?? null }
+      }),
     })
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij aanmaken bestelling' }, { status: 500 })

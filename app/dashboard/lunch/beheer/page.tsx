@@ -123,9 +123,22 @@ export default function LunchBeheerPage() {
     if (res.ok) mutateOrders()
   }
 
+  async function verwijderBestelling(orderId: string, naam: string) {
+    if (!confirm(`Bestelling van "${naam}" definitief verwijderen?`)) return
+    const res = await fetch(`/api/lunch/orders/${orderId}`, { method: 'DELETE' })
+    if (res.ok) mutateOrders()
+    else {
+      const data = await res.json().catch(() => ({}))
+      alert(data.error ?? 'Verwijderen mislukt.')
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        input, select { color: #0d1f4e !important; }
+        input::placeholder { color: #6b7280 !important; }
+      `}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 py-3 flex items-center justify-between">
@@ -191,8 +204,8 @@ export default function LunchBeheerPage() {
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="rounded-xl px-3 py-2 text-sm border"
-                style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white' }}
+                className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
+                style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
               />
               <div className="flex gap-4 ml-4">
                 <span className="text-sm" style={{ color: 'rgba(13,31,78,0.6)' }}>
@@ -269,6 +282,14 @@ export default function LunchBeheerPage() {
                             Markeer als betaald
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => verwijderBestelling(order.id, order.user_name || order.user_email || 'Onbekend')}
+                          className="text-xs px-2 py-1 rounded font-semibold"
+                          style={{ background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }}
+                        >
+                          Verwijderen
+                        </button>
                         {order.user_email && order.user_name && (
                           <span className="ml-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>{order.user_email}</span>
                         )}
@@ -369,8 +390,8 @@ function InstellingenBeheer() {
           value={tikkieLink}
           onChange={e => setTikkieLink(e.target.value)}
           placeholder="https://tikkie.me/pay/..."
-          className="w-full rounded-lg px-3 py-2 text-sm border mb-3"
-          style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+          className="w-full rounded-lg px-3 py-2 text-sm border mb-3 placeholder:text-gray-500"
+          style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
         />
         <button
           type="button"
@@ -501,38 +522,38 @@ function ProductBeheer({
               placeholder="Naam"
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="rounded-lg px-3 py-2 text-sm border"
-              style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+              className="rounded-lg px-3 py-2 text-sm border placeholder:text-gray-500"
+              style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <input
               type="number"
               placeholder="Prijs (centen)"
               value={form.price_cents}
               onChange={e => setForm(f => ({ ...f, price_cents: parseInt(e.target.value, 10) || 0 }))}
-              className="rounded-lg px-3 py-2 text-sm border"
-              style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+              className="rounded-lg px-3 py-2 text-sm border placeholder:text-gray-500"
+              style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <input
               type="text"
               placeholder="Ingrediënten / beleg"
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="rounded-lg px-3 py-2 text-sm border sm:col-span-2"
-              style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+              className="rounded-lg px-3 py-2 text-sm border sm:col-span-2 placeholder:text-gray-500"
+              style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <input
               type="url"
               placeholder="Afbeelding URL"
               value={form.image_url}
               onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
-              className="rounded-lg px-3 py-2 text-sm border sm:col-span-2"
-              style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+              className="rounded-lg px-3 py-2 text-sm border sm:col-span-2 placeholder:text-gray-500"
+              style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <select
               value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
               className="rounded-lg px-3 py-2 text-sm border"
-              style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+              style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
             >
               {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
