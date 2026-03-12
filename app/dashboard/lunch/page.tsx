@@ -179,24 +179,24 @@ export default function LunchPage() {
         )}
 
         {checkoutResult && (
-          <div ref={checkoutRef} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)', boxShadow: '0 4px 24px rgba(13,31,78,0.12)' }}>
-            <div className="p-6 sm:p-8 text-center">
+          <div ref={checkoutRef} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)', boxShadow: '0 4px 24px rgba(13,31,78,0.08)' }}>
+            <div className="p-6 sm:p-8 text-center" style={{ borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
               <div className="text-5xl mb-3">🎉</div>
-              <h2 className="text-2xl font-bold mb-1" style={{ color: DYNAMO_BLUE }}>Bedankt topper!</h2>
+              <h2 className="text-2xl font-bold mb-1" style={{ color: DYNAMO_BLUE }}>Bedankt{checkoutResult.user_name ? ` ${checkoutResult.user_name}` : ''}!</h2>
               <p className="text-sm" style={{ color: 'rgba(13,31,78,0.6)' }}>
                 Je bestelling is geplaatst{checkoutResult.user_name ? `, ${checkoutResult.user_name}` : ''}. Betaal hieronder via Tikkie.
               </p>
             </div>
 
-            <div className="px-6 sm:px-8 pb-6">
-              <div className="rounded-xl p-4 mb-4" style={{ background: '#fff7ed', border: '2px solid #fb923c' }}>
-                <div className="text-sm font-semibold mb-1" style={{ color: '#9a3412' }}>Te betalen bedrag</div>
-                <div className="text-3xl font-bold mb-2" style={{ color: '#ea580c' }}>
+            <div className="px-6 sm:px-8 py-6">
+              <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(240,192,64,0.12)', border: '2px solid rgba(240,192,64,0.4)' }}>
+                <div className="text-sm font-semibold mb-1" style={{ color: DYNAMO_BLUE }}>Te betalen bedrag</div>
+                <div className="text-3xl font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
                   {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0
                     ? formatPrice(checkoutResult.amount_cents)
                     : '—'}
                 </div>
-                <p className="text-xs font-semibold" style={{ color: '#b91c1c' }}>
+                <p className="text-xs font-semibold" style={{ color: 'rgba(13,31,78,0.7)' }}>
                   LET OP: vul dit bedrag zelf in bij Tikkie!
                 </p>
               </div>
@@ -207,13 +207,13 @@ export default function LunchPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full py-4 rounded-xl font-bold text-center text-lg transition hover:opacity-90"
-                  style={{ background: '#ea580c', color: 'white' }}
+                  style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
                 >
                   Betaal via Tikkie
                 </a>
               ) : (
-                <div className="rounded-xl p-4 text-sm" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
-                  <p style={{ color: '#92400e' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
+                <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.12)' }}>
+                  <p style={{ color: 'rgba(13,31,78,0.7)' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
                 </div>
               )}
 
