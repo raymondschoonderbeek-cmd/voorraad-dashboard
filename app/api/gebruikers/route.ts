@@ -370,7 +370,7 @@ export async function POST(request: NextRequest) {
   })
 }
 
-// Gebruiker verwijderen
+// Gebruiker verwijderen (incl. auth-registratie – gebruiker is daarna niet meer bekend)
 export async function DELETE(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -383,13 +383,28 @@ export async function DELETE(request: NextRequest) {
   const userId = searchParams.get('user_id')
   if (!userId) return NextResponse.json({ error: 'user_id ontbreekt' }, { status: 400 })
 
-  const client = hasAdminKey() ? createAdminClient() : supabase
+  if (!hasAdminKey()) {
+    return NextResponse.json({
+      error: 'Volledig verwijderen vereist SUPABASE_SERVICE_ROLE_KEY. Voeg toe aan .env.local en herstart.',
+    }, { status: 400 })
+  }
 
-  const { error: rolError } = await client.from('gebruiker_rollen').delete().eq('user_id', userId)
+  const adminClient = createAdminClient()
+
+  // Eerst eigen tabellen (gebruiker_rollen, gebruiker_winkels)
+  const { error: rolError } = await adminClient.from('gebruiker_rollen').delete().eq('user_id', userId)
   if (rolError) {
     return NextResponse.json({ error: `Verwijderen mislukt: ${rolError.message}` }, { status: 500 })
   }
-  await client.from('gebruiker_winkels').delete().eq('user_id', userId)
+  await adminClient.from('gebruiker_winkels').delete().eq('user_id', userId)
+
+  // Auth-registratie verwijderen – gebruiker kan niet meer inloggen en is niet meer bekend
+  const { error: authError } = await adminClient.auth.admin.deleteUser(userId)
+  if (authError) {
+    return NextResponse.json({
+      error: `Auth verwijderen mislukt: ${authError.message}. Rol en winkeltoegang zijn wel verwijderd.`,
+    }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }
