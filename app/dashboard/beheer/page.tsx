@@ -106,6 +106,7 @@ export default function BeheerPage() {
   const [venditTestResult, setVenditTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
+  const [userLastSignIns, setUserLastSignIns] = useState<Record<string, string | null>>({})
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -143,6 +144,7 @@ export default function BeheerPage() {
     setWinkels(data.winkels ?? [])
     setMfaStatus(data.mfaStatus ?? {})
     setUserEmails(data.userEmails ?? {})
+    setUserLastSignIns(data.userLastSignIns ?? {})
     setLoading(false)
   }, [])
 
@@ -174,6 +176,7 @@ export default function BeheerPage() {
         setWinkels(data.winkels ?? [])
         setMfaStatus(data.mfaStatus ?? {})
         setUserEmails(data.userEmails ?? {})
+        setUserLastSignIns(data.userLastSignIns ?? {})
       }
     } else {
       const res = await fetch('/api/winkels')
@@ -462,8 +465,16 @@ export default function BeheerPage() {
 
   async function verwijderGebruiker(userId: string, naam: string) {
     if (!confirm(`Gebruiker "${naam}" verwijderen?`)) return
-    await fetch(`/api/gebruikers?user_id=${userId}`, { method: 'DELETE' })
-    await haalGebruikersOp()
+    setFormError('')
+    setFormSuccess('')
+    const res = await fetch(`/api/gebruikers?user_id=${userId}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setFormError(data.error ?? 'Verwijderen mislukt.')
+    } else {
+      setFormSuccess('Gebruiker verwijderd.')
+      await haalGebruikersOp()
+    }
   }
 
   async function voegWinkelToe(e: React.FormEvent) {
@@ -997,6 +1008,11 @@ export default function BeheerPage() {
                         </div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }} title="Laatste inlog">
+                          {userLastSignIns[rol.user_id]
+                            ? `Laatste inlog: ${new Date(userLastSignIns[rol.user_id]!).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`
+                            : 'Nog nooit ingelogd'}
+                        </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(13,31,78,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Bewerken</button>

@@ -59,6 +59,28 @@ async function haalUserEmailsOp(
   return result
 }
 
+// Haal laatste inlogdatum op via Postgres-functie (leest auth.users)
+async function haalUserLastSignInsOp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userIds: string[]
+): Promise<Record<string, string | null>> {
+  const result: Record<string, string | null> = {}
+  if (userIds.length === 0) return result
+  try {
+    const { data } = await supabase.rpc('get_user_last_sign_ins', {
+      user_ids: userIds,
+    })
+    for (const row of data ?? []) {
+      const uid = (row as { user_id: string }).user_id
+      const dt = (row as { last_sign_in_at: string | null }).last_sign_in_at
+      if (uid) result[uid] = dt ? new Date(dt).toISOString() : null
+    }
+  } catch {
+    // Migratie mogelijk nog niet uitgevoerd
+  }
+  return result
+}
+
 // Haal alle gebruikers op
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -194,9 +216,10 @@ export async function GET(request: NextRequest) {
   })
 
   const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
-  const [mfaStatus, userEmails] = await Promise.all([
+  const [mfaStatus, userEmails, userLastSignIns] = await Promise.all([
     haalMfaStatusOp(supabase, userIds),
     haalUserEmailsOp(supabase, userIds),
+    haalUserLastSignInsOp(supabase, userIds),
   ])
 
   return NextResponse.json({
@@ -205,6 +228,7 @@ export async function GET(request: NextRequest) {
     winkels,
     mfaStatus,
     userEmails,
+    userLastSignIns,
   })
 }
 
@@ -303,9 +327,15 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('user_id')
+  if (!userId) return NextResponse.json({ error: 'user_id ontbreekt' }, { status: 400 })
 
-  await supabase.from('gebruiker_rollen').delete().eq('user_id', userId)
-  await supabase.from('gebruiker_winkels').delete().eq('user_id', userId)
+  const client = hasAdminKey() ? createAdminClient() : supabase
+
+  const { error: rolError } = await client.from('gebruiker_rollen').delete().eq('user_id', userId)
+  if (rolError) {
+    return NextResponse.json({ error: `Verwijderen mislukt: ${rolError.message}` }, { status: 500 })
+  }
+  await client.from('gebruiker_winkels').delete().eq('user_id', userId)
 
   return NextResponse.json({ success: true })
 }
