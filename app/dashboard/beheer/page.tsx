@@ -425,7 +425,9 @@ export default function BeheerPage() {
     setFormLoading(false)
     if (!res.ok) { setFormError(data.error ?? 'Er ging iets mis') }
     else {
-      setFormSuccess(`Uitnodiging verstuurd naar ${nieuwEmail}!`)
+      setFormSuccess(data.existingUser
+        ? `${nieuwNaam || nieuwEmail} toegevoegd (was al geregistreerd).`
+        : `Uitnodiging verstuurd naar ${nieuwEmail}!`)
       setNieuwEmail(''); setNieuwNaam(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setGeselecteerdeWinkels([])
       setToonForm(false)
       await haalGebruikersOp()

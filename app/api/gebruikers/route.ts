@@ -227,28 +227,69 @@ export async function POST(request: NextRequest) {
   const adminClient = createAdminClient()
   const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email)
 
+  let newUserId: string
+
   if (inviteError) {
-    return NextResponse.json({ error: inviteError.message }, { status: 400 })
+    const isAlreadyRegistered =
+      inviteError.message?.toLowerCase().includes('already been registered') ||
+      inviteError.message?.toLowerCase().includes('already registered')
+    if (isAlreadyRegistered) {
+      // Gebruiker bestaat al in Auth – zoek op en voeg toe aan gebruiker_rollen
+      const { data: { users } } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      const existing = users?.find(u => u.email?.toLowerCase() === String(email).toLowerCase().trim())
+      if (!existing) {
+        return NextResponse.json({
+          error: 'E-mailadres bestaat al in het systeem, maar kon niet worden gevonden. Probeer de gebruiker handmatig toe te voegen via Supabase.',
+        }, { status: 400 })
+      }
+      newUserId = existing.id
+      // Controleer of al in gebruiker_rollen
+      const { data: bestaand } = await supabase.from('gebruiker_rollen').select('id').eq('user_id', newUserId).single()
+      if (bestaand) {
+        return NextResponse.json({
+          error: 'Deze gebruiker staat al in de lijst. Bewerk de bestaande gebruiker.',
+        }, { status: 400 })
+      }
+    } else {
+      return NextResponse.json({ error: inviteError.message }, { status: 400 })
+    }
+  } else {
+    newUserId = invited!.user.id
   }
 
-  const newUserId = invited.user.id
-
-  // Sla rol op
-  await supabase.from('gebruiker_rollen').insert([{
+  // Sla rol op (upsert: altijd zichtbaar in Beheer, ook bij dubbele of herhaalde actie)
+  const rolData = {
     user_id: newUserId,
     rol: rol ?? 'viewer',
     naam: naam ?? email,
     mfa_verplicht: mfa_verplicht === true,
-  }])
+  }
+  const { error: rolError } = await supabase
+    .from('gebruiker_rollen')
+    .upsert(rolData, { onConflict: 'user_id' })
+
+  if (rolError) {
+    // Fallback: probeer insert als upsert faalt (bijv. oude schema zonder unique)
+    const { error: insertError } = await supabase.from('gebruiker_rollen').insert([rolData])
+    if (insertError) {
+      return NextResponse.json({
+        error: `Kon gebruiker niet toevoegen: ${insertError.message}`,
+      }, { status: 500 })
+    }
+  }
 
   // Sla winkeltoegang op
   if (winkel_ids && winkel_ids.length > 0) {
+    await supabase.from('gebruiker_winkels').delete().eq('user_id', newUserId)
     await supabase.from('gebruiker_winkels').insert(
       winkel_ids.map((wid: number) => ({ user_id: newUserId, winkel_id: wid }))
     )
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({
+    success: true,
+    existingUser: !!inviteError,
+  })
 }
 
 // Gebruiker verwijderen
