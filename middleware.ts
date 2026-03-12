@@ -8,13 +8,15 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 }
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
-
-  // Security headers toevoegen
+function applyHeaders(res: NextResponse) {
   Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-    supabaseResponse.headers.set(key, value)
+    res.headers.set(key, value)
   })
+}
+
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({ request })
+  applyHeaders(response)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,25 +26,36 @@ export async function middleware(request: NextRequest) {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           )
         },
       },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Session refresh – belangrijk voor Vercel: cookies worden bijgewerkt in response
+  let user: { id: string } | null = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Auth session missing / expired – cookies worden mogelijk vernieuwd
+  }
 
   const path = request.nextUrl.pathname
   const publicPaths = ['/login', '/update-password', '/auth/callback', '/api/auth/session-info', '/api/payments/tikkie/webhook']
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {
     const redirect = NextResponse.redirect(new URL('/login', request.url))
-    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => redirect.headers.set(key, value))
+    applyHeaders(redirect)
+    // Cookie-handoff: gekopieerde cookies meenemen (bijv. na refresh)
+    response.cookies.getAll().forEach(({ name, value }) => {
+      redirect.cookies.set(name, value)
+    })
     return redirect
   }
 
-  return supabaseResponse
+  return response
 }
 
 export const config = {
