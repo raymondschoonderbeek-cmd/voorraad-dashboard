@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
@@ -71,6 +71,7 @@ export default function LunchBeheerPage() {
   }, [sessionData, router])
   const [editingProduct, setEditingProduct] = useState<LunchProduct | null>(null)
   const [newProduct, setNewProduct] = useState(false)
+  const [gekopieerd, setGekopieerd] = useState(false)
 
   const { data: orders = [], isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>(
     tab === 'orders' ? `/api/lunch/orders?date=${date}&admin=true` : null,
@@ -83,6 +84,35 @@ export default function LunchBeheerPage() {
 
   const ordersTotal = orders.reduce((s, o) => s + o.total_cents, 0)
   const ordersPaid = orders.filter(o => o.status === 'paid').reduce((s, o) => s + o.total_cents, 0)
+
+  // Aantallen per broodje (exclusief geannuleerde bestellingen)
+  const aantallenPerBroodje = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const order of orders) {
+      if (order.status === 'cancelled') continue
+      for (const item of order.lunch_order_items ?? []) {
+        const naam = item.lunch_products?.name ?? 'Onbekend'
+        map.set(naam, (map.get(naam) ?? 0) + item.quantity)
+      }
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+  }, [orders])
+
+  const leverancierTekst = useMemo(() => {
+    const datum = formatDate(date)
+    const regels = aantallenPerBroodje.map(([naam, qty]) => `${naam}: ${qty}`)
+    return `Bestelling lunch ${datum}\n\n${regels.join('\n')}\n\nTotaal: ${aantallenPerBroodje.reduce((s, [, q]) => s + q, 0)} broodjes`
+  }, [date, aantallenPerBroodje])
+
+  async function kopieerVoorLeverancier() {
+    try {
+      await navigator.clipboard.writeText(leverancierTekst)
+      setGekopieerd(true)
+      setTimeout(() => setGekopieerd(false), 2500)
+    } catch {
+      setGekopieerd(false)
+    }
+  }
 
   async function markAsPaid(orderId: string) {
     const res = await fetch(`/api/lunch/orders/${orderId}`, {
@@ -170,6 +200,41 @@ export default function LunchBeheerPage() {
                 </span>
               </div>
             </div>
+
+            {aantallenPerBroodje.length > 0 && (
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{ background: 'white', border: '2px solid ' + DYNAMO_GOLD, boxShadow: '0 2px 12px rgba(240,192,64,0.2)' }}
+              >
+                <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(240,192,64,0.1)', borderBottom: '1px solid rgba(240,192,64,0.3)' }}>
+                  <h3 className="font-bold" style={{ color: DYNAMO_BLUE }}>🥪 Aantallen voor leverancier</h3>
+                  <button
+                    type="button"
+                    onClick={kopieerVoorLeverancier}
+                    className="px-4 py-2 rounded-lg font-semibold text-sm transition hover:opacity-90 disabled:opacity-70"
+                    style={{ background: gekopieerd ? '#16a34a' : DYNAMO_GOLD, color: gekopieerd ? 'white' : DYNAMO_BLUE }}
+                  >
+                    {gekopieerd ? '✓ Gekopieerd!' : 'Kopieer voor leverancier'}
+                  </button>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {aantallenPerBroodje.map(([naam, qty]) => (
+                      <div key={naam} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ background: 'rgba(13,31,78,0.03)' }}>
+                        <span className="font-medium" style={{ color: DYNAMO_BLUE }}>{naam}</span>
+                        <span className="font-bold text-lg" style={{ color: DYNAMO_GOLD }}>{qty}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 flex justify-between items-center" style={{ borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'rgba(13,31,78,0.6)' }}>Totaal broodjes</span>
+                    <span className="font-bold text-xl" style={{ color: DYNAMO_BLUE }}>
+                      {aantallenPerBroodje.reduce((s, [, q]) => s + q, 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {ordersLoading ? (
               <div className="space-y-3">
