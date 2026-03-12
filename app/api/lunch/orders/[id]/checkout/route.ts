@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
-/** POST: Tikkie aanmaken voor bestelling (mock: retourneert fake URL) */
+/** POST: Tikkie betaallink ophalen (uit lunch_config) */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,26 +36,20 @@ export async function POST(
       return NextResponse.json({ error: 'Geen bedrag om te betalen' }, { status: 400 })
     }
 
-    // Mock Tikkie: genereer fake ID en URL
-    const mockTikkieId = `mock_${order.id.replace(/-/g, '')}_${Date.now()}`
-    const mockTikkieUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/lunch?tikkie=mock&id=${mockTikkieId}`
+    const { data: config } = await supabase
+      .from('lunch_config')
+      .select('tikkie_pay_link')
+      .eq('id', 1)
+      .single()
 
-    const { error: payErr } = await supabase.from('lunch_payments').insert({
-      order_id: order.id,
-      tikkie_id: mockTikkieId,
-      tikkie_url: mockTikkieUrl,
-      status: 'pending',
-      amount_cents: order.total_cents,
-    })
-    if (payErr) {
-      return NextResponse.json({ error: 'Betaling aanmaken mislukt' }, { status: 500 })
-    }
+    const tikkieUrl = config?.tikkie_pay_link?.trim() || ''
 
     return NextResponse.json({
-      tikkie_id: mockTikkieId,
-      tikkie_url: mockTikkieUrl,
+      tikkie_id: null,
+      tikkie_url: tikkieUrl,
       amount_cents: order.total_cents,
-      message: 'Mock Tikkie: klik op de link om te "betalen". In productie wordt een echte Tikkie aangemaakt.',
+      is_mock: false,
+      message: tikkieUrl ? 'Betaal via de link.' : 'Geen betaallink geconfigureerd.',
     })
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij checkout' }, { status: 500 })

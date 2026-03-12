@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
 
@@ -31,14 +30,11 @@ function formatPrice(cents: number) {
 }
 
 export default function LunchPage() {
-  const searchParams = useSearchParams()
-  const mockTikkieId = useMemo(() => searchParams.get('tikkie') === 'mock' ? searchParams.get('id') : null, [searchParams])
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [checkoutResult, setCheckoutResult] = useState<{ tikkie_url?: string; tikkie_id?: string; order_id?: string } | null>(null)
+  const [checkoutResult, setCheckoutResult] = useState<{ tikkie_url?: string; order_id?: string } | null>(null)
   const [error, setError] = useState('')
-  const [betaald, setBetaald] = useState(false)
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
@@ -73,31 +69,6 @@ export default function LunchPage() {
 
   const totalCents = cart.reduce((s, i) => s + i.product.price_cents * i.quantity, 0)
 
-  async function simuleerBetaling(tikkieId?: string | null) {
-    const id = tikkieId ?? mockTikkieId
-    if (!id) return
-    setCheckoutLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/payments/tikkie/webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tikkie_id: id, status: 'paid' }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Simulatie mislukt')
-      setBetaald(true)
-      setCheckoutResult(null)
-      if (typeof window !== 'undefined') {
-        window.history.replaceState({}, '', '/dashboard/lunch')
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Er ging iets mis')
-    } finally {
-      setCheckoutLoading(false)
-    }
-  }
-
   async function doCheckout() {
     if (cart.length === 0 || totalCents <= 0) return
     setError('')
@@ -121,7 +92,6 @@ export default function LunchPage() {
 
       setCheckoutResult({
         tikkie_url: checkoutData.tikkie_url,
-        tikkie_id: checkoutData.tikkie_id,
         order_id: data.id,
       })
       setCart([])
@@ -190,55 +160,25 @@ export default function LunchPage() {
           </div>
         )}
 
-        {betaald && (
-          <div className="rounded-xl p-4" style={{ background: '#ecfdf5', border: '1px solid #10b981' }}>
-            <p className="font-semibold" style={{ color: '#047857' }}>Betaald!</p>
-            <p className="text-sm mt-1" style={{ color: '#065f46' }}>
-              Je bestelling is als betaald gemarkeerd.
+        {checkoutResult && (
+          <div className="rounded-xl p-4" style={{ background: checkoutResult.tikkie_url ? '#ecfdf5' : '#fef3c7', border: checkoutResult.tikkie_url ? '1px solid #10b981' : '1px solid #f59e0b' }}>
+            <p className="font-semibold" style={{ color: checkoutResult.tikkie_url ? '#047857' : '#92400e' }}>Bestelling geplaatst!</p>
+            <p className="text-sm mt-1" style={{ color: checkoutResult.tikkie_url ? '#065f46' : '#78350f' }}>
+              {checkoutResult.tikkie_url
+                ? 'Klik op de knop om het Tikkie betaalscherm te openen. Betaal daar met iDEAL.'
+                : 'Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.'}
             </p>
-            <Link
-              href="/dashboard/lunch/overzicht"
-              className="inline-block mt-2 px-4 py-2 rounded-lg font-semibold text-sm"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-            >
-              Bekijk mijn bestellingen →
-            </Link>
-          </div>
-        )}
-
-        {checkoutResult?.tikkie_url && !betaald && (
-          <div className="rounded-xl p-4" style={{ background: '#ecfdf5', border: '1px solid #10b981' }}>
-            <p className="font-semibold" style={{ color: '#047857' }}>Bestelling geplaatst!</p>
-            <p className="text-sm mt-1" style={{ color: '#065f46' }}>
-              Mock Tikkie: klik op de knop om de betaling te simuleren.
-            </p>
-            <button
-              type="button"
-              onClick={() => simuleerBetaling(checkoutResult.tikkie_id)}
-              disabled={checkoutLoading}
-              className="mt-2 px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
-            >
-              {checkoutLoading ? 'Bezig...' : 'Betaal nu'}
-            </button>
-          </div>
-        )}
-
-        {mockTikkieId && !checkoutResult && !betaald && (
-          <div className="rounded-xl p-4" style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
-            <p className="font-semibold" style={{ color: '#92400e' }}>Mock Tikkie – Simuleer betaling</p>
-            <p className="text-sm mt-1" style={{ color: '#78350f' }}>
-              Klik hieronder om de betaling te simuleren. De bestelling wordt dan als betaald gemarkeerd.
-            </p>
-            <button
-              type="button"
-              onClick={() => simuleerBetaling(mockTikkieId)}
-              disabled={checkoutLoading}
-              className="mt-2 px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
-              style={{ background: DYNAMO_BLUE, color: 'white' }}
-            >
-              {checkoutLoading ? 'Bezig...' : 'Simuleer betaling'}
-            </button>
+            {checkoutResult.tikkie_url && (
+              <a
+                href={checkoutResult.tikkie_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 px-4 py-2 rounded-lg font-semibold text-sm"
+                style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+              >
+                Betaal nu →
+              </a>
+            )}
           </div>
         )}
 

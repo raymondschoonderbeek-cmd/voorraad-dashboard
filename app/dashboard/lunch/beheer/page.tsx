@@ -58,7 +58,7 @@ function formatDate(s: string) {
 
 export default function LunchBeheerPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<'orders' | 'products'>('orders')
+  const [tab, setTab] = useState<'orders' | 'products' | 'instellingen'>('orders')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
@@ -82,6 +82,15 @@ export default function LunchBeheerPage() {
 
   const ordersTotal = orders.reduce((s, o) => s + o.total_cents, 0)
   const ordersPaid = orders.filter(o => o.status === 'paid').reduce((s, o) => s + o.total_cents, 0)
+
+  async function markAsPaid(orderId: string) {
+    const res = await fetch(`/api/lunch/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'paid' }),
+    })
+    if (res.ok) mutateOrders()
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
@@ -129,6 +138,18 @@ export default function LunchBeheerPage() {
           >
             Producten
           </button>
+          <button
+            type="button"
+            onClick={() => setTab('instellingen')}
+            className="px-4 py-2 font-semibold text-sm rounded-t-lg transition"
+            style={{
+              background: tab === 'instellingen' ? 'white' : 'transparent',
+              color: tab === 'instellingen' ? DYNAMO_BLUE : 'rgba(13,31,78,0.5)',
+              borderBottom: tab === 'instellingen' ? '2px solid ' + DYNAMO_BLUE : '2px solid transparent',
+            }}
+          >
+            Instellingen
+          </button>
         </div>
 
         {tab === 'orders' && (
@@ -168,10 +189,20 @@ export default function LunchBeheerPage() {
                     style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)', boxShadow: '0 2px 8px rgba(13,31,78,0.06)' }}
                   >
                     <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
-                      <div>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold" style={{ color: DYNAMO_BLUE }}>
                           {order.user_name || order.user_email || 'Onbekend'}
                         </span>
+                        {order.status === 'pending' && (
+                          <button
+                            type="button"
+                            onClick={() => markAsPaid(order.id)}
+                            className="text-xs px-2 py-1 rounded font-semibold"
+                            style={{ background: '#dcfce7', color: '#166534' }}
+                          >
+                            Markeer als betaald
+                          </button>
+                        )}
                         {order.user_email && order.user_name && (
                           <span className="ml-2 text-xs" style={{ color: 'rgba(13,31,78,0.5)' }}>{order.user_email}</span>
                         )}
@@ -201,6 +232,10 @@ export default function LunchBeheerPage() {
           </>
         )}
 
+        {tab === 'instellingen' && (
+          <InstellingenBeheer />
+        )}
+
         {tab === 'products' && (
           <ProductBeheer
             products={products}
@@ -215,6 +250,72 @@ export default function LunchBeheerPage() {
         </>
         )}
       </main>
+    </div>
+  )
+}
+
+function InstellingenBeheer() {
+  const [tikkieLink, setTikkieLink] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  const { data: settings, mutate } = useSWR<{ tikkie_pay_link?: string }>('/api/lunch/settings', fetcher)
+
+  useEffect(() => {
+    if (settings?.tikkie_pay_link !== undefined) {
+      setTikkieLink(settings.tikkie_pay_link ?? '')
+    }
+  }, [settings])
+
+  async function handleSave() {
+    setError('')
+    setSuccess(false)
+    setSaving(true)
+    try {
+      const res = await fetch('/api/lunch/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tikkie_pay_link: tikkieLink }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
+      mutate({ tikkie_pay_link: tikkieLink })
+      setSuccess(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Er ging iets mis')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)' }}>
+        <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Tikkie betaallink</h2>
+        <p className="text-sm mb-3" style={{ color: 'rgba(13,31,78,0.6)' }}>
+          De link die gebruikers na het bestellen zien om te betalen. Bijv. https://tikkie.me/pay/xxx
+        </p>
+        {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
+        {success && <p className="text-sm text-green-600 mb-2">Opgeslagen.</p>}
+        <input
+          type="url"
+          value={tikkieLink}
+          onChange={e => setTikkieLink(e.target.value)}
+          placeholder="https://tikkie.me/pay/..."
+          className="w-full rounded-lg px-3 py-2 text-sm border mb-3"
+          style={{ borderColor: 'rgba(13,31,78,0.2)' }}
+        />
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
+          style={{ background: DYNAMO_BLUE, color: 'white' }}
+        >
+          {saving ? 'Opslaan...' : 'Opslaan'}
+        </button>
+      </div>
     </div>
   )
 }
