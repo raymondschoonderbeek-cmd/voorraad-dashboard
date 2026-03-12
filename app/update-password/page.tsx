@@ -31,13 +31,13 @@ export default function UpdatePassword() {
 
     if (error) {
       setError(error.message)
+      setLoading(false)
     } else {
       await fetch('/api/profile/clear-must-change-password', { method: 'POST' })
-      setMessage('Wachtwoord succesvol gewijzigd.')
-      setTimeout(() => router.push('/dashboard'), 1500)
+      setMessage('Wachtwoord succesvol gewijzigd. Je wordt doorgestuurd...')
+      setTimeout(() => router.push('/dashboard'), 1200)
+      // loading blijft true tot redirect
     }
-
-    setLoading(false)
   }
 
   return (
