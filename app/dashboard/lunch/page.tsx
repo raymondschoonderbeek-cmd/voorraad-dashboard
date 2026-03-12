@@ -34,7 +34,7 @@ export default function LunchPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [checkoutResult, setCheckoutResult] = useState<{ tikkie_url?: string; order_id?: string } | null>(null)
+  const [checkoutResult, setCheckoutResult] = useState<{ tikkie_url?: string; order_id?: string; amount_cents?: number } | null>(null)
   const [error, setError] = useState('')
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
@@ -94,6 +94,7 @@ export default function LunchPage() {
       setCheckoutResult({
         tikkie_url: checkoutData.tikkie_url,
         order_id: data.id,
+        amount_cents: checkoutData.amount_cents ?? data.total_cents ?? totalCents,
       })
       setCart([])
     } catch (e) {
@@ -164,6 +165,11 @@ export default function LunchPage() {
         {checkoutResult && (
           <div className="rounded-xl p-4" style={{ background: checkoutResult.tikkie_url ? '#ecfdf5' : '#fef3c7', border: checkoutResult.tikkie_url ? '1px solid #10b981' : '1px solid #f59e0b' }}>
             <p className="font-semibold" style={{ color: checkoutResult.tikkie_url ? '#047857' : '#92400e' }}>Bestelling geplaatst!</p>
+            {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0 && (
+              <p className="text-sm mt-1 font-bold" style={{ color: checkoutResult.tikkie_url ? '#047857' : '#92400e' }}>
+                Te betalen: {formatPrice(checkoutResult.amount_cents)}
+              </p>
+            )}
             <p className="text-sm mt-1" style={{ color: checkoutResult.tikkie_url ? '#065f46' : '#78350f' }}>
               {checkoutResult.tikkie_url
                 ? 'Klik op de knop om het Tikkie betaalscherm te openen. Betaal daar met iDEAL.'
