@@ -5,10 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { WinkelSelect } from '@/components/WinkelSelect'
 import { WinkelModal } from '@/components/WinkelModal'
+import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
-
-const DYNAMO_BLUE = '#0d1f4e'
-const DYNAMO_GOLD = '#f0c040'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 type Product = { [key: string]: any }
 
@@ -362,13 +360,7 @@ export default function BrandGroepPage() {
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100] shadow-lg">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0 min-h-[56px]">
           <Link href="/dashboard" onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
-            <div style={{ background: DYNAMO_GOLD }} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0">
-              <span style={{ color: DYNAMO_BLUE }}>D</span>
-            </div>
-            <div className="min-w-0 hidden sm:block">
-              <div className="text-white font-bold text-xs sm:text-sm leading-tight tracking-wide truncate">DYNAMO</div>
-              <div style={{ color: DYNAMO_GOLD }} className="text-[10px] sm:text-xs font-semibold tracking-widest leading-tight truncate">RETAIL GROUP</div>
-            </div>
+            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
 
           <div className="flex items-center px-3 sm:px-5 border-r border-white/10 gap-2 flex-1 min-w-0">

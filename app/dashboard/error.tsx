@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
 
 export default function DashboardError({
   error,
@@ -16,8 +17,10 @@ export default function DashboardError({
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="h-14 bg-[#0d1f4e] flex items-center px-5">
-        <Link href="/dashboard" className="text-white font-bold text-sm">DYNAMO RETAIL GROUP</Link>
+      <header className="h-14 flex items-center px-5" style={{ background: DYNAMO_BLUE }}>
+        <Link href="/dashboard" className="flex items-center gap-2 text-white font-bold text-sm hover:opacity-90">
+          <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-8 w-auto object-contain" />
+        </Link>
       </header>
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center">
@@ -29,7 +32,8 @@ export default function DashboardError({
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={reset}
-              className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#0d1f4e] hover:opacity-90 transition"
+              className="px-5 py-2.5 rounded-xl font-semibold text-white hover:opacity-90 transition"
+            style={{ background: DYNAMO_BLUE }}
               aria-label="Probeer opnieuw"
             >
               Probeer opnieuw

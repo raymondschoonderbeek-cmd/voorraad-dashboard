@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { DYNAMO_BLUE } from '@/lib/theme'
+import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
 import { VENDIT_GET_ENDPOINTS, VENDIT_DISCOVERY_ENDPOINTS } from '@/lib/vendit-api-endpoints'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -728,8 +728,8 @@ export default function VenditApiTesterPage() {
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2 text-white font-bold hover:opacity-90">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#f0c040', color: DYNAMO_BLUE }}>D</span>
-            Vendit API Tester
+            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 w-auto object-contain" />
+            <span className="hidden sm:inline">Vendit API Tester</span>
           </Link>
           <div className="flex items-center gap-3">
             <a href="https://api2.vendit.online/VenditPublicApiSpec/index.html" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}>

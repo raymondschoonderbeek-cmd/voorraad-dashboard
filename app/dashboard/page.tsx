@@ -7,7 +7,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import { WinkelSelect, type WinkelSelectRef } from '@/components/WinkelSelect'
 import { WinkelModal } from '@/components/WinkelModal'
-import { DYNAMO_BLUE } from '@/lib/theme'
+import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -739,13 +739,7 @@ export default function Dashboard() {
       <header style={{ background: DYNAMO_BLUE, fontFamily: F }} className="sticky top-0 z-[100]">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <Link href="/dashboard" onClick={(e) => { e.preventDefault(); try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}; setGeselecteerdeWinkel(null); router.push('/dashboard') }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>
-              <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '13px' }} className="sm:text-[15px]">D</span>
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-xs sm:text-sm text-white leading-tight truncate" style={{ letterSpacing: '0.06em', fontFamily: F }}>DYNAMO</div>
-              <div className="text-[10px] sm:text-xs font-semibold leading-tight truncate" style={{ color: DYNAMO_GOLD, letterSpacing: '0.12em', fontFamily: F }}>RETAIL GROUP</div>
-            </div>
+            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center px-3 sm:px-5 gap-2 flex-1 min-w-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <span className="text-xs font-semibold uppercase hidden sm:block shrink-0" style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: F }}>Winkel</span>

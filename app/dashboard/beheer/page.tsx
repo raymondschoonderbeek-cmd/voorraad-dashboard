@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-
-const DYNAMO_BLUE = '#0d1f4e'
-const DYNAMO_GOLD = '#f0c040'
+import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 const WINKEL_KLEUREN = ['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
@@ -842,13 +840,7 @@ export default function BeheerPage() {
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
         <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <Link href="/dashboard" className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black shrink-0" style={{ background: DYNAMO_GOLD }}>
-              <span style={{ color: DYNAMO_BLUE, fontFamily: F, fontWeight: 800, fontSize: '13px' }} className="sm:text-[15px]">D</span>
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-xs sm:text-sm text-white leading-tight truncate" style={{ letterSpacing: '0.06em', fontFamily: F }}>DYNAMO</div>
-              <div className="text-[10px] sm:text-xs font-semibold leading-tight truncate" style={{ color: DYNAMO_GOLD, letterSpacing: '0.12em', fontFamily: F }}>RETAIL GROUP</div>
-            </div>
+            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center px-3 sm:px-5">
             <span className="text-xs sm:text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: F }}>Beheer</span>
