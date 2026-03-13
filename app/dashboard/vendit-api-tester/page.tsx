@@ -90,7 +90,7 @@ function ArticleDetailModal({ item, onClose }: { item: Record<string, unknown>; 
     >
       <div
         className="relative w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
-        style={{ background: 'white', color: '#2D4173' }}
+        style={{ background: 'white', color: '#2D457C' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="px-6 py-4 flex items-center justify-between" style={{ background: DYNAMO_BLUE }}>
@@ -100,7 +100,7 @@ function ArticleDetailModal({ item, onClose }: { item: Record<string, unknown>; 
         <div className="p-6 max-h-[75vh] overflow-y-auto">
           {imageUrl && isValidImageUrl(imageUrl) && (
             <div className="mb-6 flex justify-center">
-              <img src={imageUrl} alt="" className="max-h-48 rounded-xl object-contain border" style={{ borderColor: 'rgba(45,65,115,0.12)' }} />
+              <img src={imageUrl} alt="" className="max-h-48 rounded-xl object-contain border" style={{ borderColor: 'rgba(45,69,124,0.12)' }} />
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -110,9 +110,9 @@ function ArticleDetailModal({ item, onClose }: { item: Record<string, unknown>; 
               const labelMap: Record<string, string> = { supplierProductNumber: 'Artikelnummer leverancier' }
               const label = labelMap[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
               return (
-                <div key={key} className="rounded-lg px-4 py-3" style={{ background: 'rgba(45,65,115,0.03)', border: '1px solid rgba(45,65,115,0.08)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(45,65,115,0.5)' }}>{label}</div>
-                  <div className="text-sm font-medium break-words" style={{ color: '#2D4173' }}>{displayValue}</div>
+                <div key={key} className="rounded-lg px-4 py-3" style={{ background: 'rgba(45,69,124,0.03)', border: '1px solid rgba(45,69,124,0.08)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'rgba(45,69,124,0.5)' }}>{label}</div>
+                  <div className="text-sm font-medium break-words" style={{ color: '#2D457C' }}>{displayValue}</div>
                 </div>
               )
             })}
@@ -258,16 +258,16 @@ function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(0) }}
           className="rounded-lg px-3 py-2 text-sm border"
-          style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173', minWidth: 200 }}
+          style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C', minWidth: 200 }}
         />
-        <span className="text-xs" style={{ color: 'rgba(45,65,115,0.5)' }}>
+        <span className="text-xs" style={{ color: 'rgba(45,69,124,0.5)' }}>
           {filtered.length} van {data.length} rijen
         </span>
       </div>
-      <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'rgba(45,65,115,0.12)' }}>
-        <table className="w-full text-sm" style={{ color: '#2D4173' }}>
+      <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'rgba(45,69,124,0.12)' }}>
+        <table className="w-full text-sm" style={{ color: '#2D457C' }}>
           <thead>
-            <tr style={{ background: 'rgba(45,65,115,0.02)' }}>
+            <tr style={{ background: 'rgba(45,69,124,0.02)' }}>
               {columns.map(col => (
                 <th
                   key={col}
@@ -287,7 +287,7 @@ function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]
               <tr
                 key={i}
                 className={`border-t ${onRowClick ? 'cursor-pointer hover:bg-dynamo-blue/5 transition' : ''}`}
-                style={{ borderColor: 'rgba(45,65,115,0.08)' }}
+                style={{ borderColor: 'rgba(45,69,124,0.08)' }}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {columns.map(col => (
@@ -301,12 +301,12 @@ function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]
         </table>
       </div>
       {totalPages > 1 && (
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(45,65,115,0.5)' }}>
+        <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(45,69,124,0.5)' }}>
           <button
             onClick={() => setPage(p => Math.max(0, p - 1))}
             disabled={page === 0}
             className="px-2 py-1 rounded disabled:opacity-50"
-            style={{ background: 'rgba(45,65,115,0.06)' }}
+            style={{ background: 'rgba(45,69,124,0.06)' }}
           >
             ← Vorige
           </button>
@@ -315,7 +315,7 @@ function DataTableView({ data, preferredColumns, onRowClick }: { data: unknown[]
             onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
             className="px-2 py-1 rounded disabled:opacity-50"
-            style={{ background: 'rgba(45,65,115,0.06)' }}
+            style={{ background: 'rgba(45,69,124,0.06)' }}
           >
             Volgende →
           </button>
@@ -359,7 +359,7 @@ function OrderCard({ order, collapsed, onToggle }: { order: OrderWithDetails; co
   const statusLabel = order.orderStatusName ?? (order.orderStatusId != null ? `Status ${order.orderStatusId}` : null)
 
   return (
-    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(45,65,115,0.12)', background: 'white', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(45,69,124,0.12)', background: 'white', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
       {/* Order header - klikbaar om in/uit te klappen */}
       <div
         role="button"
@@ -385,9 +385,9 @@ function OrderCard({ order, collapsed, onToggle }: { order: OrderWithDetails; co
       {/* Artikelregels */}
       {!collapsed && (
       <div className="overflow-x-auto">
-        <table className="w-full text-sm" style={{ color: '#2D4173' }}>
+        <table className="w-full text-sm" style={{ color: '#2D457C' }}>
           <thead>
-            <tr style={{ background: 'rgba(45,65,115,0.03)' }}>
+            <tr style={{ background: 'rgba(45,69,124,0.03)' }}>
               <th className="px-4 py-2.5 text-left font-semibold">Product</th>
               <th className="px-4 py-2.5 text-left font-semibold">Art.nr</th>
               <th className="px-4 py-2.5 text-right font-semibold">Aantal</th>
@@ -399,18 +399,18 @@ function OrderCard({ order, collapsed, onToggle }: { order: OrderWithDetails; co
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-center" style={{ color: 'rgba(45,65,115,0.45)' }}>Geen artikelregels</td>
+                <td colSpan={6} className="px-4 py-4 text-center" style={{ color: 'rgba(45,69,124,0.45)' }}>Geen artikelregels</td>
               </tr>
             ) : (
               items.map((item, i) => (
-                <tr key={i} className="border-t" style={{ borderColor: 'rgba(45,65,115,0.06)' }}>
+                <tr key={i} className="border-t" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
                   <td className="px-4 py-2.5">
                     <div className="font-medium" style={{ color: DYNAMO_BLUE }}>{(item.productDescription as string) ?? '—'}</div>
                     {(item.productSubdescription as string) && (
-                      <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.5)' }}>{item.productSubdescription as string}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.5)' }}>{item.productSubdescription as string}</div>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'rgba(45,65,115,0.6)' }}>{(item.productNumber as string) ?? '—'}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'rgba(45,69,124,0.6)' }}>{(item.productNumber as string) ?? '—'}</td>
                   <td className="px-4 py-2.5 text-right font-semibold">{item.productQuantity != null ? Number(item.productQuantity) : '—'}</td>
                   <td className="px-4 py-2.5 text-right">{formatPrice(item.productSalesPriceEx)}</td>
                   <td className="px-4 py-2.5 text-right font-medium">{formatPrice(item.productTotalSalesPriceEx)}</td>
@@ -703,7 +703,7 @@ export default function VenditApiTesterPage() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#f4f6fb', fontFamily: F }}>
-        <p className="text-sm font-medium" style={{ color: 'rgba(45,65,115,0.6)' }}>Alleen admins hebben toegang tot de Vendit API Tester.</p>
+        <p className="text-sm font-medium" style={{ color: 'rgba(45,69,124,0.6)' }}>Alleen admins hebben toegang tot de Vendit API Tester.</p>
         <Link href="/dashboard" className="mt-4 text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>← Terug naar Dashboard</Link>
       </div>
     )
@@ -714,13 +714,13 @@ export default function VenditApiTesterPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
       <style>{`
         .vendit-tester input, .vendit-tester textarea {
-          color: #2D4173 !important;
-          -webkit-text-fill-color: #2D4173 !important;
-          caret-color: #2D4173 !important;
+          color: #2D457C !important;
+          -webkit-text-fill-color: #2D457C !important;
+          caret-color: #2D457C !important;
         }
         .vendit-tester input::placeholder, .vendit-tester textarea::placeholder {
-          color: rgba(45,65,115,0.5) !important;
-          -webkit-text-fill-color: rgba(45,65,115,0.5) !important;
+          color: rgba(45,69,124,0.5) !important;
+          -webkit-text-fill-color: rgba(45,69,124,0.5) !important;
           opacity: 1;
         }
       `}</style>
@@ -745,15 +745,15 @@ export default function VenditApiTesterPage() {
 
       <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Gedeelde winkelkeuze */}
-        <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 2px 12px rgba(45,65,115,0.04)' }}>
+        <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <label className="block text-xs font-semibold mb-2" style={{ color: 'rgba(45,65,115,0.6)' }}>Winkel</label>
+              <label className="block text-xs font-semibold mb-2" style={{ color: 'rgba(45,69,124,0.6)' }}>Winkel</label>
               <select
                 value={selectedWinkelId}
                 onChange={e => setSelectedWinkelId(e.target.value ? Number(e.target.value) : '')}
                 className="rounded-xl px-3 py-2.5 text-sm border"
-                style={{ background: 'rgba(45,65,115,0.02)', borderColor: 'rgba(45,65,115,0.12)', color: DYNAMO_BLUE, minWidth: 220 }}
+                style={{ background: 'rgba(45,69,124,0.02)', borderColor: 'rgba(45,69,124,0.12)', color: DYNAMO_BLUE, minWidth: 220 }}
               >
                 <option value="">— Selecteer winkel —</option>
                 {venditWinkels.map(w => (
@@ -771,22 +771,22 @@ export default function VenditApiTesterPage() {
               }}
               disabled={gebruikersValidating}
               className="rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50 disabled:cursor-wait"
-              style={{ background: 'rgba(45,65,115,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.12)' }}
+              style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.12)' }}
             >
               {gebruikersValidating ? 'Verversen...' : 'Ververs'}
             </button>
           </div>
           {venditWinkels.length === 0 && (
-            <p className="mt-3 text-xs" style={{ color: 'rgba(45,65,115,0.5)' }}>
+            <p className="mt-3 text-xs" style={{ color: 'rgba(45,69,124,0.5)' }}>
               Zorg dat de winkel systeem &quot;Vendit API&quot; heeft, alle drie de credentials zijn ingevuld, en je op <strong>Opslaan</strong> hebt geklikt in Beheer.
             </p>
           )}
         </div>
 
         {/* Orders overzicht */}
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 2px 12px rgba(45,65,115,0.04)' }}>
+        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
           <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Orders overzicht (met klanten)</h2>
-          <p className="text-sm mb-4" style={{ color: 'rgba(45,65,115,0.5)' }}>
+          <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Haal alle orders op met klantnamen voor de geselecteerde winkel.
           </p>
           <div className="flex flex-wrap items-center gap-4">
@@ -795,28 +795,28 @@ export default function VenditApiTesterPage() {
                 type="checkbox"
                 checked={ordersIncludeDetails}
                 onChange={e => setOrdersIncludeDetails(e.target.checked)}
-                className="rounded accent-[#2D4173]"
+                className="rounded accent-[#2D457C]"
               />
-              <span className="text-sm font-medium" style={{ color: 'rgba(45,65,115,0.8)' }}>Inclusief artikel details</span>
+              <span className="text-sm font-medium" style={{ color: 'rgba(45,69,124,0.8)' }}>Inclusief artikel details</span>
             </label>
             <div className="flex items-center gap-2">
-              <label className="text-xs font-medium" style={{ color: 'rgba(45,65,115,0.6)' }}>Vanaf</label>
+              <label className="text-xs font-medium" style={{ color: 'rgba(45,69,124,0.6)' }}>Vanaf</label>
               <input
                 type="date"
                 value={ordersDateFrom}
                 onChange={e => setOrdersDateFrom(e.target.value)}
                 className="rounded-lg px-2.5 py-1.5 text-sm border"
-                style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173' }}
+                style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C' }}
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs font-medium" style={{ color: 'rgba(45,65,115,0.6)' }}>Tot</label>
+              <label className="text-xs font-medium" style={{ color: 'rgba(45,69,124,0.6)' }}>Tot</label>
               <input
                 type="date"
                 value={ordersDateTo}
                 onChange={e => setOrdersDateTo(e.target.value)}
                 className="rounded-lg px-2.5 py-1.5 text-sm border"
-                style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173' }}
+                style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C' }}
               />
             </div>
             <button
@@ -834,25 +834,25 @@ export default function VenditApiTesterPage() {
             </div>
           )}
           {orders.length > 0 && (
-            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(45,65,115,0.12)' }}>
-              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(45,65,115,0.04)', borderBottom: '1px solid rgba(45,65,115,0.08)' }}>
+            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(45,69,124,0.12)' }}>
+              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(45,69,124,0.04)', borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
                 <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
                   {ordersTotalCount} orders totaal
                   {orderLines.length > 0 && ` · ${orderLines.length} regels (artikelen)`}
                   {' · Pagina '}{Math.floor(ordersPaginationOffset / ORDERS_PAGE_SIZE) + 1}
                   {ordersResponseTime != null && (
-                    <span className="ml-2 font-normal" style={{ color: 'rgba(45,65,115,0.5)' }}>({ordersResponseTime} ms)</span>
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(45,69,124,0.5)' }}>({ordersResponseTime} ms)</span>
                   )}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                   {orderLines.length > 0 && (
-                    <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(45,65,115,0.12)' }}>
+                    <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(45,69,124,0.12)' }}>
                       <button
                         onClick={() => setOrdersViewMode('orders')}
                         className="px-3 py-1.5 text-xs font-semibold transition"
                         style={{
                           background: ordersViewMode === 'orders' ? DYNAMO_BLUE : 'white',
-                          color: ordersViewMode === 'orders' ? 'white' : 'rgba(45,65,115,0.6)',
+                          color: ordersViewMode === 'orders' ? 'white' : 'rgba(45,69,124,0.6)',
                         }}
                       >
                         Orderweergave
@@ -862,7 +862,7 @@ export default function VenditApiTesterPage() {
                         className="px-3 py-1.5 text-xs font-semibold transition"
                         style={{
                           background: ordersViewMode === 'tabel' ? DYNAMO_BLUE : 'white',
-                          color: ordersViewMode === 'tabel' ? 'white' : 'rgba(45,65,115,0.6)',
+                          color: ordersViewMode === 'tabel' ? 'white' : 'rgba(45,69,124,0.6)',
                         }}
                       >
                         Tabel
@@ -875,13 +875,13 @@ export default function VenditApiTesterPage() {
                     value={ordersSearch}
                     onChange={e => setOrdersSearch(e.target.value)}
                     className="rounded-lg px-3 py-1.5 text-sm border"
-                    style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173', minWidth: 200 }}
+                    style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C', minWidth: 200 }}
                   />
                   <button
                     onClick={() => loadOrders(Math.max(0, ordersPaginationOffset - ORDERS_PAGE_SIZE))}
                     disabled={ordersLoading || ordersPaginationOffset === 0}
                     className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-                    style={{ background: 'rgba(45,65,115,0.06)', color: DYNAMO_BLUE }}
+                    style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE }}
                   >
                     ← Vorige
                   </button>
@@ -889,7 +889,7 @@ export default function VenditApiTesterPage() {
                     onClick={() => loadOrders(ordersPaginationOffset + ORDERS_PAGE_SIZE)}
                     disabled={ordersLoading || orders.length < ORDERS_PAGE_SIZE}
                     className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-                    style={{ background: 'rgba(45,65,115,0.06)', color: DYNAMO_BLUE }}
+                    style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE }}
                   >
                     Volgende →
                   </button>
@@ -903,15 +903,15 @@ export default function VenditApiTesterPage() {
                 )}
               </div>
               {ordersViewMode === 'tabel' && ordersFiltered.length !== ordersDisplayData.length && (
-                <div className="px-4 py-2 text-xs" style={{ color: 'rgba(45,65,115,0.5)', borderTop: '1px solid rgba(45,65,115,0.08)' }}>
+                <div className="px-4 py-2 text-xs" style={{ color: 'rgba(45,69,124,0.5)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
                   {ordersFiltered.length} van {ordersDisplayData.length} getoond (gefilterd)
                 </div>
               )}
-              <details className="border-t" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
-                <summary className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-black/5" style={{ color: 'rgba(45,65,115,0.6)' }}>
+              <details className="border-t" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
+                <summary className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-black/5" style={{ color: 'rgba(45,69,124,0.6)' }}>
                   Raw JSON (alle velden en details)
                 </summary>
-                <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(45,65,115,0.02)', color: 'rgba(45,65,115,0.85)' }}>
+                <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(45,69,124,0.02)', color: 'rgba(45,69,124,0.85)' }}>
                   {JSON.stringify(ordersViewMode === 'orders' ? orders : ordersFiltered, null, 2)}
                 </pre>
               </details>
@@ -920,9 +920,9 @@ export default function VenditApiTesterPage() {
         </div>
 
         {/* Voorraad overzicht */}
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 2px 12px rgba(45,65,115,0.04)' }}>
+        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
           <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Voorraad overzicht (producten op voorraad)</h2>
-          <p className="text-sm mb-4" style={{ color: 'rgba(45,65,115,0.5)' }}>
+          <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Haal alle producten met voorraad op voor de geselecteerde winkel.
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -939,7 +939,7 @@ export default function VenditApiTesterPage() {
               onChange={e => setStockFilterProductUrl(e.target.value as 'all' | 'has_url' | 'no_url')}
               disabled={stock.length === 0}
               className="rounded-xl px-4 py-2.5 text-sm border disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173' }}
+              style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C' }}
             >
               <option value="all">Alle artikelen</option>
               <option value="has_url">Alleen met product URL</option>
@@ -952,7 +952,7 @@ export default function VenditApiTesterPage() {
               onChange={e => setStockSearch(e.target.value)}
               disabled={stock.length === 0}
               className="rounded-xl px-4 py-2.5 text-sm border disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173', minWidth: 260 }}
+              style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C', minWidth: 260 }}
             />
           </div>
           {stockError && (
@@ -961,15 +961,15 @@ export default function VenditApiTesterPage() {
             </div>
           )}
           {stock.length > 0 && (
-            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(45,65,115,0.12)' }}>
-              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(45,65,115,0.04)', borderBottom: '1px solid rgba(45,65,115,0.08)' }}>
+            <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(45,69,124,0.12)' }}>
+              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3" style={{ background: 'rgba(45,69,124,0.04)', borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
                 <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
                   {stock.length} voorraadregels
                   {stockResponseTime != null && (
-                    <span className="ml-2 font-normal" style={{ color: 'rgba(45,65,115,0.5)' }}>({stockResponseTime} ms)</span>
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(45,69,124,0.5)' }}>({stockResponseTime} ms)</span>
                   )}
                   {(stockSearch || stockFilterProductUrl !== 'all') && (
-                    <span className="ml-2 font-normal" style={{ color: 'rgba(45,65,115,0.5)' }}>→ {stockFiltered.length} gevonden</span>
+                    <span className="ml-2 font-normal" style={{ color: 'rgba(45,69,124,0.5)' }}>→ {stockFiltered.length} gevonden</span>
                   )}
                 </span>
               </div>
@@ -984,15 +984,15 @@ export default function VenditApiTesterPage() {
                 <ArticleDetailModal item={selectedArticle} onClose={() => setSelectedArticle(null)} />
               )}
               {stockFiltered.length !== stock.length && (
-                <div className="px-4 py-2 text-xs" style={{ color: 'rgba(45,65,115,0.5)', borderTop: '1px solid rgba(45,65,115,0.08)' }}>
+                <div className="px-4 py-2 text-xs" style={{ color: 'rgba(45,69,124,0.5)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
                   {stockFiltered.length} van {stock.length} getoond (gefilterd)
                 </div>
               )}
-              <details className="border-t" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
-                <summary className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-black/5" style={{ color: 'rgba(45,65,115,0.6)' }}>
+              <details className="border-t" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
+                <summary className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-black/5" style={{ color: 'rgba(45,69,124,0.6)' }}>
                   Raw JSON (alle velden en details)
                 </summary>
-                <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(45,65,115,0.02)', color: 'rgba(45,65,115,0.85)' }}>
+                <pre className="px-4 py-3 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto" style={{ background: 'rgba(45,69,124,0.02)', color: 'rgba(45,69,124,0.85)' }}>
                   {JSON.stringify(stockFiltered, null, 2)}
                 </pre>
               </details>
@@ -1001,9 +1001,9 @@ export default function VenditApiTesterPage() {
         </div>
 
         {/* Discovery scan */}
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 2px 12px rgba(45,65,115,0.04)' }}>
+        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
           <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Data-overzicht (Discovery scan)</h2>
-          <p className="text-sm mb-4" style={{ color: 'rgba(45,65,115,0.5)' }}>
+          <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Scan alle GetAll-endpoints voor de geselecteerde winkel om snel te zien welke data beschikbaar is (aantal records per endpoint).
           </p>
           <button
@@ -1015,13 +1015,13 @@ export default function VenditApiTesterPage() {
             {scanning ? 'Scannen...' : 'Scan endpoints'}
           </button>
           {scanResponseTime != null && !scanning && (
-            <span className="text-sm" style={{ color: 'rgba(45,65,115,0.5)' }}>{scanResponseTime} ms</span>
+            <span className="text-sm" style={{ color: 'rgba(45,69,124,0.5)' }}>{scanResponseTime} ms</span>
           )}
           {scanResult && (
-            <div className="mt-4 overflow-x-auto rounded-lg border" style={{ borderColor: 'rgba(45,65,115,0.12)' }}>
-              <table className="w-full text-sm" style={{ color: '#2D4173' }}>
+            <div className="mt-4 overflow-x-auto rounded-lg border" style={{ borderColor: 'rgba(45,69,124,0.12)' }}>
+              <table className="w-full text-sm" style={{ color: '#2D457C' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(45,65,115,0.04)' }}>
+                  <tr style={{ background: 'rgba(45,69,124,0.04)' }}>
                     <th className="px-3 py-2 text-left font-semibold">Endpoint</th>
                     <th className="px-3 py-2 text-left font-semibold">Aantal</th>
                     <th className="px-3 py-2 text-left font-semibold">Status</th>
@@ -1029,7 +1029,7 @@ export default function VenditApiTesterPage() {
                 </thead>
                 <tbody>
                   {scanResult.map((r, i) => (
-                    <tr key={i} className="border-t" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
+                    <tr key={i} className="border-t" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
                       <td className="px-3 py-2 font-mono text-xs">{r.label}</td>
                       <td className="px-3 py-2">{r.count != null ? r.count : '—'}</td>
                       <td className="px-3 py-2">
@@ -1047,20 +1047,20 @@ export default function VenditApiTesterPage() {
           )}
         </div>
 
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 2px 12px rgba(45,65,115,0.04)' }}>
+        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
           <h1 className="text-lg font-bold mb-4" style={{ color: DYNAMO_BLUE }}>Vendit Public API testen</h1>
-          <p className="text-sm mb-6" style={{ color: 'rgba(45,65,115,0.5)' }}>
+          <p className="text-sm mb-6" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Selecteer een Vendit-winkel met geconfigureerde API-credentials en een endpoint. Vul eventuele parameters of request body in en voer de call uit.
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(45,65,115,0.6)' }}>Endpoint</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(45,69,124,0.6)' }}>Endpoint</label>
               <select
                 value={selectedEndpoint}
                 onChange={e => setSelectedEndpoint(e.target.value)}
                 className="w-full rounded-xl px-3 py-2.5 text-sm border"
-                style={{ background: 'rgba(45,65,115,0.02)', borderColor: 'rgba(45,65,115,0.12)', color: DYNAMO_BLUE }}
+                style={{ background: 'rgba(45,69,124,0.02)', borderColor: 'rgba(45,69,124,0.12)', color: DYNAMO_BLUE }}
               >
                 <option value="">— Selecteer endpoint —</option>
                 {VENDIT_GET_ENDPOINTS.map(ep => (
@@ -1071,32 +1071,32 @@ export default function VenditApiTesterPage() {
 
             {endpoint?.method === 'POST' && (
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(45,65,115,0.6)' }}>Request body (JSON)</label>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(45,69,124,0.6)' }}>Request body (JSON)</label>
                 <textarea
                   placeholder={endpoint?.bodyPlaceholder}
                   value={postBody}
                   onChange={e => setPostBody(e.target.value)}
                   rows={4}
                   className="w-full rounded-lg px-3 py-2 text-sm font-mono border"
-                  style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173' }}
+                  style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C' }}
                 />
               </div>
             )}
 
             {hasParams && endpoint?.params && (
               <div className="space-y-3">
-                <label className="block text-xs font-semibold" style={{ color: 'rgba(45,65,115,0.6)' }}>Parameters</label>
+                <label className="block text-xs font-semibold" style={{ color: 'rgba(45,69,124,0.6)' }}>Parameters</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {endpoint.params.map(p => (
                     <div key={p.name}>
-                      <label className="block text-xs mb-1" style={{ color: 'rgba(45,65,115,0.45)' }}>{p.name}</label>
+                      <label className="block text-xs mb-1" style={{ color: 'rgba(45,69,124,0.45)' }}>{p.name}</label>
                       <input
                         type="text"
                         placeholder={p.placeholder}
                         value={params[p.name] ?? ''}
                         onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
                         className="w-full rounded-lg px-3 py-2 text-sm border"
-                        style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: '#2D4173' }}
+                        style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: '#2D457C' }}
                       />
                     </div>
                   ))}
@@ -1116,12 +1116,12 @@ export default function VenditApiTesterPage() {
         </div>
 
         {result && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 2px 12px rgba(45,65,115,0.04)' }}>
-            <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ background: 'rgba(45,65,115,0.04)', borderBottom: '1px solid rgba(45,65,115,0.08)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
+            <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ background: 'rgba(45,69,124,0.04)', borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
               <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Resultaat</span>
               <div className="flex items-center gap-2">
                 {result.responseTime != null && (
-                  <span className="text-xs" style={{ color: 'rgba(45,65,115,0.5)' }}>{result.responseTime} ms</span>
+                  <span className="text-xs" style={{ color: 'rgba(45,69,124,0.5)' }}>{result.responseTime} ms</span>
                 )}
                 {result.status != null && (
                   <span className={`text-xs font-mono px-2 py-0.5 rounded ${result.status >= 200 && result.status < 300 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -1136,21 +1136,21 @@ export default function VenditApiTesterPage() {
               ) : (
                 <>
                   {result.url && (
-                    <p className="text-xs font-mono mb-3 truncate" style={{ color: 'rgba(45,65,115,0.5)' }} title={result.url}>{result.url}</p>
+                    <p className="text-xs font-mono mb-3 truncate" style={{ color: 'rgba(45,69,124,0.5)' }} title={result.url}>{result.url}</p>
                   )}
                   {resultArray ? (
                     <DataTableView data={resultArray} />
                   ) : null}
                   {resultArray && (
                     <details className="mt-4">
-                      <summary className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,65,115,0.6)' }}>Raw JSON</summary>
-                      <pre className="mt-2 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto p-3 rounded-lg" style={{ background: 'rgba(45,65,115,0.03)', color: 'rgba(45,65,115,0.85)' }}>
+                      <summary className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)' }}>Raw JSON</summary>
+                      <pre className="mt-2 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto p-3 rounded-lg" style={{ background: 'rgba(45,69,124,0.03)', color: 'rgba(45,69,124,0.85)' }}>
                         {typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2)}
                       </pre>
                     </details>
                   )}
                   {!resultArray && (
-                    <pre className="text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto p-3 rounded-lg" style={{ background: 'rgba(45,65,115,0.03)', color: 'rgba(45,65,115,0.85)' }}>
+                    <pre className="text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto p-3 rounded-lg" style={{ background: 'rgba(45,69,124,0.03)', color: 'rgba(45,69,124,0.85)' }}>
                       {typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2)}
                     </pre>
                   )}

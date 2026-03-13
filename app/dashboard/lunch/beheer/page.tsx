@@ -167,14 +167,14 @@ export default function LunchBeheerPage() {
         )}
         {isAdmin && (
         <>
-        <div className="flex gap-2 border-b" style={{ borderColor: 'rgba(45,65,115,0.1)' }}>
+        <div className="flex gap-2 border-b" style={{ borderColor: 'rgba(45,69,124,0.1)' }}>
           <button
             type="button"
             onClick={() => setTab('orders')}
             className="px-4 py-2 font-semibold text-sm rounded-t-lg transition"
             style={{
               background: tab === 'orders' ? 'white' : 'transparent',
-              color: tab === 'orders' ? DYNAMO_BLUE : 'rgba(45,65,115,0.5)',
+              color: tab === 'orders' ? DYNAMO_BLUE : 'rgba(45,69,124,0.5)',
               borderBottom: tab === 'orders' ? '2px solid ' + DYNAMO_BLUE : '2px solid transparent',
             }}
           >
@@ -186,7 +186,7 @@ export default function LunchBeheerPage() {
             className="px-4 py-2 font-semibold text-sm rounded-t-lg transition"
             style={{
               background: tab === 'products' ? 'white' : 'transparent',
-              color: tab === 'products' ? DYNAMO_BLUE : 'rgba(45,65,115,0.5)',
+              color: tab === 'products' ? DYNAMO_BLUE : 'rgba(45,69,124,0.5)',
               borderBottom: tab === 'products' ? '2px solid ' + DYNAMO_BLUE : '2px solid transparent',
             }}
           >
@@ -198,7 +198,7 @@ export default function LunchBeheerPage() {
             className="px-4 py-2 font-semibold text-sm rounded-t-lg transition"
             style={{
               background: tab === 'instellingen' ? 'white' : 'transparent',
-              color: tab === 'instellingen' ? DYNAMO_BLUE : 'rgba(45,65,115,0.5)',
+              color: tab === 'instellingen' ? DYNAMO_BLUE : 'rgba(45,69,124,0.5)',
               borderBottom: tab === 'instellingen' ? '2px solid ' + DYNAMO_BLUE : '2px solid transparent',
             }}
           >
@@ -215,10 +215,10 @@ export default function LunchBeheerPage() {
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
-                style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+                style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
               />
               <div className="flex gap-4 ml-4">
-                <span className="text-sm" style={{ color: 'rgba(45,65,115,0.6)' }}>
+                <span className="text-sm" style={{ color: 'rgba(45,69,124,0.6)' }}>
                   {orders.length} bestellingen · {formatPrice(ordersTotal)} totaal · {formatPrice(ordersPaid)} betaald
                 </span>
               </div>
@@ -227,9 +227,9 @@ export default function LunchBeheerPage() {
             {aantallenPerBroodje.length > 0 && (
               <div
                 className="rounded-xl overflow-hidden"
-                style={{ background: 'white', border: '2px solid ' + DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(45,65,115,0.15)' }}
+                style={{ background: 'white', border: '2px solid ' + DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(45,69,124,0.15)' }}
               >
-                <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(45,65,115,0.06)', borderBottom: '1px solid rgba(45,65,115,0.15)' }}>
+                <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(45,69,124,0.06)', borderBottom: '1px solid rgba(45,69,124,0.15)' }}>
                   <h3 className="font-bold" style={{ color: DYNAMO_BLUE }}>🥪 Aantallen voor leverancier</h3>
                   <button
                     type="button"
@@ -243,14 +243,14 @@ export default function LunchBeheerPage() {
                 <div className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {aantallenPerBroodje.map(([naam, qty]) => (
-                      <div key={naam} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ background: 'rgba(45,65,115,0.03)' }}>
+                      <div key={naam} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ background: 'rgba(45,69,124,0.03)' }}>
                         <span className="font-medium" style={{ color: DYNAMO_BLUE }}>{naam}</span>
                         <span className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>{qty}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 pt-3 flex justify-between items-center" style={{ borderTop: '1px solid rgba(45,65,115,0.08)' }}>
-                    <span className="text-sm font-semibold" style={{ color: 'rgba(45,65,115,0.6)' }}>Totaal broodjes</span>
+                  <div className="mt-3 pt-3 flex justify-between items-center" style={{ borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'rgba(45,69,124,0.6)' }}>Totaal broodjes</span>
                     <span className="font-bold text-xl" style={{ color: DYNAMO_BLUE }}>
                       {aantallenPerBroodje.reduce((s, [, q]) => s + q, 0)}
                     </span>
@@ -262,11 +262,11 @@ export default function LunchBeheerPage() {
             {ordersLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'rgba(45,65,115,0.06)' }} />
+                  <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'rgba(45,69,124,0.06)' }} />
                 ))}
               </div>
             ) : orders.length === 0 ? (
-              <div className="rounded-xl p-8 text-center" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)' }}>
+              <div className="rounded-xl p-8 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
                 <p className="text-gray-500">Geen bestellingen voor {formatDate(date)}.</p>
               </div>
             ) : (
@@ -275,9 +275,9 @@ export default function LunchBeheerPage() {
                   <div
                     key={order.id}
                     className="rounded-xl overflow-hidden"
-                    style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)', boxShadow: '0 2px 8px rgba(45,65,115,0.06)' }}
+                    style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 2px 8px rgba(45,69,124,0.06)' }}
                   >
-                    <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: '1px solid rgba(45,65,115,0.08)' }}>
+                    <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold" style={{ color: DYNAMO_BLUE }}>
                           {order.user_name || order.user_email || 'Onbekend'}
@@ -301,7 +301,7 @@ export default function LunchBeheerPage() {
                           Verwijderen
                         </button>
                         {order.user_email && order.user_name && (
-                          <span className="ml-2 text-xs" style={{ color: 'rgba(45,65,115,0.5)' }}>{order.user_email}</span>
+                          <span className="ml-2 text-xs" style={{ color: 'rgba(45,69,124,0.5)' }}>{order.user_email}</span>
                         )}
                         <span className="ml-2 text-sm px-2 py-0.5 rounded-full" style={{
                           background: order.status === 'paid' ? '#dcfce7' : order.status === 'cancelled' ? '#fee2e2' : '#fef3c7',
@@ -315,10 +315,10 @@ export default function LunchBeheerPage() {
                     <ul className="p-4 space-y-1">
                       {order.lunch_order_items?.map((item: OrderItem) => (
                         <li key={item.id} className="flex justify-between text-sm">
-                          <span style={{ color: 'rgba(45,65,115,0.8)' }}>
+                          <span style={{ color: 'rgba(45,69,124,0.8)' }}>
                             {item.lunch_products?.name ?? 'Product'} × {item.quantity}
                           </span>
-                          <span style={{ color: 'rgba(45,65,115,0.6)' }}>{formatPrice(item.unit_price_cents * item.quantity)}</span>
+                          <span style={{ color: 'rgba(45,69,124,0.6)' }}>{formatPrice(item.unit_price_cents * item.quantity)}</span>
                         </li>
                       ))}
                     </ul>
@@ -388,9 +388,9 @@ function InstellingenBeheer() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)' }}>
+      <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
         <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Tikkie betaallink</h2>
-        <p className="text-sm mb-3" style={{ color: 'rgba(45,65,115,0.6)' }}>
+        <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
           De link die gebruikers na het bestellen zien om te betalen. Bijv. https://tikkie.me/pay/xxx
         </p>
         {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
@@ -401,7 +401,7 @@ function InstellingenBeheer() {
           onChange={e => setTikkieLink(e.target.value)}
           placeholder="https://tikkie.me/pay/..."
           className="w-full rounded-lg px-3 py-2 text-sm border mb-3 placeholder:text-gray-500"
-          style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+          style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
         />
         <button
           type="button"
@@ -502,7 +502,7 @@ function ProductBeheer({
     return (
       <div className="space-y-3">
         {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'rgba(45,65,115,0.06)' }} />
+          <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'rgba(45,69,124,0.06)' }} />
         ))}
       </div>
     )
@@ -523,7 +523,7 @@ function ProductBeheer({
       </div>
 
       {(editingProduct || newProduct) && (
-        <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)' }}>
+        <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
           <h3 className="font-semibold mb-3" style={{ color: DYNAMO_BLUE }}>{newProduct ? 'Nieuw product' : 'Bewerken'}</h3>
           {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -533,7 +533,7 @@ function ProductBeheer({
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className="rounded-lg px-3 py-2 text-sm border placeholder:text-gray-500"
-              style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+              style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <input
               type="number"
@@ -541,7 +541,7 @@ function ProductBeheer({
               value={form.price_cents}
               onChange={e => setForm(f => ({ ...f, price_cents: parseInt(e.target.value, 10) || 0 }))}
               className="rounded-lg px-3 py-2 text-sm border placeholder:text-gray-500"
-              style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+              style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <input
               type="text"
@@ -549,7 +549,7 @@ function ProductBeheer({
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               className="rounded-lg px-3 py-2 text-sm border sm:col-span-2 placeholder:text-gray-500"
-              style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+              style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <input
               type="url"
@@ -557,13 +557,13 @@ function ProductBeheer({
               value={form.image_url}
               onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
               className="rounded-lg px-3 py-2 text-sm border sm:col-span-2 placeholder:text-gray-500"
-              style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+              style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
             />
             <select
               value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
               className="rounded-lg px-3 py-2 text-sm border"
-              style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+              style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
             >
               {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -592,7 +592,7 @@ function ProductBeheer({
               type="button"
               onClick={() => { setEditingProduct(null); setNewProduct(false) }}
               className="px-4 py-2 rounded-lg font-semibold text-sm border"
-              style={{ borderColor: 'rgba(45,65,115,0.2)' }}
+              style={{ borderColor: 'rgba(45,69,124,0.2)' }}
             >
               Annuleren
             </button>
@@ -605,7 +605,7 @@ function ProductBeheer({
           <div
             key={p.id}
             className="flex items-center gap-3 rounded-xl p-3"
-            style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)' }}
+            style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)' }}
           >
             <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               {p.image_url ? (
@@ -616,12 +616,12 @@ function ProductBeheer({
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold" style={{ color: DYNAMO_BLUE }}>{p.name}</div>
-              <div className="text-xs" style={{ color: 'rgba(45,65,115,0.5)' }}>
+              <div className="text-xs" style={{ color: 'rgba(45,69,124,0.5)' }}>
                 {CATEGORY_LABELS[p.category] ?? p.category} · {formatPrice(p.price_cents)}
                 {!p.active && ' · Inactief'}
               </div>
               {p.description && (
-                <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,65,115,0.4)' }}>{p.description}</div>
+                <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.4)' }}>{p.description}</div>
               )}
             </div>
             <div className="flex gap-2 shrink-0">
@@ -629,7 +629,7 @@ function ProductBeheer({
                 type="button"
                 onClick={() => handleEdit(p)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: 'rgba(45,65,115,0.08)', color: DYNAMO_BLUE }}
+                style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE }}
               >
                 Bewerken
               </button>

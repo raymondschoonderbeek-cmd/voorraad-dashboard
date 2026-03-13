@@ -134,7 +134,7 @@ export default function LunchPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-        input, select { color: #2D4173 !important; }
+        input, select { color: #2D457C !important; }
         input::placeholder { color: #6b7280 !important; }
       `}</style>
 
@@ -156,7 +156,7 @@ export default function LunchPage() {
               <Link
                 href="/dashboard/lunch/beheer"
                 className="text-sm font-medium px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(45,65,115,0.15)', color: DYNAMO_BLUE }}
+                style={{ background: 'rgba(45,69,124,0.15)', color: DYNAMO_BLUE }}
               >
                 Beheer
               </Link>
@@ -182,7 +182,7 @@ export default function LunchPage() {
             value={orderDate}
             onChange={e => setOrderDate(e.target.value)}
             className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
-            style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
+            style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
           />
         </div>
 
@@ -193,11 +193,11 @@ export default function LunchPage() {
         )}
 
         {checkoutResult && (
-          <div ref={checkoutRef} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)', boxShadow: '0 4px 24px rgba(45,65,115,0.08)' }}>
-            <div className="p-6 sm:p-8 text-center" style={{ borderBottom: '1px solid rgba(45,65,115,0.08)' }}>
+          <div ref={checkoutRef} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 4px 24px rgba(45,69,124,0.08)' }}>
+            <div className="p-6 sm:p-8 text-center" style={{ borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
               <div className="text-5xl mb-3">🎉</div>
               <h2 className="text-2xl font-bold mb-1" style={{ color: DYNAMO_BLUE }}>Bedankt{checkoutResult.user_name ? ` ${checkoutResult.user_name}` : ''}!</h2>
-              <p className="text-sm" style={{ color: 'rgba(45,65,115,0.6)' }}>
+              <p className="text-sm" style={{ color: 'rgba(45,69,124,0.6)' }}>
                 Je bestelling is geplaatst{checkoutResult.user_name ? `, ${checkoutResult.user_name}` : ''}. Betaal hieronder via Tikkie.
               </p>
             </div>
@@ -207,20 +207,20 @@ export default function LunchPage() {
                 <div className="rounded-xl p-6 text-center" style={{ background: 'rgba(34,197,94,0.08)', border: '2px solid rgba(34,197,94,0.3)' }}>
                   <div className="text-4xl mb-3">🥪</div>
                   <h3 className="font-bold text-lg mb-2" style={{ color: DYNAMO_BLUE }}>Top, betaling ontvangen!</h3>
-                  <p className="text-sm" style={{ color: 'rgba(45,65,115,0.7)' }}>
+                  <p className="text-sm" style={{ color: 'rgba(45,69,124,0.7)' }}>
                     Je broodje staat op de lijst. Eet smakelijk alvast! 🥪
                   </p>
                 </div>
               ) : (
                 <>
-                  <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(45,65,115,0.08)', border: '2px solid rgba(45,65,115,0.25)' }}>
+                  <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(45,69,124,0.08)', border: '2px solid rgba(45,69,124,0.25)' }}>
                     <div className="text-sm font-semibold mb-1" style={{ color: DYNAMO_BLUE }}>Te betalen bedrag</div>
                     <div className="text-3xl font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
                       {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0
                         ? formatPrice(checkoutResult.amount_cents)
                         : '—'}
                     </div>
-                    <p className="text-xs font-semibold" style={{ color: 'rgba(45,65,115,0.7)' }}>
+                    <p className="text-xs font-semibold" style={{ color: 'rgba(45,69,124,0.7)' }}>
                       LET OP: vul dit bedrag zelf in bij Tikkie!
                     </p>
                   </div>
@@ -237,27 +237,27 @@ export default function LunchPage() {
                       Betaal via Tikkie
                     </a>
                   ) : (
-                    <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.12)' }}>
-                      <p style={{ color: 'rgba(45,65,115,0.7)' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
+                    <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.12)' }}>
+                      <p style={{ color: 'rgba(45,69,124,0.7)' }}>Geen betaallink geconfigureerd. De beheerder kan een Tikkie-link instellen in Lunch beheer → Instellingen.</p>
                     </div>
                   )}
                 </>
               )}
 
               {checkoutResult.items && checkoutResult.items.length > 0 && (
-                <div className="mt-6 pt-6" style={{ borderTop: '1px solid rgba(45,65,115,0.08)' }}>
+                <div className="mt-6 pt-6" style={{ borderTop: '1px solid rgba(45,69,124,0.08)' }}>
                   <h3 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Je bestelling</h3>
                   <ul className="space-y-2">
                     {checkoutResult.items.map((item, i) => (
                       <li key={i} className="flex justify-between text-sm">
-                        <span style={{ color: 'rgba(45,65,115,0.8)' }}>
+                        <span style={{ color: 'rgba(45,69,124,0.8)' }}>
                           {item.quantity}x {item.product_name ?? 'Product'}
                         </span>
                         <span style={{ color: DYNAMO_BLUE }}>{formatPrice(item.unit_price_cents * item.quantity)}</span>
                       </li>
                     ))}
                   </ul>
-                  <div className="flex justify-between font-bold mt-2 pt-2" style={{ borderTop: '1px solid rgba(45,65,115,0.06)' }}>
+                  <div className="flex justify-between font-bold mt-2 pt-2" style={{ borderTop: '1px solid rgba(45,69,124,0.06)' }}>
                     <span style={{ color: DYNAMO_BLUE }}>Totaal</span>
                     <span style={{ color: DYNAMO_BLUE }}>{formatPrice(checkoutResult.amount_cents ?? 0)}</span>
                   </div>
@@ -267,7 +267,7 @@ export default function LunchPage() {
           </div>
         )}
 
-        <div className="rounded-xl p-3" style={{ background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.08)' }}>
+        <div className="rounded-xl p-3" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.08)' }}>
           <a
             href="https://www.paniniitaliani.nl/webshop/panini-italiani-belegde-broodjes-amersfoort/"
             target="_blank"
@@ -288,18 +288,18 @@ export default function LunchPage() {
             {isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: 'rgba(45,65,115,0.06)' }} />
+                  <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: 'rgba(45,69,124,0.06)' }} />
                 ))}
               </div>
             ) : products.length === 0 ? (
-              <div className="rounded-xl p-8 text-center" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)' }}>
+              <div className="rounded-xl p-8 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
                 <p className="text-gray-500">Geen producten beschikbaar.</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {Object.entries(byCategory).map(([cat, items]) => (
                   <div key={cat}>
-                    <h3 className="text-sm font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(45,65,115,0.5)' }}>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider mb-2" style={{ color: 'rgba(45,69,124,0.5)' }}>
                       {CATEGORY_LABELS[cat] ?? cat}
                     </h3>
                     <div className="space-y-2">
@@ -307,7 +307,7 @@ export default function LunchPage() {
                         <div
                           key={p.id}
                           className="flex items-start gap-3 rounded-xl p-3 sm:p-4"
-                          style={{ background: 'white', border: '1px solid rgba(45,65,115,0.08)', boxShadow: '0 1px 3px rgba(45,65,115,0.04)' }}
+                          style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 1px 3px rgba(45,69,124,0.04)' }}
                         >
                           <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                             {p.image_url ? (
@@ -319,7 +319,7 @@ export default function LunchPage() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold" style={{ color: DYNAMO_BLUE }}>{p.name}</div>
                             {p.description && (
-                              <div className="text-sm mt-0.5" style={{ color: 'rgba(45,65,115,0.6)' }}>
+                              <div className="text-sm mt-0.5" style={{ color: 'rgba(45,69,124,0.6)' }}>
                                 {p.description}
                               </div>
                             )}
@@ -346,21 +346,21 @@ export default function LunchPage() {
 
           {/* Winkelwagen */}
           <div>
-            <div className="sticky top-20 rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)', boxShadow: '0 4px 12px rgba(45,65,115,0.08)' }}>
-              <div className="p-4 border-b" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
+            <div className="sticky top-20 rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 4px 12px rgba(45,69,124,0.08)' }}>
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
                 <h2 className="font-bold" style={{ color: DYNAMO_BLUE }}>Winkelwagen</h2>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.5)' }}>{orderDate}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.5)' }}>{orderDate}</p>
               </div>
               <div className="p-4 max-h-64 overflow-y-auto">
                 {cart.length === 0 ? (
-                  <p className="text-sm" style={{ color: 'rgba(45,65,115,0.4)' }}>Winkelwagen is leeg</p>
+                  <p className="text-sm" style={{ color: 'rgba(45,69,124,0.4)' }}>Winkelwagen is leeg</p>
                 ) : (
                   <ul className="space-y-2">
                     {cart.map(({ product, quantity }) => (
                       <li key={product.id} className="flex items-center justify-between gap-2 text-sm">
                         <div className="min-w-0 flex-1">
                           <span className="font-medium" style={{ color: DYNAMO_BLUE }}>{product.name}</span>
-                          <span className="ml-1" style={{ color: 'rgba(45,65,115,0.5)' }}>× {quantity}</span>
+                          <span className="ml-1" style={{ color: 'rgba(45,69,124,0.5)' }}>× {quantity}</span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -393,7 +393,7 @@ export default function LunchPage() {
                   </ul>
                 )}
               </div>
-              <div className="p-4 border-t" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
+              <div className="p-4 border-t" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
                 <div className="flex justify-between items-center mb-3">
                   <span className="font-semibold" style={{ color: DYNAMO_BLUE }}>Totaal</span>
                   <span className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>{formatPrice(totalCents)}</span>

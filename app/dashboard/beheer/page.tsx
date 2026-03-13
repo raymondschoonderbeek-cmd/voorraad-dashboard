@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
-const WINKEL_KLEUREN = ['#2D4173','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
+const WINKEL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
 function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
 type Rol = { id: number; user_id: string; rol: string; naam: string; mfa_verplicht?: boolean; created_at: string }
@@ -819,7 +819,7 @@ export default function BeheerPage() {
     })
   }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelFilterLand, winkelFilterLocatie, winkelZoekterm])
 
-  const inputStyle = { background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
+  const inputStyle = { background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
 
   const tabs: { key: Tab; label: string; icon: string; count?: number }[] = isAdmin
@@ -891,14 +891,14 @@ export default function BeheerPage() {
         {formError && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
         {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
-        <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)', WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', WebkitOverflowScrolling: 'touch' }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => { setTab(t.key); setToonForm(false); setBewerkGebruiker(null); setToonWinkelForm(false); setBewerkWinkel(null) }}
               className="flex-1 min-w-[100px] sm:min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2.5 text-xs sm:text-sm font-semibold transition-all shrink-0"
-              style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(45,65,115,0.5)', fontFamily: F }}>
+              style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
               <span>{t.icon}</span><span>{t.label}</span>
               {t.count !== undefined && (
-                <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={tab === t.key ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(45,65,115,0.07)', color: 'rgba(45,65,115,0.5)' }}>{t.count}</span>
+                <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={tab === t.key ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(45,69,124,0.07)', color: 'rgba(45,69,124,0.5)' }}>{t.count}</span>
               )}
             </button>
           ))}
@@ -914,54 +914,54 @@ export default function BeheerPage() {
             </div>
 
             {toonForm && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe gebruiker aanmaken</h2>
                 <form onSubmit={voegGebruikerToe} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>E-mailadres *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>E-mailadres *</label>
                       <input type="email" placeholder="naam@bedrijf.nl" value={nieuwEmail} onChange={e => setNieuwEmail(e.target.value)} className={inputClass} style={inputStyle} required />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Naam</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam</label>
                       <input type="text" placeholder="Volledige naam" value={nieuwNaam} onChange={e => setNieuwNaam(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Wachtwoord <span style={{ fontWeight: 400, opacity: 0.6 }}>(min. 8 tekens; wordt per e-mail verstuurd)</span></label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Wachtwoord <span style={{ fontWeight: 400, opacity: 0.6 }}>(min. 8 tekens; wordt per e-mail verstuurd)</span></label>
                     <div className="flex gap-2">
                       <input type="text" placeholder="Kies of genereer wachtwoord" value={nieuwWachtwoord} onChange={e => setNieuwWachtwoord(e.target.value)} className={inputClass} style={{ ...inputStyle, flex: 1 }} minLength={8} autoComplete="off" />
-                      <button type="button" onClick={() => setNieuwWachtwoord(Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 32]).join(''))} className="rounded-xl px-4 py-2.5 text-sm font-semibold shrink-0" style={{ border: '1px solid rgba(45,65,115,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>Genereer</button>
+                      <button type="button" onClick={() => setNieuwWachtwoord(Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 32]).join(''))} className="rounded-xl px-4 py-2.5 text-sm font-semibold shrink-0" style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>Genereer</button>
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Rol</label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Rol</label>
                     <div className="flex gap-3">
                       {[{ value: 'viewer', label: 'Viewer', info: 'Kan voorraad bekijken' }, { value: 'lunch', label: 'Lunch', info: 'Alleen lunch bestellen' }, { value: 'admin', label: 'Admin', info: 'Volledige toegang' }].map(r => (
                         <label key={r.value} className="flex-1 cursor-pointer">
                           <input type="radio" name="rol" value={r.value} checked={nieuwRol === r.value} onChange={() => setNieuwRol(r.value)} className="sr-only" />
-                          <div className="rounded-xl border-2 p-3 transition" style={nieuwRol === r.value ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,65,115,0.04)' } : { borderColor: 'rgba(45,65,115,0.1)' }}>
+                          <div className="rounded-xl border-2 p-3 transition" style={nieuwRol === r.value ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
                             <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.label}</div>
-                            <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.45)', fontFamily: F }}>{r.info}</div>
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>{r.info}</div>
                           </div>
                         </label>
                       ))}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" id="nieuw_mfa_verplicht" checked={nieuwMfaVerplicht} onChange={e => setNieuwMfaVerplicht(e.target.checked)} className="accent-[#2D4173]" />
-                    <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
+                    <input type="checkbox" id="nieuw_mfa_verplicht" checked={nieuwMfaVerplicht} onChange={e => setNieuwMfaVerplicht(e.target.checked)} className="accent-[#2D457C]" />
+                    <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                   </div>
                   {nieuwRol !== 'lunch' && (
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {winkels.map(w => (
-                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,65,115,0.04)' } : { borderColor: 'rgba(45,65,115,0.1)' }}>
-                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-[#2D4173]" />
+                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
+                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-[#2D457C]" />
                           <div className="min-w-0">
                             <div className="text-xs font-semibold truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
-                            <div className="text-xs" style={{ color: 'rgba(45,65,115,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
+                            <div className="text-xs" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
                           </div>
                         </label>
                       ))}
@@ -971,27 +971,27 @@ export default function BeheerPage() {
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Bezig...' : nieuwWachtwoord ? 'Aanmaken en e-mail versturen' : 'Uitnodiging versturen'}</button>
-                    <button type="button" onClick={() => setToonForm(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => setToonForm(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
             )}
 
             {bewerkGebruiker && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkGebruiker.naam} bewerken</h2>
                 <form onSubmit={updateGebruiker} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Naam</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam</label>
                       <input type="text" value={bewerkGebruiker.naam} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, naam: e.target.value })} className={inputClass} style={inputStyle} placeholder="Volledige naam" />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>E-mailadres</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>E-mailadres</label>
                       <input type="email" value={bewerkEmail} onChange={e => setBewerkEmail(e.target.value)} className={inputClass} style={inputStyle} placeholder="naam@bedrijf.nl" />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Rol</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Rol</label>
                       <select value={bewerkGebruiker.rol} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, rol: e.target.value })} className={inputClass} style={inputStyle}>
                         <option value="viewer">Viewer</option>
                         <option value="lunch">Lunch</option>
@@ -999,20 +999,20 @@ export default function BeheerPage() {
                       </select>
                     </div>
                     <div className="sm:col-span-2 flex items-center gap-2">
-                      <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-[#2D4173]" />
-                      <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
+                      <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-[#2D457C]" />
+                      <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                     </div>
                   </div>
                   {bewerkGebruiker.rol !== 'lunch' && (
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {winkels.map(w => (
-                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,65,115,0.04)' } : { borderColor: 'rgba(45,65,115,0.1)' }}>
-                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-[#2D4173]" />
+                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
+                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-[#2D457C]" />
                           <div className="min-w-0">
                             <div className="text-xs font-semibold truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
-                            <div className="text-xs" style={{ color: 'rgba(45,65,115,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
+                            <div className="text-xs" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
                           </div>
                         </label>
                       ))}
@@ -1021,23 +1021,23 @@ export default function BeheerPage() {
                   )}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
             )}
 
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,65,115,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Gebruikersoverzicht</div>
-                <div className="text-xs" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>{rollen.length} gebruikers</div>
+                <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{rollen.length} gebruikers</div>
               </div>
               {loading ? (
                 <div className="p-10 text-center"><div className="w-7 h-7 border-2 border-gray-200 rounded-full animate-spin mx-auto mb-2" style={{ borderTopColor: DYNAMO_BLUE }} /></div>
               ) : rollen.length === 0 ? (
-                <div className="p-10 text-center text-sm" style={{ color: 'rgba(45,65,115,0.35)', fontFamily: F }}>Nog geen gebruikers</div>
+                <div className="p-10 text-center text-sm" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>Nog geen gebruikers</div>
               ) : (
-                <div className="divide-y" style={{ borderColor: 'rgba(45,65,115,0.06)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
                   {rollen.map(rol => (
                     <div key={rol.id} className="flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50/50">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
@@ -1046,29 +1046,29 @@ export default function BeheerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(45,65,115,0.12)', color: DYNAMO_BLUE } : rol.rol === 'lunch' ? { background: 'rgba(34,197,94,0.15)', color: '#15803d' } : { background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.6)' }}>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(45,69,124,0.12)', color: DYNAMO_BLUE } : rol.rol === 'lunch' ? { background: 'rgba(34,197,94,0.15)', color: '#15803d' } : { background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.6)' }}>
                             {rol.rol === 'admin' ? '👑 Admin' : rol.rol === 'lunch' ? '🥪 Lunch' : '👁 Viewer'}
                           </span>
                           {mfaStatus[rol.user_id] === true && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.12)', color: '#15803d' }} title="MFA ingeschakeld">✓ MFA</span>
                           )}
                           {mfaStatus[rol.user_id] === false && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.45)' }} title="MFA uitgeschakeld">— MFA</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.45)' }} title="MFA uitgeschakeld">— MFA</span>
                           )}
                           {rol.mfa_verplicht && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }} title="MFA verplicht">MFA verplicht</span>
                           )}
                         </div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,65,115,0.35)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,65,115,0.3)', fontFamily: F }} title="Laatste inlog">
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.3)', fontFamily: F }} title="Laatste inlog">
                           {userLastSignIns[rol.user_id]
                             ? `Laatste inlog: ${new Date(userLastSignIns[rol.user_id]!).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`
                             : 'Nog nooit ingelogd'}
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(45,65,115,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Bewerken</button>
+                        <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Bewerken</button>
                         <button onClick={() => verwijderGebruiker(rol.user_id, rol.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
                     </div>
@@ -1091,20 +1091,20 @@ export default function BeheerPage() {
             )}
 
             {isAdmin && toonWinkelForm && (
-              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</h2>
                 <form onSubmit={voegWinkelToe} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Naam *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam *</label>
                       <input placeholder="Winkel naam" value={nieuwWinkelNaam} onChange={e => setNieuwWinkelNaam(e.target.value)} className={inputClass} style={inputStyle} required />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Dealer nummer *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dealer nummer *</label>
                       <input placeholder="bijv. 12345" value={nieuwWinkelDealer} onChange={e => setNieuwWinkelDealer(e.target.value)} className={inputClass} style={inputStyle} required />
                     </div>
                     <div className="sm:col-span-2">
-                      <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Adres (optioneel — vul postcode + huisnummer in en klik op Haal adres op)</div>
+                      <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Adres (optioneel — vul postcode + huisnummer in en klik op Haal adres op)</div>
                       <div className="flex flex-wrap gap-2 items-end">
                         <div className="flex-1 min-w-[100px]">
                           <input placeholder="Postcode (1234AB)" value={nieuwWinkelPostcode} onChange={e => setNieuwWinkelPostcode(e.target.value)} className={inputClass} style={inputStyle} />
@@ -1112,21 +1112,21 @@ export default function BeheerPage() {
                         <div className="w-24">
                           <input placeholder="Nr." value={nieuwWinkelHuisnummer} onChange={e => setNieuwWinkelHuisnummer(e.target.value)} className={inputClass} style={inputStyle} />
                         </div>
-                        <button type="button" onClick={() => haalAdresOp(true)} disabled={adresLoading} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ background: 'rgba(45,65,115,0.08)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.12)', fontFamily: F }}>
+                        <button type="button" onClick={() => haalAdresOp(true)} disabled={adresLoading} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.12)', fontFamily: F }}>
                           {adresLoading ? 'Bezig...' : 'Haal adres op'}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Straat</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Straat</label>
                       <input placeholder="Straat" value={nieuwWinkelStraat} onChange={e => setNieuwWinkelStraat(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Stad</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Stad</label>
                       <input placeholder="bijv. Amsterdam" value={nieuwWinkelStad} onChange={e => setNieuwWinkelStad(e.target.value)} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Land</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Land</label>
                       <select value={nieuwWinkelLand} onChange={e => setNieuwWinkelLand(e.target.value as 'Netherlands' | 'Belgium' | '')} className={inputClass} style={inputStyle}>
                         <option value="">— Niet gekozen</option>
                         <option value="Netherlands">🇳🇱 Nederland</option>
@@ -1135,7 +1135,7 @@ export default function BeheerPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
                       Systeem
                     </label>
                     <div className="flex flex-wrap gap-3">
@@ -1160,14 +1160,14 @@ export default function BeheerPage() {
                             className="rounded-xl border-2 p-3 transition"
                             style={
                               nieuwWinkelApiType === opt.value
-                                ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,65,115,0.04)' }
-                                : { borderColor: 'rgba(45,65,115,0.1)' }
+                                ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' }
+                                : { borderColor: 'rgba(45,69,124,0.1)' }
                             }
                           >
                             <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                               {opt.label}
                             </div>
-                            <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.45)', fontFamily: F }}>
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
                               {opt.info}
                             </div>
                           </div>
@@ -1199,15 +1199,15 @@ export default function BeheerPage() {
                         </p>
                       )}
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>API Key *</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>API Key *</label>
                         <input type="text" placeholder="Vendit API key" value={nieuwWinkelVenditApiKey} onChange={e => { setNieuwWinkelVenditApiKey(e.target.value); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Username *</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Username *</label>
                         <input type="text" placeholder="API username" value={nieuwWinkelVenditApiUsername} onChange={e => { setNieuwWinkelVenditApiUsername(e.target.value); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Wachtwoord *</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Wachtwoord *</label>
                         <input type="password" placeholder="API wachtwoord" value={nieuwWinkelVenditApiPassword} onChange={e => { setNieuwWinkelVenditApiPassword(e.target.value); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="new-password" />
                       </div>
                     </div>
@@ -1215,27 +1215,27 @@ export default function BeheerPage() {
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Bezig...' : 'Toevoegen'}</button>
-                    <button type="button" onClick={() => { setToonWinkelForm(false); setFormError('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setToonWinkelForm(false); setFormError('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
             )}
 
             {isAdmin && bewerkWinkel && (
-              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkWinkel.naam} bewerken</h2>
                 <form onSubmit={slaWinkelOp} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Naam *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam *</label>
                       <input value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass} style={inputStyle} required />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Dealer nummer *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dealer nummer *</label>
                       <input value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass} style={inputStyle} required />
                     </div>
                     <div className="sm:col-span-2">
-                      <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Adres (postcode + huisnummer → Haal adres op)</div>
+                      <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Adres (postcode + huisnummer → Haal adres op)</div>
                       <div className="flex flex-wrap gap-2 items-end">
                         <div className="flex-1 min-w-[100px]">
                           <input placeholder="Postcode" value={bewerkWinkel.postcode ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, postcode: e.target.value })} className={inputClass} style={inputStyle} />
@@ -1243,21 +1243,21 @@ export default function BeheerPage() {
                         <div className="w-24">
                           <input placeholder="Nr." value={bewerkHuisnummer} onChange={e => setBewerkHuisnummer(e.target.value)} className={inputClass} style={inputStyle} />
                         </div>
-                        <button type="button" onClick={() => haalAdresOp(false)} disabled={adresLoading} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ background: 'rgba(45,65,115,0.08)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.12)', fontFamily: F }}>
+                        <button type="button" onClick={() => haalAdresOp(false)} disabled={adresLoading} className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.12)', fontFamily: F }}>
                           {adresLoading ? 'Bezig...' : 'Haal adres op'}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Straat</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Straat</label>
                       <input placeholder="Straat" value={bewerkWinkel.straat ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, straat: e.target.value })} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Stad</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Stad</label>
                       <input value={bewerkWinkel.stad ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, stad: e.target.value })} className={inputClass} style={inputStyle} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Land</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Land</label>
                       <select value={bewerkWinkel.land ?? ''} onChange={e => setBewerkWinkel({ ...bewerkWinkel, land: (e.target.value || null) as 'Netherlands' | 'Belgium' | null })} className={inputClass} style={inputStyle}>
                         <option value="">— Niet gekozen</option>
                         <option value="Netherlands">🇳🇱 Nederland</option>
@@ -1267,7 +1267,7 @@ export default function BeheerPage() {
                   </div>
 
                   {/* Systeemkeuze */}
-                  <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(45,65,115,0.02)', border: '1px solid rgba(45,65,115,0.08)' }}>
+                  <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(45,69,124,0.02)', border: '1px solid rgba(45,69,124,0.08)' }}>
                     <p className="text-xs font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Systeem</p>
                     <div className="flex flex-wrap gap-3">
                       {[
@@ -1301,14 +1301,14 @@ export default function BeheerPage() {
                                 bewerkWinkel.wilmar_organisation_id
                                   ? 'wilmar'
                                   : 'cyclesoftware')) === opt.value
-                                ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,65,115,0.04)' }
-                                : { borderColor: 'rgba(45,65,115,0.1)' }
+                                ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' }
+                                : { borderColor: 'rgba(45,69,124,0.1)' }
                             }
                           >
                             <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                               {opt.label}
                             </div>
-                            <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.45)', fontFamily: F }}>
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
                               {opt.info}
                             </div>
                           </div>
@@ -1323,7 +1323,7 @@ export default function BeheerPage() {
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div>
                           <p className="text-xs font-bold" style={{ color: '#2563eb', fontFamily: F }}>🔌 Vendit API toegang</p>
-                          <p className="text-xs mb-0" style={{ color: 'rgba(45,65,115,0.5)', fontFamily: F }}>Credentials voor de Vendit Public API. Gebruik in module Vendit API Tester.</p>
+                          <p className="text-xs mb-0" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Credentials voor de Vendit Public API. Gebruik in module Vendit API Tester.</p>
                         </div>
                         <button
                           type="button"
@@ -1351,22 +1351,22 @@ export default function BeheerPage() {
                         </p>
                       )}
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>API Key</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>API Key</label>
                         <input type="text" placeholder="Vendit API key" value={bewerkWinkel.vendit_api_key ?? ''} onChange={e => { setBewerkWinkel({ ...bewerkWinkel, vendit_api_key: e.target.value }); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Username</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Username</label>
                         <input type="text" placeholder="API username" value={bewerkWinkel.vendit_api_username ?? ''} onChange={e => { setBewerkWinkel({ ...bewerkWinkel, vendit_api_username: e.target.value }); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="off" />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Wachtwoord</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Wachtwoord</label>
                         <input type="password" placeholder="Laat leeg om niet te wijzigen" value={bewerkWinkel.vendit_api_password ?? ''} onChange={e => { setBewerkWinkel({ ...bewerkWinkel, vendit_api_password: e.target.value }); setVenditTestResult(null) }} className={inputClass} style={inputStyle} autoComplete="new-password" />
                       </div>
                     </div>
                   )}
 
                   {/* Wilmar koppeling */}
-                  <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(45,65,115,0.03)', border: '1px solid rgba(45,65,115,0.08)' }}>
+                  <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(45,69,124,0.03)', border: '1px solid rgba(45,69,124,0.08)' }}>
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>🔗 Wilmar koppeling</p>
                       <button type="button" onClick={haalWilmarStoresOp} disabled={wilmarStoresLoading} className="text-xs px-2 py-1 rounded-lg transition hover:opacity-70" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
@@ -1384,7 +1384,7 @@ export default function BeheerPage() {
                     {/* Zoekbare lijst na laden */}
                     {wilmarStores.length > 0 && (
                       <div>
-                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Koppel aan Wilmar winkel</label>
                         <input
                           type="text"
                           placeholder="Zoek op naam of stad..."
@@ -1393,9 +1393,9 @@ export default function BeheerPage() {
                           className={inputClass}
                           style={inputStyle}
                         />
-                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border" style={{ borderColor: 'rgba(45,65,115,0.1)' }}>
+                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border" style={{ borderColor: 'rgba(45,69,124,0.1)' }}>
                           {gefilterdeWilmarStores.length === 0 ? (
-                            <div className="p-4 text-center text-xs" style={{ color: 'rgba(45,65,115,0.5)', fontFamily: F }}>
+                            <div className="p-4 text-center text-xs" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
                               {wilmarZoekterm.trim() ? 'Geen resultaten gevonden' : 'Geen winkels'}
                             </div>
                           ) : (
@@ -1413,9 +1413,9 @@ export default function BeheerPage() {
                                   className="w-full text-left px-3 py-2 text-xs transition"
                                   style={{
                                     fontFamily: F,
-                                    background: isGeselecteerd ? 'rgba(45,65,115,0.08)' : 'transparent',
-                                    color: isGeselecteerd ? DYNAMO_BLUE : 'rgba(45,65,115,0.8)',
-                                    borderBottom: '1px solid rgba(45,65,115,0.05)',
+                                    background: isGeselecteerd ? 'rgba(45,69,124,0.08)' : 'transparent',
+                                    color: isGeselecteerd ? DYNAMO_BLUE : 'rgba(45,69,124,0.8)',
+                                    borderBottom: '1px solid rgba(45,69,124,0.05)',
                                   }}
                                 >
                                   {s.name || 'Winkel'} {s.city ? `(${s.city})` : ''}
@@ -1446,19 +1446,19 @@ export default function BeheerPage() {
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3 pt-1">
                     <button type="submit" disabled={winkelLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{winkelLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null); setFormError(''); setVenditTestResult(null) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkWinkel(null); setWilmarBranchId(null); setWilmarOrganisationId(null); setFormError(''); setVenditTestResult(null) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
             )}
 
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
-              <div className="p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(45,65,115,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="min-w-0">
                   <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>
-                  <div className="text-xs" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>{loading ? 'Laden...' : `${gefilterdeWinkels.length} van ${winkels.length} winkels`}</div>
+                  <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{loading ? 'Laden...' : `${gefilterdeWinkels.length} van ${winkels.length} winkels`}</div>
                 </div>
-                <button onClick={verversWinkels} disabled={winkelRefreshLoading || loading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0 flex items-center gap-1.5" style={{ background: 'rgba(45,65,115,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }} title="Winkels opnieuw laden">
+                <button onClick={verversWinkels} disabled={winkelRefreshLoading || loading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0 flex items-center gap-1.5" style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }} title="Winkels opnieuw laden">
                   {winkelRefreshLoading ? (
                     <>
                       <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -1477,25 +1477,25 @@ export default function BeheerPage() {
                   value={winkelZoekterm}
                   onChange={e => setWinkelZoekterm(e.target.value)}
                   className="rounded-lg px-3 py-1.5 text-xs w-full sm:w-56"
-                  style={{ background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                  style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <select value={winkelFilterLand} onChange={e => setWinkelFilterLand(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,65,115,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
+                  <select value={winkelFilterLand} onChange={e => setWinkelFilterLand(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,69,124,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                     <option value="alle">Alle landen</option>
                     <option value="Netherlands">🇳🇱 Nederland</option>
                     <option value="Belgium">🇧🇪 België</option>
                   </select>
-                  <select value={winkelFilterLocatie} onChange={e => setWinkelFilterLocatie(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,65,115,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
+                  <select value={winkelFilterLocatie} onChange={e => setWinkelFilterLocatie(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,69,124,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                     <option value="alle">Alle locaties</option>
                     <option value="zonder">📍 Zonder locatie</option>
                   </select>
-                  <select value={winkelFilterSysteem} onChange={e => { const v = e.target.value as any; setWinkelFilterSysteem(v); setWinkelFilterApi('alle') }} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,65,115,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
+                  <select value={winkelFilterSysteem} onChange={e => { const v = e.target.value as any; setWinkelFilterSysteem(v); setWinkelFilterApi('alle') }} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,69,124,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                     <option value="alle">Alle systemen</option>
                     <option value="cyclesoftware">CycleSoftware</option>
                     <option value="wilmar">Wilmar</option>
                     <option value="vendit">Vendit</option>
                   </select>
-                  <select value={winkelFilterApi} onChange={e => setWinkelFilterApi(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,65,115,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
+                  <select value={winkelFilterApi} onChange={e => setWinkelFilterApi(e.target.value as any)} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(45,69,124,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                     {winkelFilterSysteem === 'wilmar' ? (
                       <>
                         <option value="alle">ALLE (toon alle winkels)</option>
@@ -1520,7 +1520,7 @@ export default function BeheerPage() {
                   </select>
                 </div>
                 {winkelFilterSysteem !== 'wilmar' && winkelFilterSysteem !== 'vendit' && winkels.some(w => (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) && w.dealer_nummer) && (
-                  <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(45,65,115,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
+                  <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                     {cycleStatusLoading ? 'Bezig...' : 'Ververs API-status'}
                   </button>
                 )}
@@ -1533,16 +1533,16 @@ export default function BeheerPage() {
               {loading ? (
                 <div className="p-12 flex flex-col items-center justify-center gap-3">
                   <div className="w-10 h-10 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: DYNAMO_BLUE }} />
-                  <p className="text-sm font-medium" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Winkels laden...</p>
-                  <p className="text-xs" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Vendit- en API-status worden opgehaald</p>
+                  <p className="text-sm font-medium" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels laden...</p>
+                  <p className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Vendit- en API-status worden opgehaald</p>
                 </div>
               ) : gefilterdeWinkels.length === 0 ? (
-                <div className="p-10 text-center text-sm" style={{ color: 'rgba(45,65,115,0.35)', fontFamily: F }}>{winkels.length === 0 ? 'Nog geen winkels' : 'Geen winkels voldoen aan de filter'}</div>
+                <div className="p-10 text-center text-sm" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>{winkels.length === 0 ? 'Nog geen winkels' : 'Geen winkels voldoen aan de filter'}</div>
               ) : (
-                <div className="divide-y" style={{ borderColor: 'rgba(45,65,115,0.06)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
                   {gefilterdeWinkels.map((w, i) => (
                     <div key={w.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition hover:bg-gray-50/50">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? 'white' : WINKEL_KLEUREN[i % 8], border: isBikeTotaal(w.naam) ? '1px solid rgba(45,65,115,0.1)' : undefined }}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: isBikeTotaal(w.naam) ? 'white' : WINKEL_KLEUREN[i % 8], border: isBikeTotaal(w.naam) ? '1px solid rgba(45,69,124,0.1)' : undefined }}>
                         {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1560,7 +1560,7 @@ export default function BeheerPage() {
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title={`Geen data beschikbaar: dealer #${w.dealer_nummer ?? ''} komt niet voor in vendit_stock. Controleer of het nummer exact overeenkomt (bijv. 094 ≠ 94).`}>— Niet in dataset</span>
                               )}
                               {w.vendit_in_dataset && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.55)', fontFamily: F }} title={w.vendit_laatst_datum ? 'Laatste datum voorraad in vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.55)', fontFamily: F }} title={w.vendit_laatst_datum ? 'Laatste datum voorraad in vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
                                   {w.vendit_laatst_datum
                                     ? (() => {
                                         const d = new Date(w.vendit_laatst_datum)
@@ -1579,7 +1579,7 @@ export default function BeheerPage() {
                             <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(99,102,241,0.15)', color: '#4f46e5', fontFamily: F }}>Vendit API</span>
                           ) : (
                             <>
-                              <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.08)', color: 'rgba(45,65,115,0.5)', fontFamily: F }}>CycleSoftware</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.5)', fontFamily: F }}>CycleSoftware</span>
                               {w.cycle_api_authorized === true && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="API heeft rechten om voorraad op te halen">✓ API toegang</span>
                               )}
@@ -1587,7 +1587,7 @@ export default function BeheerPage() {
                                 <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title="Winkel heeft nog geen toestemming gegeven in CycleSoftware">⚠ Geen toestemming</span>
                               )}
                               {w.cycle_api_authorized == null && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.4)', fontFamily: F }} title="Klik op 'Ververs API-status' om te controleren">—</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.4)', fontFamily: F }} title="Klik op 'Ververs API-status' om te controleren">—</span>
                               )}
                             </>
                           )}
@@ -1600,13 +1600,13 @@ export default function BeheerPage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>
+                        <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>
                           #{w.dealer_nummer}{w.straat ? ` · ${w.straat}${w.huisnummer ? ` ${w.huisnummer}` : ''}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
                       </div>
                       {isAdmin && (
                         <div className="flex gap-2 shrink-0 sm:ml-auto">
-                          <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(45,65,115,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Bewerken</button>
+                          <button onClick={() => startWinkelBewerken(w)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Bewerken</button>
                           <button onClick={() => verwijderWinkel(w.id, w.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 flex-1 sm:flex-initial" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                         </div>
                       )}
@@ -1621,10 +1621,10 @@ export default function BeheerPage() {
         {/* ── TAB: VERTROUWDE IP'S (alleen admin) ── */}
         {tab === 'ips' && (
           <div className="space-y-4">
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,65,115,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Vertrouwde IP-adressen</div>
-                <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Vanaf deze IP&apos;s is geen MFA nodig bij inloggen. Ondersteunt exacte IP&apos;s (bijv. 192.168.1.100) en CIDR (bijv. 192.168.1.0/24).</div>
+                <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Vanaf deze IP&apos;s is geen MFA nodig bij inloggen. Ondersteunt exacte IP&apos;s (bijv. 192.168.1.100) en CIDR (bijv. 192.168.1.0/24).</div>
               </div>
               <div className="p-4 space-y-4">
                 <form onSubmit={voegTrustedIpToe} className="flex gap-2">
@@ -1640,9 +1640,9 @@ export default function BeheerPage() {
                   </button>
                 </form>
                 {ipError && <div className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{ipError}</div>}
-                <div className="divide-y" style={{ borderColor: 'rgba(45,65,115,0.06)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
                   {trustedIps.length === 0 ? (
-                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Nog geen vertrouwde IP&apos;s. Voeg kantoor-IP&apos;s toe om MFA over te slaan.</div>
+                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Nog geen vertrouwde IP&apos;s. Voeg kantoor-IP&apos;s toe om MFA over te slaan.</div>
                   ) : (
                     trustedIps.map(ip => (
                       <div key={ip.id} className="flex items-center justify-between py-3">
@@ -1660,10 +1660,10 @@ export default function BeheerPage() {
         {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
         {tab === 'merken' && (
           <div className="space-y-4">
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,65,115,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Bekende merken</div>
-                <div className="text-xs mt-0.5" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Lijst voor Vendit merk-extractie uit productomschrijving. Merken worden herkend aan het begin van de omschrijving (bijv. &quot;Batavus Grenoble&quot;).</div>
+                <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Lijst voor Vendit merk-extractie uit productomschrijving. Merken worden herkend aan het begin van de omschrijving (bijv. &quot;Batavus Grenoble&quot;).</div>
               </div>
               <div className="p-4 space-y-4">
                 <form onSubmit={voegMerkToe} className="flex gap-2">
@@ -1679,9 +1679,9 @@ export default function BeheerPage() {
                   </button>
                 </form>
                 {merkError && <div className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{merkError}</div>}
-                <div className="divide-y" style={{ borderColor: 'rgba(45,65,115,0.06)' }}>
+                <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
                   {bekendeMerken.length === 0 ? (
-                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Nog geen merken. Voeg merken toe voor Vendit merk-extractie.</div>
+                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Nog geen merken. Voeg merken toe voor Vendit merk-extractie.</div>
                   ) : (
                     bekendeMerken.map(m => (
                       <div key={m.id} className="flex items-center justify-between py-3">
@@ -1699,34 +1699,34 @@ export default function BeheerPage() {
         {/* ── TAB: EXCEL IMPORT ── */}
         {tab === 'import' && (
           <div className="space-y-4">
-            <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+            <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_BLUE}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Importeren via Excel</h2>
-                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,65,115,0.15)' }}>
-                  <button type="button" onClick={() => { setImportType('winkels'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'winkels' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Winkels</button>
-                  <button type="button" onClick={() => { setImportType('medewerkers'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'medewerkers' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Medewerkers</button>
+                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.15)' }}>
+                  <button type="button" onClick={() => { setImportType('winkels'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'winkels' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels</button>
+                  <button type="button" onClick={() => { setImportType('medewerkers'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'medewerkers' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Medewerkers</button>
                 </div>
               </div>
               {importType === 'winkels' ? (
-                <p className="text-xs mb-5" style={{ color: 'rgba(45,65,115,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+                <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
               ) : (
-                <p className="text-xs mb-5" style={{ color: 'rgba(45,65,115,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>email</strong> (verplicht), <strong>naam</strong> (optioneel), <strong>rol</strong> (optioneel: viewer, lunch of admin; standaard viewer). Nieuwe medewerkers krijgen een wachtwoord per e-mail en moeten dit bij eerste inlog wijzigen.</p>
+                <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>email</strong> (verplicht), <strong>naam</strong> (optioneel), <strong>rol</strong> (optioneel: viewer, lunch of admin; standaard viewer). Nieuwe medewerkers krijgen een wachtwoord per e-mail en moeten dit bij eerste inlog wijzigen.</p>
               )}
-              <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(45,65,115,0.15)', background: 'rgba(45,65,115,0.02)' }} onClick={() => fileInputRef.current?.click()}>
+              <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(45,69,124,0.15)', background: 'rgba(45,69,124,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
-                <div className="text-xs mt-1" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Ondersteund: .xlsx, .xls</div>
+                <div className="text-xs mt-1" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Ondersteund: .xlsx, .xls</div>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={verwerkExcel} />
               </div>
               {importError && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', color: '#dc2626', fontFamily: F }}>{importError}</div>}
               {importSuccess && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#f0fdf4', color: '#16a34a', fontFamily: F }}>✓ {importSuccess}</div>}
               {importProgress && (
-                <div className="mt-3 rounded-xl p-4 space-y-2" style={{ background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
+                <div className="mt-3 rounded-xl p-4 space-y-2" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                   <div className="flex justify-between text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
                     <span>{importProgress.current} van {importProgress.total} verwerkt</span>
-                    <span style={{ color: 'rgba(45,65,115,0.5)' }}>{importProgress.toegevoegd} toegevoegd · {importProgress.bijgewerkt} bijgewerkt</span>
+                    <span style={{ color: 'rgba(45,69,124,0.5)' }}>{importProgress.toegevoegd} toegevoegd · {importProgress.bijgewerkt} bijgewerkt</span>
                   </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(45,65,115,0.06)' }}>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(45,69,124,0.06)' }}>
                     <div className="h-full transition-all duration-300" style={{ width: `${(importProgress.current / importProgress.total) * 100}%`, background: DYNAMO_BLUE }} />
                   </div>
                 </div>
@@ -1735,9 +1735,9 @@ export default function BeheerPage() {
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{importData.length} {importType === 'medewerkers' ? 'medewerkers' : 'winkels'} gevonden</span>
-                    <button onClick={() => { setImportData([]); if (fileInputRef.current) fileInputRef.current.value = '' }} className="text-xs hover:opacity-70" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Wissen</button>
+                    <button onClick={() => { setImportData([]); if (fileInputRef.current) fileInputRef.current.value = '' }} className="text-xs hover:opacity-70" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Wissen</button>
                   </div>
-                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,65,115,0.08)' }}>
+                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.08)' }}>
                     <table className="w-full text-xs">
                       <thead style={{ background: DYNAMO_BLUE }}>
                         <tr>{(importType === 'medewerkers' ? ['E-mail', 'Naam', 'Rol'] : ['Naam', 'Dealer #', 'Postcode', 'Straat', 'Nr', 'Stad', 'Land', 'API']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
@@ -1745,27 +1745,27 @@ export default function BeheerPage() {
                       <tbody>
                         {importType === 'medewerkers'
                           ? importData.slice(0, 10).map((r, i) => (
-                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,65,115,0.02)', borderBottom: '1px solid rgba(45,65,115,0.05)' }}>
+                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
                                 <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.email}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.naam || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.rol || 'viewer'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.naam || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.rol || 'viewer'}</td>
                               </tr>
                             ))
                           : importData.slice(0, 10).map((r, i) => (
-                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,65,115,0.02)', borderBottom: '1px solid rgba(45,65,115,0.05)' }}>
+                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
                                 <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.naam}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
                               </tr>
                             ))}
                       </tbody>
                     </table>
-                    {importData.length > 10 && <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>}
+                    {importData.length > 10 && <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>}
                   </div>
                   <button onClick={importType === 'medewerkers' ? importeerMedewerkers : importeerWinkels} disabled={importLoading} className="w-full rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
                     {importLoading && importProgress
@@ -1779,9 +1779,9 @@ export default function BeheerPage() {
                 </div>
               )}
             </div>
-            <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
-              <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(45,65,115,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat {importType === 'medewerkers' ? '(medewerkers)' : '(winkels)'}</h3>
-              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,65,115,0.08)' }}>
+            <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(45,69,124,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat {importType === 'medewerkers' ? '(medewerkers)' : '(winkels)'}</h3>
+              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
                     <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{h}</th>)}</tr>
@@ -1799,8 +1799,8 @@ export default function BeheerPage() {
                           ['Dynamo Brussel','10003','1000','Nieuwstraat','1','Brussel','België','wilmar'],
                         ]
                     ).map((r, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,65,115,0.02)', borderBottom: '1px solid rgba(45,65,115,0.05)' }}>
-                        {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(45,65,115,0.7)', fontFamily: F }}>{c}</td>)}
+                      <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
+                        {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.7)', fontFamily: F }}>{c}</td>)}
                       </tr>
                     ))}
                   </tbody>

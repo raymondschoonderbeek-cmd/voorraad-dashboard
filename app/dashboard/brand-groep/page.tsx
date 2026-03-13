@@ -431,15 +431,15 @@ export default function BrandGroepPage() {
         ) : (
           <div className="space-y-4">
             {loading && (
-              <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(45,65,115,0.06)', border: '1px solid rgba(45,65,115,0.1)' }}>
+              <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.1)' }}>
                 <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
                 <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden voor Merk/Groep...</span>
               </div>
             )}
             {authRequired && (
-              <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(45,65,115,0.06)', border: '1px solid rgba(45,65,115,0.2)' }}>
+              <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.2)' }}>
                 <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Toestemming vereist</p>
-                <p className="mt-1" style={{ color: 'rgba(45,65,115,0.6)' }}>{authRequired.message}</p>
+                <p className="mt-1" style={{ color: 'rgba(45,69,124,0.6)' }}>{authRequired.message}</p>
               </div>
             )}
             <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-4">
@@ -555,7 +555,7 @@ export default function BrandGroepPage() {
                   </div>
 
                   <label className="flex items-center gap-2 text-sm text-gray-700 mt-2 cursor-pointer">
-                    <input type="checkbox" checked={top10Brands} onChange={e => setTop10Brands(e.target.checked)} disabled={!selectedGroup} className="accent-[#2D4173]" />
+                    <input type="checkbox" checked={top10Brands} onChange={e => setTop10Brands(e.target.checked)} disabled={!selectedGroup} className="accent-[#2D457C]" />
                     <span>Toon alleen Top 10 merken</span>
                   </label>
                 </div>
@@ -597,7 +597,7 @@ export default function BrandGroepPage() {
                                   <div className="flex-1 min-w-0">
                                     <div className="font-semibold text-gray-900">{r.brandLabel}</div>
                                     <div className="mt-1 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: active ? DYNAMO_BLUE : 'rgba(45,65,115,0.3)' }} />
+                                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: active ? DYNAMO_BLUE : 'rgba(45,69,124,0.3)' }} />
                                     </div>
                                     <div className="text-xs text-gray-400 mt-0.5">{r.itemsCount} regels</div>
                                   </div>

@@ -35,13 +35,13 @@ export function WinkelModal({ open, onClose, winkels, onSelect, loading = false 
       aria-modal="true"
       aria-label="Kies een winkel"
     >
-      <div style={{ background: 'rgba(45,65,115,0.6)' }} className="absolute inset-0 backdrop-blur-sm" />
+      <div style={{ background: 'rgba(45,69,124,0.6)' }} className="absolute inset-0 backdrop-blur-sm" />
       <div
         className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: 'white', maxHeight: '80vh' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-4 border-b" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
+        <div className="p-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
           <h2 className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>Kies een winkel</h2>
           <input
             type="search"
@@ -63,7 +63,7 @@ export function WinkelModal({ open, onClose, winkels, onSelect, loading = false 
               {zoek ? 'Geen winkels gevonden' : 'Geen winkels beschikbaar'}
             </div>
           ) : (
-            <ul className="divide-y divide-[rgba(45,65,115,0.06)]">
+            <ul className="divide-y divide-[rgba(45,69,124,0.06)]">
               {gefilterd.map(w => (
                 <li key={w.id}>
                   <button
@@ -79,7 +79,7 @@ export function WinkelModal({ open, onClose, winkels, onSelect, loading = false 
             </ul>
           )}
         </div>
-        <div className="p-3 border-t flex justify-end" style={{ borderColor: 'rgba(45,65,115,0.08)' }}>
+        <div className="p-3 border-t flex justify-end" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
           <button
             type="button"
             onClick={onClose}

@@ -69,7 +69,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
           role="listbox"
           aria-label="Winkellijst"
           className="absolute top-full left-0 mt-1 z-[200] min-w-[280px] max-w-[360px] max-h-[320px] overflow-hidden rounded-xl shadow-2xl"
-          style={{ background: 'white', border: '1px solid rgba(45,65,115,0.12)', boxShadow: '0 12px 40px rgba(45,65,115,0.2)' }}
+          style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)', boxShadow: '0 12px 40px rgba(45,69,124,0.2)' }}
         >
           <div className="p-2 border-b border-gray-100">
             <input
@@ -93,7 +93,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
                   aria-selected={value?.id === w.id}
                   onClick={() => { onChange(w); setOpen(false); setSearch('') }}
                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition"
-                  style={{ background: value?.id === w.id ? 'rgba(45,65,115,0.06)' : undefined, color: DYNAMO_BLUE }}
+                  style={{ background: value?.id === w.id ? 'rgba(45,69,124,0.06)' : undefined, color: DYNAMO_BLUE }}
                 >
                   <div className="font-medium truncate">{w.naam}</div>
                   <div className="text-xs text-gray-500">#{w.dealer_nummer}{w.stad ? ` · ${w.stad}` : ''}</div>
