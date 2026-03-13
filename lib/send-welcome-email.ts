@@ -26,16 +26,22 @@ export async function sendWelcomeEmail(params: {
   naam: string
   wachtwoord: string
   loginUrl: string
+  rol?: string
 }): Promise<{ ok: boolean; error?: string }> {
   const mg = getMailgunClient()
   if (!mg) {
     return { ok: false, error: 'MAILGUN_API_KEY of MAILGUN_DOMAIN niet geconfigureerd' }
   }
+  const isLunch = params.rol === 'lunch'
+  const subject = isLunch ? `Welkom bij ${APP_NAME} – lunch bestellen` : `Welkom bij ${APP_NAME} – je inloggegevens`
+  const intro = isLunch
+    ? 'Er is een account voor je aangemaakt om broodjes te bestellen voor op kantoor. Je kunt inloggen met onderstaande gegevens:'
+    : 'Er is een account voor je aangemaakt. Je kunt inloggen met onderstaande gegevens:'
   try {
     await mg.client.messages.create(mg.domain, {
       from: FROM,
       to: [params.to],
-      subject: `Welkom bij ${APP_NAME} – je inloggegevens`,
+      subject,
       html: `
 <!DOCTYPE html>
 <html>
@@ -43,7 +49,7 @@ export async function sendWelcomeEmail(params: {
 <body style="font-family:system-ui,-apple-system,sans-serif;line-height:1.6;color:#1a1a1a;max-width:520px;margin:0 auto;padding:24px;">
   <h1 style="font-size:1.5rem;margin-bottom:16px;">Welkom bij ${APP_NAME}</h1>
   <p>Hallo ${params.naam || params.to},</p>
-  <p>Er is een account voor je aangemaakt. Je kunt inloggen met onderstaande gegevens:</p>
+  <p>${intro}</p>
   <p style="background:#f5f5f5;padding:16px;border-radius:8px;margin:20px 0;">
     <strong>E-mail:</strong> ${params.to}<br>
     <strong>Wachtwoord:</strong> <code style="background:#e5e5e5;padding:2px 6px;border-radius:4px;">${params.wachtwoord}</code>

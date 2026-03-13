@@ -297,6 +297,7 @@ export async function POST(request: NextRequest) {
         naam: naamTrim,
         wachtwoord: wachtwoord.trim(),
         loginUrl,
+        rol,
       })
       if (!emailResult.ok) {
         // Gebruiker is aangemaakt, maar e-mail mislukt – log maar blokkeer niet
