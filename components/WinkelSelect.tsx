@@ -69,7 +69,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
           role="listbox"
           aria-label="Winkellijst"
           className="absolute top-full left-0 mt-1 z-[200] min-w-[280px] max-w-[360px] max-h-[320px] overflow-hidden rounded-xl shadow-2xl"
-          style={{ background: 'white', border: '1px solid rgba(13,31,78,0.12)', boxShadow: '0 12px 40px rgba(13,31,78,0.2)' }}
+          style={{ background: 'white', border: '1px solid rgba(45,65,115,0.12)', boxShadow: '0 12px 40px rgba(45,65,115,0.2)' }}
         >
           <div className="p-2 border-b border-gray-100">
             <input
@@ -77,7 +77,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Zoek winkel..."
-              className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white text-gray-900 placeholder:text-gray-400"
+              className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-dynamo-blue/30 bg-white text-gray-900 placeholder:text-gray-400"
               aria-label="Zoek winkel"
               autoFocus
             />
@@ -93,7 +93,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
                   aria-selected={value?.id === w.id}
                   onClick={() => { onChange(w); setOpen(false); setSearch('') }}
                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition"
-                  style={{ background: value?.id === w.id ? 'rgba(13,31,78,0.06)' : undefined, color: DYNAMO_BLUE }}
+                  style={{ background: value?.id === w.id ? 'rgba(45,65,115,0.06)' : undefined, color: DYNAMO_BLUE }}
                 >
                   <div className="font-medium truncate">{w.naam}</div>
                   <div className="text-xs text-gray-500">#{w.dealer_nummer}{w.stad ? ` · ${w.stad}` : ''}</div>

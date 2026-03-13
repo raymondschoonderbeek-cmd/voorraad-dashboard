@@ -55,7 +55,7 @@ export async function sendWelcomeEmail(params: {
     <strong>Wachtwoord:</strong> <code style="background:#e5e5e5;padding:2px 6px;border-radius:4px;">${params.wachtwoord}</code>
   </p>
   <p><strong>Let op:</strong> Na je eerste inlog moet je je wachtwoord wijzigen.</p>
-  <p><a href="${params.loginUrl}" style="display:inline-block;background:#0d1f4e;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:600;margin-top:8px;">Inloggen</a></p>
+  <p><a href="${params.loginUrl}" style="display:inline-block;background:#2D4173;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:600;margin-top:8px;">Inloggen</a></p>
   <p style="margin-top:24px;font-size:0.875rem;color:#666;">Als je dit niet verwachtte, neem contact op met je beheerder.</p>
 </body>
 </html>

@@ -20,7 +20,7 @@ const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'meer'] as con
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 const WINKEL_KLEUREN = [
-  '#2563eb', '#16a34a', '#dc2626', '#9333ea',
+  '#2D4173', '#16a34a', '#dc2626', '#9333ea',
   '#ea580c', '#0891b2', '#65a30d', '#db2777',
 ] as const
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
@@ -168,17 +168,17 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
   onToggleFavoriet: (id: number) => void
 }) {
   return (
-    <div className="wink-card cursor-pointer rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 2px 12px rgba(13,31,78,0.07)', border: favoriet ? `1.5px solid ${DYNAMO_GOLD}` : '1px solid rgba(13,31,78,0.07)' }}>
+    <div className="wink-card cursor-pointer rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 2px 12px rgba(45,65,115,0.07)', border: favoriet ? `1.5px solid ${DYNAMO_GOLD}` : '1px solid rgba(45,65,115,0.07)' }}>
       <div style={{ height: '4px', background: kleur }} />
       <div className="p-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={isBikeTotaal(w.naam) ? { background: 'white', border: '1px solid rgba(13,31,78,0.1)' } : { background: kleur }} onClick={() => onSelecteer(w)}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={isBikeTotaal(w.naam) ? { background: 'white', border: '1px solid rgba(45,65,115,0.1)' } : { background: kleur }} onClick={() => onSelecteer(w)}>
             {isBikeTotaal(w.naam) ? <img src={BIKE_TOTAAL_LOGO} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-white text-sm font-bold">{w.naam.charAt(0)}</span>}
           </div>
           <div className="min-w-0 flex-1" onClick={() => onSelecteer(w)}>
             <div className="font-semibold text-sm truncate" style={{ color: DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
             <div className="flex items-center gap-2">
-              <span style={{ color: 'rgba(13,31,78,0.35)', fontSize: '11px', fontFamily: F }}>#{w.dealer_nummer}</span>
+              <span style={{ color: 'rgba(45,65,115,0.35)', fontSize: '11px', fontFamily: F }}>#{w.dealer_nummer}</span>
               {w.land && (
                 <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: w.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: w.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{w.land === 'Belgium' ? '🇧🇪' : '🇳🇱'}</span>
               )}
@@ -187,19 +187,19 @@ function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavoriet }: 
           <button
             onClick={e => { e.stopPropagation(); onToggleFavoriet(w.id) }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70 shrink-0"
-            style={{ background: favoriet ? `${DYNAMO_GOLD}20` : 'rgba(13,31,78,0.04)', border: favoriet ? `1px solid ${DYNAMO_GOLD}60` : '1px solid rgba(13,31,78,0.08)' }}
+            style={{ background: favoriet ? `${DYNAMO_GOLD}20` : 'rgba(45,65,115,0.04)', border: favoriet ? `1px solid ${DYNAMO_GOLD}60` : '1px solid rgba(45,65,115,0.08)' }}
             title={favoriet ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
           >
-            <span style={{ color: favoriet ? DYNAMO_GOLD : 'rgba(13,31,78,0.25)', fontSize: '14px', lineHeight: '1' }}>★</span>
+            <span style={{ color: favoriet ? DYNAMO_GOLD : 'rgba(45,65,115,0.25)', fontSize: '14px', lineHeight: '1' }}>★</span>
           </button>
         </div>
         {(w.stad || w.postcode) ? (
-          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 mb-4" style={{ background: 'rgba(13,31,78,0.04)' }} onClick={() => onSelecteer(w)}>
+          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 mb-4" style={{ background: 'rgba(45,65,115,0.04)' }} onClick={() => onSelecteer(w)}>
             <IconPin />
-            <span style={{ color: 'rgba(13,31,78,0.5)', fontSize: '12px', fontFamily: F }}>{w.stad || ''}{w.stad && w.postcode ? ' · ' : ''}{w.postcode || ''}</span>
+            <span style={{ color: 'rgba(45,65,115,0.5)', fontSize: '12px', fontFamily: F }}>{w.stad || ''}{w.stad && w.postcode ? ' · ' : ''}{w.postcode || ''}</span>
           </div>
         ) : <div className="mb-4" style={{ height: '32px' }} onClick={() => onSelecteer(w)} />}
-        <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(13,31,78,0.06)' }} onClick={() => onSelecteer(w)}>
+        <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(45,65,115,0.06)' }} onClick={() => onSelecteer(w)}>
           <span style={{ color: kleur, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk voorraad</span>
           <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: `${kleur}15` }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={kleur} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -315,11 +315,11 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
 
   if (winkelsMetCoords.length === 0) {
     return (
-      <div className="flex flex-col justify-center" style={{ height: 380, background: 'rgba(13,31,78,0.03)', borderRadius: '16px', border: '1px dashed rgba(13,31,78,0.15)' }}>
+      <div className="flex flex-col justify-center" style={{ height: 380, background: 'rgba(45,65,115,0.03)', borderRadius: '16px', border: '1px dashed rgba(45,65,115,0.15)' }}>
         <div className="text-center p-6">
-          <div className="flex justify-center mb-2" style={{ color: 'rgba(13,31,78,0.2)' }}><IconMap /></div>
-          <p className="text-sm font-medium" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Geen kaart beschikbaar</p>
-          <p className="text-xs mt-1" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }}>Voeg postcodes toe aan je winkels</p>
+          <div className="flex justify-center mb-2" style={{ color: 'rgba(45,65,115,0.2)' }}><IconMap /></div>
+          <p className="text-sm font-medium" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Geen kaart beschikbaar</p>
+          <p className="text-xs mt-1" style={{ color: 'rgba(45,65,115,0.3)', fontFamily: F }}>Voeg postcodes toe aan je winkels</p>
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
             {kanGeocoden && onGeocode && (
               <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
@@ -340,18 +340,18 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
   return (
     <div className="space-y-2">
       {geocodeResult && onDismissGeocodeResult && (
-        <div className="rounded-xl p-3 text-xs" style={{ background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+        <div className="rounded-xl p-3 text-xs" style={{ background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
           <div className="flex items-start justify-between gap-2">
             <div>
               <p style={{ color: DYNAMO_BLUE, fontWeight: 600 }}>{geocodeResult.bijgewerkt} van {geocodeResult.totaal} gegeocodeerd</p>
               {geocodeResult.zonderAdres.length > 0 && (
-                <p style={{ color: 'rgba(13,31,78,0.5)', marginTop: 4 }}>{geocodeResult.zonderAdres.length} zonder adres (postcode of straat+stad ontbreekt)</p>
+                <p style={{ color: 'rgba(45,65,115,0.5)', marginTop: 4 }}>{geocodeResult.zonderAdres.length} zonder adres (postcode of straat+stad ontbreekt)</p>
               )}
               {geocodeResult.mislukt.length > 0 && (
                 <p style={{ color: '#b91c1c', marginTop: 4 }}>{geocodeResult.mislukt.length} mislukt (adres niet gevonden door Nominatim)</p>
               )}
             </div>
-            <button onClick={onDismissGeocodeResult} className="shrink-0 rounded px-2 py-0.5 hover:bg-black/5" style={{ color: 'rgba(13,31,78,0.5)' }}>×</button>
+            <button onClick={onDismissGeocodeResult} className="shrink-0 rounded px-2 py-0.5 hover:bg-black/5" style={{ color: 'rgba(45,65,115,0.5)' }}>×</button>
           </div>
           {(geocodeResult.mislukt.length > 0 || geocodeResult.zonderAdres.length > 0) && (
             <Link href="/dashboard/beheer?locatie=zonder" className="inline-block mt-2 font-semibold" style={{ color: DYNAMO_BLUE }}>Bekijk in Beheer →</Link>
@@ -362,10 +362,10 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
         <div className="flex flex-wrap items-center justify-between gap-2">
           {kanGeocoden && onGeocode && zonderCoords.length > 0 && (
             <>
-              <button onClick={() => setToonZonderLocatieLijst(v => !v)} className="text-xs hover:underline text-left" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>
+              <button onClick={() => setToonZonderLocatieLijst(v => !v)} className="text-xs hover:underline text-left" style={{ color: 'rgba(45,65,115,0.5)', fontFamily: F }}>
                 {zonderCoords.length} winkel{zonderCoords.length !== 1 ? 's' : ''} zonder locatie {toonZonderLocatieLijst ? '▼' : '▶'}
               </button>
-              <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(13,31,78,0.06)', color: DYNAMO_BLUE, fontFamily: F }}>
+              <button onClick={onGeocode} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(45,65,115,0.06)', color: DYNAMO_BLUE, fontFamily: F }}>
                 {geocodeLoading ? 'Bezig...' : 'Locaties ophalen'}
               </button>
             </>
@@ -378,16 +378,16 @@ function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium, isAdmi
         </div>
       ) : null}
       {toonZonderLocatieLijst && zonderCoords.length > 0 && (
-        <div className="rounded-xl p-3 max-h-48 overflow-y-auto text-xs" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>
-          <p className="font-semibold mb-2" style={{ color: 'rgba(13,31,78,0.6)' }}>Winkels zonder locatie</p>
-          <p className="mb-2" style={{ color: 'rgba(13,31,78,0.45)' }}>Alleen winkels met postcode of straat+stad worden gegeocodeerd. <Link href="/dashboard/beheer?locatie=zonder" className="font-semibold underline" style={{ color: DYNAMO_BLUE }}>Bewerk in Beheer</Link></p>
+        <div className="rounded-xl p-3 max-h-48 overflow-y-auto text-xs" style={{ background: 'rgba(45,65,115,0.03)', border: '1px solid rgba(45,65,115,0.08)', fontFamily: F }}>
+          <p className="font-semibold mb-2" style={{ color: 'rgba(45,65,115,0.6)' }}>Winkels zonder locatie</p>
+          <p className="mb-2" style={{ color: 'rgba(45,65,115,0.45)' }}>Alleen winkels met postcode of straat+stad worden gegeocodeerd. <Link href="/dashboard/beheer?locatie=zonder" className="font-semibold underline" style={{ color: DYNAMO_BLUE }}>Bewerk in Beheer</Link></p>
           <ul className="space-y-1">
             {zonderCoords.map(w => {
               const heeftAdres = !!(w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
               return (
                 <li key={w.id} className="flex justify-between gap-2">
                   <span style={{ color: DYNAMO_BLUE }}>{w.naam}</span>
-                  <span style={{ color: heeftAdres ? 'rgba(13,31,78,0.4)' : '#b91c1c' }}>
+                  <span style={{ color: heeftAdres ? 'rgba(45,65,115,0.4)' : '#b91c1c' }}>
                     {heeftAdres ? `${w.stad || ''} ${w.postcode || ''}`.trim() || '—' : 'Geen adres'}
                   </span>
                 </li>
@@ -714,10 +714,10 @@ export default function Dashboard() {
     if (vorig === undefined || vorig === null) return null
     if (huidig > vorig) return <span style={{ color: '#16a34a', fontSize: '12px', fontWeight: 700, marginLeft: '2px' }}>↑</span>
     if (huidig < vorig) return <span style={{ color: '#ef4444', fontSize: '12px', fontWeight: 700, marginLeft: '2px' }}>↓</span>
-    return <span style={{ color: 'rgba(13,31,78,0.3)', fontSize: '12px', marginLeft: '2px' }}>→</span>
+    return <span style={{ color: 'rgba(45,65,115,0.3)', fontSize: '12px', marginLeft: '2px' }}>→</span>
   }
 
-  const inputStyle = { background: 'rgba(13,31,78,0.04)', border: '1px solid rgba(13,31,78,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
+  const inputStyle = { background: 'rgba(45,65,115,0.04)', border: '1px solid rgba(45,65,115,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "rounded-xl px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none"
 
   return (
@@ -730,9 +730,9 @@ export default function Dashboard() {
         .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
         .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
         .mod-card{transition:transform .2s ease,box-shadow .2s ease}
-        .mod-card:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(13,31,78,.18)!important}
+        .mod-card:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(45,65,115,.18)!important}
         .wink-card{transition:transform .2s ease,box-shadow .2s ease}
-        .wink-card:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(13,31,78,.14)!important}
+        .wink-card:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(45,65,115,.14)!important}
       `}</style>
 
       {/* NAVIGATIE */}
@@ -835,9 +835,9 @@ export default function Dashboard() {
               {/* MODULES */}
               <div className="s2">
                 <div className="flex items-center gap-3 mb-4">
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Modules</span>
-                  <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
-                  <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.35)', fontFamily: F }}>Sleep om te herschikken</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Modules</span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(45,65,115,0.08)' }} />
+                  <span style={{ fontSize: '11px', color: 'rgba(45,65,115,0.35)', fontFamily: F }}>Sleep om te herschikken</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {orderedModules.map((id, idx) => {
@@ -850,7 +850,7 @@ export default function Dashboard() {
                         onDragOver={e => e.preventDefault()}
                         onClick={e => { e.preventDefault(); e.stopPropagation() }}
                         className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing opacity-50 hover:opacity-90 transition-opacity"
-                        style={isBlue ? { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' } : { background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.5)' }}
+                        style={isBlue ? { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' } : { background: 'rgba(45,65,115,0.08)', color: 'rgba(45,65,115,0.5)' }}
                         title="Sleep om volgorde te wijzigen"
                       >
                         <IconGrip />
@@ -859,7 +859,7 @@ export default function Dashboard() {
                     if (id === 'voorraad') {
                       return (
                         <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className={`${modCard} cursor-pointer`} style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(13,31,78,0.2)' }} onClick={openWinkelSelect}>
+                          <div className={`${modCard} cursor-pointer`} style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(45,65,115,0.2)' }} onClick={openWinkelSelect}>
                             {dragHandle}
                             <div className="p-6">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(240,192,64,0.15)' }}>
@@ -879,16 +879,16 @@ export default function Dashboard() {
                     if (id === 'lunch') {
                       return (
                         <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
+                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,65,115,0.1)' }}>
                             {dragHandle}
                             <div className="p-6">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
                                 <span style={{ color: DYNAMO_GOLD, fontSize: '20px' }}>🥪</span>
                               </div>
                               <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Lunch bestellen</div>
-                              <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
+                              <div style={{ color: 'rgba(45,65,115,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(45,65,115,0.03)', borderTop: '1px solid rgba(45,65,115,0.08)' }}>
                               <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
                               <span style={{ color: DYNAMO_BLUE, opacity: 0.6, fontSize: '18px' }}>🥪</span>
                             </div>
@@ -899,16 +899,16 @@ export default function Dashboard() {
                     if (id === 'brand-groep') {
                       return (
                         <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(13,31,78,0.1)' }}>
+                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,65,115,0.1)' }}>
                             {dragHandle}
                             <div className="p-6">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
                                 <div style={{ color: DYNAMO_GOLD }}><IconChart /></div>
                               </div>
                               <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Merk / Groep</div>
-                              <div style={{ color: 'rgba(13,31,78,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
+                              <div style={{ color: 'rgba(45,65,115,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(13,31,78,0.03)', borderTop: '1px solid rgba(13,31,78,0.08)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(45,65,115,0.03)', borderTop: '1px solid rgba(45,65,115,0.08)' }}>
                               <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
                               <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
                             </div>
@@ -919,17 +919,17 @@ export default function Dashboard() {
                     if (id === 'meer') {
                       return (
                         <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,31,78,0.03)', border: '1px solid rgba(13,31,78,0.07)' }}>
+                          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(45,65,115,0.03)', border: '1px solid rgba(45,65,115,0.07)' }}>
                             {dragHandle}
                             <div className="p-6">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(13,31,78,0.06)' }}>
-                                <div style={{ color: 'rgba(13,31,78,0.25)' }}><IconMap /></div>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(45,65,115,0.06)' }}>
+                                <div style={{ color: 'rgba(45,65,115,0.25)' }}><IconMap /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: 'rgba(13,31,78,0.35)', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
-                              <div style={{ color: 'rgba(13,31,78,0.25)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
+                              <div style={{ fontFamily: F, color: 'rgba(45,65,115,0.35)', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
+                              <div style={{ color: 'rgba(45,65,115,0.25)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
                             </div>
-                            <div className="px-6 py-3" style={{ background: 'rgba(13,31,78,0.02)', borderTop: '1px solid rgba(13,31,78,0.05)' }}>
-                              <span style={{ color: 'rgba(13,31,78,0.25)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
+                            <div className="px-6 py-3" style={{ background: 'rgba(45,65,115,0.02)', borderTop: '1px solid rgba(45,65,115,0.05)' }}>
+                              <span style={{ color: 'rgba(45,65,115,0.25)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
                             </div>
                           </div>
                         </div>
@@ -943,29 +943,29 @@ export default function Dashboard() {
               {/* KAART */}
               <div className="s3">
                 <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Locaties</span>
-                  <div className="flex-1 min-w-0 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Locaties</span>
+                  <div className="flex-1 min-w-0 h-px" style={{ background: 'rgba(45,65,115,0.08)' }} />
                   <div className="flex flex-wrap items-center gap-2">
-                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: 'rgba(13,31,78,0.8)', fontFamily: F }}>
+                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: 'rgba(45,65,115,0.8)', fontFamily: F }}>
                       <option value="alle">Alle landen</option>
                       <option value="Netherlands">Nederland</option>
                       <option value="Belgium">België</option>
                     </select>
-                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: 'rgba(13,31,78,0.8)', fontFamily: F }}>
+                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: 'rgba(45,65,115,0.8)', fontFamily: F }}>
                       <option value="alle">Kassa pakket: alle</option>
                       <option value="cyclesoftware">CycleSoftware</option>
                       <option value="wilmar">Wilmar</option>
                       <option value="vendit">Vendit</option>
                     </select>
-                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(13,31,78,0.12)', color: 'rgba(13,31,78,0.8)', fontFamily: F }}>
+                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,65,115,0.12)', color: 'rgba(45,65,115,0.8)', fontFamily: F }}>
                       <option value="alle">Bike Totaal: alle</option>
                       <option value="ja">Bike Totaal: ja</option>
                       <option value="nee">Bike Totaal: nee</option>
                     </select>
                   </div>
-                  <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => w.lat && w.lng).length} van {winkelsGefilterd.length} op kaart</span>
+                  <span style={{ fontSize: '11px', color: 'rgba(45,65,115,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => w.lat && w.lng).length} van {winkelsGefilterd.length} op kaart</span>
                 </div>
-                <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(13,31,78,0.08)', border: '1px solid rgba(13,31,78,0.07)' }}>
+                <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(45,65,115,0.08)', border: '1px solid rgba(45,65,115,0.07)' }}>
                   <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
                 </div>
               </div>
@@ -980,7 +980,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3 mb-4">
                         <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_GOLD, fontFamily: F }}>★ Mijn winkels</span>
                         <div className="flex-1 h-px" style={{ background: `${DYNAMO_GOLD}40` }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
+                        <span style={{ fontSize: '11px', color: 'rgba(45,65,115,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
@@ -993,9 +993,9 @@ export default function Dashboard() {
                   {/* Alle winkels */}
                   <div>
                     <div className="flex items-center gap-3 mb-4">
-                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Alle winkels</span>
-                      <div className="flex-1 h-px" style={{ background: 'rgba(13,31,78,0.08)' }} />
-                      <span style={{ fontSize: '11px', color: 'rgba(13,31,78,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Alle winkels</span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(45,65,115,0.08)' }} />
+                      <span style={{ fontSize: '11px', color: 'rgba(45,65,115,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {winkelsGefilterd.map((w, i) => (
@@ -1010,7 +1010,7 @@ export default function Dashboard() {
           ) : (
             <>
               {loading && (
-                <div className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4" style={{ background: 'rgba(13,31,78,0.06)', border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                <div className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4" style={{ background: 'rgba(45,65,115,0.06)', border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
                   <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
                   <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden...</span>
                 </div>
@@ -1028,8 +1028,8 @@ export default function Dashboard() {
                   { label: 'Fietsen op voorraad', value: stats.fietsen, color: '#16a34a' },
                   { label: 'Merken', value: stats.merken, color: DYNAMO_BLUE },
                 ].map(s => (
-                  <div key={s.label} className="rounded-2xl px-3 sm:px-5 py-3 sm:py-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-                    <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.08em', fontFamily: F }}>{s.label}</div>
+                  <div key={s.label} className="rounded-2xl px-3 sm:px-5 py-3 sm:py-4" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+                    <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(45,65,115,0.4)', letterSpacing: '0.08em', fontFamily: F }}>{s.label}</div>
                     <div className="flex items-baseline gap-1">
                       <div className="text-2xl font-bold" style={{ color: s.color, fontFamily: F, letterSpacing: '-0.03em' }}>{loading ? '...' : s.value.toLocaleString('nl-NL')}</div>
                       {!loading && trendPijl(s.value, (s as any).vorig)}
@@ -1039,17 +1039,17 @@ export default function Dashboard() {
               </div>
 
               {/* Zoekbalk */}
-              <div className="rounded-2xl p-3 sm:p-4" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+              <div className="rounded-2xl p-3 sm:p-4" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2 min-w-0">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{geselecteerdeWinkel.naam}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>#{dealer}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.45)', fontFamily: F }}>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.45)', fontFamily: F }}>#{dealer}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.45)', fontFamily: F }}>
                         {bron === 'wilmar' ? 'Wilmar' : (bron === 'vendit' || bron === 'vendit_api') ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {bron === 'vendit' && (
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(13,31,78,0.08)', color: 'rgba(13,31,78,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen data voor dit dealer_nummer of de timestamp-kolom is leeg'}>
+                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,65,115,0.08)', color: 'rgba(45,65,115,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen data voor dit dealer_nummer of de timestamp-kolom is leeg'}>
                           {venditLaatstDatum ? (() => {
                             const d = new Date(venditLaatstDatum)
                             const dag = d.getUTCDate()
@@ -1060,23 +1060,23 @@ export default function Dashboard() {
                           })() : '— Datum onbekend'}
                         </span>
                       )}
-                      {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(13,31,78,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
+                      {geselecteerdeWinkel.stad && <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(45,65,115,0.4)' }}><IconPin />{geselecteerdeWinkel.stad}</span>}
                       {geselecteerdeWinkel.land && (
                         <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: geselecteerdeWinkel.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: geselecteerdeWinkel.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{geselecteerdeWinkel.land === 'Belgium' ? 'België' : 'Nederland'}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
-                      <Link href={geselecteerdeWinkel ? `/dashboard/brand-groep?winkel=${geselecteerdeWinkel.id}` : '/dashboard/brand-groep'} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-80 shrink-0" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.08)', fontFamily: F }}>
+                      <Link href={geselecteerdeWinkel ? `/dashboard/brand-groep?winkel=${geselecteerdeWinkel.id}` : '/dashboard/brand-groep'} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-80 shrink-0" style={{ background: 'rgba(45,65,115,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.08)', fontFamily: F }}>
                         <IconChart /> Merk/Groep
                       </Link>
-                      <span className="text-xs shrink-0" style={{ color: 'rgba(13,31,78,0.35)', fontFamily: F }}>
+                      <span className="text-xs shrink-0" style={{ color: 'rgba(45,65,115,0.35)', fontFamily: F }}>
                         {loading ? 'Laden...' : `${gefilterdEnGesorteerd.length} resultaten`}
                       </span>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
                     <div className="relative flex-1 min-w-0">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(13,31,78,0.3)' }}>⌕</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(45,65,115,0.3)' }}>⌕</span>
                       <input type="text" placeholder="Zoek op product, merk, barcode..." value={zoekterm} onChange={e => setZoekterm(e.target.value)} className="w-full rounded-xl px-3 py-2 pl-9 text-sm" style={inputStyle} />
                     </div>
                     <select value={zoekKolom} onChange={e => setZoekKolom(e.target.value)} className="rounded-xl px-3 py-2 text-sm w-full sm:w-auto min-w-0" style={inputStyle}>
@@ -1084,26 +1084,26 @@ export default function Dashboard() {
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
                     <div className="relative">
-                      <button ref={kolomTriggerRef} onClick={() => setKolomPanelOpen(v => !v)} aria-expanded={kolomPanelOpen} aria-haspopup="dialog" aria-label="Kolommen kiezen" className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 flex items-center gap-2" style={{ background: 'rgba(13,31,78,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>
+                      <button ref={kolomTriggerRef} onClick={() => setKolomPanelOpen(v => !v)} aria-expanded={kolomPanelOpen} aria-haspopup="dialog" aria-label="Kolommen kiezen" className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 flex items-center gap-2" style={{ background: 'rgba(45,65,115,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>
                         ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
-                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-2xl bg-white shadow-xl p-4 z-20" style={{ border: '1px solid rgba(13,31,78,0.1)' }}>
+                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-2xl bg-white shadow-xl p-4 z-20" style={{ border: '1px solid rgba(45,65,115,0.1)' }}>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Kolommen</span>
                             <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none" aria-label="Sluiten">✕</button>
                           </div>
-                          <p className="text-xs mb-3" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Voorkeur wordt automatisch onthouden.</p>
+                          <p className="text-xs mb-3" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Voorkeur wordt automatisch onthouden.</p>
                           <div className="flex gap-2 mb-3">
-                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Alles aan</button>
-                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(13,31,78,0.1)', fontFamily: F }}>Alles uit</button>
+                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Alles aan</button>
+                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(45,65,115,0.1)', fontFamily: F }}>Alles uit</button>
                           </div>
                           <div className="space-y-1 max-h-64 overflow-auto">
                             {kolommen.map(k => (
                               <label key={k} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1.5">
-                                <input type="checkbox" checked={zichtbareKolommen.includes(k)} onChange={() => toggleKolom(k)} disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1} className="accent-blue-600" />
+                                <input type="checkbox" checked={zichtbareKolommen.includes(k)} onChange={() => toggleKolom(k)} disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1} className="accent-[#2D4173]" />
                                 <span style={{ color: DYNAMO_BLUE, fontFamily: F }}>{columnLabel(k)}</span>
-                                {isSticky(k) && <span className="ml-auto text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(13,31,78,0.06)', color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Vast</span>}
+                                {isSticky(k) && <span className="ml-auto text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Vast</span>}
                               </label>
                             ))}
                           </div>
@@ -1120,12 +1120,12 @@ export default function Dashboard() {
               {authRequired && (
                 <div className="rounded-2xl p-4 text-sm" style={{ background: '#fffbeb', border: '1px solid rgba(240,192,64,0.4)' }}>
                   <p className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Toestemming vereist</p>
-                  <p className="mt-1" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{authRequired.message}</p>
+                  <p className="mt-1" style={{ color: 'rgba(45,65,115,0.6)', fontFamily: F }}>{authRequired.message}</p>
                 </div>
               )}
 
               {/* Tabel */}
-              <div className="rounded-2xl overflow-hidden -mx-3 sm:mx-0" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
+              <div className="rounded-2xl overflow-hidden -mx-3 sm:mx-0" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
                 <div className="overflow-x-auto overflow-y-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <table className="w-full text-sm min-w-[600px] [border-collapse:separate] [border-spacing:0]">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
@@ -1147,8 +1147,8 @@ export default function Dashboard() {
                     <tbody>
                       {loading ? (
                         Array.from({ length: 12 }).map((_, i) => (
-                          <tr key={i} className="animate-pulse" style={{ borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
-                            {zichtbareKolommen.map(k => <td key={k} className="px-4 py-3"><div className="h-3 rounded" style={{ background: 'rgba(13,31,78,0.06)', width: '80px' }} /></td>)}
+                          <tr key={i} className="animate-pulse" style={{ borderBottom: '1px solid rgba(45,65,115,0.05)' }}>
+                            {zichtbareKolommen.map(k => <td key={k} className="px-4 py-3"><div className="h-3 rounded" style={{ background: 'rgba(45,65,115,0.06)', width: '80px' }} /></td>)}
                           </tr>
                         ))
                       ) : gefilterdEnGesorteerd.length === 0 ? (
@@ -1156,18 +1156,18 @@ export default function Dashboard() {
                           <td colSpan={zichtbareKolommen.length} className="px-6 py-16 text-center">
                             <div className="text-3xl mb-3">🔍</div>
                             <div className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen producten gevonden</div>
-                            <div className="text-sm mt-1" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Probeer een andere zoekterm</div>
+                            <div className="text-sm mt-1" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>Probeer een andere zoekterm</div>
                           </td>
                         </tr>
                       ) : (
                         gefilterdEnGesorteerd.map((p, i) => (
-                          <tr key={i} className="transition hover:bg-blue-50/40" style={{ borderBottom: '1px solid rgba(13,31,78,0.05)', background: i % 2 === 1 ? 'rgba(13,31,78,0.015)' : 'white' }}>
+                          <tr key={i} className="transition hover:bg-dynamo-blue/5" style={{ borderBottom: '1px solid rgba(45,65,115,0.05)', background: i % 2 === 1 ? 'rgba(45,65,115,0.015)' : 'white' }}>
                             {zichtbareKolommen.map(k => {
                               const sticky = stickyEnabled && stickyKey === k
                               const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
                               const stockVal = Number(p[k])
                               return (
-                                <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(13,31,78,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
+                                <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(45,65,115,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
                                   <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
                                     {formatValue(k, p[k])}
                                   </span>
@@ -1181,9 +1181,9 @@ export default function Dashboard() {
                   </table>
                 </div>
                 {!loading && gefilterdEnGesorteerd.length > 0 && (
-                  <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid rgba(13,31,78,0.06)' }}>
-                    <span className="text-xs" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>{gefilterdEnGesorteerd.length} producten</span>
-                    <span className="text-xs" style={{ color: 'rgba(13,31,78,0.3)', fontFamily: F }}>Klik op kolomheader om te sorteren</span>
+                  <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid rgba(45,65,115,0.06)' }}>
+                    <span className="text-xs" style={{ color: 'rgba(45,65,115,0.4)', fontFamily: F }}>{gefilterdEnGesorteerd.length} producten</span>
+                    <span className="text-xs" style={{ color: 'rgba(45,65,115,0.3)', fontFamily: F }}>Klik op kolomheader om te sorteren</span>
                   </div>
                 )}
               </div>

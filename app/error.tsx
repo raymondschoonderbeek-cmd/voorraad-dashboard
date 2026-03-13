@@ -25,7 +25,7 @@ export default function Error({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-5 py-2.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition"
+            className="px-5 py-2.5 rounded-xl font-semibold text-white bg-dynamo-blue hover:opacity-90 transition"
             aria-label="Probeer opnieuw"
           >
             Probeer opnieuw

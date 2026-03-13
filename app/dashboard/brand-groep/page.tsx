@@ -353,7 +353,7 @@ export default function BrandGroepPage() {
   useEffect(() => { setSelectedProduct(null); setProductSearch('') }, [selectedGroup, selectedBrand])
 
   const inputClass =
-    'w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200'
+    'w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue/30'
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
@@ -431,7 +431,7 @@ export default function BrandGroepPage() {
         ) : (
           <div className="space-y-4">
             {loading && (
-              <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(13,31,78,0.06)', border: '1px solid rgba(13,31,78,0.1)' }}>
+              <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(45,65,115,0.06)', border: '1px solid rgba(45,65,115,0.1)' }}>
                 <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
                 <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden voor Merk/Groep...</span>
               </div>
@@ -439,7 +439,7 @@ export default function BrandGroepPage() {
             {authRequired && (
               <div className="rounded-2xl p-4 text-sm" style={{ background: '#fffbeb', border: '1px solid rgba(240,192,64,0.4)' }}>
                 <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Toestemming vereist</p>
-                <p className="mt-1" style={{ color: 'rgba(13,31,78,0.6)' }}>{authRequired.message}</p>
+                <p className="mt-1" style={{ color: 'rgba(45,65,115,0.6)' }}>{authRequired.message}</p>
               </div>
             )}
             <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-4">
@@ -555,7 +555,7 @@ export default function BrandGroepPage() {
                   </div>
 
                   <label className="flex items-center gap-2 text-sm text-gray-700 mt-2 cursor-pointer">
-                    <input type="checkbox" checked={top10Brands} onChange={e => setTop10Brands(e.target.checked)} disabled={!selectedGroup} className="accent-blue-600" />
+                    <input type="checkbox" checked={top10Brands} onChange={e => setTop10Brands(e.target.checked)} disabled={!selectedGroup} className="accent-[#2D4173]" />
                     <span>Toon alleen Top 10 merken</span>
                   </label>
                 </div>

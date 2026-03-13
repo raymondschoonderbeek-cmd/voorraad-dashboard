@@ -51,7 +51,7 @@ export default function LunchOverzichtPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-        input, select { color: #0d1f4e !important; }
+        input, select { color: #2D4173 !important; }
         input::placeholder { color: #6b7280 !important; }
       `}</style>
 
@@ -90,18 +90,18 @@ export default function LunchOverzichtPage() {
             value={date}
             onChange={e => setDate(e.target.value)}
             className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
-            style={{ borderColor: 'rgba(13,31,78,0.2)', background: 'white', color: DYNAMO_BLUE }}
+            style={{ borderColor: 'rgba(45,65,115,0.2)', background: 'white', color: DYNAMO_BLUE }}
           />
         </div>
 
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'rgba(13,31,78,0.06)' }} />
+              <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'rgba(45,65,115,0.06)' }} />
             ))}
           </div>
         ) : orders.length === 0 ? (
-          <div className="rounded-xl p-8 text-center" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)' }}>
+          <div className="rounded-xl p-8 text-center" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)' }}>
             <p className="text-gray-500">Geen bestellingen voor deze datum.</p>
             <Link href="/dashboard/lunch" className="inline-block mt-4 px-4 py-2 rounded-xl font-semibold text-sm" style={{ background: DYNAMO_BLUE, color: 'white' }}>
               Bestellen
@@ -113,9 +113,9 @@ export default function LunchOverzichtPage() {
               <div
                 key={order.id}
                 className="rounded-xl overflow-hidden"
-                style={{ background: 'white', border: '1px solid rgba(13,31,78,0.1)', boxShadow: '0 2px 8px rgba(13,31,78,0.06)' }}
+                style={{ background: 'white', border: '1px solid rgba(45,65,115,0.1)', boxShadow: '0 2px 8px rgba(45,65,115,0.06)' }}
               >
-                <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(13,31,78,0.08)' }}>
+                <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,65,115,0.08)' }}>
                   <div>
                     <span className="font-semibold" style={{ color: DYNAMO_BLUE }}>{formatDate(order.order_date)}</span>
                     <span className="ml-2 text-sm px-2 py-0.5 rounded-full" style={{
@@ -130,10 +130,10 @@ export default function LunchOverzichtPage() {
                 <ul className="p-4 space-y-1">
                   {order.lunch_order_items?.map((item: OrderItem) => (
                     <li key={item.id} className="flex justify-between text-sm">
-                      <span style={{ color: 'rgba(13,31,78,0.8)' }}>
+                      <span style={{ color: 'rgba(45,65,115,0.8)' }}>
                         {item.lunch_products?.name ?? 'Product'} × {item.quantity}
                       </span>
-                      <span style={{ color: 'rgba(13,31,78,0.6)' }}>{formatPrice(item.unit_price_cents * item.quantity)}</span>
+                      <span style={{ color: 'rgba(45,65,115,0.6)' }}>{formatPrice(item.unit_price_cents * item.quantity)}</span>
                     </li>
                   ))}
                 </ul>

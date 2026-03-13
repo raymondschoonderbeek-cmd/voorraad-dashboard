@@ -76,14 +76,14 @@ export default function MfaVerifyPage() {
           value={code}
           onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
           required
-          className="w-full rounded-xl px-4 py-3 text-center text-lg tracking-[0.5em] bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-xl px-4 py-3 text-center text-lg tracking-[0.5em] bg-white text-gray-900 border border-gray-300 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue"
           autoComplete="one-time-code"
         />
 
         <button
           type="submit"
           disabled={loading || code.length !== 6}
-          className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+          className="w-full bg-dynamo-blue text-white rounded-xl py-3 font-semibold hover:opacity-90 transition disabled:opacity-60"
         >
           {loading ? 'Controleren...' : 'Verifiëren'}
         </button>
