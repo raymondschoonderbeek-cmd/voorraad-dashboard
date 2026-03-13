@@ -95,6 +95,7 @@ export default function BeheerPage() {
   const [wilmarAutoLinkLoading, setWilmarAutoLinkLoading] = useState(false)
 
   // Excel import
+  const [importType, setImportType] = useState<'winkels' | 'medewerkers'>('winkels')
   const [importData, setImportData] = useState<any[]>([])
   const [importLoading, setImportLoading] = useState(false)
   const [importError, setImportError] = useState('')
@@ -603,33 +604,54 @@ export default function BeheerPage() {
       const workbook = XLSX.read(buffer, { type: 'array' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-      const parsed = rows.map(r => {
-        const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
-        const landVal = String(r.land || r.Land || r.LAND || '').trim().toLowerCase()
-        const dealer = String(r.dealer_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
-        return {
-          naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
-          dealer_nummer: dealer,
-          postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
-          straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
-          huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
-          stad: String(r.stad || r.Stad || r.STAD || '').trim(),
-          land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
-          api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'vendit_api' ? 'vendit_api' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined))),
+      if (importType === 'medewerkers') {
+        const parsed = rows.map(r => {
+          const email = String(r.email || r.Email || r.EMAIL || r.mail || r.Mail || '').trim().toLowerCase()
+          const rol = String(r.rol || r.Rol || r.ROL || r.role || '').trim().toLowerCase()
+          return {
+            email,
+            naam: String(r.naam || r.Naam || r.NAAM || r.name || r.Name || '').trim() || email,
+            rol: ['viewer', 'lunch', 'admin'].includes(rol) ? rol : 'viewer',
+          }
+        }).filter(r => r.email)
+        if (parsed.length === 0) {
+          const heeftRijen = rows.length > 0
+          setImportError(heeftRijen
+            ? 'Geen geldige rijen gevonden. Elke rij moet een e-mail hebben. Kolomnamen: email, Email, of mail.'
+            : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (email, naam, rol) en daarna de data.')
+        } else {
+          setImportData(parsed)
         }
-      }).filter(r => r.dealer_nummer)
-      if (parsed.length === 0) {
-        const heeftRijen = rows.length > 0
-        setImportError(heeftRijen
-          ? 'Geen geldige rijen gevonden. Elke rij moet een dealer_nummer hebben. Kolomnamen: dealer_nummer, Dealer nummer, of DEALER_NUMMER.'
-          : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, dealer_nummer, …) en daarna de data.')
       } else {
-        setImportData(parsed)
+        const parsed = rows.map(r => {
+          const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
+          const landVal = String(r.land || r.Land || r.LAND || '').trim().toLowerCase()
+          const dealer = String(r.dealer_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
+          return {
+            naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
+            dealer_nummer: dealer,
+            postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
+            straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
+            huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
+            stad: String(r.stad || r.Stad || r.STAD || '').trim(),
+            land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
+            api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'vendit_api' ? 'vendit_api' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined))),
+          }
+        }).filter(r => r.dealer_nummer)
+        if (parsed.length === 0) {
+          const heeftRijen = rows.length > 0
+          setImportError(heeftRijen
+            ? 'Geen geldige rijen gevonden. Elke rij moet een dealer_nummer hebben. Kolomnamen: dealer_nummer, Dealer nummer, of DEALER_NUMMER.'
+            : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, dealer_nummer, …) en daarna de data.')
+        } else {
+          setImportData(parsed)
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Onbekende fout'
       setImportError(`Kon het bestand niet lezen: ${msg}. Zorg dat het een geldig .xlsx of .xls bestand is.`)
     }
+    e.target.value = ''
   }
 
   async function importeerWinkels() {
@@ -698,6 +720,35 @@ export default function BeheerPage() {
     setImportSuccess(parts.length > 0 ? `${parts.join(', ')} (${toegevoegd + bijgewerkt} van ${importData.length} winkels).${verversHint}` : `${toegevoegd + bijgewerkt} van ${importData.length} winkels verwerkt.${verversHint}`)
     setImportData([])
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function importeerMedewerkers() {
+    if (importData.length === 0) return
+    setImportLoading(true); setImportError(''); setImportSuccess('')
+    try {
+      const res = await fetch('/api/gebruikers/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: importData }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setImportError(data?.error ?? 'Importeren mislukt')
+      } else {
+        const { toegevoegd = [], bestaand = [], fouten = [] } = data
+        const parts = []
+        if (toegevoegd.length > 0) parts.push(`${toegevoegd.length} toegevoegd`)
+        if (bestaand.length > 0) parts.push(`${bestaand.length} al bekend`)
+        if (fouten.length > 0) setImportError(fouten.slice(0, 3).map((f: { email: string; message: string }) => `${f.email}: ${f.message}`).join(' · ') + (fouten.length > 3 ? ` … en ${fouten.length - 3} meer` : ''))
+        setImportSuccess(parts.length > 0 ? `${parts.join(', ')}. Welkomstmail met wachtwoord verstuurd naar nieuwe medewerkers.` : 'Geen nieuwe medewerkers toegevoegd.')
+        setImportData([])
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        await haalGebruikersOp()
+      }
+    } catch {
+      setImportError('Importeren mislukt')
+    }
+    setImportLoading(false)
   }
 
   async function wilmarAutoKoppelen() {
@@ -1657,8 +1708,18 @@ export default function BeheerPage() {
         {tab === 'import' && (
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-              <h2 className="text-sm font-bold mb-1" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Winkels importeren via Excel</h2>
-              <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Importeren via Excel</h2>
+                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.15)' }}>
+                  <button type="button" onClick={() => { setImportType('winkels'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'winkels' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Winkels</button>
+                  <button type="button" onClick={() => { setImportType('medewerkers'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'medewerkers' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(13,31,78,0.6)', fontFamily: F }}>Medewerkers</button>
+                </div>
+              </div>
+              {importType === 'winkels' ? (
+                <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+              ) : (
+                <p className="text-xs mb-5" style={{ color: 'rgba(13,31,78,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>email</strong> (verplicht), <strong>naam</strong> (optioneel), <strong>rol</strong> (optioneel: viewer, lunch of admin; standaard viewer). Nieuwe medewerkers krijgen een wachtwoord per e-mail en moeten dit bij eerste inlog wijzigen.</p>
+              )}
               <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(13,31,78,0.15)', background: 'rgba(13,31,78,0.02)' }} onClick={() => fileInputRef.current?.click()}>
                 <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
@@ -1681,54 +1742,71 @@ export default function BeheerPage() {
               {importData.length > 0 && (
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{importData.length} winkels gevonden</span>
+                    <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{importData.length} {importType === 'medewerkers' ? 'medewerkers' : 'winkels'} gevonden</span>
                     <button onClick={() => { setImportData([]); if (fileInputRef.current) fileInputRef.current.value = '' }} className="text-xs hover:opacity-70" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>Wissen</button>
                   </div>
                   <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                     <table className="w-full text-xs">
                       <thead style={{ background: DYNAMO_BLUE }}>
-                        <tr>{['Naam', 'Dealer #', 'Postcode', 'Straat', 'Nr', 'Stad', 'Land', 'API'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
+                        <tr>{(importType === 'medewerkers' ? ['E-mail', 'Naam', 'Rol'] : ['Naam', 'Dealer #', 'Postcode', 'Straat', 'Nr', 'Stad', 'Land', 'API']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
                       </thead>
                       <tbody>
-                        {importData.slice(0, 10).map((r, i) => (
-                          <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
-                            <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.naam}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
-                            <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
-                          </tr>
-                        ))}
+                        {importType === 'medewerkers'
+                          ? importData.slice(0, 10).map((r, i) => (
+                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
+                                <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.email}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.naam || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.rol || 'viewer'}</td>
+                              </tr>
+                            ))
+                          : importData.slice(0, 10).map((r, i) => (
+                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
+                                <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.naam}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
+                                <td className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
+                              </tr>
+                            ))}
                       </tbody>
                     </table>
                     {importData.length > 10 && <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(13,31,78,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>}
                   </div>
-                  <button onClick={importeerWinkels} disabled={importLoading} className="w-full rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                  <button onClick={importType === 'medewerkers' ? importeerMedewerkers : importeerWinkels} disabled={importLoading} className="w-full rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
                     {importLoading && importProgress
                       ? `Importeren... ${importProgress.current} van ${importProgress.total}`
                       : importLoading
                         ? 'Importeren...'
-                        : `${importData.length} winkels importeren`}
+                        : importType === 'medewerkers'
+                          ? `${importData.length} medewerkers importeren`
+                          : `${importData.length} winkels importeren`}
                   </button>
                 </div>
               )}
             </div>
             <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(13,31,78,0.07)', boxShadow: '0 2px 8px rgba(13,31,78,0.04)' }}>
-              <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat</h3>
+              <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(13,31,78,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat {importType === 'medewerkers' ? '(medewerkers)' : '(winkels)'}</h3>
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(13,31,78,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>{['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type'].map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
+                    <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {[
-                      ['Dynamo Amsterdam','10001','1012AB','Damrak','1','Amsterdam','Nederland','cyclesoftware'],
-                      ['Dynamo Rotterdam','10002','3011AD','Coolsingel','42','Rotterdam','Nederland','cyclesoftware'],
-                      ['Dynamo Brussel','10003','1000','Nieuwstraat','1','Brussel','België','wilmar'],
-                    ].map((r, i) => (
+                    {(importType === 'medewerkers'
+                      ? [
+                          ['jan@bedrijf.nl', 'Jan Jansen', 'viewer'],
+                          ['marie@bedrijf.nl', 'Marie de Vries', 'lunch'],
+                          ['admin@bedrijf.nl', 'Beheerder', 'admin'],
+                        ]
+                      : [
+                          ['Dynamo Amsterdam','10001','1012AB','Damrak','1','Amsterdam','Nederland','cyclesoftware'],
+                          ['Dynamo Rotterdam','10002','3011AD','Coolsingel','42','Rotterdam','Nederland','cyclesoftware'],
+                          ['Dynamo Brussel','10003','1000','Nieuwstraat','1','Brussel','België','wilmar'],
+                        ]
+                    ).map((r, i) => (
                       <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(13,31,78,0.02)', borderBottom: '1px solid rgba(13,31,78,0.05)' }}>
                         {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(13,31,78,0.7)', fontFamily: F }}>{c}</td>)}
                       </tr>
