@@ -862,8 +862,8 @@ export default function BeheerPage() {
       <main className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
 
         <div className="relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(240,192,64,0.1) 0%, transparent 60%)' }} />
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: DYNAMO_GOLD }} />
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'rgba(255,255,255,0.2)' }} />
           <div className="relative p-4 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
             <div className="min-w-0">
               <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px,4vw,24px)', fontWeight: 700, letterSpacing: '-0.02em' }}>Beheer</h1>
@@ -873,7 +873,7 @@ export default function BeheerPage() {
               {isAdmin && (
                 <>
                   <div className="text-center px-4">
-                    <div style={{ color: DYNAMO_GOLD, fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
+                    <div style={{ color: 'white', fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
                     <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gebruikers</div>
                   </div>
                   <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
@@ -914,7 +914,7 @@ export default function BeheerPage() {
             </div>
 
             {toonForm && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_GOLD}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
                 <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe gebruiker aanmaken</h2>
                 <form onSubmit={voegGebruikerToe} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1046,7 +1046,7 @@ export default function BeheerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(240,192,64,0.15)', color: '#92660a' } : rol.rol === 'lunch' ? { background: 'rgba(34,197,94,0.15)', color: '#15803d' } : { background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.6)' }}>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(45,65,115,0.12)', color: DYNAMO_BLUE } : rol.rol === 'lunch' ? { background: 'rgba(34,197,94,0.15)', color: '#15803d' } : { background: 'rgba(45,65,115,0.06)', color: 'rgba(45,65,115,0.6)' }}>
                             {rol.rol === 'admin' ? '👑 Admin' : rol.rol === 'lunch' ? '🥪 Lunch' : '👁 Viewer'}
                           </span>
                           {mfaStatus[rol.user_id] === true && (
@@ -1091,7 +1091,7 @@ export default function BeheerPage() {
             )}
 
             {isAdmin && toonWinkelForm && (
-              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_GOLD}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
+              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</h2>
                 <form onSubmit={voegWinkelToe} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1701,7 +1701,7 @@ export default function BeheerPage() {
           <div className="space-y-4">
             <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(45,65,115,0.07)', boxShadow: '0 2px 8px rgba(45,65,115,0.04)' }}>
               <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_GOLD}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Importeren via Excel</h2>
+                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_BLUE}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Importeren via Excel</h2>
                 <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,65,115,0.15)' }}>
                   <button type="button" onClick={() => { setImportType('winkels'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'winkels' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Winkels</button>
                   <button type="button" onClick={() => { setImportType('medewerkers'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'medewerkers' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,65,115,0.6)', fontFamily: F }}>Medewerkers</button>
@@ -1784,7 +1784,7 @@ export default function BeheerPage() {
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,65,115,0.08)' }}>
                 <table className="w-full text-xs">
                   <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_GOLD, fontFamily: F }}>{h}</th>)}</tr>
+                    <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {(importType === 'medewerkers'

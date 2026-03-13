@@ -152,7 +152,7 @@ export default function LunchBeheerPage() {
           <button
             onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
             className="text-sm font-medium px-3 py-1.5 rounded-lg"
-            style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+            style={{ background: DYNAMO_BLUE, color: 'white' }}
           >
             Uitloggen
           </button>
@@ -227,15 +227,15 @@ export default function LunchBeheerPage() {
             {aantallenPerBroodje.length > 0 && (
               <div
                 className="rounded-xl overflow-hidden"
-                style={{ background: 'white', border: '2px solid ' + DYNAMO_GOLD, boxShadow: '0 2px 12px rgba(240,192,64,0.2)' }}
+                style={{ background: 'white', border: '2px solid ' + DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(45,65,115,0.15)' }}
               >
-                <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(240,192,64,0.1)', borderBottom: '1px solid rgba(240,192,64,0.3)' }}>
+                <div className="p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(45,65,115,0.06)', borderBottom: '1px solid rgba(45,65,115,0.15)' }}>
                   <h3 className="font-bold" style={{ color: DYNAMO_BLUE }}>🥪 Aantallen voor leverancier</h3>
                   <button
                     type="button"
                     onClick={kopieerVoorLeverancier}
                     className="px-4 py-2 rounded-lg font-semibold text-sm transition hover:opacity-90 disabled:opacity-70"
-                    style={{ background: gekopieerd ? '#16a34a' : DYNAMO_GOLD, color: gekopieerd ? 'white' : DYNAMO_BLUE }}
+                    style={{ background: gekopieerd ? '#16a34a' : DYNAMO_BLUE, color: 'white' }}
                   >
                     {gekopieerd ? '✓ Gekopieerd!' : 'Kopieer voor leverancier'}
                   </button>
@@ -245,7 +245,7 @@ export default function LunchBeheerPage() {
                     {aantallenPerBroodje.map(([naam, qty]) => (
                       <div key={naam} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ background: 'rgba(45,65,115,0.03)' }}>
                         <span className="font-medium" style={{ color: DYNAMO_BLUE }}>{naam}</span>
-                        <span className="font-bold text-lg" style={{ color: DYNAMO_GOLD }}>{qty}</span>
+                        <span className="font-bold text-lg" style={{ color: DYNAMO_BLUE }}>{qty}</span>
                       </div>
                     ))}
                   </div>
@@ -516,7 +516,7 @@ function ProductBeheer({
           type="button"
           onClick={handleNew}
           className="px-4 py-2 rounded-xl font-semibold text-sm"
-          style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+          style={{ background: DYNAMO_BLUE, color: 'white' }}
         >
           + Nieuw product
         </button>

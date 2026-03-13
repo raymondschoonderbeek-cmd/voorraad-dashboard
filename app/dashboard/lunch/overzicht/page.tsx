@@ -66,7 +66,7 @@ export default function LunchOverzichtPage() {
               <Link
                 href="/dashboard/lunch/beheer"
                 className="text-sm font-medium px-3 py-1.5 rounded-lg ml-2"
-                style={{ background: 'rgba(240,192,64,0.2)', color: DYNAMO_GOLD }}
+                style={{ background: 'rgba(45,65,115,0.15)', color: DYNAMO_BLUE }}
               >
                 Beheer
               </Link>
@@ -74,7 +74,7 @@ export default function LunchOverzichtPage() {
             <button
               onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
               className="text-sm font-medium px-3 py-1.5 rounded-lg ml-auto"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+              style={{ background: DYNAMO_BLUE, color: 'white' }}
             >
               Uitloggen
             </button>

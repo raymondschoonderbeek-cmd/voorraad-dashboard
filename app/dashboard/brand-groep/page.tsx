@@ -384,7 +384,7 @@ export default function BrandGroepPage() {
           <div className="flex-1 hidden sm:block" />
 
           <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-5 shrink-0 w-full sm:w-auto justify-end">
-            <span className="text-xs truncate max-w-[140px] flex items-center gap-2" style={loading ? { color: DYNAMO_GOLD, fontWeight: 600 } : { color: 'rgba(255,255,255,0.5)' }}>
+            <span className="text-xs truncate max-w-[140px] flex items-center gap-2" style={loading ? { color: 'white', fontWeight: 600 } : { color: 'rgba(255,255,255,0.5)' }}>
               {loading && <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: 'currentColor' }} />}
               {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten` : ''}
             </span>
@@ -397,7 +397,7 @@ export default function BrandGroepPage() {
             </Link>
           </div>
         </div>
-        <div style={{ background: DYNAMO_GOLD, height: '3px' }} />
+        <div style={{ background: 'rgba(255,255,255,0.2)', height: '3px' }} />
       </header>
 
       <WinkelModal
@@ -422,7 +422,7 @@ export default function BrandGroepPage() {
             <button
               onClick={() => setWinkelModalOpen(true)}
               className="rounded-xl px-5 py-2.5 font-semibold text-sm transition hover:opacity-90"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE, boxShadow: '0 2px 12px rgba(240,192,64,0.3)' }}
+              style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.35)' }}
             >
               Kies een winkel
             </button>
@@ -437,7 +437,7 @@ export default function BrandGroepPage() {
               </div>
             )}
             {authRequired && (
-              <div className="rounded-2xl p-4 text-sm" style={{ background: '#fffbeb', border: '1px solid rgba(240,192,64,0.4)' }}>
+              <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(45,65,115,0.06)', border: '1px solid rgba(45,65,115,0.2)' }}>
                 <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Toestemming vereist</p>
                 <p className="mt-1" style={{ color: 'rgba(45,65,115,0.6)' }}>{authRequired.message}</p>
               </div>
@@ -514,7 +514,7 @@ export default function BrandGroepPage() {
 
               {/* Merken */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_GOLD}` }}>
+                <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>2) Merken in groep</div>
@@ -597,7 +597,7 @@ export default function BrandGroepPage() {
                                   <div className="flex-1 min-w-0">
                                     <div className="font-semibold text-gray-900">{r.brandLabel}</div>
                                     <div className="mt-1 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: active ? DYNAMO_BLUE : DYNAMO_GOLD }} />
+                                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: active ? DYNAMO_BLUE : 'rgba(45,65,115,0.3)' }} />
                                     </div>
                                     <div className="text-xs text-gray-400 mt-0.5">{r.itemsCount} regels</div>
                                   </div>
@@ -701,7 +701,7 @@ export default function BrandGroepPage() {
 
               {/* Details */}
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_GOLD}` }}>
+                <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div>
                     <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Product details</div>
                     <div className="text-xs text-gray-400">Klik op een product voor details</div>

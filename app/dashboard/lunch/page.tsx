@@ -156,7 +156,7 @@ export default function LunchPage() {
               <Link
                 href="/dashboard/lunch/beheer"
                 className="text-sm font-medium px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(240,192,64,0.2)', color: DYNAMO_GOLD }}
+                style={{ background: 'rgba(45,65,115,0.15)', color: DYNAMO_BLUE }}
               >
                 Beheer
               </Link>
@@ -164,7 +164,7 @@ export default function LunchPage() {
             <button
               onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
               className="text-sm font-medium px-3 py-1.5 rounded-lg"
-              style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+              style={{ background: DYNAMO_BLUE, color: 'white' }}
             >
               Uitloggen
             </button>
@@ -213,7 +213,7 @@ export default function LunchPage() {
                 </div>
               ) : (
                 <>
-                  <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(240,192,64,0.12)', border: '2px solid rgba(240,192,64,0.4)' }}>
+                  <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(45,65,115,0.08)', border: '2px solid rgba(45,65,115,0.25)' }}>
                     <div className="text-sm font-semibold mb-1" style={{ color: DYNAMO_BLUE }}>Te betalen bedrag</div>
                     <div className="text-3xl font-bold mb-2" style={{ color: DYNAMO_BLUE }}>
                       {checkoutResult.amount_cents != null && checkoutResult.amount_cents > 0
@@ -232,7 +232,7 @@ export default function LunchPage() {
                       rel="noopener noreferrer"
                       onClick={() => setHeeftTikkieGeklikt(true)}
                       className="block w-full py-4 rounded-xl font-bold text-center text-lg transition hover:opacity-90"
-                      style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+                      style={{ background: DYNAMO_BLUE, color: 'white' }}
                     >
                       Betaal via Tikkie
                     </a>
@@ -403,7 +403,7 @@ export default function LunchPage() {
                   onClick={doCheckout}
                   disabled={cart.length === 0 || checkoutLoading}
                   className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+                  style={{ background: DYNAMO_BLUE, color: 'white' }}
                 >
                   {checkoutLoading ? 'Bezig...' : 'Bestellen & betalen via Tikkie'}
                 </button>
