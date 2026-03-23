@@ -40,15 +40,14 @@ export async function POST(request: NextRequest) {
 
   const adminClient = createAdminClient()
 
-  // E-mail ophalen via RPC
-  const { data: emails } = await adminClient.rpc('get_user_emails', {
-    user_ids: [userId],
-  })
-  const row = Array.isArray(emails) && emails.length > 0 ? emails[0] : null
-  const email = row && typeof (row as { email?: string }).email === 'string' ? (row as { email: string }).email : null
-  if (!email) {
-    return NextResponse.json({ error: 'E-mailadres van gebruiker niet gevonden.' }, { status: 404 })
+  // E-mail ophalen via Admin API (RPC get_user_emails gebruikt auth.uid() wat null is bij service role)
+  const { data: authUser, error: getUserError } = await adminClient.auth.admin.getUserById(userId)
+  if (getUserError || !authUser?.user?.email) {
+    return NextResponse.json({
+      error: authUser?.user ? 'Gebruiker heeft geen e-mailadres in Auth.' : (getUserError?.message ?? 'Gebruiker niet gevonden in Auth. Mogelijk was het account verwijderd.'),
+    }, { status: 404 })
   }
+  const email = authUser.user.email
 
   // Naam uit rol
   const { data: rol } = await adminClient
