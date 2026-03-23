@@ -443,6 +443,7 @@ export default function Dashboard() {
   const [kaartFilterLand, setKaartFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
   const [kaartFilterKassaPakket, setKaartFilterKassaPakket] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
   const [kaartFilterBikeTotaal, setKaartFilterBikeTotaal] = useState<'alle' | 'ja' | 'nee'>('alle')
+  const [temperatuur, setTemperatuur] = useState<number | null>(null)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -495,6 +496,23 @@ export default function Dashboard() {
     setKolommenGeladen(true)
 
   }, [])
+
+  // Temperatuur ophalen voor geselecteerde locatie (Open-Meteo, gratis, geen API key)
+  useEffect(() => {
+    const w = geselecteerdeWinkel
+    if (!w?.lat || !w?.lng) {
+      setTemperatuur(null)
+      return
+    }
+    let cancelled = false
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${w.lat}&longitude=${w.lng}&current=temperature_2m`)
+      .then(r => r.json())
+      .then((data: { current?: { temperature_2m?: number } }) => {
+        if (!cancelled && typeof data?.current?.temperature_2m === 'number') setTemperatuur(data.current.temperature_2m)
+      })
+      .catch(() => { if (!cancelled) setTemperatuur(null) })
+    return () => { cancelled = true }
+  }, [geselecteerdeWinkel?.id, geselecteerdeWinkel?.lat, geselecteerdeWinkel?.lng])
 
   useEffect(() => {
     if (!kolommenGeladen || zichtbareKolommen.length === 0) return
@@ -1045,6 +1063,10 @@ export default function Dashboard() {
                     <div className="flex flex-wrap items-center gap-2 min-w-0">
                       <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{geselecteerdeWinkel.naam}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.45)', fontFamily: F }}>#{dealer}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.6)', fontFamily: F }} title={getDatum()}>{new Date().toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      {temperatuur != null && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.6)', fontFamily: F }} title={geselecteerdeWinkel.stad ? `Temperatuur ${geselecteerdeWinkel.stad}` : 'Temperatuur locatie'}>{Math.round(temperatuur)}°C {geselecteerdeWinkel.stad ? `(${geselecteerdeWinkel.stad})` : ''}</span>
+                      )}
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
                         {bron === 'wilmar' ? 'Wilmar' : (bron === 'vendit' || bron === 'vendit_api') ? 'Vendit' : 'CycleSoftware'}
                       </span>
