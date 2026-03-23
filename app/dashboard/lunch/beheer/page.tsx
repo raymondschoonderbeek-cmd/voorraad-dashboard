@@ -152,7 +152,7 @@ export default function LunchBeheerPage() {
           <button
             onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
             className="text-sm font-medium px-3 py-1.5 rounded-lg"
-            style={{ background: DYNAMO_BLUE, color: 'white' }}
+            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
           >
             Uitloggen
           </button>
