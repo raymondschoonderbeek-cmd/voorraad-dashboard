@@ -105,6 +105,7 @@ export default function BeheerPage() {
   const [venditTestLoading, setVenditTestLoading] = useState(false)
   const [venditTestResult, setVenditTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [resendInviteLoading, setResendInviteLoading] = useState<string | null>(null)
+  const [gebruikerZoekterm, setGebruikerZoekterm] = useState('')
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
   const [userLastSignIns, setUserLastSignIns] = useState<Record<string, string | null>>({})
@@ -621,6 +622,18 @@ export default function BeheerPage() {
     return toegankelijk.length === 0 ? 'Geen winkels' : toegankelijk.map(w => w.naam).join(', ')
   }
 
+  const gefilterdeGebruikers = useMemo(() => {
+    const q = gebruikerZoekterm.trim().toLowerCase()
+    if (!q) return rollen
+    return rollen.filter(rol => {
+      const naam = (rol.naam ?? '').toLowerCase()
+      const email = (userEmails[rol.user_id] ?? '').toLowerCase()
+      const rolNaam = (rol.rol ?? '').toLowerCase()
+      const winkels = winkelNamenVoorGebruiker(rol.user_id).toLowerCase()
+      return naam.includes(q) || email.includes(q) || rolNaam.includes(q) || winkels.includes(q)
+    })
+  }, [rollen, gebruikerZoekterm, userEmails, winkelToegang, winkels])
+
   async function verwerkExcel(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -955,8 +968,22 @@ export default function BeheerPage() {
         {/* ── TAB: GEBRUIKERS ── */}
         {tab === 'gebruikers' && (
           <div className="space-y-4">
-            <div className="flex justify-end">
-              <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null); setGeselecteerdeWinkels([]) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+              <div className="relative flex-1 max-w-sm">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(45,69,124,0.3)' }}>⌕</span>
+                <input
+                  type="text"
+                  placeholder="Zoek op naam, e-mail, rol of winkel..."
+                  value={gebruikerZoekterm}
+                  onChange={e => setGebruikerZoekterm(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2 pl-9 text-sm"
+                  style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                />
+                {gebruikerZoekterm && (
+                  <button type="button" onClick={() => setGebruikerZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Wis zoekterm">✕</button>
+                )}
+              </div>
+              <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null); setGeselecteerdeWinkels([]) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
                 + Gebruiker uitnodigen
               </button>
             </div>
@@ -1078,15 +1105,17 @@ export default function BeheerPage() {
             <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
               <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Gebruikersoverzicht</div>
-                <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{rollen.length} gebruikers</div>
+                <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>
+                  {gebruikerZoekterm ? `${gefilterdeGebruikers.length} van ${rollen.length} gebruikers` : `${rollen.length} gebruikers`}
+                </div>
               </div>
               {loading ? (
                 <div className="p-10 text-center"><div className="w-7 h-7 border-2 border-gray-200 rounded-full animate-spin mx-auto mb-2" style={{ borderTopColor: DYNAMO_BLUE }} /></div>
-              ) : rollen.length === 0 ? (
-                <div className="p-10 text-center text-sm" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>Nog geen gebruikers</div>
+              ) : gefilterdeGebruikers.length === 0 ? (
+                <div className="p-10 text-center text-sm" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>{gebruikerZoekterm ? 'Geen gebruikers gevonden' : 'Nog geen gebruikers'}</div>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
-                  {rollen.map(rol => (
+                  {gefilterdeGebruikers.map(rol => (
                     <div key={rol.id} className="flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50/50">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
                         {(rol.naam || 'G').charAt(0).toUpperCase()}
