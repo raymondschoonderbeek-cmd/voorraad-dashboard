@@ -108,10 +108,13 @@ export async function GET(request: NextRequest) {
     .select('*')
     .order('naam')
 
+  const { searchParams } = new URL(request.url)
+  const light = searchParams.get('light') === '1' || searchParams.get('light') === 'true'
+
   const venditDealerNummers = new Set<string>()
   const venditLaatstPerDealer = new Map<string, string>() // dealer_nummer -> ISO datum
   const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
-  if (venditWinkels.length > 0) {
+  if (!light && venditWinkels.length > 0) {
     const cachedNumbers = getCachedVenditDealerNumbers()
     const cachedStats = getCachedVenditStats()
     if (cachedNumbers) {

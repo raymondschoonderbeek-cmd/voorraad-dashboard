@@ -44,7 +44,7 @@ const IconArrowLeft = () => (
 
 export default function BeheerPage() {
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<Tab>('winkels')
+  const [tab, setTab] = useState<Tab>(() => 'gebruikers')
   const [rollen, setRollen] = useState<Rol[]>([])
   const [winkelToegang, setWinkelToegang] = useState<WinkelToegang[]>([])
   const [winkels, setWinkels] = useState<Winkel[]>([])
@@ -104,6 +104,7 @@ export default function BeheerPage() {
   const [cycleStatusLoading, setCycleStatusLoading] = useState(false)
   const [venditTestLoading, setVenditTestLoading] = useState(false)
   const [venditTestResult, setVenditTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [resendInviteLoading, setResendInviteLoading] = useState<string | null>(null)
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
   const [userLastSignIns, setUserLastSignIns] = useState<Record<string, string | null>>({})
@@ -129,10 +130,10 @@ export default function BeheerPage() {
   const [winkelFilterLocatie, setWinkelFilterLocatie] = useState<'alle' | 'zonder'>('alle')
   const [winkelZoekterm, setWinkelZoekterm] = useState('')
 
-  const haalGebruikersOp = useCallback(async () => {
+  const haalGebruikersOp = useCallback(async (light = true) => {
     setLoading(true)
     setError('')
-    const res = await fetch('/api/gebruikers')
+    const res = await fetch(light ? '/api/gebruikers?light=1' : '/api/gebruikers')
     if (res.status === 403) {
       setError('Geen toegang. Alleen admins.')
       setLoading(false)
@@ -166,7 +167,7 @@ export default function BeheerPage() {
     setWinkelRefreshLoading(true)
     setError('')
     if (isAdmin) {
-      const res = await fetch('/api/gebruikers')
+      const res = await fetch('/api/gebruikers') // full data (incl. vendit)
       if (res.status === 403) {
         setError('Geen toegang. Alleen admins.')
       } else {
@@ -194,6 +195,8 @@ export default function BeheerPage() {
       setTab('winkels')
       setWinkelFilterLocatie('zonder')
     }
+    if (searchParams.get('tab') === 'winkels') setTab('winkels')
+    if (searchParams.get('tab') === 'gebruikers') setTab('gebruikers')
   }, [searchParams])
 
   useEffect(() => {
@@ -205,9 +208,13 @@ export default function BeheerPage() {
       if (cancelled) return
       setIsAdmin(admin)
       if (admin) {
-        await haalGebruikersOp()
+        await haalGebruikersOp(true)
+        if (cancelled) return
+        setTab('gebruikers')
       } else {
         await haalWinkelsOp()
+        if (cancelled) return
+        setTab('winkels')
       }
     }
     init()
@@ -435,8 +442,30 @@ export default function BeheerPage() {
           : `Uitnodiging verstuurd naar ${nieuwEmail}!`)
       setNieuwEmail(''); setNieuwNaam(''); setNieuwWachtwoord(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setGeselecteerdeWinkels([])
       setToonForm(false)
-      await haalGebruikersOp()
+      await haalGebruikersOp(true)
     }
+  }
+
+  async function stuurUitnodigingOpnieuw(userId: string) {
+    setResendInviteLoading(userId)
+    setFormError('')
+    setFormSuccess('')
+    try {
+      const res = await fetch('/api/gebruikers/resend-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setFormSuccess(data.warning ?? 'E-mail met nieuw wachtwoord verstuurd.')
+      } else {
+        setFormError(data.error ?? 'Versturen mislukt.')
+      }
+    } catch {
+      setFormError('Versturen mislukt.')
+    }
+    setResendInviteLoading(null)
   }
 
   async function updateGebruiker(e: React.FormEvent) {
@@ -459,7 +488,7 @@ export default function BeheerPage() {
       setBewerkEmail('')
       setGeselecteerdeWinkels([])
       setFormSuccess('Gebruiker opgeslagen.')
-      await haalGebruikersOp()
+      await haalGebruikersOp(true)
     } else {
       setFormError(data.error ?? 'Opslaan mislukt.')
     }
@@ -475,7 +504,7 @@ export default function BeheerPage() {
       setFormError(data.error ?? 'Verwijderen mislukt.')
     } else {
       setFormSuccess('Gebruiker verwijderd.')
-      await haalGebruikersOp()
+      await haalGebruikersOp(true)
     }
   }
 
@@ -892,8 +921,27 @@ export default function BeheerPage() {
         {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
         <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', WebkitOverflowScrolling: 'touch' }}>
-          {tabs.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key); setToonForm(false); setBewerkGebruiker(null); setToonWinkelForm(false); setBewerkWinkel(null) }}
+{tabs.map(t => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  setTab(t.key)
+                  setToonForm(false)
+                  setBewerkGebruiker(null)
+                  setToonWinkelForm(false)
+                  setBewerkWinkel(null)
+                  if (t.key === 'winkels' && isAdmin) {
+                    fetch('/api/gebruikers').then(r => r.json()).then(d => {
+                      setRollen(d.rollen ?? [])
+                      setWinkelToegang(d.winkelToegang ?? [])
+                      setWinkels(d.winkels ?? [])
+                      setMfaStatus(d.mfaStatus ?? {})
+                      setUserEmails(d.userEmails ?? {})
+                      setUserLastSignIns(d.userLastSignIns ?? {})
+                    }).catch(() => {})
+                  }
+                }}
               className="flex-1 min-w-[100px] sm:min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2.5 text-xs sm:text-sm font-semibold transition-all shrink-0"
               style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
               <span>{t.icon}</span><span>{t.label}</span>
@@ -1067,7 +1115,8 @@ export default function BeheerPage() {
                             : 'Nog nooit ingelogd'}
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
+                      <div className="flex gap-2 shrink-0 flex-wrap">
+                        <button onClick={() => stuurUitnodigingOpnieuw(rol.user_id)} disabled={resendInviteLoading === rol.user_id} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }} title="Stuur inloggegevens opnieuw per e-mail">{resendInviteLoading === rol.user_id ? '...' : 'Opnieuw uitnodigen'}</button>
                         <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Bewerken</button>
                         <button onClick={() => verwijderGebruiker(rol.user_id, rol.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
