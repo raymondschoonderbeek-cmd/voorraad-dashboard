@@ -543,7 +543,7 @@ export default function CampagneFietsenPage() {
                               <p className="text-xs text-gray-500">referentie</p>
                             </div>
                             <div className="text-right min-w-[4rem]">
-                              <p className="text-xl font-bold tabular-nums text-red-700">{(f.verkocht_totaal ?? 0) > 0 ? `−${f.verkocht_totaal}` : '0'}</p>
+                              <p className="text-xl font-bold tabular-nums text-red-700">{f.verkocht_totaal ?? 0}</p>
                               <p className="text-xs text-gray-500">verkocht (geschat)</p>
                             </div>
                             <div className="text-right min-w-[4rem]">
@@ -636,7 +636,7 @@ export default function CampagneFietsenPage() {
                                 {hasBaseline && (
                                   <>
                                     <td className="px-4 py-2 text-right font-semibold tabular-nums text-red-800">
-                                      {(w.verkocht ?? 0) > 0 ? `−${w.verkocht}` : '0'}
+                                      {w.verkocht ?? 0}
                                     </td>
                                     <td className="px-4 py-2 text-right font-semibold tabular-nums text-emerald-900">
                                       {(w.toename ?? 0) > 0 ? `+${w.toename}` : '0'}
