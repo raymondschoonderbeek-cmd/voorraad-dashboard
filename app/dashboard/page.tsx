@@ -473,6 +473,7 @@ export default function Dashboard() {
   const [kaartFilterLand, setKaartFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
   const [kaartFilterKassaPakket, setKaartFilterKassaPakket] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
   const [kaartFilterBikeTotaal, setKaartFilterBikeTotaal] = useState<'alle' | 'ja' | 'nee'>('alle')
+  const [winkelQuickZoek, setWinkelQuickZoek] = useState('')
   const [temperatuur, setTemperatuur] = useState<number | null>(null)
 
   const router = useRouter()
@@ -501,6 +502,23 @@ export default function Dashboard() {
     })
   }, [winkelsVoorGebruiker, kaartFilterLand, kaartFilterKassaPakket, kaartFilterBikeTotaal])
 
+  const winkelsQuickPick = useMemo(() => {
+    const q = winkelQuickZoek.trim().toLowerCase()
+    if (!q) return [] as Winkel[]
+    return winkelsVoorGebruiker.filter(w => {
+      const blob = [w.naam, w.stad, w.postcode, w.straat].map(s => String(s ?? '').toLowerCase()).join(' ')
+      return blob.includes(q)
+    }).slice(0, 8)
+  }, [winkelQuickZoek, winkelsVoorGebruiker])
+
+  const kaartFiltersActief = kaartFilterLand !== 'alle' || kaartFilterKassaPakket !== 'alle' || kaartFilterBikeTotaal !== 'alle'
+  const showKaartFilterEmpty = !winkelsLoading && winkelsVoorGebruiker.length > 0 && winkelsGefilterd.length === 0
+
+  function resetKaartFilters() {
+    setKaartFilterLand('alle')
+    setKaartFilterKassaPakket('alle')
+    setKaartFilterBikeTotaal('alle')
+  }
 
   // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
   useEffect(() => {
@@ -787,7 +805,6 @@ export default function Dashboard() {
         .s1{animation:fadeUp .5s ease forwards;opacity:0}
         .s2{animation:fadeUp .5s .08s ease forwards;opacity:0}
         .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
-        .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
         .mod-card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
         .mod-card:hover{transform:translateY(-2px);box-shadow:0 16px 44px rgba(0,0,0,.22)!important}
         .mod-card:focus-visible{outline:2px solid rgba(255,255,255,.45);outline-offset:3px}
@@ -835,49 +852,258 @@ export default function Dashboard() {
           {!geselecteerdeWinkel ? (
             <div className="space-y-8">
 
-              {/* HERO */}
-              <div className="s1 relative rounded-xl overflow-hidden shadow-lg shadow-[rgba(45,69,124,0.12)] ring-1 ring-white/10" style={{ background: DYNAMO_BLUE, minHeight: 140 }}>
+              {/* HERO — één duidelijke binnenkomst: welkom + context + (optioneel) kerngetallen */}
+              <section className="s1 relative rounded-xl overflow-hidden shadow-lg shadow-[rgba(45,69,124,0.12)] ring-1 ring-white/10" style={{ background: DYNAMO_BLUE, minHeight: 140 }} aria-labelledby="dashboard-heading-welcome">
                 <div className="pointer-events-none absolute top-0 left-0 right-0 h-[3px] opacity-95" style={{ background: `linear-gradient(90deg, transparent 0%, ${DYNAMO_GOLD} 45%, ${DYNAMO_GOLD} 55%, transparent 100%)` }} aria-hidden />
-                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.2)' }} />
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} aria-hidden />
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.2)' }} aria-hidden />
                 <div className="relative p-4 sm:p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
                     <div className="min-w-0 flex flex-col gap-2 sm:gap-3">
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                          <span className="w-1 h-1 rounded-full shrink-0" style={{ background: 'white' }} />
+                          <span className="w-1 h-1 rounded-full shrink-0" style={{ background: 'white' }} aria-hidden />
                           <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.95)', fontFamily: F }}><span className="uppercase">{getDagdeel()}</span>{gebruiker ? `, ${gebruiker}` : ''}</span>
                         </div>
-                        <h1 className="min-w-0" style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>DRG Portal</h1>
+                        <h1 id="dashboard-heading-welcome" className="min-w-0" style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>DRG Portal</h1>
                       </div>
-                      <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
+                      <p className="text-balance" style={{ color: 'rgba(255,255,255,0.92)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
+                      {!lunchOnly && !winkelsLoading && winkelsVoorGebruiker.length === 0 && (
+                        <p className="max-w-xl rounded-lg px-3 py-2 text-xs leading-snug" style={{ background: 'rgba(0,0,0,0.2)', color: 'rgba(255,255,255,0.95)', fontFamily: F }}>
+                          Er zijn nog geen winkels gekoppeld aan jouw account of land-rechten.
+                          {isAdmin ? (
+                            <> <Link href="/dashboard/beheer" className="font-semibold underline underline-offset-2">Open Beheer</Link> om winkels te koppelen.</>
+                          ) : (
+                            ' Neem contact op met een beheerder.'
+                          )}
+                        </p>
+                      )}
                     </div>
-                    {!lunchOnly && winkelsVoorGebruiker.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-4 sm:gap-5 shrink-0 pt-1 border-t border-white/10 lg:border-t-0 lg:pt-0 lg:pl-6 lg:border-l lg:border-white/10">
-                        {[{ label: 'Winkels', value: winkelsVoorGebruiker.length, color: 'white' }, { label: 'Locaties', value: winkelsVoorGebruiker.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: 'white' }].map((s, i) => (
-                          <div key={s.label} className="flex items-center gap-2">
-                            {i > 0 && <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />}
-                            <div>
-                              <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
-                              <div style={{ color: s.color, fontSize: '16px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
+                    {!lunchOnly && (
+                      <div
+                        className="flex flex-wrap items-center gap-4 sm:gap-5 shrink-0 pt-1 border-t border-white/10 lg:border-t-0 lg:pt-0 lg:pl-6 lg:border-l lg:border-white/10"
+                        role="group"
+                        aria-label="Overzicht winkels en favorieten"
+                        aria-busy={winkelsLoading}
+                      >
+                        {winkelsLoading ? (
+                          [0, 1, 2].map(i => (
+                            <div key={i} className="space-y-1.5" aria-hidden>
+                              <div className="h-2.5 w-14 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                              <div className="h-5 w-10 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.28)' }} />
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        ) : winkelsVoorGebruiker.length > 0 ? (
+                          [{ label: 'Winkels', value: winkelsVoorGebruiker.length }, { label: 'Locaties', value: winkelsVoorGebruiker.filter(w => w.stad).length }, { label: 'Favorieten', value: favorieten.length }].map((s, i) => (
+                            <div key={s.label} className="flex items-center gap-2">
+                              {i > 0 && <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} aria-hidden />}
+                              <div>
+                                <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                                <div style={{ color: 'white', fontSize: '16px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
+                              </div>
+                            </div>
+                          ))
+                        ) : null}
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* MODULES */}
-              <div className="s2">
-                <div className="flex items-center gap-3 mb-4">
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Modules</span>
-                  <div className="flex-1 h-px" style={{ background: dashboardUi.sectionDivider }} />
-                  {!lunchOnly && (
-                    <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }}>Sleep om te herschikken</span>
+              <p className="text-pretty text-sm leading-relaxed max-w-2xl m-0" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                {lunchOnly
+                  ? 'Kies hieronder een module om verder te gaan.'
+                  : 'Zoek een winkel op naam of plaats, of gebruik de kaart. Daarna open je voorraad of scroll je naar andere modules.'}
+              </p>
+
+              {/* LOCATIES & VOORRAAD — eerst winkel kiezen (plan: laag A vóór overige modules) */}
+              {!lunchOnly && (
+              <section className="s2" aria-labelledby="dashboard-heading-locaties">
+                <div className="flex flex-col gap-2 sm:gap-3 mb-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 id="dashboard-heading-locaties" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Locaties & voorraad</h2>
+                    <div className="flex-1 min-w-[2rem] h-px" style={{ background: dashboardUi.sectionDivider }} aria-hidden />
+                  </div>
+                  <p className="m-0 text-sm max-w-3xl text-pretty" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                    Filters gelden voor de kaart en de winkelkaarten hieronder.
+                  </p>
+                </div>
+
+                {winkelsVoorGebruiker.length > 0 && (
+                  <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-start">
+                    {orderedModules.includes('voorraad') && (
+                      <button
+                        type="button"
+                        onClick={openWinkelSelect}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 shrink-0 w-full sm:w-auto"
+                        style={{ background: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 6px 24px rgba(45,69,124,0.25)' }}
+                      >
+                        <IconBox /> Voorraad bekijken — kies een winkel
+                      </button>
+                    )}
+                    <div className="relative flex-1 min-w-0 max-w-md">
+                      <label htmlFor="dashboard-winkel-quick" className="sr-only">Zoek winkel op naam, plaats of postcode</label>
+                      <input
+                        id="dashboard-winkel-quick"
+                        type="search"
+                        autoComplete="off"
+                        value={winkelQuickZoek}
+                        onChange={e => setWinkelQuickZoek(e.target.value)}
+                        placeholder="Zoek op naam, plaats of postcode…"
+                        className="w-full rounded-xl px-3 py-2.5 text-sm"
+                        style={{ background: 'white', border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                      />
+                      {winkelsQuickPick.length > 0 && (
+                        <ul
+                          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-xl border bg-white py-1 shadow-lg"
+                          style={{ borderColor: 'rgba(45,69,124,0.12)' }}
+                          role="listbox"
+                          aria-label="Zoekresultaten winkels"
+                        >
+                          {winkelsQuickPick.map(w => (
+                            <li key={w.id} role="option">
+                              <button
+                                type="button"
+                                className="w-full px-3 py-2.5 text-left text-sm transition hover:bg-dynamo-blue/5"
+                                style={{ fontFamily: F, color: DYNAMO_BLUE }}
+                                onClick={() => { void selecteerWinkel(w); setWinkelQuickZoek('') }}
+                              >
+                                <span className="font-semibold">{w.naam}</span>
+                                {(w.stad || w.postcode) && (
+                                  <span className="block text-xs mt-0.5" style={{ color: dashboardUi.textMuted }}>
+                                    {[w.stad, w.postcode].filter(Boolean).join(' · ')}
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3 mb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op land">
+                      <option value="alle">Alle landen</option>
+                      <option value="Netherlands">Nederland</option>
+                      <option value="Belgium">België</option>
+                    </select>
+                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op kassapakket">
+                      <option value="alle">Kassa pakket: alle</option>
+                      <option value="cyclesoftware">CycleSoftware</option>
+                      <option value="wilmar">Wilmar</option>
+                      <option value="vendit">Vendit</option>
+                    </select>
+                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op Bike Totaal">
+                      <option value="alle">Bike Totaal: alle</option>
+                      <option value="ja">Bike Totaal: ja</option>
+                      <option value="nee">Bike Totaal: nee</option>
+                    </select>
+                  </div>
+                  {kaartFiltersActief && (
+                    <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold border transition hover:opacity-90" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
+                      Alles tonen
+                    </button>
+                  )}
+                  <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }} aria-live="polite">
+                    {winkelsLoading ? 'Kaart laden…' : `${winkelsGefilterd.filter(w => w.lat && w.lng).length} van ${winkelsGefilterd.length} op kaart`}
+                  </span>
+                </div>
+                <p className="text-xs mb-4 m-0 max-w-3xl" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                  Tip: staan alle filters op “alle”, dan zie je alle locaties die aan je account zijn gekoppeld.
+                </p>
+
+                <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
+                  {showKaartFilterEmpty && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.1)' }}>
+                      <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen locaties met deze filters</p>
+                      <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                        Alle filters resetten
+                      </button>
+                    </div>
+                  )}
+                  {winkelsLoading ? (
+                    <div className="flex items-center justify-center gap-3 px-4 py-16" style={{ background: 'rgba(45,69,124,0.06)', fontFamily: F }} role="status" aria-live="polite">
+                      <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
+                      <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Winkels en kaart laden…</span>
+                    </div>
+                  ) : winkelsGefilterd.length === 0 ? (
+                    <div className="px-6 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                      {winkelsVoorGebruiker.length === 0
+                        ? 'Geen locaties gekoppeld aan dit account.'
+                        : showKaartFilterEmpty
+                          ? 'Geen locaties binnen deze filters — gebruik de balk hierboven om te resetten.'
+                          : 'Geen locaties om te tonen.'}
+                    </div>
+                  ) : (
+                    <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
                   )}
                 </div>
+
+                {winkelsGefilterd.length > 0 && (
+                  <div className="mt-8 space-y-6">
+                    {favorieten.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-3 mb-4">
+                          <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_BLUE, fontFamily: F }}>★ Mijn winkels</span>
+                          <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.2)' }} />
+                          <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
+                            <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkelsGefilterd.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Alle winkels</span>
+                        <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
+                        <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {winkelsGefilterd.map((w, i) => (
+                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+              )}
+
+              {/* MODULES — overige portalmodules (laag B) */}
+              <section className="s3" aria-labelledby="dashboard-heading-modules">
+                <div className="flex flex-col gap-2 mb-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 id="dashboard-heading-modules" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>{lunchOnly ? 'Modules' : 'Overige modules'}</h2>
+                    <div className="flex-1 min-w-[2rem] h-px" style={{ background: dashboardUi.sectionDivider }} aria-hidden />
+                  </div>
+                  {!lunchOnly && (
+                    <p id="dashboard-modules-hint" className="m-0 text-pretty max-w-3xl" style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }}>
+                      Sleep een tegel om de volgorde aan te passen (opgeslagen in je profiel).
+                      {' '}
+                      <Link href="/dashboard/instellingen" className="font-semibold underline underline-offset-2" style={{ color: DYNAMO_BLUE }}>Instellingen</Link>
+                      {' '}voor MFA en lunch-voorkeur.
+                    </p>
+                  )}
+                </div>
+                {sessionData !== undefined && orderedModules.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed px-5 py-8 text-center" style={{ borderColor: 'rgba(45,69,124,0.22)', background: 'rgba(255,255,255,0.7)' }}>
+                    <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen modules ingeschakeld</p>
+                    <p className="mt-2 text-sm leading-relaxed" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                      Vraag een beheerder om modules te activeren, of open Beheer als je zelf rechten hebt.
+                    </p>
+                    {isAdmin && (
+                      <Link href="/dashboard/beheer" className="mt-4 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                        Naar Beheer
+                      </Link>
+                    )}
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
                   {orderedModules.map((id, idx) => {
                     /** Max hoogte gelijk aan compacte tegels (bovenste rij); branche-nieuws scrollt binnen dit kader */
@@ -893,6 +1119,8 @@ export default function Dashboard() {
                         className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing opacity-50 hover:opacity-90 transition-opacity"
                         style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)' }}
                         title="Sleep om volgorde te wijzigen"
+                        aria-label={`Verslepen: module ${id.replace(/-/g, ' ')}`}
+                        aria-describedby="dashboard-modules-hint"
                       >
                         <IconGrip />
                       </div>
@@ -900,7 +1128,15 @@ export default function Dashboard() {
                     if (id === 'voorraad') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className={`${modCard} cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }} onClick={openWinkelSelect}>
+                          <div
+                            className={`${modCard} cursor-pointer flex flex-col h-full`}
+                            style={{ ...dashboardModuleTile.surface }}
+                            onClick={openWinkelSelect}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openWinkelSelect() } }}
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Voorraad: kies een winkel om producten te bekijken"
+                          >
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
@@ -920,7 +1156,7 @@ export default function Dashboard() {
                     if (id === 'lunch') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
+                          <Link href="/dashboard/lunch" aria-label="Module Lunch bestellen: broodjes bestellen voor op kantoor" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
@@ -940,7 +1176,7 @@ export default function Dashboard() {
                     if (id === 'brand-groep') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
+                          <Link href="/dashboard/brand-groep" aria-label="Module Merk en groep: voorraadanalyse per merk" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
@@ -960,7 +1196,7 @@ export default function Dashboard() {
                     if (id === 'campagne-fietsen') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/campagne-fietsen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
+                          <Link href="/dashboard/campagne-fietsen" aria-label="Module Campagnefietsen: landelijk voorraadoverzicht" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
@@ -1036,88 +1272,26 @@ export default function Dashboard() {
                     return null
                   })}
                 </div>
-              </div>
-
-              {/* KAART */}
-              {!lunchOnly && (
-              <div className="s3">
-                <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Locaties</span>
-                  <div className="flex-1 min-w-0 h-px" style={{ background: dashboardUi.sectionDivider }} />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }}>
-                      <option value="alle">Alle landen</option>
-                      <option value="Netherlands">Nederland</option>
-                      <option value="Belgium">België</option>
-                    </select>
-                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }}>
-                      <option value="alle">Kassa pakket: alle</option>
-                      <option value="cyclesoftware">CycleSoftware</option>
-                      <option value="wilmar">Wilmar</option>
-                      <option value="vendit">Vendit</option>
-                    </select>
-                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }}>
-                      <option value="alle">Bike Totaal: alle</option>
-                      <option value="ja">Bike Totaal: ja</option>
-                      <option value="nee">Bike Totaal: nee</option>
-                    </select>
-                  </div>
-                  <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }}>{winkelsGefilterd.filter(w => w.lat && w.lng).length} van {winkelsGefilterd.length} op kaart</span>
-                </div>
-                <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
-                  <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
-                </div>
-              </div>
-              )}
-
-              {/* WINKELKAARTEN */}
-              {!lunchOnly && winkelsGefilterd.length > 0 && (
-                <div className="s4 space-y-6">
-
-                  {/* Favorieten */}
-                  {favorieten.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_BLUE, fontFamily: F }}>★ Mijn winkels</span>
-                        <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.2)' }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
-                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkelsGefilterd.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Alle winkels */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Alle winkels</span>
-                      <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
-                      <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {winkelsGefilterd.map((w, i) => (
-                        <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </section>
             </div>
 
           ) : (
             <>
               {loading && (
-                <div className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
-                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
-                  <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden...</span>
+                <div className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }} role="status" aria-live="polite" aria-busy="true">
+                  <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} aria-hidden />
+                  <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Voorraad laden voor {geselecteerdeWinkel.naam}…</span>
                 </div>
               )}
 
-              <button onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}; setGeselecteerdeWinkel(null); router.push('/dashboard') }} className="flex items-center gap-2 text-sm font-semibold transition hover:opacity-70" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-                <IconArrowLeft /> Terug naar startscherm
+              <button
+                type="button"
+                onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}; setGeselecteerdeWinkel(null); router.push('/dashboard') }}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-90"
+                style={{ color: DYNAMO_BLUE, fontFamily: F, background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.12)' }}
+              >
+                <IconArrowLeft aria-hidden /> Terug naar modules en kaart
               </button>
 
               {/* Stats */}
@@ -1258,9 +1432,24 @@ export default function Dashboard() {
                       ) : gefilterdEnGesorteerd.length === 0 ? (
                         <tr>
                           <td colSpan={zichtbareKolommen.length} className="px-6 py-16 text-center">
-                            <div className="text-3xl mb-3">🔍</div>
-                            <div className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen producten gevonden</div>
-                            <div className="text-sm mt-1" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Probeer een andere zoekterm</div>
+                            <div className="text-3xl mb-3" aria-hidden>🔍</div>
+                            <div className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                              {zoekterm.trim() !== '' || zoekKolom !== 'ALL'
+                                ? 'Geen resultaten met deze zoekfilters'
+                                : producten.length === 0
+                                  ? 'Geen voorraadgegevens voor deze winkel'
+                                  : 'Geen producten met voorraad (we tonen alleen artikelen met voorraad ≥ 1)'}
+                            </div>
+                            <div className="text-sm mt-2 max-w-sm mx-auto leading-relaxed" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
+                              {zoekterm.trim() !== '' || zoekKolom !== 'ALL'
+                                ? 'Pas de zoekterm aan of wis de filters om alles weer te tonen.'
+                                : 'Controleer de koppeling in Beheer of kies een andere locatie.'}
+                            </div>
+                            {(zoekterm.trim() !== '' || zoekKolom !== 'ALL') && (
+                              <button type="button" onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                                Wis zoekfilters
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ) : (
