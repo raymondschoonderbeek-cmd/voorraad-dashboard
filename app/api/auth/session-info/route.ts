@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isIpTrusted, getClientIp } from '@/lib/trusted-ips'
 import { withRateLimit } from '@/lib/api-middleware'
-import { parseLandenToegang, resolveDashboardModules } from '@/lib/dashboard-modules'
+import { parseLandenToegang, resolveDashboardModules, type LandCode } from '@/lib/dashboard-modules'
 
 /**
  * Retourneert sessie-info voor MFA/IP-logica.
