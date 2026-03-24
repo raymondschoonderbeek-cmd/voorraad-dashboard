@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { DYNAMO_BLUE, DYNAMO_LOGO, FONT_FAMILY } from '@/lib/theme'
 import { CampagneFietsNlMap, type CampagneFietsMapPunt } from '@/components/campagne-fietsen/CampagneFietsNlMap'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const sessionFetcher = (url: string) => fetch(url).then(r => r.json())
 
 type WinkelVoorraad = {
   winkel_id: number
@@ -38,10 +38,91 @@ type FietsAgg = {
 type VoorraadResponse = {
   fietsen: FietsAgg[]
   winkel_fouten: { winkel_id: number; naam: string; message: string }[]
+  synced_at?: string | null
   error?: string
 }
 
+type ProgressState = {
+  current: number
+  total: number
+  winkelNaam?: string
+}
+
 const F = "'Outfit', sans-serif"
+
+function formatSyncedAt(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' })
+  } catch {
+    return '—'
+  }
+}
+
+/** Handmatige herberekening: POST stream, daarna snapshot opgeslagen */
+async function fetchHerberekenSyncStream(
+  signal: AbortSignal,
+  onMeta: (m: { fietsCount: number; totalWinkels: number }) => void,
+  onProgress: (p: ProgressState) => void
+): Promise<VoorraadResponse> {
+  const res = await fetch('/api/campagne-fietsen/voorraad/sync?stream=1', {
+    method: 'POST',
+    credentials: 'include',
+    signal,
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(j.error || `HTTP ${res.status}`)
+  }
+  if (!res.body) throw new Error('Geen response')
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result: VoorraadResponse | null = null
+
+  const verwerkRegel = (line: string) => {
+    if (!line.trim()) return
+    const msg = JSON.parse(line) as Record<string, unknown>
+    if (msg.type === 'meta') {
+      onMeta({
+        fietsCount: Number(msg.fietsCount ?? 0),
+        totalWinkels: Number(msg.totalWinkels ?? 0),
+      })
+    }
+    if (msg.type === 'progress') {
+      onProgress({
+        current: Number(msg.current ?? 0),
+        total: Number(msg.total ?? 0),
+        winkelNaam: typeof msg.winkelNaam === 'string' ? msg.winkelNaam : undefined,
+      })
+    }
+    if (msg.type === 'error') {
+      throw new Error(String(msg.message ?? 'Fout bij ophalen'))
+    }
+    if (msg.type === 'result') {
+      result = {
+        fietsen: (msg.fietsen as FietsAgg[]) ?? [],
+        winkel_fouten: (msg.winkel_fouten as VoorraadResponse['winkel_fouten']) ?? [],
+        synced_at: typeof msg.synced_at === 'string' ? msg.synced_at : null,
+      }
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) verwerkRegel(line)
+  }
+  if (buffer.trim()) verwerkRegel(buffer)
+
+  if (!result) throw new Error('Onvolledige server-response')
+  return result
+}
 
 export default function CampagneFietsenPage() {
   const router = useRouter()
@@ -50,21 +131,95 @@ export default function CampagneFietsenPage() {
 
   const { data: sessionData, isLoading: sessionLoading } = useSWR<{ campagneFietsenEnabled?: boolean }>(
     '/api/auth/session-info',
-    fetcher
+    sessionFetcher
   )
   const mayViewCampagneFietsen = sessionData?.campagneFietsenEnabled === true
 
-  const { data, error, isLoading, mutate } = useSWR<VoorraadResponse>(
-    mayViewCampagneFietsen ? '/api/campagne-fietsen/voorraad' : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60_000,
+  const [data, setData] = useState<VoorraadResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [meta, setMeta] = useState<{ fietsCount: number; totalWinkels: number } | null>(null)
+  const [progress, setProgress] = useState<ProgressState | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  /** Snel: alleen snapshot uit Supabase */
+  const loadVoorraad = useCallback(async () => {
+    abortRef.current?.abort()
+    const ac = new AbortController()
+    abortRef.current = ac
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/campagne-fietsen/voorraad', {
+        credentials: 'include',
+        signal: ac.signal,
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(j.error || `HTTP ${res.status}`)
+      }
+      const payload = (await res.json()) as VoorraadResponse
+      if (!ac.signal.aborted) setData(payload)
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return
+      setError(e instanceof Error ? e.message : 'Laden mislukt')
+    } finally {
+      if (!ac.signal.aborted) setIsLoading(false)
     }
-  )
+  }, [])
+
+  /** Langzaam: alle winkels upstream + snapshot opslaan */
+  const herberekenVoorraad = useCallback(async () => {
+    const ok = window.confirm(
+      'Alle winkels worden opnieuw uit de voorraadbronnen (CycleSoftware, Wilmar, Vendit) opgehaald. Dit kan enkele minuten duren. Doorgaan?'
+    )
+    if (!ok) return
+
+    abortRef.current?.abort()
+    const ac = new AbortController()
+    abortRef.current = ac
+
+    setIsSyncing(true)
+    setError(null)
+    setMeta(null)
+    setProgress(null)
+
+    try {
+      const payload = await fetchHerberekenSyncStream(
+        ac.signal,
+        m => setMeta(m),
+        p => setProgress(p)
+      )
+      if (!ac.signal.aborted) setData(payload)
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return
+      setError(e instanceof Error ? e.message : 'Herberekening mislukt')
+    } finally {
+      if (!ac.signal.aborted) {
+        setIsSyncing(false)
+        setProgress(null)
+        setMeta(null)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!mayViewCampagneFietsen) return
+    loadVoorraad()
+    return () => abortRef.current?.abort()
+  }, [mayViewCampagneFietsen, loadVoorraad])
 
   const fietsen = data?.fietsen ?? []
   const winkelFouten = data?.winkel_fouten ?? []
+
+  const progressPct =
+    progress && progress.total > 0 ? Math.min(100, Math.round((progress.current / progress.total) * 100)) : 0
+
+  const syncedLabel = formatSyncedAt(data?.synced_at)
 
   function puntenVoorFiets(f: FietsAgg): CampagneFietsMapPunt[] {
     return f.winkels
@@ -127,24 +282,91 @@ export default function CampagneFietsenPage() {
         )}
 
         {mayViewCampagneFietsen && (
-        <div className="rounded-2xl p-5 sm:p-6 text-white shadow-lg" style={{ background: DYNAMO_BLUE }}>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ fontFamily: F }}>
-            Campagnefietsen — landelijk overzicht
-          </h1>
-          <p className="mt-2 text-sm opacity-80 max-w-2xl">
-            Voorraad per winkel via dezelfde koppelingen als het voorraaddashboard (CycleSoftware, Wilmar, Vendit). Alleen winkels met voorraad &gt; 0 worden getoond.
-          </p>
-          <button
-            type="button"
-            onClick={() => mutate()}
-            className="mt-4 text-sm font-semibold px-4 py-2 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 transition"
-          >
-            Vernieuwen
-          </button>
-        </div>
+          <div className="rounded-2xl p-5 sm:p-6 text-white shadow-lg" style={{ background: DYNAMO_BLUE }}>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ fontFamily: F }}>
+              Campagnefietsen — landelijk overzicht
+            </h1>
+            <p className="mt-2 text-sm opacity-80 max-w-2xl">
+              Voorraad per winkel via dezelfde koppelingen als het voorraaddashboard (CycleSoftware, Wilmar, Vendit). Alleen winkels met voorraad &gt; 0 worden getoond. De getoonde cijfers komen uit een opgeslagen snapshot; gebruik “Herbereken voorraad” om die te verversen.
+            </p>
+            {!isLoading && data != null && (
+              <p className="mt-3 text-xs opacity-90" style={{ fontFamily: F }}>
+                Laatst bijgewerkt: <strong>{syncedLabel}</strong>
+                {data.synced_at == null && (
+                  <span className="block mt-1 font-normal opacity-80">
+                    Nog geen sync — kies “Herbereken voorraad”.
+                  </span>
+                )}
+              </p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => loadVoorraad()}
+                disabled={isLoading || isSyncing}
+                className="text-sm font-semibold px-4 py-2 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 transition disabled:opacity-50"
+              >
+                {isLoading ? 'Laden…' : 'Vernieuwen (cache)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => herberekenVoorraad()}
+                disabled={isLoading || isSyncing}
+                className="text-sm font-semibold px-4 py-2 rounded-xl bg-white text-dynamo-blue border border-white hover:bg-white/95 transition disabled:opacity-50"
+                style={{ fontFamily: F }}
+              >
+                {isSyncing ? 'Bezig met herberekenen…' : 'Herbereken voorraad'}
+              </button>
+            </div>
+          </div>
         )}
 
-        {mayViewCampagneFietsen && isLoading && (
+        {mayViewCampagneFietsen && isSyncing && (
+          <div
+            className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm space-y-3"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+              <span className="font-semibold">Herberekenen: voorraad ophalen bij alle winkels</span>
+              {meta != null && (
+                <span className="text-xs opacity-70 tabular-nums">
+                  {meta.fietsCount} fietsen · {meta.totalWinkels} winkels
+                </span>
+              )}
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-[width] duration-300 ease-out"
+                style={{
+                  width: `${progress && progress.total > 0 ? progressPct : meta ? 8 : 5}%`,
+                  background: DYNAMO_BLUE,
+                  minWidth: progress && progress.total > 0 ? undefined : '12%',
+                }}
+              />
+            </div>
+            <p className="text-xs text-gray-600" style={{ fontFamily: F }}>
+              {progress && progress.total > 0 ? (
+                <>
+                  {progress.current} / {progress.total} winkels
+                  {progress.winkelNaam ? (
+                    <>
+                      {' '}
+                      — <span className="font-medium text-gray-800">{progress.winkelNaam}</span>
+                    </>
+                  ) : null}
+                </>
+              ) : meta && meta.totalWinkels === 0 ? (
+                'Geen winkels in het systeem.'
+              ) : (
+                'Bezig met ophalen…'
+              )}
+            </p>
+          </div>
+        )}
+
+        {mayViewCampagneFietsen && isLoading && !data && (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-48 rounded-2xl bg-white border border-gray-100 animate-pulse" />
@@ -154,11 +376,11 @@ export default function CampagneFietsenPage() {
 
         {mayViewCampagneFietsen && error && (
           <div className="rounded-2xl p-4 bg-red-50 border border-red-100 text-red-800 text-sm">
-            Kon voorraadgegevens niet laden. Probeer het opnieuw of neem contact op met een beheerder.
+            {error}
           </div>
         )}
 
-        {mayViewCampagneFietsen && !isLoading && data && !data.error && fietsen.length === 0 && (
+        {mayViewCampagneFietsen && !isLoading && !isSyncing && data && fietsen.length === 0 && (
           <div className="rounded-2xl p-8 text-center bg-white border border-gray-100 text-gray-600">
             Geen actieve campagnefietsen. Voeg fietsen toe onder{' '}
             <Link href="/dashboard/beheer?tab=campagnefietsen" className="font-semibold text-dynamo-blue underline">
@@ -168,7 +390,7 @@ export default function CampagneFietsenPage() {
           </div>
         )}
 
-        {mayViewCampagneFietsen && winkelFouten.length > 0 && (
+        {mayViewCampagneFietsen && data && winkelFouten.length > 0 && (
           <details className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             <summary className="cursor-pointer font-semibold">
               {winkelFouten.length} winkel(s) niet volledig opgehaald (API)
@@ -183,7 +405,7 @@ export default function CampagneFietsenPage() {
           </details>
         )}
 
-        {mayViewCampagneFietsen && !isLoading &&
+        {mayViewCampagneFietsen && data &&
           fietsen.map(f => {
             const open = openId === f.id
             return (
