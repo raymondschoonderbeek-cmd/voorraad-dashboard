@@ -374,14 +374,25 @@ export default function BeheerPage() {
   async function haalWilmarStoresOp() {
     setWilmarStoresLoading(true)
     setWilmarZoekterm('')
+    setFormError('')
     try {
       const res = await fetch('/api/wilmar?action=stores')
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg = typeof (data as { error?: string }).error === 'string'
+          ? (data as { error: string }).error
+          : `Wilmar laden mislukt (${res.status})`
+        setFormError(msg)
+        setWilmarStores([])
+        return
+      }
       setWilmarStores(Array.isArray(data) ? data : [])
     } catch {
+      setFormError('Wilmar laden mislukt — netwerk of serverfout.')
       setWilmarStores([])
+    } finally {
+      setWilmarStoresLoading(false)
     }
-    setWilmarStoresLoading(false)
   }
 
   async function testVenditCredentials(payload: { api_key: string; username: string; password: string } | { winkel_id: number }) {
