@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
+import { CampagneFietsenBeheerTab } from '@/components/campagne-fietsen/CampagneFietsenBeheerTab'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 const WINKEL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
@@ -34,7 +35,7 @@ type Winkel = {
   vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
 }
-type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken'
+type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen'
 
 const IconArrowLeft = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -198,6 +199,7 @@ export default function BeheerPage() {
     }
     if (searchParams.get('tab') === 'winkels') setTab('winkels')
     if (searchParams.get('tab') === 'gebruikers') setTab('gebruikers')
+    if (searchParams.get('tab') === 'campagnefietsen') setTab('campagnefietsen')
   }, [searchParams])
 
   useEffect(() => {
@@ -871,6 +873,7 @@ export default function BeheerPage() {
         ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
         ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
         { key: 'import', label: 'Excel Import', icon: '📊' },
+        { key: 'campagnefietsen', label: 'Campagnefietsen', icon: '🚲' },
       ]
     : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
 
@@ -1734,6 +1737,9 @@ export default function BeheerPage() {
             </div>
           </div>
         )}
+
+        {/* ── TAB: CAMPAGNEFIETSEN (alleen admin) ── */}
+        {tab === 'campagnefietsen' && isAdmin && <CampagneFietsenBeheerTab />}
 
         {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
         {tab === 'merken' && (

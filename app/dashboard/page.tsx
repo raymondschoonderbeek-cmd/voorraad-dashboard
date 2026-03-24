@@ -16,7 +16,7 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
-const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'meer'] as const
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 const WINKEL_KLEUREN = [
@@ -667,7 +667,13 @@ export default function Dashboard() {
   }
 
   const orderedModules = useMemo(() => {
-    const available: ModuleId[] = ['voorraad', ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []), 'brand-groep', 'meer']
+    const available: ModuleId[] = [
+      'voorraad',
+      ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []),
+      'brand-groep',
+      'campagne-fietsen',
+      'meer',
+    ]
     const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
     return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
   }, [moduleOrder, lunchModuleEnabled])
@@ -929,6 +935,26 @@ export default function Dashboard() {
                             <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
                               <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
                               <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
+                    if (id === 'campagne-fietsen') {
+                      return (
+                        <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/campagne-fietsen" className={`${modCard} block cursor-pointer`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,69,124,0.1)' }}>
+                            {dragHandle}
+                            <div className="p-6">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
+                                <span style={{ color: 'white', fontSize: '22px' }}>🚲</span>
+                              </div>
+                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Campagnefietsen</div>
+                              <div style={{ color: 'rgba(45,69,124,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Landelijk voorraad per campagnefiets</div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                              <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk overzicht →</span>
+                              <span style={{ color: DYNAMO_BLUE, opacity: 0.5, fontSize: '18px' }}>🚲</span>
                             </div>
                           </Link>
                         </div>
