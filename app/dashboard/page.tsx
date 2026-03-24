@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { BrancheNieuws } from '@/components/BrancheNieuws'
+import { BrancheNieuwsModule, BRANCHE_NIEUWS_MEER_URL } from '@/components/BrancheNieuws'
 import useSWR from 'swr'
 import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
@@ -16,7 +16,7 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
-const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer'] as const
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 const WINKEL_KLEUREN = [
@@ -423,11 +423,23 @@ export default function Dashboard() {
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean; lunchModuleEnabled?: boolean; campagneFietsenEnabled?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{
+    isAdmin?: boolean
+    lunchOnly?: boolean
+    dashboardModules?: string[]
+    allowedCountries?: ('Netherlands' | 'Belgium')[] | null
+  }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
   const lunchOnly = sessionData?.lunchOnly === true
-  const lunchModuleEnabled = sessionData?.lunchModuleEnabled === true
-  const campagneFietsenEnabled = sessionData?.campagneFietsenEnabled === true
+  const allowedCountries = sessionData?.allowedCountries ?? null
+
+  const winkelsVoorGebruiker = useMemo(() => {
+    if (!allowedCountries || allowedCountries.length === 0) return winkels
+    return winkels.filter(w => {
+      if (!w.land) return true
+      return allowedCountries.includes(w.land)
+    })
+  }, [winkels, allowedCountries])
 
   const { data: profileData, mutate: mutateProfile } = useSWR<{ modules_order?: string[] }>('/api/profile', fetcher)
   const savedOrder = profileData?.modules_order
@@ -451,7 +463,7 @@ export default function Dashboard() {
   const supabase = createClient()
 
   const winkelsGefilterd = useMemo(() => {
-    return winkels.filter(w => {
+    return winkelsVoorGebruiker.filter(w => {
       if (kaartFilterLand !== 'alle') {
         if (w.land !== kaartFilterLand) return false
       }
@@ -470,12 +482,12 @@ export default function Dashboard() {
       }
       return true
     })
-  }, [winkels, kaartFilterLand, kaartFilterKassaPakket, kaartFilterBikeTotaal])
+  }, [winkelsVoorGebruiker, kaartFilterLand, kaartFilterKassaPakket, kaartFilterBikeTotaal])
 
 
   // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
   useEffect(() => {
-    if (winkels.length === 0) return
+    if (winkelsVoorGebruiker.length === 0) return
     if (sessionData === undefined) return
     if (lunchOnly) {
       if (searchParams.get('winkel')) router.replace('/dashboard')
@@ -488,9 +500,9 @@ export default function Dashboard() {
       return
     }
     const id = Number(idParam)
-    const w = id ? winkels.find(x => x.id === id) : null
+    const w = id ? winkelsVoorGebruiker.find(x => x.id === id) : null
     if (w) setGeselecteerdeWinkel(w)
-  }, [winkels, searchParams, lunchOnly, router, sessionData])
+  }, [winkelsVoorGebruiker, searchParams, lunchOnly, router, sessionData])
 
   useEffect(() => {
     try {
@@ -674,24 +686,15 @@ export default function Dashboard() {
   }
 
   const orderedModules = useMemo(() => {
-    if (lunchOnly) {
-      const available: ModuleId[] = [
-        ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []),
-        ...(campagneFietsenEnabled ? ['campagne-fietsen' as ModuleId] : []),
-      ]
-      const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
-      return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
+    if (sessionData === undefined) {
+      return [...DEFAULT_MODULE_ORDER]
     }
-    const available: ModuleId[] = [
-      'voorraad',
-      ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []),
-      'brand-groep',
-      ...(campagneFietsenEnabled ? ['campagne-fietsen' as ModuleId] : []),
-      'meer',
-    ]
+    const fromSession = sessionData.dashboardModules ?? []
+    const valid = fromSession.filter((id): id is ModuleId => DEFAULT_MODULE_ORDER.includes(id as ModuleId))
+    if (valid.length === 0) return []
     const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
-    return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
-  }, [moduleOrder, lunchOnly, lunchModuleEnabled, campagneFietsenEnabled])
+    return [...valid].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
+  }, [moduleOrder, sessionData])
 
   async function moveModule(fromIndex: number, toIndex: number) {
     const arr = [...orderedModules]
@@ -714,7 +717,7 @@ export default function Dashboard() {
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
   const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
-  const venditLaatstDatum = geselecteerdeWinkel ? (winkels.find(w => w.id === geselecteerdeWinkel!.id)?.vendit_laatst_datum ?? geselecteerdeWinkel.vendit_laatst_datum) : null
+  const venditLaatstDatum = geselecteerdeWinkel ? (winkelsVoorGebruiker.find(w => w.id === geselecteerdeWinkel!.id)?.vendit_laatst_datum ?? geselecteerdeWinkel.vendit_laatst_datum) : null
   const bron =
     geselecteerdeWinkel?.api_type ??
     (geselecteerdeWinkel?.wilmar_branch_id && geselecteerdeWinkel?.wilmar_organisation_id
@@ -766,7 +769,6 @@ export default function Dashboard() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
         .s1{animation:fadeUp .5s ease forwards;opacity:0}
         .s2{animation:fadeUp .5s .08s ease forwards;opacity:0}
-        .s2b{animation:fadeUp .5s .12s ease forwards;opacity:0}
         .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
         .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
         .mod-card{transition:transform .2s ease,box-shadow .2s ease}
@@ -806,7 +808,7 @@ export default function Dashboard() {
       <WinkelModal
         open={winkelModalOpen}
         onClose={() => setWinkelModalOpen(false)}
-        winkels={winkels}
+        winkels={winkelsVoorGebruiker}
         onSelect={selecteerWinkel}
         loading={winkelModalOpen && winkelsLoading}
       />
@@ -844,9 +846,9 @@ export default function Dashboard() {
                       </Link>
                     </div>
                   )}
-                  {!lunchOnly && winkels.length > 0 && (
+                  {!lunchOnly && winkelsVoorGebruiker.length > 0 && (
                     <div className="flex items-center gap-4 sm:gap-5 pt-2 border-t border-white/10 w-full sm:w-auto">
-                      {[{ label: 'Winkels', value: winkels.length, color: 'white' }, { label: 'Locaties', value: winkels.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: 'white' }].map((s, i) => (
+                      {[{ label: 'Winkels', value: winkelsVoorGebruiker.length, color: 'white' }, { label: 'Locaties', value: winkelsVoorGebruiker.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: 'white' }].map((s, i) => (
                         <div key={s.label} className="flex items-center gap-2">
                           {i > 0 && <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />}
                           <div>
@@ -900,7 +902,7 @@ export default function Dashboard() {
                             </div>
                             <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
                               <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Selecteer winkel →</span>
-                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkels.length} locaties</span>
+                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkelsVoorGebruiker.length} locaties</span>
                             </div>
                           </div>
                         </div>
@@ -966,6 +968,43 @@ export default function Dashboard() {
                         </div>
                       )
                     }
+                    if (id === 'branche-nieuws') {
+                      return (
+                        <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <div
+                            className={`${modCard} h-full flex flex-col`}
+                            style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,69,124,0.1)' }}
+                          >
+                            {dragHandle}
+                            <div className="p-6 flex-1 flex flex-col min-h-0">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 shrink-0" style={{ background: DYNAMO_BLUE }}>
+                                <span style={{ color: 'white', fontSize: '22px' }} aria-hidden>📰</span>
+                              </div>
+                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Branche nieuws</div>
+                              <div style={{ color: 'rgba(45,69,124,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.45, fontFamily: F }}>
+                                Headlines van NieuwsFiets
+                              </div>
+                              <div className="flex-1 min-h-0 overflow-hidden">
+                                <BrancheNieuwsModule maxItems={3} />
+                              </div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                              <a
+                                href={BRANCHE_NIEUWS_MEER_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-left"
+                                style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                Meer nieuws →
+                              </a>
+                              <span style={{ color: DYNAMO_BLUE, opacity: 0.45, fontSize: '16px' }} aria-hidden>📰</span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
                     if (id === 'meer') {
                       return (
                         <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
@@ -988,11 +1027,6 @@ export default function Dashboard() {
                     return null
                   })}
                 </div>
-              </div>
-
-              {/* BRANCHE NIEUWS (NieuwsFiets RSS) */}
-              <div className="s2b max-w-2xl">
-                <BrancheNieuws />
               </div>
 
               {/* KAART */}

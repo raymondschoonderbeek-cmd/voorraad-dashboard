@@ -4,6 +4,8 @@ import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
 import { sendWelcomeEmail } from '@/lib/send-welcome-email'
 import { getCachedVenditStats, setCachedVenditStats, getCachedVenditDealerNumbers, setCachedVenditDealerNumbers } from '@/lib/vendit-cache'
+import type { DashboardModuleId, LandCode } from '@/lib/dashboard-modules'
+import { landenToegangForDb, normalizeModulesFromBody, parseModulesToegang, resolveDashboardModules } from '@/lib/dashboard-modules'
 
 // Controleer of gebruiker admin is
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -98,10 +100,6 @@ export async function GET(request: NextRequest) {
     .from('gebruiker_rollen')
     .select('*')
     .order('created_at')
-
-  const { data: winkelToegang } = await client
-    .from('gebruiker_winkels')
-    .select('*')
 
   const { data: winkelsRaw } = await client
     .from('winkels')
@@ -227,29 +225,59 @@ export async function GET(request: NextRequest) {
   ])
 
   const profileCampagneFietsen: Record<string, boolean> = {}
+  const profileModulesToegang: Record<string, DashboardModuleId[] | null> = {}
+  const profileLandenRaw: Record<string, unknown> = {}
+  const profileRowsForResolve: Record<string, { lunch_module_enabled?: boolean; campagne_fietsen_toegang?: boolean; modules_toegang?: unknown }> = {}
   if (userIds.length > 0) {
     try {
       const { data: profRows } = await client
         .from('profiles')
-        .select('user_id, campagne_fietsen_toegang')
+        .select('user_id, campagne_fietsen_toegang, modules_toegang, landen_toegang, lunch_module_enabled')
         .in('user_id', userIds)
       for (const row of profRows ?? []) {
         const uid = (row as { user_id: string }).user_id
-        if (uid) profileCampagneFietsen[uid] = (row as { campagne_fietsen_toegang?: boolean }).campagne_fietsen_toegang === true
+        if (!uid) continue
+        const r = row as {
+          campagne_fietsen_toegang?: boolean
+          modules_toegang?: unknown
+          landen_toegang?: unknown
+          lunch_module_enabled?: boolean
+        }
+        profileCampagneFietsen[uid] = r.campagne_fietsen_toegang === true
+        profileModulesToegang[uid] = parseModulesToegang(r.modules_toegang)
+        profileLandenRaw[uid] = r.landen_toegang ?? null
+        profileRowsForResolve[uid] = {
+          lunch_module_enabled: r.lunch_module_enabled,
+          campagne_fietsen_toegang: r.campagne_fietsen_toegang,
+          modules_toegang: r.modules_toegang,
+        }
       }
     } catch {
       // kolom of tabel ontbreekt op oudere omgeving
     }
   }
 
+  const profileModulesResolved: Record<string, DashboardModuleId[]> = {}
+  for (const r of rollen ?? []) {
+    const uid = (r as { user_id: string }).user_id
+    const rolName = (r as { rol: string }).rol
+    profileModulesResolved[uid] = resolveDashboardModules(
+      rolName,
+      profileRowsForResolve[uid] ?? null,
+      rolName === 'admin'
+    )
+  }
+
   return NextResponse.json({
     rollen: rollen ?? [],
-    winkelToegang: winkelToegang ?? [],
     winkels,
     mfaStatus,
     userEmails,
     userLastSignIns,
     profileCampagneFietsen,
+    profileModulesToegang,
+    profileLandenRaw,
+    profileModulesResolved,
   })
 }
 
@@ -262,7 +290,16 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { email, rol, naam, mfa_verplicht, winkel_ids, wachtwoord, campagne_fietsen_toegang } = await request.json()
+  const {
+    email,
+    rol,
+    naam,
+    mfa_verplicht,
+    wachtwoord,
+    campagne_fietsen_toegang,
+    modules_toegang: modulesRaw,
+    landen_toegang: landenRaw,
+  } = await request.json()
   const emailTrim = String(email ?? '').trim().toLowerCase()
   const naamTrim = String(naam ?? email ?? '').trim() || emailTrim
 
@@ -377,27 +414,32 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Sla winkeltoegang op (admin client omzeilt RLS)
-  if (winkel_ids && winkel_ids.length > 0) {
-    await adminClient.from('gebruiker_winkels').delete().eq('user_id', newUserId)
-    await adminClient.from('gebruiker_winkels').insert(
-      winkel_ids.map((wid: number) => ({ user_id: newUserId, winkel_id: wid }))
-    )
-  }
-
-  if (hasAdminKey() && (rol ?? 'viewer') !== 'admin' && typeof campagne_fietsen_toegang === 'boolean') {
+  if (hasAdminKey()) {
     try {
-      const { data: ex } = await adminClient
-        .from('profiles')
-        .select('lunch_module_enabled, modules_order')
-        .eq('user_id', newUserId)
-        .maybeSingle()
+      const r = rol ?? 'viewer'
+      const modList =
+        normalizeModulesFromBody(modulesRaw, r) ??
+        resolveDashboardModules(
+          r,
+          typeof campagne_fietsen_toegang === 'boolean'
+            ? { campagne_fietsen_toegang: campagne_fietsen_toegang === true, lunch_module_enabled: false }
+            : null,
+          r === 'admin'
+        )
+      let landenPayload: LandCode[] | null = null
+      if (Array.isArray(landenRaw)) {
+        const picked = landenRaw.filter((x: unknown): x is LandCode => x === 'Netherlands' || x === 'Belgium')
+        landenPayload = landenToegangForDb(picked)
+      }
+      const defaultOrder = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer']
       await adminClient.from('profiles').upsert(
         {
           user_id: newUserId,
-          lunch_module_enabled: ex?.lunch_module_enabled ?? false,
-          modules_order: ex?.modules_order ?? ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer'],
-          campagne_fietsen_toegang: campagne_fietsen_toegang === true,
+          modules_toegang: modList,
+          landen_toegang: landenPayload,
+          lunch_module_enabled: modList.includes('lunch'),
+          campagne_fietsen_toegang: modList.includes('campagne-fietsen'),
+          modules_order: defaultOrder,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id' }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
+import type { DashboardModuleId, LandCode } from '@/lib/dashboard-modules'
+import { landenToegangForDb, normalizeModulesFromBody, parseModulesToegang, resolveDashboardModules } from '@/lib/dashboard-modules'
 
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
@@ -11,16 +13,24 @@ async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userI
   return data?.rol === 'admin'
 }
 
-// Update rol, naam, email en winkeltoegang
+// Update rol, naam, e-mail, modules en landen
 export async function PUT(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { user_id, rol, naam, email, mfa_verplicht, winkel_ids, campagne_fietsen_toegang } = await request.json()
+  const body = await request.json()
+  const {
+    user_id,
+    rol,
+    naam,
+    email,
+    mfa_verplicht,
+    modules_toegang: modulesRaw,
+    landen_toegang: landenRaw,
+  } = body
 
-  // Update rol, naam en mfa_verplicht in gebruiker_rollen
   const updateData: { rol: string; naam: string; mfa_verplicht?: boolean } = { rol, naam }
   if (typeof mfa_verplicht === 'boolean') updateData.mfa_verplicht = mfa_verplicht
   await supabase
@@ -28,7 +38,6 @@ export async function PUT(request: NextRequest) {
     .update(updateData)
     .eq('user_id', user_id)
 
-  // Update e-mail in Auth via admin client (zelfde als invite)
   if (email != null && email.trim() !== '') {
     if (!hasAdminKey()) {
       return NextResponse.json({
@@ -38,7 +47,7 @@ export async function PUT(request: NextRequest) {
     const adminClient = createAdminClient()
     const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, {
       email: email.trim(),
-      email_confirm: true, // direct bevestigen, geen verificatiemail
+      email_confirm: true,
     })
     if (updateError) {
       return NextResponse.json({
@@ -47,36 +56,45 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  // Update winkeltoegang — verwijder eerst, dan opnieuw invoegen
-  await supabase.from('gebruiker_winkels').delete().eq('user_id', user_id)
-
-  if (winkel_ids && winkel_ids.length > 0) {
-    await supabase.from('gebruiker_winkels').insert(
-      winkel_ids.map((wid: number) => ({ user_id: user_id, winkel_id: wid }))
-    )
+  if (!hasAdminKey()) {
+    return NextResponse.json({ success: true })
   }
 
-  if (hasAdminKey() && rol !== 'admin' && typeof campagne_fietsen_toegang === 'boolean') {
-    const adminClient = createAdminClient()
-    try {
-      const { data: ex } = await adminClient
-        .from('profiles')
-        .select('lunch_module_enabled, modules_order')
-        .eq('user_id', user_id)
-        .maybeSingle()
-      await adminClient.from('profiles').upsert(
-        {
-          user_id,
-          lunch_module_enabled: ex?.lunch_module_enabled ?? false,
-          modules_order: ex?.modules_order ?? ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer'],
-          campagne_fietsen_toegang: campagne_fietsen_toegang === true,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      )
-    } catch {
-      // profiles niet beschikbaar
+  const adminClient = createAdminClient()
+  try {
+    const { data: ex } = await adminClient
+      .from('profiles')
+      .select('lunch_module_enabled, modules_order, modules_toegang, campagne_fietsen_toegang, landen_toegang')
+      .eq('user_id', user_id)
+      .maybeSingle()
+
+    const fromBody = normalizeModulesFromBody(modulesRaw, rol)
+    const modList: DashboardModuleId[] =
+      fromBody ??
+      parseModulesToegang(ex?.modules_toegang) ??
+      resolveDashboardModules(rol, ex, rol === 'admin')
+
+    let landenPayload: unknown = ex?.landen_toegang ?? null
+    if (Array.isArray(landenRaw)) {
+      const picked = landenRaw.filter((x: unknown): x is LandCode => x === 'Netherlands' || x === 'Belgium')
+      landenPayload = landenToegangForDb(picked)
     }
+
+    const defaultOrder = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer']
+    await adminClient.from('profiles').upsert(
+      {
+        user_id,
+        modules_toegang: modList,
+        landen_toegang: landenPayload ?? null,
+        lunch_module_enabled: modList.includes('lunch'),
+        campagne_fietsen_toegang: modList.includes('campagne-fietsen'),
+        modules_order: Array.isArray(ex?.modules_order) ? ex.modules_order : defaultOrder,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' }
+    )
+  } catch {
+    // profiles niet beschikbaar
   }
 
   return NextResponse.json({ success: true })

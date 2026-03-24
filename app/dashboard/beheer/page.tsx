@@ -5,13 +5,23 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
 import { CampagneFietsenBeheerTab } from '@/components/campagne-fietsen/CampagneFietsenBeheerTab'
+import { DASHBOARD_MODULE_ORDER, type DashboardModuleId, type LandCode } from '@/lib/dashboard-modules'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 const WINKEL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
 function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
 type Rol = { id: number; user_id: string; rol: string; naam: string; mfa_verplicht?: boolean; created_at: string }
-type WinkelToegang = { id: number; user_id: string; winkel_id: number }
+
+const MODULE_LABELS: Record<DashboardModuleId, string> = {
+  voorraad: 'Voorraad',
+  lunch: 'Lunch',
+  'brand-groep': 'Brandgroep',
+  'campagne-fietsen': 'Campagnefietsen',
+  'branche-nieuws': 'Branche nieuws',
+  meer: 'Meer',
+}
+type LandFilter = 'alle' | LandCode
 type Winkel = {
   id: number
   naam: string
@@ -47,7 +57,6 @@ export default function BeheerPage() {
   const searchParams = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => 'gebruikers')
   const [rollen, setRollen] = useState<Rol[]>([])
-  const [winkelToegang, setWinkelToegang] = useState<WinkelToegang[]>([])
   const [winkels, setWinkels] = useState<Winkel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -65,7 +74,8 @@ export default function BeheerPage() {
   const [nieuwWachtwoord, setNieuwWachtwoord] = useState('')
   const [nieuwRol, setNieuwRol] = useState('viewer')
   const [nieuwMfaVerplicht, setNieuwMfaVerplicht] = useState(false)
-  const [geselecteerdeWinkels, setGeselecteerdeWinkels] = useState<number[]>([])
+  const [nieuwModules, setNieuwModules] = useState<DashboardModuleId[]>(['voorraad', 'brand-groep', 'branche-nieuws', 'meer'])
+  const [nieuwLandFilter, setNieuwLandFilter] = useState<LandFilter>('alle')
   const [formLoading, setFormLoading] = useState(false)
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
@@ -110,9 +120,11 @@ export default function BeheerPage() {
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
   const [userLastSignIns, setUserLastSignIns] = useState<Record<string, string | null>>({})
-  const [profileCampagneFietsen, setProfileCampagneFietsen] = useState<Record<string, boolean>>({})
-  const [bewerkCampagneFietsToegang, setBewerkCampagneFietsToegang] = useState(false)
-  const [nieuwCampagneFietsToegang, setNieuwCampagneFietsToegang] = useState(false)
+  const [profileModulesToegang, setProfileModulesToegang] = useState<Record<string, DashboardModuleId[] | null>>({})
+  const [profileModulesResolved, setProfileModulesResolved] = useState<Record<string, DashboardModuleId[]>>({})
+  const [profileLandenRaw, setProfileLandenRaw] = useState<Record<string, unknown>>({})
+  const [bewerkModules, setBewerkModules] = useState<DashboardModuleId[]>([])
+  const [bewerkLandFilter, setBewerkLandFilter] = useState<LandFilter>('alle')
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -146,12 +158,13 @@ export default function BeheerPage() {
     }
     const data = await res.json()
     setRollen(data.rollen ?? [])
-    setWinkelToegang(data.winkelToegang ?? [])
     setWinkels(data.winkels ?? [])
     setMfaStatus(data.mfaStatus ?? {})
     setUserEmails(data.userEmails ?? {})
     setUserLastSignIns(data.userLastSignIns ?? {})
-    setProfileCampagneFietsen(data.profileCampagneFietsen ?? {})
+    setProfileModulesToegang(data.profileModulesToegang ?? {})
+    setProfileModulesResolved(data.profileModulesResolved ?? {})
+    setProfileLandenRaw(data.profileLandenRaw ?? {})
     setLoading(false)
   }, [])
 
@@ -179,12 +192,13 @@ export default function BeheerPage() {
       } else {
         const data = await res.json()
         setRollen(data.rollen ?? [])
-        setWinkelToegang(data.winkelToegang ?? [])
         setWinkels(data.winkels ?? [])
         setMfaStatus(data.mfaStatus ?? {})
         setUserEmails(data.userEmails ?? {})
         setUserLastSignIns(data.userLastSignIns ?? {})
-        setProfileCampagneFietsen(data.profileCampagneFietsen ?? {})
+        setProfileModulesToegang(data.profileModulesToegang ?? {})
+        setProfileModulesResolved(data.profileModulesResolved ?? {})
+        setProfileLandenRaw(data.profileLandenRaw ?? {})
       }
     } else {
       const res = await fetch('/api/winkels')
@@ -228,6 +242,24 @@ export default function BeheerPage() {
     init()
     return () => { cancelled = true }
   }, [haalGebruikersOp, haalWinkelsOp])
+
+  useEffect(() => {
+    if (nieuwRol === 'admin') setNieuwModules([...DASHBOARD_MODULE_ORDER])
+    else if (nieuwRol === 'lunch') setNieuwModules(['lunch'])
+    else setNieuwModules(['voorraad', 'brand-groep', 'branche-nieuws', 'meer'])
+  }, [nieuwRol])
+
+  function landLabelForUser(userId: string): string {
+    const raw = profileLandenRaw[userId]
+    if (raw == null) return 'Alle landen'
+    if (Array.isArray(raw) && raw.length === 1 && raw[0] === 'Netherlands') return 'Nederland'
+    if (Array.isArray(raw) && raw.length === 1 && raw[0] === 'Belgium') return 'België'
+    return 'Alle landen'
+  }
+  function modulesLabelForUser(userId: string): string {
+    const m = profileModulesResolved[userId] ?? []
+    return m.map(x => MODULE_LABELS[x] ?? x).join(', ')
+  }
 
   const haalTrustedIpsOp = useCallback(async () => {
     const res = await fetch('/api/trusted-ips')
@@ -443,8 +475,8 @@ export default function BeheerPage() {
         wachtwoord: nieuwWachtwoord || undefined,
         rol: nieuwRol,
         mfa_verplicht: nieuwMfaVerplicht,
-        winkel_ids: nieuwRol === 'lunch' ? [] : geselecteerdeWinkels,
-        ...(nieuwRol !== 'admin' ? { campagne_fietsen_toegang: nieuwCampagneFietsToegang } : {}),
+        modules_toegang: nieuwModules,
+        landen_toegang: nieuwLandFilter === 'alle' ? [] : [nieuwLandFilter],
       }),
     })
     const data = await res.json()
@@ -456,7 +488,7 @@ export default function BeheerPage() {
         : nieuwWachtwoord
           ? `Gebruiker aangemaakt. E-mail met wachtwoord verstuurd naar ${nieuwEmail}.`
           : `Uitnodiging verstuurd naar ${nieuwEmail}!`)
-      setNieuwEmail(''); setNieuwNaam(''); setNieuwWachtwoord(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setNieuwCampagneFietsToegang(false); setGeselecteerdeWinkels([])
+      setNieuwEmail(''); setNieuwNaam(''); setNieuwWachtwoord(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setNieuwLandFilter('alle')
       setToonForm(false)
       await haalGebruikersOp(true)
     }
@@ -501,8 +533,8 @@ export default function BeheerPage() {
         naam: bewerkGebruiker.naam,
         email: emailChanged ? newEmail : undefined,
         mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false,
-        winkel_ids: bewerkGebruiker.rol === 'lunch' ? [] : geselecteerdeWinkels,
-        ...(bewerkGebruiker.rol !== 'admin' ? { campagne_fietsen_toegang: bewerkCampagneFietsToegang } : {}),
+        modules_toegang: bewerkModules,
+        landen_toegang: bewerkLandFilter === 'alle' ? [] : [bewerkLandFilter],
       }),
     })
     const data = await res.json().catch(() => ({}))
@@ -510,7 +542,6 @@ export default function BeheerPage() {
     if (res.ok) {
       setBewerkGebruiker(null)
       setBewerkEmail('')
-      setGeselecteerdeWinkels([])
       setFormSuccess('Gebruiker opgeslagen.')
       await haalGebruikersOp(true)
     } else {
@@ -627,23 +658,16 @@ export default function BeheerPage() {
     if (res.ok) setWinkels(prev => prev.filter(w => w.id !== id))
   }
 
-  function toggleWinkel(id: number) {
-    setGeselecteerdeWinkels(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
-
   function startBewerken(rol: Rol) {
     setBewerkGebruiker(rol)
     setBewerkEmail(userEmails[rol.user_id] ?? '')
-    setBewerkCampagneFietsToegang(rol.rol === 'admin' ? true : (profileCampagneFietsen[rol.user_id] === true))
+    setBewerkModules(profileModulesToegang[rol.user_id] ?? profileModulesResolved[rol.user_id] ?? [])
+    const raw = profileLandenRaw[rol.user_id]
+    if (raw == null) setBewerkLandFilter('alle')
+    else if (Array.isArray(raw) && raw.length === 1 && raw[0] === 'Netherlands') setBewerkLandFilter('Netherlands')
+    else if (Array.isArray(raw) && raw.length === 1 && raw[0] === 'Belgium') setBewerkLandFilter('Belgium')
+    else setBewerkLandFilter('alle')
     setToonForm(false)
-    setGeselecteerdeWinkels(winkelToegang.filter(wt => wt.user_id === rol.user_id).map(wt => wt.winkel_id))
-  }
-
-  function winkelNamenVoorGebruiker(userId: string) {
-    const uitgeslotenIds = winkelToegang.filter(wt => wt.user_id === userId).map(wt => wt.winkel_id)
-    if (uitgeslotenIds.length === 0) return 'Alle winkels'
-    const toegankelijk = winkels.filter(w => !uitgeslotenIds.includes(w.id))
-    return toegankelijk.length === 0 ? 'Geen winkels' : toegankelijk.map(w => w.naam).join(', ')
   }
 
   const gefilterdeGebruikers = useMemo(() => {
@@ -653,10 +677,11 @@ export default function BeheerPage() {
       const naam = (rol.naam ?? '').toLowerCase()
       const email = (userEmails[rol.user_id] ?? '').toLowerCase()
       const rolNaam = (rol.rol ?? '').toLowerCase()
-      const winkels = winkelNamenVoorGebruiker(rol.user_id).toLowerCase()
-      return naam.includes(q) || email.includes(q) || rolNaam.includes(q) || winkels.includes(q)
+      const mod = modulesLabelForUser(rol.user_id).toLowerCase()
+      const land = landLabelForUser(rol.user_id).toLowerCase()
+      return naam.includes(q) || email.includes(q) || rolNaam.includes(q) || mod.includes(q) || land.includes(q)
     })
-  }, [rollen, gebruikerZoekterm, userEmails, winkelToegang, winkels])
+  }, [rollen, gebruikerZoekterm, userEmails, profileModulesResolved, profileLandenRaw])
 
   async function verwerkExcel(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -972,7 +997,9 @@ export default function BeheerPage() {
                   if (t.key === 'winkels' && isAdmin) {
                     fetch('/api/gebruikers').then(r => r.json()).then(d => {
                       setRollen(d.rollen ?? [])
-                      setWinkelToegang(d.winkelToegang ?? [])
+                      setProfileModulesToegang(d.profileModulesToegang ?? {})
+                      setProfileModulesResolved(d.profileModulesResolved ?? {})
+                      setProfileLandenRaw(d.profileLandenRaw ?? {})
                       setWinkels(d.winkels ?? [])
                       setMfaStatus(d.mfaStatus ?? {})
                       setUserEmails(d.userEmails ?? {})
@@ -998,7 +1025,7 @@ export default function BeheerPage() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(45,69,124,0.3)' }}>⌕</span>
                 <input
                   type="text"
-                  placeholder="Zoek op naam, e-mail, rol of winkel..."
+                  placeholder="Zoek op naam, e-mail, rol, modules of land..."
                   value={gebruikerZoekterm}
                   onChange={e => setGebruikerZoekterm(e.target.value)}
                   className="w-full rounded-xl px-3 py-2 pl-9 text-sm"
@@ -1008,7 +1035,7 @@ export default function BeheerPage() {
                   <button type="button" onClick={() => setGebruikerZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Wis zoekterm">✕</button>
                 )}
               </div>
-              <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null); setGeselecteerdeWinkels([]) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+              <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
                 + Gebruiker uitnodigen
               </button>
             </div>
@@ -1052,28 +1079,43 @@ export default function BeheerPage() {
                     <input type="checkbox" id="nieuw_mfa_verplicht" checked={nieuwMfaVerplicht} onChange={e => setNieuwMfaVerplicht(e.target.checked)} className="accent-[#2D457C]" />
                     <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                   </div>
-                  {nieuwRol !== 'admin' && (
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="nieuw_campagne_fiets" checked={nieuwCampagneFietsToegang} onChange={e => setNieuwCampagneFietsToegang(e.target.checked)} className="accent-[#2D457C]" />
-                      <label htmlFor="nieuw_campagne_fiets" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Toegang tot pagina Campagnefietsen (landelijk voorraad)</label>
-                    </div>
-                  )}
-                  {nieuwRol !== 'lunch' && (
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {winkels.map(w => (
-                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
-                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-[#2D457C]" />
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
-                            <div className="text-xs" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dashboard-modules</label>
+                    {nieuwRol === 'lunch' ? (
+                      <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>Lunch-gebruikers zien alleen de lunch-pagina.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {DASHBOARD_MODULE_ORDER.map(id => (
+                          <label key={id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={nieuwModules.includes(id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
+                            <input
+                              type="checkbox"
+                              checked={nieuwModules.includes(id)}
+                              onChange={() => {
+                                setNieuwModules(prev =>
+                                  prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+                                )
+                              }}
+                              className="accent-[#2D457C]"
+                            />
+                            <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{MODULE_LABELS[id]}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  )}
+                  <div>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels tonen (land)</label>
+                    <select
+                      value={nieuwLandFilter}
+                      onChange={e => setNieuwLandFilter(e.target.value as LandFilter)}
+                      className={inputClass}
+                      style={inputStyle}
+                    >
+                      <option value="alle">Alle landen</option>
+                      <option value="Netherlands">Alleen Nederland</option>
+                      <option value="Belgium">Alleen België</option>
+                    </select>
+                  </div>
                   {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Bezig...' : nieuwWachtwoord ? 'Aanmaken en e-mail versturen' : 'Uitnodiging versturen'}</button>
@@ -1108,34 +1150,47 @@ export default function BeheerPage() {
                       <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-[#2D457C]" />
                       <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                     </div>
-                    {bewerkGebruiker.rol === 'admin' ? (
-                      <p className="text-xs sm:col-span-2" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Admins hebben altijd toegang tot Campagnefietsen.</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dashboard-modules</label>
+                    {bewerkGebruiker.rol === 'lunch' ? (
+                      <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>Lunch-gebruikers zien alleen de lunch-pagina.</p>
                     ) : (
-                      <div className="sm:col-span-2 flex items-center gap-2">
-                        <input type="checkbox" id="campagne_fiets_toegang" checked={bewerkCampagneFietsToegang} onChange={e => setBewerkCampagneFietsToegang(e.target.checked)} className="accent-[#2D457C]" />
-                        <label htmlFor="campagne_fiets_toegang" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Pagina Campagnefietsen (landelijk voorraad) tonen</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {DASHBOARD_MODULE_ORDER.map(id => (
+                          <label key={id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={bewerkModules.includes(id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
+                            <input
+                              type="checkbox"
+                              checked={bewerkModules.includes(id)}
+                              onChange={() => {
+                                setBewerkModules(prev =>
+                                  prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+                                )
+                              }}
+                              className="accent-[#2D457C]"
+                            />
+                            <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{MODULE_LABELS[id]}</span>
+                          </label>
+                        ))}
                       </div>
                     )}
                   </div>
-                  {bewerkGebruiker.rol !== 'lunch' && (
                   <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {winkels.map(w => (
-                        <label key={w.id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={!geselecteerdeWinkels.includes(w.id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
-                          <input type="checkbox" checked={!geselecteerdeWinkels.includes(w.id)} onChange={() => toggleWinkel(w.id)} className="accent-[#2D457C]" />
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{w.naam}</div>
-                            <div className="text-xs" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>#{w.dealer_nummer}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels tonen (land)</label>
+                    <select
+                      value={bewerkLandFilter}
+                      onChange={e => setBewerkLandFilter(e.target.value as LandFilter)}
+                      className={inputClass}
+                      style={inputStyle}
+                    >
+                      <option value="alle">Alle landen</option>
+                      <option value="Netherlands">Alleen Nederland</option>
+                      <option value="Belgium">Alleen België</option>
+                    </select>
                   </div>
-                  )}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setBewerkCampagneFietsToegang(false); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
@@ -1174,12 +1229,13 @@ export default function BeheerPage() {
                           {rol.mfa_verplicht && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }} title="MFA verplicht">MFA verplicht</span>
                           )}
-                          {rol.rol !== 'admin' && profileCampagneFietsen[rol.user_id] === true && (
+                          {rol.rol !== 'admin' && profileModulesResolved[rol.user_id]?.includes('campagne-fietsen') && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE }} title="Campagnefietsen">🚲 Campagnefietsen</span>
                           )}
                         </div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>{winkelNamenVoorGebruiker(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>{modulesLabelForUser(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.32)', fontFamily: F }}>Land: {landLabelForUser(rol.user_id)}</div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.3)', fontFamily: F }} title="Laatste inlog">
                           {userLastSignIns[rol.user_id]
                             ? `Laatste inlog: ${new Date(userLastSignIns[rol.user_id]!).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`
