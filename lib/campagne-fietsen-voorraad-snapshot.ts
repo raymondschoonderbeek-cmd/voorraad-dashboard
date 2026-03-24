@@ -1,25 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CampagneFietsRow } from '@/lib/campagne-fietsen-voorraad-aggregate'
+import type { CampagneVoorraadPayload } from '@/lib/campagne-fietsen-voorraad-types'
+import { enrichPayloadWithBaseline } from '@/lib/campagne-fietsen-voorraad-baseline'
 
-export type CampagneVoorraadPayload = {
-  fietsen: Array<
-    CampagneFietsRow & {
-      totaal_voorraad: number
-      winkels_met_voorraad: number
-      winkels: Array<{
-        winkel_id: number
-        naam: string
-        stad: string | null
-        lat: number | null
-        lng: number | null
-        voorraad: number
-        bron: string
-      }>
-    }
-  >
-  winkel_fouten: { winkel_id: number; naam: string; message: string }[]
-  synced_at: string | null
-}
+export type { CampagneVoorraadPayload, CampagneWinkelVoorraadRow } from '@/lib/campagne-fietsen-voorraad-types'
 
 type SyncMetaRow = {
   last_sync_at: string | null
@@ -49,7 +33,13 @@ export async function readCampagneVoorraadSnapshot(supabase: SupabaseClient): Pr
   if (bErr) throw new Error(bErr.message)
   const bikes = (bikesRaw ?? []) as CampagneFietsRow[]
   if (bikes.length === 0) {
-    return { fietsen: [], winkel_fouten, synced_at: meta?.last_sync_at ?? null }
+    const empty: CampagneVoorraadPayload = {
+      fietsen: [],
+      winkel_fouten,
+      synced_at: meta?.last_sync_at ?? null,
+    }
+    await enrichPayloadWithBaseline(supabase, empty)
+    return empty
   }
 
   const bikeIds = bikes.map(b => b.id)
@@ -118,7 +108,13 @@ export async function readCampagneVoorraadSnapshot(supabase: SupabaseClient): Pr
     }
   })
 
-  return { fietsen, winkel_fouten, synced_at: meta?.last_sync_at ?? null }
+  const out: CampagneVoorraadPayload = {
+    fietsen,
+    winkel_fouten,
+    synced_at: meta?.last_sync_at ?? null,
+  }
+  await enrichPayloadWithBaseline(supabase, out)
+  return out
 }
 
 /** Schrijf snapshot (service role) */

@@ -18,6 +18,9 @@ type WinkelVoorraad = {
   lng: number | null
   voorraad: number
   bron: string
+  voorraad_referentie?: number | null
+  verkocht?: number
+  toename?: number
 }
 
 type FietsAgg = {
@@ -32,6 +35,9 @@ type FietsAgg = {
   active: boolean
   totaal_voorraad: number
   winkels_met_voorraad: number
+  totaal_referentie?: number | null
+  verkocht_totaal?: number
+  toename_totaal?: number
   winkels: WinkelVoorraad[]
 }
 
@@ -39,6 +45,7 @@ type VoorraadResponse = {
   fietsen: FietsAgg[]
   winkel_fouten: { winkel_id: number; naam: string; message: string }[]
   synced_at?: string | null
+  baseline_recorded_at?: string | null
   error?: string
 }
 
@@ -106,6 +113,8 @@ async function fetchHerberekenSyncStream(
         fietsen: (msg.fietsen as FietsAgg[]) ?? [],
         winkel_fouten: (msg.winkel_fouten as VoorraadResponse['winkel_fouten']) ?? [],
         synced_at: typeof msg.synced_at === 'string' ? msg.synced_at : null,
+        baseline_recorded_at:
+          typeof msg.baseline_recorded_at === 'string' ? msg.baseline_recorded_at : null,
       }
     }
   }
@@ -141,6 +150,7 @@ export default function CampagneFietsenPage() {
   const [error, setError] = useState<string | null>(null)
   const [meta, setMeta] = useState<{ fietsCount: number; totalWinkels: number } | null>(null)
   const [progress, setProgress] = useState<ProgressState | null>(null)
+  const [baselineSaving, setBaselineSaving] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   /** Snel: alleen snapshot uit Supabase */
@@ -206,6 +216,53 @@ export default function CampagneFietsenPage() {
       }
     }
   }, [])
+
+  const legReferentieVast = useCallback(async () => {
+    const ok = window.confirm(
+      'De huidige voorraad (laatste snapshot) wordt opgeslagen als referentie. Daarna zie je per fiets en winkel hoeveel er geschat verkocht is (afname) of bijgekomen is t.o.v. die stand. Doorgaan?'
+    )
+    if (!ok) return
+    setBaselineSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/campagne-fietsen/voorraad/baseline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set' }),
+        credentials: 'include',
+      })
+      const payload = (await res.json().catch(() => ({}))) as VoorraadResponse & { error?: string }
+      if (!res.ok) throw new Error(payload.error || `HTTP ${res.status}`)
+      setData(payload)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Referentie vastleggen mislukt')
+    } finally {
+      setBaselineSaving(false)
+    }
+  }, [])
+
+  const wisReferentie = useCallback(async () => {
+    if (!data?.baseline_recorded_at) return
+    const ok = window.confirm('Referentie wissen? Mutatie-kolommen verdwijnen tot je opnieuw een referentie vastlegt.')
+    if (!ok) return
+    setBaselineSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/campagne-fietsen/voorraad/baseline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' }),
+        credentials: 'include',
+      })
+      const payload = (await res.json().catch(() => ({}))) as VoorraadResponse & { error?: string }
+      if (!res.ok) throw new Error(payload.error || `HTTP ${res.status}`)
+      setData(payload)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Mislukt')
+    } finally {
+      setBaselineSaving(false)
+    }
+  }, [data?.baseline_recorded_at])
 
   useEffect(() => {
     if (!mayViewCampagneFietsen) return
@@ -298,20 +355,34 @@ export default function CampagneFietsenPage() {
               Voorraad per winkel via dezelfde koppelingen als het voorraaddashboard (CycleSoftware, Wilmar, Vendit). Alleen winkels met voorraad &gt; 0 worden getoond. De getoonde cijfers komen uit een opgeslagen snapshot; gebruik “Herbereken voorraad” om die te verversen.
             </p>
             {!isLoading && data != null && (
-              <p className="mt-3 text-xs opacity-90" style={{ fontFamily: F }}>
-                Laatst bijgewerkt: <strong>{syncedLabel}</strong>
-                {data.synced_at == null && (
-                  <span className="block mt-1 font-normal opacity-80">
-                    Nog geen sync — kies “Herbereken voorraad”.
-                  </span>
+              <>
+                <p className="mt-3 text-xs opacity-90" style={{ fontFamily: F }}>
+                  Laatst bijgewerkt: <strong>{syncedLabel}</strong>
+                  {data.synced_at == null && (
+                    <span className="block mt-1 font-normal opacity-80">
+                      Nog geen sync — kies “Herbereken voorraad”.
+                    </span>
+                  )}
+                </p>
+                {data.baseline_recorded_at ? (
+                  <p className="mt-2 text-xs opacity-90" style={{ fontFamily: F }}>
+                    Referentie (voor mutaties): <strong>{formatSyncedAt(data.baseline_recorded_at)}</strong>
+                    <span className="block mt-1 font-normal opacity-80">
+                      “Verkocht” = som van afnames t.o.v. die stand per winkel; “Toename” = extra voorraad t.o.v. referentie (herbevoorraading).
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs opacity-80 font-normal" style={{ fontFamily: F }}>
+                    Leg optioneel de huidige snapshot vast als referentie om mutaties en geschatte verkoop te zien na latere herberekeningen.
+                  </p>
                 )}
-              </p>
+              </>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => loadVoorraad()}
-                disabled={isLoading || isSyncing}
+                disabled={isLoading || isSyncing || baselineSaving}
                 className="text-sm font-semibold px-4 py-2 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 transition disabled:opacity-50"
               >
                 {isLoading ? 'Laden…' : 'Vernieuwen (cache)'}
@@ -319,11 +390,30 @@ export default function CampagneFietsenPage() {
               <button
                 type="button"
                 onClick={() => herberekenVoorraad()}
-                disabled={isLoading || isSyncing}
+                disabled={isLoading || isSyncing || baselineSaving}
                 className="text-sm font-semibold px-4 py-2 rounded-xl bg-white text-dynamo-blue border border-white hover:bg-white/95 transition disabled:opacity-50"
                 style={{ fontFamily: F }}
               >
                 {isSyncing ? 'Bezig met herberekenen…' : 'Herbereken voorraad'}
+              </button>
+              <button
+                type="button"
+                onClick={() => legReferentieVast()}
+                disabled={isLoading || isSyncing || baselineSaving || data == null}
+                className="text-sm font-semibold px-4 py-2 rounded-xl bg-amber-400/90 text-gray-900 border border-amber-300 hover:bg-amber-300 transition disabled:opacity-50"
+                style={{ fontFamily: F }}
+                title="Slaat de huidige snapshot op als referentie voor vergelijking"
+              >
+                {baselineSaving ? 'Bezig…' : 'Leg referentie vast (nu)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => wisReferentie()}
+                disabled={isLoading || isSyncing || baselineSaving || !data?.baseline_recorded_at}
+                className="text-sm font-semibold px-4 py-2 rounded-xl bg-white/10 border border-white/25 hover:bg-white/20 transition disabled:opacity-40"
+                style={{ fontFamily: F }}
+              >
+                Wis referentie
               </button>
             </div>
           </div>
@@ -416,6 +506,7 @@ export default function CampagneFietsenPage() {
         {mayViewCampagneFietsen && data &&
           fietsenSorted.map(f => {
             const open = openId === f.id
+            const hasBaseline = data.baseline_recorded_at != null
             return (
               <article
                 key={f.id}
@@ -431,18 +522,38 @@ export default function CampagneFietsenPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wider text-gray-400">{f.merk}</p>
                         <h2 className="text-lg font-bold leading-snug" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                           {f.omschrijving_fiets}
                         </h2>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold tabular-nums" style={{ color: DYNAMO_BLUE }}>
-                          {f.totaal_voorraad}
-                        </p>
-                        <p className="text-xs text-gray-500">stuks totaal</p>
+                      <div className="flex flex-wrap gap-4 sm:gap-5 justify-end shrink-0">
+                        <div className="text-right min-w-[4.5rem]">
+                          <p className="text-2xl font-bold tabular-nums" style={{ color: DYNAMO_BLUE }}>
+                            {f.totaal_voorraad}
+                          </p>
+                          <p className="text-xs text-gray-500">nu (totaal)</p>
+                        </div>
+                        {hasBaseline && f.totaal_referentie != null && (
+                          <>
+                            <div className="text-right min-w-[4rem]">
+                              <p className="text-xl font-bold tabular-nums text-gray-800">{f.totaal_referentie}</p>
+                              <p className="text-xs text-gray-500">referentie</p>
+                            </div>
+                            <div className="text-right min-w-[4rem]">
+                              <p className="text-xl font-bold tabular-nums text-red-700">{(f.verkocht_totaal ?? 0) > 0 ? `−${f.verkocht_totaal}` : '0'}</p>
+                              <p className="text-xs text-gray-500">verkocht (geschat)</p>
+                            </div>
+                            <div className="text-right min-w-[4rem]">
+                              <p className="text-xl font-bold tabular-nums text-emerald-800">
+                                {(f.toename_totaal ?? 0) > 0 ? `+${f.toename_totaal}` : '0'}
+                              </p>
+                              <p className="text-xs text-gray-500">toename</p>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                     <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-sm">
@@ -490,7 +601,16 @@ export default function CampagneFietsenPage() {
                               <th className="px-4 py-2 font-semibold text-gray-700">Winkel</th>
                               <th className="px-4 py-2 font-semibold text-gray-700">Plaats</th>
                               <th className="px-4 py-2 font-semibold text-gray-700">Bron</th>
-                              <th className="px-4 py-2 font-semibold text-gray-700 text-right">Voorraad</th>
+                              {hasBaseline && (
+                                <th className="px-4 py-2 font-semibold text-gray-700 text-right">Ref.</th>
+                              )}
+                              <th className="px-4 py-2 font-semibold text-gray-700 text-right">Nu</th>
+                              {hasBaseline && (
+                                <>
+                                  <th className="px-4 py-2 font-semibold text-gray-700 text-right">Verkocht</th>
+                                  <th className="px-4 py-2 font-semibold text-gray-700 text-right">Toename</th>
+                                </>
+                              )}
                             </tr>
                           </thead>
                           <tbody>
@@ -507,7 +627,22 @@ export default function CampagneFietsenPage() {
                                     {w.bron}
                                   </span>
                                 </td>
+                                {hasBaseline && (
+                                  <td className="px-4 py-2 text-right tabular-nums text-gray-800">
+                                    {w.voorraad_referentie ?? '—'}
+                                  </td>
+                                )}
                                 <td className="px-4 py-2 text-right font-bold tabular-nums text-gray-950">{w.voorraad}</td>
+                                {hasBaseline && (
+                                  <>
+                                    <td className="px-4 py-2 text-right font-semibold tabular-nums text-red-800">
+                                      {(w.verkocht ?? 0) > 0 ? `−${w.verkocht}` : '0'}
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-semibold tabular-nums text-emerald-900">
+                                      {(w.toename ?? 0) > 0 ? `+${w.toename}` : '0'}
+                                    </td>
+                                  </>
+                                )}
                               </tr>
                             ))}
                           </tbody>

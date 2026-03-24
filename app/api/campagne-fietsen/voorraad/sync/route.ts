@@ -4,6 +4,8 @@ import { withRateLimit } from '@/lib/api-middleware'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { computeCampagneVoorraadLive } from '@/lib/campagne-fietsen-voorraad-compute'
 import { persistCampagneVoorraadSnapshot } from '@/lib/campagne-fietsen-voorraad-snapshot'
+import type { CampagneVoorraadPayload } from '@/lib/campagne-fietsen-voorraad-types'
+import { enrichPayloadWithBaseline } from '@/lib/campagne-fietsen-voorraad-baseline'
 
 /**
  * GET: optioneel aan te roepen door een externe scheduler (niet-Vercel) met Authorization: Bearer CRON_SECRET
@@ -64,11 +66,18 @@ export async function POST(request: NextRequest) {
       const payload = await computeCampagneVoorraadLive(admin)
       await persistCampagneVoorraadSnapshot(admin, payload)
       const synced_at = new Date().toISOString()
+      const full: CampagneVoorraadPayload = {
+        fietsen: payload.fietsen as CampagneVoorraadPayload['fietsen'],
+        winkel_fouten: payload.winkel_fouten,
+        synced_at,
+      }
+      await enrichPayloadWithBaseline(admin, full)
       return NextResponse.json({
         ok: true,
         synced_at,
-        fietsen: payload.fietsen,
-        winkel_fouten: payload.winkel_fouten,
+        fietsen: full.fietsen,
+        winkel_fouten: full.winkel_fouten,
+        baseline_recorded_at: full.baseline_recorded_at ?? null,
       })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Herberekening mislukt'
@@ -97,11 +106,18 @@ export async function POST(request: NextRequest) {
         })
         await persistCampagneVoorraadSnapshot(admin, payload)
         const synced_at = new Date().toISOString()
-        send({
-          type: 'result',
-          fietsen: payload.fietsen,
+        const full: CampagneVoorraadPayload = {
+          fietsen: payload.fietsen as CampagneVoorraadPayload['fietsen'],
           winkel_fouten: payload.winkel_fouten,
           synced_at,
+        }
+        await enrichPayloadWithBaseline(admin, full)
+        send({
+          type: 'result',
+          fietsen: full.fietsen,
+          winkel_fouten: full.winkel_fouten,
+          synced_at,
+          baseline_recorded_at: full.baseline_recorded_at ?? null,
         })
         controller.close()
       } catch (e: unknown) {
