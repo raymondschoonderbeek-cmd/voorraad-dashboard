@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
@@ -213,7 +213,14 @@ export default function CampagneFietsenPage() {
     return () => abortRef.current?.abort()
   }, [mayViewCampagneFietsen, loadVoorraad])
 
-  const fietsen = data?.fietsen ?? []
+  const fietsenSorted = useMemo(() => {
+    return [...(data?.fietsen ?? [])].sort((a, b) => {
+      const d = b.totaal_voorraad - a.totaal_voorraad
+      if (d !== 0) return d
+      return a.omschrijving_fiets.localeCompare(b.omschrijving_fiets, 'nl')
+    })
+  }, [data?.fietsen])
+
   const winkelFouten = data?.winkel_fouten ?? []
 
   const progressPct =
@@ -222,7 +229,8 @@ export default function CampagneFietsenPage() {
   const syncedLabel = formatSyncedAt(data?.synced_at)
 
   function puntenVoorFiets(f: FietsAgg): CampagneFietsMapPunt[] {
-    return f.winkels
+    return [...f.winkels]
+      .sort((a, b) => b.voorraad - a.voorraad || a.naam.localeCompare(b.naam, 'nl'))
       .filter(w => w.voorraad > 0 && w.lat != null && w.lng != null)
       .map(w => ({
         lat: w.lat!,
@@ -380,7 +388,7 @@ export default function CampagneFietsenPage() {
           </div>
         )}
 
-        {mayViewCampagneFietsen && !isLoading && !isSyncing && data && fietsen.length === 0 && (
+        {mayViewCampagneFietsen && !isLoading && !isSyncing && data && fietsenSorted.length === 0 && (
           <div className="rounded-2xl p-8 text-center bg-white border border-gray-100 text-gray-600">
             Geen actieve campagnefietsen. Voeg fietsen toe onder{' '}
             <Link href="/dashboard/beheer?tab=campagnefietsen" className="font-semibold text-dynamo-blue underline">
@@ -406,7 +414,7 @@ export default function CampagneFietsenPage() {
         )}
 
         {mayViewCampagneFietsen && data &&
-          fietsen.map(f => {
+          fietsenSorted.map(f => {
             const open = openId === f.id
             return (
               <article
@@ -486,7 +494,9 @@ export default function CampagneFietsenPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {f.winkels.map(w => (
+                            {[...f.winkels]
+                              .sort((a, b) => b.voorraad - a.voorraad || a.naam.localeCompare(b.naam, 'nl'))
+                              .map(w => (
                               <tr key={w.winkel_id} className="border-b border-gray-50 hover:bg-gray-50/80">
                                 <td className="px-4 py-2 font-medium" style={{ color: DYNAMO_BLUE }}>
                                   {w.naam}
