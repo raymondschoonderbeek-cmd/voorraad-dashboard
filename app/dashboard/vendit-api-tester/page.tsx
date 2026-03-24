@@ -732,13 +732,13 @@ export default function VenditApiTesterPage() {
             <span className="hidden sm:inline">Vendit API Tester</span>
           </Link>
           <div className="flex items-center gap-3">
-            <a href="https://api2.vendit.online/VenditPublicApiSpec/index.html" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}>
+            <a href="https://api2.vendit.online/VenditPublicApiSpec/index.html" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
               API Docs
             </a>
-            <Link href="/dashboard/beheer" className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}>
+            <Link href="/dashboard/beheer" className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
               Beheer
             </Link>
-            <Link href="/dashboard" className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>← DRG Portal</Link>
+            <Link href="/dashboard" className="text-xs font-semibold" style={{ color: 'white' }}>← DRG Portal</Link>
           </div>
         </div>
       </header>

@@ -364,7 +364,7 @@ export default function BrandGroepPage() {
           </Link>
 
           <div className="flex items-center px-3 sm:px-5 border-r border-white/10 gap-2 flex-1 min-w-0">
-            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold hidden sm:block shrink-0">Winkel</span>
+            <span className="text-white text-xs uppercase tracking-widest font-semibold hidden sm:block shrink-0">Winkel</span>
             <WinkelSelect
               winkels={winkels}
               value={geselecteerdeWinkel}
@@ -378,13 +378,13 @@ export default function BrandGroepPage() {
           </div>
 
           <div className="flex items-center px-3 sm:px-5 shrink-0">
-            <span className="text-white/80 text-xs sm:text-sm font-semibold truncate">Merk / Groep</span>
+            <span className="text-white text-xs sm:text-sm font-semibold truncate">Merk / Groep</span>
           </div>
 
           <div className="flex-1 hidden sm:block" />
 
           <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-5 shrink-0 w-full sm:w-auto justify-end">
-            <span className="text-xs truncate max-w-[140px] flex items-center gap-2" style={loading ? { color: 'white', fontWeight: 600 } : { color: 'rgba(255,255,255,0.5)' }}>
+            <span className="text-xs truncate max-w-[140px] flex items-center gap-2" style={loading ? { color: 'white', fontWeight: 600 } : { color: 'white' }}>
               {loading && <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: 'currentColor' }} />}
               {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten` : ''}
             </span>

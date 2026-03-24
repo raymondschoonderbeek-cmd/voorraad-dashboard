@@ -935,7 +935,7 @@ export default function BeheerPage() {
             <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
           <div className="flex items-center px-3 sm:px-5">
-            <span className="text-xs sm:text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.6)', fontFamily: F }}>Beheer</span>
+            <span className="text-xs sm:text-sm font-semibold" style={{ color: 'white', fontFamily: F }}>Beheer</span>
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-5 shrink-0">
@@ -944,7 +944,7 @@ export default function BeheerPage() {
                 Vendit API
               </Link>
             )}
-            <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
+            <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
               <IconArrowLeft /> DRG Portal
             </Link>
           </div>
