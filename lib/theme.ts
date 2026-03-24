@@ -37,6 +37,14 @@ export const dashboardUi = {
   sectionDivider: `rgba(${DYNAMO_BLUE_LIGHT_RGB}, 0.35)`,
 } as const
 
+/** Dashboard moduletegels — zelfde oppervlak als tegel Voorraad */
+export const dashboardModuleTile = {
+  surface: { background: DYNAMO_BLUE, boxShadow: '0 8px 36px rgba(45,69,124,0.28)' },
+  iconWrap: { background: 'rgba(255,255,255,0.15)' },
+  footer: { background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.07)' },
+  subtitle: { color: 'rgba(255,255,255,0.65)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55 },
+} as const
+
 export const WINKEL_KLEUREN = [
   '#2D457C', '#16a34a', '#dc2626', '#9333ea',
   '#ea580c', '#0891b2', '#65a30d', '#db2777',

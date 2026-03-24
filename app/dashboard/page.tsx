@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { BrancheNieuwsModule, BRANCHE_NIEUWS_MEER_URL } from '@/components/BrancheNieuws'
 import useSWR from 'swr'
 import { WinkelModal } from '@/components/WinkelModal'
-import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO, dashboardUi } from '@/lib/theme'
+import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO, dashboardModuleTile, dashboardUi } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -137,6 +137,31 @@ const IconGrip = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
     <circle cx="9" cy="9" r="1.5" /><circle cx="15" cy="9" r="1.5" />
     <circle cx="9" cy="15" r="1.5" /><circle cx="15" cy="15" r="1.5" />
+  </svg>
+)
+
+const IconLunch = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2" />
+    <path d="M7 2v20" />
+    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3v0h3" />
+  </svg>
+)
+
+const IconBike = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="5.5" cy="17.5" r="3.5" />
+    <circle cx="18.5" cy="17.5" r="3.5" />
+    <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
+    <path d="M12 17.5V14l-3-3 4-3 2 3h2" />
+  </svg>
+)
+
+const IconNewspaper = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v18a2 2 0 0 1-2 2z" />
+    <path d="M18 10h-4" /><path d="M18 14h-4" /><path d="M18 6h-4" />
+    <path d="M6 10h.01" /><path d="M6 14h.01" />
   </svg>
 )
 
@@ -771,8 +796,8 @@ export default function Dashboard() {
         .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
         .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
         .mod-card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-        .mod-card:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(45,69,124,.13)!important}
-        .mod-card:focus-visible{outline:2px solid rgba(45,69,124,.35);outline-offset:3px}
+        .mod-card:hover{transform:translateY(-2px);box-shadow:0 16px 44px rgba(0,0,0,.22)!important}
+        .mod-card:focus-visible{outline:2px solid rgba(255,255,255,.45);outline-offset:3px}
         .wink-card{transition:transform .2s ease,box-shadow .2s ease}
         .wink-card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(45,69,124,.12)!important}
       `}</style>
@@ -877,7 +902,7 @@ export default function Dashboard() {
                     /** Max hoogte gelijk aan compacte tegels (bovenste rij); branche-nieuws scrollt binnen dit kader */
                     const modCardMax = 'max-h-[270px]'
                     const modCard = `mod-card rounded-2xl overflow-hidden ${modCardMax}`
-                    const isBlue = id === 'voorraad'
+                    const modTitleStyle = { fontFamily: F, color: 'white', fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' } as const
                     const dragHandle = !lunchOnly ? (
                       <div
                         draggable
@@ -885,7 +910,7 @@ export default function Dashboard() {
                         onDragOver={e => e.preventDefault()}
                         onClick={e => { e.preventDefault(); e.stopPropagation() }}
                         className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing opacity-50 hover:opacity-90 transition-opacity"
-                        style={isBlue ? { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' } : { background: 'rgba(45,69,124,0.07)', color: dashboardUi.textMuted }}
+                        style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)' }}
                         title="Sleep om volgorde te wijzigen"
                       >
                         <IconGrip />
@@ -894,18 +919,18 @@ export default function Dashboard() {
                     if (id === 'voorraad') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className={`${modCard} cursor-pointer flex flex-col h-full`} style={{ background: DYNAMO_BLUE, boxShadow: '0 8px 36px rgba(45,69,124,0.28)' }} onClick={openWinkelSelect}>
+                          <div className={`${modCard} cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }} onClick={openWinkelSelect}>
                             {dragHandle}
                             <div className="p-6 flex-1">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
                                 <div style={{ color: 'white' }}><IconBox /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: 'white', fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Voorraad</div>
-                              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Zoek en filter producten per winkel</div>
+                              <div style={modTitleStyle}>Voorraad</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>Zoek en filter producten per winkel</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ background: 'rgba(0,0,0,0.15)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
                               <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Selecteer winkel →</span>
-                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontFamily: F }}>{winkelsVoorGebruiker.length} locaties</span>
+                              <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontFamily: F }}>{winkelsVoorGebruiker.length} locaties</span>
                             </div>
                           </div>
                         </div>
@@ -914,18 +939,18 @@ export default function Dashboard() {
                     if (id === 'lunch') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardUi.cardWhite }}>
+                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
-                                <span style={{ color: 'white', fontSize: '20px' }}>🥪</span>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }}><IconLunch /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Lunch bestellen</div>
-                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
+                              <div style={modTitleStyle}>Lunch bestellen</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardUi.cardFooter }}>
-                              <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
-                              <span style={{ color: DYNAMO_BLUE, opacity: 0.6, fontSize: '18px' }}>🥪</span>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
+                              <div style={{ color: 'rgba(255,255,255,0.45)' }}><IconLunch /></div>
                             </div>
                           </Link>
                         </div>
@@ -934,18 +959,18 @@ export default function Dashboard() {
                     if (id === 'brand-groep') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardUi.cardWhite }}>
+                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
                                 <div style={{ color: 'white' }}><IconChart /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Merk / Groep</div>
-                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
+                              <div style={modTitleStyle}>Merk / Groep</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>Voorraad per merk en productgroep</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardUi.cardFooter }}>
-                              <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
-                              <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
+                              <div style={{ color: 'rgba(255,255,255,0.45)' }}><IconChart /></div>
                             </div>
                           </Link>
                         </div>
@@ -954,18 +979,18 @@ export default function Dashboard() {
                     if (id === 'campagne-fietsen') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/campagne-fietsen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardUi.cardWhite }}>
+                          <Link href="/dashboard/campagne-fietsen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
-                                <span style={{ color: 'white', fontSize: '22px' }}>🚲</span>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }}><IconBike /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Campagnefietsen</div>
-                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Landelijk voorraad per campagnefiets</div>
+                              <div style={modTitleStyle}>Campagnefietsen</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>Landelijk voorraad per campagnefiets</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardUi.cardFooter }}>
-                              <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk overzicht →</span>
-                              <span style={{ color: DYNAMO_BLUE, opacity: 0.5, fontSize: '18px' }}>🚲</span>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk overzicht →</span>
+                              <div style={{ color: 'rgba(255,255,255,0.45)' }}><IconBike /></div>
                             </div>
                           </Link>
                         </div>
@@ -976,33 +1001,33 @@ export default function Dashboard() {
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <div
                             className={`${modCard} h-full flex flex-col`}
-                            style={{ ...dashboardUi.cardWhite }}
+                            style={{ ...dashboardModuleTile.surface }}
                           >
                             {dragHandle}
                             <div className="p-6 flex-1 flex flex-col min-h-0">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0" style={{ background: DYNAMO_BLUE }}>
-                                <span style={{ color: 'white', fontSize: '22px' }} aria-hidden>📰</span>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }} aria-hidden><IconNewspaper /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Branche nieuws</div>
-                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>
+                              <div style={modTitleStyle}>Branche nieuws</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>
                                 Actuele artikelen van NieuwsFiets
                               </div>
                               <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 -mr-0.5">
-                                <BrancheNieuwsModule maxItems={3} compact />
+                                <BrancheNieuwsModule maxItems={3} compact onDarkBackground />
                               </div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto shrink-0" style={{ ...dashboardUi.cardFooter }}>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto shrink-0" style={{ ...dashboardModuleTile.footer }}>
                               <a
                                 href={BRANCHE_NIEUWS_MEER_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-left"
-                                style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}
+                                style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}
                                 onClick={e => e.stopPropagation()}
                               >
                                 Meer nieuws →
                               </a>
-                              <span style={{ color: DYNAMO_BLUE, opacity: 0.45, fontSize: '16px' }} aria-hidden>📰</span>
+                              <div style={{ color: 'rgba(255,255,255,0.45)' }} aria-hidden><IconNewspaper /></div>
                             </div>
                           </div>
                         </div>
@@ -1011,17 +1036,17 @@ export default function Dashboard() {
                     if (id === 'meer') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className={`mod-card rounded-2xl overflow-hidden flex flex-col h-full ${modCardMax}`} style={{ background: 'rgba(45,69,124,0.045)', border: '1px dashed rgba(45,69,124,0.22)', boxShadow: '0 2px 16px rgba(45,69,124,0.06)' }}>
+                          <div className={`mod-card rounded-2xl overflow-hidden flex flex-col h-full ${modCardMax}`} style={{ ...dashboardModuleTile.surface, border: '1px dashed rgba(255,255,255,0.22)' }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(45,69,124,0.1)' }}>
-                                <div style={{ color: 'rgba(45,69,124,0.38)' }}><IconMap /></div>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }}><IconMap /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: dashboardUi.textMuted, fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
-                              <div style={{ color: dashboardUi.textSubtle, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
+                              <div style={{ fontFamily: F, color: 'white', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>Export, vergelijking, alerts</div>
                             </div>
-                            <div className="px-6 py-3 mt-auto" style={{ ...dashboardUi.cardFooter }}>
-                              <span style={{ color: dashboardUi.textSubtle, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
+                            <div className="px-6 py-3 mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
                             </div>
                           </div>
                         </div>
