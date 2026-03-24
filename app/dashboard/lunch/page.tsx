@@ -49,6 +49,9 @@ export default function LunchPage() {
   } | null>(null)
   const [heeftTikkieGeklikt, setHeeftTikkieGeklikt] = useState(false)
   const [error, setError] = useState('')
+  const [cartToast, setCartToast] = useState<string | null>(null)
+  const cartPanelRef = useRef<HTMLDivElement>(null)
+  const toastClearRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
   const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
@@ -85,6 +88,19 @@ export default function LunchPage() {
     })
   }, [])
 
+  const addToCartWithFeedback = useCallback((product: LunchProduct, qty = 1) => {
+    addToCart(product, qty)
+    if (toastClearRef.current) clearTimeout(toastClearRef.current)
+    setCartToast(`“${product.name}” toegevoegd aan je winkelwagen`)
+    toastClearRef.current = setTimeout(() => setCartToast(null), 4000)
+  }, [addToCart])
+
+  useEffect(() => {
+    return () => {
+      if (toastClearRef.current) clearTimeout(toastClearRef.current)
+    }
+  }, [])
+
   const updateQuantity = useCallback((productId: string, delta: number) => {
     setCart(prev =>
       prev
@@ -100,6 +116,11 @@ export default function LunchPage() {
   }, [])
 
   const totalCents = cart.reduce((s, i) => s + i.product.price_cents * i.quantity, 0)
+  const cartItemCount = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart])
+
+  function scrollToCart() {
+    cartPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   async function doCheckout() {
     if (cart.length === 0 || totalCents <= 0) return
@@ -190,7 +211,29 @@ export default function LunchPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+      {cartToast && (
+        <div
+          className="fixed left-3 right-3 z-[60] max-w-lg mx-auto pointer-events-none top-[calc(4.25rem+env(safe-area-inset-top,0px))]"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="pointer-events-auto rounded-2xl px-4 py-3.5 shadow-lg border text-center"
+            style={{
+              background: DYNAMO_BLUE,
+              color: 'white',
+              borderColor: 'rgba(255,255,255,0.2)',
+              boxShadow: '0 10px 40px rgba(45,69,124,0.35)',
+            }}
+          >
+            <p className="text-sm sm:text-base font-semibold leading-snug">🥪 {cartToast}</p>
+          </div>
+        </div>
+      )}
+
+      <main
+        className={`max-w-4xl mx-auto p-4 sm:p-6 space-y-6 ${cart.length > 0 ? 'pb-24 lg:pb-6' : ''}`}
+      >
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
             Besteldatum:
@@ -320,8 +363,8 @@ export default function LunchPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Productcatalogus */}
-          <div className="lg:col-span-2">
+          {/* Productcatalogus — op mobiel onder de winkelwagen (order-2) */}
+          <div className="order-2 lg:order-1 lg:col-span-2">
             <h2 className="text-lg font-bold mb-4" style={{ color: DYNAMO_BLUE }}>
               Broodjes
             </h2>
@@ -368,9 +411,10 @@ export default function LunchPage() {
                             <span className="font-bold text-sm" style={{ color: DYNAMO_BLUE }}>{formatPrice(p.price_cents)}</span>
                             <button
                               type="button"
-                              onClick={() => addToCart(p)}
+                              onClick={() => addToCartWithFeedback(p)}
                               className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm transition hover:opacity-80"
                               style={{ background: DYNAMO_BLUE, color: 'white' }}
+                              aria-label={`${p.name} toevoegen aan winkelwagen`}
                             >
                               +
                             </button>
@@ -384,9 +428,9 @@ export default function LunchPage() {
             )}
           </div>
 
-          {/* Winkelwagen */}
-          <div>
-            <div className="sticky top-20 rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 4px 12px rgba(45,69,124,0.08)' }}>
+          {/* Winkelwagen — op mobiel boven de lijst broodjes (order-1) */}
+          <div className="order-1 lg:order-2" ref={cartPanelRef} id="winkelwagen">
+            <div className="lg:sticky lg:top-20 rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 4px 12px rgba(45,69,124,0.08)' }}>
               <div className="p-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
                 <h2 className="font-bold" style={{ color: DYNAMO_BLUE }}>Winkelwagen</h2>
                 <p className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.5)' }}>{orderDate}</p>
@@ -460,6 +504,37 @@ export default function LunchPage() {
           </div>
         </div>
       </main>
+
+      {cart.length > 0 && (
+        <div
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t px-3 pt-2"
+          style={{
+            background: 'white',
+            borderColor: 'rgba(45,69,124,0.12)',
+            boxShadow: '0 -6px 28px rgba(45,69,124,0.12)',
+            paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+          }}
+        >
+          <div className="max-w-4xl mx-auto flex items-center gap-3 pb-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(45,69,124,0.45)' }}>
+                Winkelwagen
+              </p>
+              <p className="text-sm font-bold truncate" style={{ color: DYNAMO_BLUE }}>
+                {cartItemCount} {cartItemCount === 1 ? 'broodje' : 'broodjes'} · {formatPrice(totalCents)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={scrollToCart}
+              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold text-white active:opacity-90"
+              style={{ background: DYNAMO_BLUE }}
+            >
+              Naar winkelwagen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
