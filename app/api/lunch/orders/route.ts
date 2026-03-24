@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     const allowed = checkOrderDateAllowed(date, orderWeekdays, closedDates)
     if (!allowed.ok) {
-      return NextResponse.json({ error: allowed.message }, { status: 400 })
+      return NextResponse.json({ error: allowed.description }, { status: 400 })
     }
 
     // Haal producten op voor prijzen

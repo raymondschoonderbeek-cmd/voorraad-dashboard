@@ -63,7 +63,13 @@ export function normalizeClosedDates(arr: unknown): string[] | null {
 
 export type OrderDateCheck =
   | { ok: true }
-  | { ok: false; message: string }
+  | {
+      ok: false
+      variant: 'closed' | 'weekday' | 'invalid'
+      title: string
+      /** Volledige uitleg voor gebruiker (ook voor API-fouttekst) */
+      description: string
+    }
 
 export function checkOrderDateAllowed(
   orderDateYmd: string,
@@ -71,15 +77,39 @@ export function checkOrderDateAllowed(
   closedDatesYmd: string[]
 ): OrderDateCheck {
   const d = parseLocalYmd(orderDateYmd)
-  if (!d) return { ok: false, message: 'Ongeldige besteldatum.' }
+  if (!d) {
+    return {
+      ok: false,
+      variant: 'invalid',
+      title: 'Ongeldige datum',
+      description: 'De gekozen datum is ongeldig. Selecteer een geldige datum in de kalender.',
+    }
+  }
 
   if (closedDatesYmd.includes(orderDateYmd)) {
-    return { ok: false, message: 'Deze dag is gesloten; er kan niet voor besteld worden.' }
+    const pretty = d.toLocaleDateString('nl-NL', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    return {
+      ok: false,
+      variant: 'closed',
+      title: 'Deze dag is gesloten',
+      description: `Op ${pretty} is niet mogelijk om te bestellen — deze dag staat als gesloten in de agenda. Kies een andere datum om je broodjes te bestellen.`,
+    }
   }
 
   const iso = isoWeekdayFromDate(d)
   if (!orderWeekdays.includes(iso)) {
-    return { ok: false, message: 'Er kan op deze weekdag niet besteld worden.' }
+    const dayName = WEEKDAYS_NL.find(w => w.iso === iso)?.label ?? 'Deze dag'
+    return {
+      ok: false,
+      variant: 'weekday',
+      title: 'Bestellen niet mogelijk op deze dag',
+      description: `Op ${dayName} is niet mogelijk om te bestellen. Alleen op de door de beheerder ingestelde dagen kun je een lunch bestellen — kies een andere datum.`,
+    }
   }
 
   return { ok: true }

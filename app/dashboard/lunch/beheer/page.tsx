@@ -358,8 +358,12 @@ function InstellingenBeheer() {
   const [closedDates, setClosedDates] = useState<string[]>([])
   const [newClosedDate, setNewClosedDate] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingSchedule, setSavingSchedule] = useState(false)
+  const [savingNewClosed, setSavingNewClosed] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [tikkieError, setTikkieError] = useState('')
+  const [tikkieSaved, setTikkieSaved] = useState(false)
 
   const { data: settings, mutate } = useSWR<{
     tikkie_pay_link?: string
@@ -376,28 +380,70 @@ function InstellingenBeheer() {
     if (Array.isArray(settings.closed_dates)) setClosedDates([...settings.closed_dates].sort())
   }, [settings])
 
-  function toggleWeekday(iso: number) {
-    setOrderWeekdays(prev => {
-      const has = prev.includes(iso)
-      const next = has ? prev.filter(d => d !== iso) : [...prev, iso].sort((a, b) => a - b)
-      return next.length > 0 ? next : prev
-    })
+  async function persistSchedule(partial: { order_weekdays: number[] } | { closed_dates: string[] }) {
+    setError('')
+    setSavingSchedule(true)
+    try {
+      const res = await fetch('/api/lunch/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partial),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
+      mutate(data)
+      setSuccess(true)
+      window.setTimeout(() => setSuccess(false), 2500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Er ging iets mis')
+      await mutate()
+      throw e
+    } finally {
+      setSavingSchedule(false)
+    }
   }
 
-  function addClosedDate() {
+  async function toggleWeekday(iso: number) {
+    const has = orderWeekdays.includes(iso)
+    const next = has ? orderWeekdays.filter(d => d !== iso) : [...orderWeekdays, iso].sort((a, b) => a - b)
+    if (next.length === 0) return
+    setOrderWeekdays(next)
+    try {
+      await persistSchedule({ order_weekdays: next })
+    } catch {
+      /* state wordt gesynchroniseerd via mutate() in persistSchedule */
+    }
+  }
+
+  async function addClosedDate() {
     const d = newClosedDate.trim()
     if (!d || closedDates.includes(d)) return
-    setClosedDates(prev => [...prev, d].sort())
+    const next = [...closedDates, d].sort()
+    setClosedDates(next)
     setNewClosedDate('')
+    setSavingNewClosed(true)
+    try {
+      await persistSchedule({ closed_dates: next })
+    } catch {
+      setNewClosedDate(d)
+    } finally {
+      setSavingNewClosed(false)
+    }
   }
 
-  function removeClosedDate(d: string) {
-    setClosedDates(prev => prev.filter(x => x !== d))
+  async function removeClosedDate(d: string) {
+    const next = closedDates.filter(x => x !== d)
+    setClosedDates(next)
+    try {
+      await persistSchedule({ closed_dates: next })
+    } catch {
+      /* state wordt gesynchroniseerd via mutate() in persistSchedule */
+    }
   }
 
   async function handleSave() {
-    setError('')
-    setSuccess(false)
+    setTikkieError('')
+    setTikkieSaved(false)
     setSaving(true)
     try {
       const res = await fetch('/api/lunch/settings', {
@@ -405,16 +451,15 @@ function InstellingenBeheer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tikkie_pay_link: tikkieLink,
-          order_weekdays: orderWeekdays,
-          closed_dates: closedDates,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
       mutate(data)
-      setSuccess(true)
+      setTikkieSaved(true)
+      window.setTimeout(() => setTikkieSaved(false), 2500)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Er ging iets mis')
+      setTikkieError(e instanceof Error ? e.message : 'Er ging iets mis')
     } finally {
       setSaving(false)
     }
@@ -424,14 +469,18 @@ function InstellingenBeheer() {
     <div className="space-y-4">
       <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
         <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Besteldagen</h2>
+        {error && <p className="text-sm text-red-600 mb-2 rounded-lg bg-red-50 px-3 py-2 border border-red-100">{error}</p>}
+        {success && !error && (
+          <p className="text-sm text-green-700 mb-2 rounded-lg bg-green-50 px-3 py-2 border border-green-100">Opgeslagen.</p>
+        )}
         <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
-          Vink aan op welke weekdagen medewerkers mogen bestellen (ISO: maandag t/m zondag).
+          Vink aan op welke weekdagen medewerkers mogen bestellen. Wijzigingen worden direct opgeslagen. Gesloten dagen idem.
         </p>
         <div className="flex flex-wrap gap-2 mb-4">
           {WEEKDAYS_NL.map(({ iso, label, short }) => (
             <label
               key={iso}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer border"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${savingSchedule ? 'opacity-70 cursor-wait' : 'cursor-pointer'}`}
               style={{
                 borderColor: orderWeekdays.includes(iso) ? DYNAMO_BLUE : 'rgba(45,69,124,0.15)',
                 background: orderWeekdays.includes(iso) ? 'rgba(45,69,124,0.08)' : 'white',
@@ -441,8 +490,9 @@ function InstellingenBeheer() {
               <input
                 type="checkbox"
                 checked={orderWeekdays.includes(iso)}
-                onChange={() => toggleWeekday(iso)}
-                className="rounded border-gray-300"
+                onChange={() => void toggleWeekday(iso)}
+                disabled={savingSchedule}
+                className="rounded border-gray-300 disabled:cursor-wait"
               />
               <span className="font-medium">{short}</span>
               <span className="hidden sm:inline text-gray-500 font-normal">{label}</span>
@@ -471,12 +521,12 @@ function InstellingenBeheer() {
           </div>
           <button
             type="button"
-            onClick={addClosedDate}
-            disabled={!newClosedDate}
+            onClick={() => void addClosedDate()}
+            disabled={!newClosedDate || savingSchedule}
             className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 border"
             style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
           >
-            Toevoegen
+            {savingNewClosed ? 'Opslaan...' : 'Toevoegen'}
           </button>
         </div>
         {closedDates.length > 0 ? (
@@ -490,8 +540,9 @@ function InstellingenBeheer() {
                 <span>{new Date(d + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                 <button
                   type="button"
-                  onClick={() => removeClosedDate(d)}
-                  className="text-red-600 font-medium hover:underline text-xs"
+                  onClick={() => void removeClosedDate(d)}
+                  disabled={savingSchedule}
+                  className="text-red-600 font-medium hover:underline text-xs disabled:opacity-50"
                 >
                   Verwijderen
                 </button>
@@ -510,8 +561,10 @@ function InstellingenBeheer() {
         <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
           De link die gebruikers na het bestellen zien om te betalen. Bijv. https://tikkie.me/pay/xxx
         </p>
-        {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
-        {success && <p className="text-sm text-green-600 mb-2">Opgeslagen.</p>}
+        {tikkieError && <p className="text-sm text-red-600 mb-2 rounded-lg bg-red-50 px-3 py-2 border border-red-100">{tikkieError}</p>}
+        {tikkieSaved && !tikkieError && (
+          <p className="text-sm text-green-700 mb-2 rounded-lg bg-green-50 px-3 py-2 border border-green-100">Tikkie-link opgeslagen.</p>
+        )}
         <input
           type="url"
           value={tikkieLink}
@@ -527,7 +580,7 @@ function InstellingenBeheer() {
           className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
           style={{ background: DYNAMO_BLUE, color: 'white' }}
         >
-          {saving ? 'Opslaan...' : 'Alles opslaan'}
+          {saving ? 'Opslaan...' : 'Tikkie-link opslaan'}
         </button>
       </div>
     </div>

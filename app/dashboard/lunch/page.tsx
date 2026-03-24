@@ -208,8 +208,21 @@ export default function LunchPage() {
           />
         </div>
         {!dateCheck.ok && (
-          <div className="rounded-xl p-3 text-sm font-medium" style={{ background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa' }}>
-            {dateCheck.message}
+          <div
+            className="rounded-2xl p-4 sm:p-5 border-2 shadow-sm"
+            style={{
+              background: dateCheck.variant === 'closed' ? '#fff1f2' : '#fff7ed',
+              borderColor: dateCheck.variant === 'closed' ? '#fecdd3' : '#fdba74',
+              color: '#7c2d12',
+            }}
+            role="alert"
+          >
+            <p className="text-base sm:text-lg font-bold mb-2" style={{ color: '#9a3412' }}>
+              {dateCheck.title}
+            </p>
+            <p className="text-sm sm:text-base leading-relaxed" style={{ color: '#7c2d12' }}>
+              {dateCheck.description}
+            </p>
           </div>
         )}
 
@@ -432,7 +445,15 @@ export default function LunchPage() {
                   className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
                   style={{ background: DYNAMO_BLUE, color: 'white' }}
                 >
-                  {checkoutLoading ? 'Bezig...' : !dateCheck.ok ? 'Kies een geldige besteldatum' : 'Bestellen & betalen via Tikkie'}
+                  {checkoutLoading
+                    ? 'Bezig...'
+                    : !dateCheck.ok
+                      ? dateCheck.variant === 'closed'
+                        ? 'Kies een open dag om te bestellen'
+                        : dateCheck.variant === 'invalid'
+                          ? 'Kies een geldige datum'
+                          : 'Kies een toegestane dag om te bestellen'
+                      : 'Bestellen & betalen via Tikkie'}
                 </button>
               </div>
             </div>
