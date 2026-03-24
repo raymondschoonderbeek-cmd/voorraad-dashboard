@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { BrancheNieuws } from '@/components/BrancheNieuws'
 import useSWR from 'swr'
 import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
@@ -765,6 +766,7 @@ export default function Dashboard() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
         .s1{animation:fadeUp .5s ease forwards;opacity:0}
         .s2{animation:fadeUp .5s .08s ease forwards;opacity:0}
+        .s2b{animation:fadeUp .5s .12s ease forwards;opacity:0}
         .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
         .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
         .mod-card{transition:transform .2s ease,box-shadow .2s ease}
@@ -986,6 +988,11 @@ export default function Dashboard() {
                     return null
                   })}
                 </div>
+              </div>
+
+              {/* BRANCHE NIEUWS (NieuwsFiets RSS) */}
+              <div className="s2b max-w-2xl">
+                <BrancheNieuws />
               </div>
 
               {/* KAART */}

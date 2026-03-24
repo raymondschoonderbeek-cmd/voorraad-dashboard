@@ -11,6 +11,7 @@ export function parseVoorraadItems(json: unknown): Record<string, unknown>[] {
 /**
  * Som van voorraad voor campagnefiets: match op EAN (barcode) of leveranciersartikel.
  * Eén regel telt maximaal één keer (OR op velden).
+ * Telt **beschikbare voorraad** (AVAILABLE_STOCK / freeStock); als die ontbreekt, val terug op STOCK.
  */
 export function stockForCampagneFiets(
   items: Record<string, unknown>[],
@@ -26,7 +27,8 @@ export function stockForCampagneFiets(
     const matchEan = eanN && bc === eanN
     const matchSup = supN && sup === supN
     if (!matchEan && !matchSup) continue
-    const stock = Number(it.STOCK ?? it.stock ?? it.AVAILABLE_STOCK ?? it.availableStock ?? 0) || 0
+    const stock =
+      Number(it.AVAILABLE_STOCK ?? it.availableStock ?? it.STOCK ?? it.stock ?? 0) || 0
     total += stock
   }
   return total
