@@ -165,13 +165,6 @@ const IconNewspaper = () => (
   </svg>
 )
 
-const IconStore = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-    <polyline points="9 22 9 12 15 12 15 22" />
-  </svg>
-)
-
 const IconArrowLeft = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="19" y1="12" x2="5" y2="12" />
@@ -847,44 +840,32 @@ export default function Dashboard() {
                 <div className="pointer-events-none absolute top-0 left-0 right-0 h-[3px] opacity-95" style={{ background: `linear-gradient(90deg, transparent 0%, ${DYNAMO_GOLD} 45%, ${DYNAMO_GOLD} 55%, transparent 100%)` }} aria-hidden />
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.2)' }} />
-                <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '200px', background: 'rgba(255,255,255,0.02)', borderLeft: '1px solid rgba(255,255,255,0.06)' }} />
-                <div className="relative p-4 sm:p-5 sm:pr-52 flex flex-wrap items-center gap-x-6 gap-y-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                      <span className="w-1 h-1 rounded-full" style={{ background: 'white' }} />
-                      <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.95)', fontFamily: F }}><span className="uppercase">{getDagdeel()}</span>{gebruiker ? `, ${gebruiker}` : ''}</span>
-                    </div>
-                    <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>DRG Portal</h1>
-                  </div>
-                  <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
-                  {!lunchOnly && (
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button
-                        onClick={openWinkelSelect}
-                        aria-label="Kies een winkel"
-                        className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-90"
-                        style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.35)', fontFamily: F }}
-                      >
-                        <IconStore /> Kies een winkel
-                      </button>
-                      <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
-                        <IconChart /> Analyse
-                      </Link>
-                    </div>
-                  )}
-                  {!lunchOnly && winkelsVoorGebruiker.length > 0 && (
-                    <div className="flex items-center gap-4 sm:gap-5 pt-2 border-t border-white/10 w-full sm:w-auto">
-                      {[{ label: 'Winkels', value: winkelsVoorGebruiker.length, color: 'white' }, { label: 'Locaties', value: winkelsVoorGebruiker.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: 'white' }].map((s, i) => (
-                        <div key={s.label} className="flex items-center gap-2">
-                          {i > 0 && <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />}
-                          <div>
-                            <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
-                            <div style={{ color: s.color, fontSize: '16px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
-                          </div>
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+                    <div className="min-w-0 flex flex-col gap-2 sm:gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)' }}>
+                          <span className="w-1 h-1 rounded-full shrink-0" style={{ background: 'white' }} />
+                          <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.95)', fontFamily: F }}><span className="uppercase">{getDagdeel()}</span>{gebruiker ? `, ${gebruiker}` : ''}</span>
                         </div>
-                      ))}
+                        <h1 className="min-w-0" style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>DRG Portal</h1>
+                      </div>
+                      <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
                     </div>
-                  )}
+                    {!lunchOnly && winkelsVoorGebruiker.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-5 shrink-0 pt-1 border-t border-white/10 lg:border-t-0 lg:pt-0 lg:pl-6 lg:border-l lg:border-white/10">
+                        {[{ label: 'Winkels', value: winkelsVoorGebruiker.length, color: 'white' }, { label: 'Locaties', value: winkelsVoorGebruiker.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: 'white' }].map((s, i) => (
+                          <div key={s.label} className="flex items-center gap-2">
+                            {i > 0 && <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />}
+                            <div>
+                              <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                              <div style={{ color: s.color, fontSize: '16px', fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
