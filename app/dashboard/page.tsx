@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { WinkelSelect, type WinkelSelectRef } from '@/components/WinkelSelect'
 import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
@@ -415,7 +414,6 @@ export default function Dashboard() {
   const [zoekKolom, setZoekKolom] = useState<string>('ALL')
   const [loading, setLoading] = useState(false)
   const [kolomPanelOpen, setKolomPanelOpen] = useState(false)
-  const winkelSelectRef = useRef<WinkelSelectRef>(null)
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [gebruiker, setGebruiker] = useState('')
@@ -781,21 +779,7 @@ export default function Dashboard() {
           <Link href="/dashboard" onClick={(e) => { e.preventDefault(); try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {}; setGeselecteerdeWinkel(null); router.push('/dashboard') }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
             <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
-          <div className="flex items-center px-3 sm:px-5 gap-2 flex-1 min-w-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <span className="text-xs font-semibold uppercase hidden sm:block shrink-0" style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: F }}>Winkel</span>
-            <WinkelSelect
-              ref={winkelSelectRef}
-              winkels={winkels}
-              value={geselecteerdeWinkel}
-              onChange={w => selecteerWinkel(w)}
-              placeholder="Kies winkel..."
-              id="winkel-select"
-              aria-label="Selecteer winkel"
-              className="min-w-0 flex-1 max-w-[180px] sm:min-w-[140px]"
-              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}
-            />
-          </div>
-          <div className="flex items-center gap-2 pl-2 sm:pl-4 shrink-0 w-full sm:w-auto justify-end sm:justify-start">
+          <div className="flex items-center gap-2 pl-2 sm:pl-4 shrink-0 w-full sm:w-auto justify-end sm:justify-start ml-auto">
             <span className="text-xs hidden md:block px-2 truncate max-w-[120px]" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{gebruiker}</span>
             <Link href="/dashboard/beheer" className="rounded-lg p-2 sm:px-3 sm:py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Beheer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
