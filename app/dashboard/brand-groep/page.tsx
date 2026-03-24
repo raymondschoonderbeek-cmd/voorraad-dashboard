@@ -393,7 +393,7 @@ export default function BrandGroepPage() {
               onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }}
               className="rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold transition hover:opacity-90 border border-white/20 text-white hover:bg-white/10"
             >
-              ← Dashboard
+              ← DRG Portal
             </Link>
           </div>
         </div>

@@ -142,7 +142,7 @@ export default function LunchPage() {
         <div className="px-4 py-3 flex items-center justify-between">
           <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="flex items-center gap-2 text-white hover:opacity-90">
             <span>←</span>
-            <span className="font-bold">{lunchOnly ? 'Lunch bestellen' : 'Dashboard'}</span>
+            <span className="font-bold">{lunchOnly ? 'Lunch bestellen' : 'DRG Portal'}</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link

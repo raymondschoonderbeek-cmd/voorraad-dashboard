@@ -122,7 +122,7 @@ export default function InstellingenPage() {
               </p>
             </div>
             <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900 shrink-0">
-              ← Dashboard
+              ← DRG Portal
             </Link>
           </div>
           <div className="mt-4 flex items-center justify-between">

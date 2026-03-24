@@ -1,7 +1,7 @@
 import FormData from 'form-data'
 import Mailgun from 'mailgun.js'
 
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'Voorraad Dashboard'
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'DRG Portal'
 
 function getMailgunClient() {
   const key = process.env.MAILGUN_API_KEY
@@ -19,7 +19,7 @@ function getMailgunClient() {
   }
 }
 
-const FROM = process.env.MAILGUN_FROM_EMAIL ?? 'Voorraad Dashboard <noreply@mailgun.org>'
+const FROM = process.env.MAILGUN_FROM_EMAIL ?? 'DRG Portal <noreply@mailgun.org>'
 
 export async function sendWelcomeEmail(params: {
   to: string

@@ -1,4 +1,4 @@
-# Voorraad Dashboard – Dynamo Retail Group
+# DRG Portal – Dynamo Retail Group
 
 Dashboard voor voorraadbeheer, gekoppeld aan **CycleSoftware** en **Wilmar**. Toont voorraad per winkel, merk/groep-analyse en beheer van gebruikers en winkels.
 

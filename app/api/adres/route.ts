@@ -38,7 +38,7 @@ async function haalBelgischAdresOp(postcode: string, huisnummer: string) {
   const q = `${pc} ${huisnummer}, Belgium`
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=1`
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'DynamoRetailDashboard/1.0' },
+    headers: { 'User-Agent': 'DRGPortal/1.0' },
     next: { revalidate: 3600 },
   })
   if (!res.ok) return NextResponse.json({ error: 'Adres ophalen mislukt' }, { status: 502 })

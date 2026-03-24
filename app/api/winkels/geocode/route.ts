@@ -23,7 +23,7 @@ async function geocodeAdres(postcode?: string | null, straat?: string | null, st
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'DynamoRetailDashboard/1.0' } }
+      { headers: { 'User-Agent': 'DRGPortal/1.0' } }
     )
     const data = await res.json()
     if (Array.isArray(data) && data.length > 0) {

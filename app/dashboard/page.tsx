@@ -818,7 +818,7 @@ export default function Dashboard() {
                       <span className="w-1 h-1 rounded-full" style={{ background: 'white' }} />
                       <span className="text-[10px] font-semibold tracking-wider" style={{ color: 'rgba(255,255,255,0.95)', fontFamily: F }}><span className="uppercase">{getDagdeel()}</span>{gebruiker ? `, ${gebruiker}` : ''}</span>
                     </div>
-                    <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>Voorraad Dashboard</h1>
+                    <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>DRG Portal</h1>
                   </div>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
                   <div className="flex items-center gap-2 w-full sm:w-auto">

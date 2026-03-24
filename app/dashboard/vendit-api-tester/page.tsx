@@ -704,7 +704,7 @@ export default function VenditApiTesterPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#f4f6fb', fontFamily: F }}>
         <p className="text-sm font-medium" style={{ color: 'rgba(45,69,124,0.6)' }}>Alleen admins hebben toegang tot de Vendit API Tester.</p>
-        <Link href="/dashboard" className="mt-4 text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>← Terug naar Dashboard</Link>
+        <Link href="/dashboard" className="mt-4 text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>← Terug naar DRG Portal</Link>
       </div>
     )
   }
@@ -738,7 +738,7 @@ export default function VenditApiTesterPage() {
             <Link href="/dashboard/beheer" className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}>
               Beheer
             </Link>
-            <Link href="/dashboard" className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>← Dashboard</Link>
+            <Link href="/dashboard" className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>← DRG Portal</Link>
           </div>
         </div>
       </header>

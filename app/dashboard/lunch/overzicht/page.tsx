@@ -60,7 +60,7 @@ export default function LunchOverzichtPage() {
           <div className="flex items-center gap-2">
             <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="flex items-center gap-2 text-white hover:opacity-90">
               <span>←</span>
-              <span className="font-bold">{lunchOnly ? 'Mijn bestellingen' : 'Dashboard'}</span>
+              <span className="font-bold">{lunchOnly ? 'Mijn bestellingen' : 'DRG Portal'}</span>
             </Link>
             {isAdmin && (
               <Link

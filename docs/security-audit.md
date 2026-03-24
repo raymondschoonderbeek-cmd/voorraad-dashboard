@@ -1,4 +1,4 @@
-# Beveiligingsaudit Voorraad Dashboard
+# Beveiligingsaudit DRG Portal
 
 *Datum: maart 2025*
 

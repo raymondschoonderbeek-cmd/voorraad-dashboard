@@ -895,7 +895,7 @@ export default function BeheerPage() {
               </Link>
             )}
             <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
-              <IconArrowLeft /> Dashboard
+              <IconArrowLeft /> DRG Portal
             </Link>
           </div>
         </div>

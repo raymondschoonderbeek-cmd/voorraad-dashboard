@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Voorraad Dashboard",
-  description: "Voorraad beheer systeem",
+  title: "DRG Portal",
+  description: "DRG Portal – Dynamo Retail Group",
 };
 
 export const viewport = {
