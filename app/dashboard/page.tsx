@@ -424,8 +424,9 @@ export default function Dashboard() {
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchModuleEnabled?: boolean; campagneFietsenEnabled?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean; lunchModuleEnabled?: boolean; campagneFietsenEnabled?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
+  const lunchOnly = sessionData?.lunchOnly === true
   const lunchModuleEnabled = sessionData?.lunchModuleEnabled === true
   const campagneFietsenEnabled = sessionData?.campagneFietsenEnabled === true
 
@@ -476,6 +477,12 @@ export default function Dashboard() {
   // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
   useEffect(() => {
     if (winkels.length === 0) return
+    if (sessionData === undefined) return
+    if (lunchOnly) {
+      if (searchParams.get('winkel')) router.replace('/dashboard')
+      setGeselecteerdeWinkel(null)
+      return
+    }
     const idParam = searchParams.get('winkel')
     if (!idParam) {
       setGeselecteerdeWinkel(null)
@@ -484,7 +491,7 @@ export default function Dashboard() {
     const id = Number(idParam)
     const w = id ? winkels.find(x => x.id === id) : null
     if (w) setGeselecteerdeWinkel(w)
-  }, [winkels, searchParams])
+  }, [winkels, searchParams, lunchOnly, router, sessionData])
 
   useEffect(() => {
     try {
@@ -668,6 +675,14 @@ export default function Dashboard() {
   }
 
   const orderedModules = useMemo(() => {
+    if (lunchOnly) {
+      const available: ModuleId[] = [
+        ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []),
+        ...(campagneFietsenEnabled ? ['campagne-fietsen' as ModuleId] : []),
+      ]
+      const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
+      return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
+    }
     const available: ModuleId[] = [
       'voorraad',
       ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []),
@@ -677,7 +692,7 @@ export default function Dashboard() {
     ]
     const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
     return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
-  }, [moduleOrder, lunchModuleEnabled, campagneFietsenEnabled])
+  }, [moduleOrder, lunchOnly, lunchModuleEnabled, campagneFietsenEnabled])
 
   async function moveModule(fromIndex: number, toIndex: number) {
     const arr = [...orderedModules]
@@ -828,20 +843,22 @@ export default function Dashboard() {
                     <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2 }}>DRG Portal</h1>
                   </div>
                   <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontFamily: F }}>{getDatum()}</p>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={openWinkelSelect}
-                      aria-label="Kies een winkel"
-                      className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-90"
-                      style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.35)', fontFamily: F }}
-                    >
-                      <IconStore /> Kies een winkel
-                    </button>
-                    <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
-                      <IconChart /> Analyse
-                    </Link>
-                  </div>
-                  {winkels.length > 0 && (
+                  {!lunchOnly && (
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={openWinkelSelect}
+                        aria-label="Kies een winkel"
+                        className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-90"
+                        style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.35)', fontFamily: F }}
+                      >
+                        <IconStore /> Kies een winkel
+                      </button>
+                      <Link href="/dashboard/brand-groep" className="flex items-center gap-2 rounded-lg px-4 py-2 font-semibold text-sm transition-all hover:opacity-80" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: F }}>
+                        <IconChart /> Analyse
+                      </Link>
+                    </div>
+                  )}
+                  {!lunchOnly && winkels.length > 0 && (
                     <div className="flex items-center gap-4 sm:gap-5 pt-2 border-t border-white/10 w-full sm:w-auto">
                       {[{ label: 'Winkels', value: winkels.length, color: 'white' }, { label: 'Locaties', value: winkels.filter(w => w.stad).length, color: 'white' }, { label: 'Favorieten', value: favorieten.length, color: 'white' }].map((s, i) => (
                         <div key={s.label} className="flex items-center gap-2">
@@ -862,13 +879,15 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3 mb-4">
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Modules</span>
                   <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
-                  <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.35)', fontFamily: F }}>Sleep om te herschikken</span>
+                  {!lunchOnly && (
+                    <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.35)', fontFamily: F }}>Sleep om te herschikken</span>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {orderedModules.map((id, idx) => {
                     const modCard = 'mod-card rounded-2xl overflow-hidden'
                     const isBlue = id === 'voorraad'
-                    const dragHandle = (
+                    const dragHandle = !lunchOnly ? (
                       <div
                         draggable
                         onDragStart={e => { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move'; e.stopPropagation() }}
@@ -880,7 +899,7 @@ export default function Dashboard() {
                       >
                         <IconGrip />
                       </div>
-                    )
+                    ) : null
                     if (id === 'voorraad') {
                       return (
                         <div key={id} className="relative" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
@@ -986,6 +1005,7 @@ export default function Dashboard() {
               </div>
 
               {/* KAART */}
+              {!lunchOnly && (
               <div className="s3">
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                   <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Locaties</span>
@@ -1014,9 +1034,10 @@ export default function Dashboard() {
                   <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
                 </div>
               </div>
+              )}
 
               {/* WINKELKAARTEN */}
-              {winkelsGefilterd.length > 0 && (
+              {!lunchOnly && winkelsGefilterd.length > 0 && (
                 <div className="s4 space-y-6">
 
                   {/* Favorieten */}

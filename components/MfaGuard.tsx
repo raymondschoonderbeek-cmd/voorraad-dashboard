@@ -44,10 +44,15 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
           router.replace('/mfa-verify')
           return
         }
-        // Lunch-only gebruikers: alleen lunch en instellingen
+        // Lunch-only gebruikers: lunch, instellingen, en (bij campagne-toegang) dashboard + campagnefietsen
         const isLunchPath = pathname === '/dashboard/lunch' || pathname.startsWith('/dashboard/lunch/')
         const isInstellingen = pathname === '/dashboard/instellingen'
-        if (data?.lunchOnly && !isLunchPath && !isInstellingen) {
+        const isDashboardHome = pathname === '/dashboard' || pathname === '/dashboard/'
+        const isCampagneFietsenPath =
+          pathname === '/dashboard/campagne-fietsen' || pathname.startsWith('/dashboard/campagne-fietsen/')
+        const lunchExtraAllowed =
+          data?.campagneFietsenEnabled === true && (isDashboardHome || isCampagneFietsenPath)
+        if (data?.lunchOnly && !isLunchPath && !isInstellingen && !lunchExtraAllowed) {
           router.replace('/dashboard/lunch')
           return
         }
