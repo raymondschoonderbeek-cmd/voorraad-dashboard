@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, canAccessCampagneFietsen } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
-import { parseVoorraadItems, stockForCampagneFiets } from '@/lib/campagne-fiets-stock'
+import { stockForCampagneFiets } from '@/lib/campagne-fiets-stock'
+import {
+  fetchCampagneVoorraadItemsVoorWinkel,
+  getWilmarTokenForCampagne,
+  resolveVoorraadBron,
+  type WinkelVoorraadBron,
+} from '@/lib/campagne-fiets-voorraad-bronnen'
 
 type CampagneFietsRow = {
   id: string
@@ -15,16 +21,10 @@ type CampagneFietsRow = {
   active: boolean
 }
 
-type WinkelRow = {
-  id: number
-  naam: string
+type WinkelRow = WinkelVoorraadBron & {
   stad: string | null
   lat: number | null
   lng: number | null
-  dealer_nummer: string | null
-  api_type: string | null
-  wilmar_organisation_id: number | null
-  wilmar_branch_id: number | null
 }
 
 const FETCH_CONCURRENCY = 6
@@ -39,48 +39,8 @@ async function mapInBatches<T, R>(items: T[], batchSize: number, fn: (t: T) => P
   return out
 }
 
-async function fetchVoorraadForWinkel(
-  origin: string,
-  cookie: string,
-  winkelId: number
-): Promise<{ items: Record<string, unknown>[]; httpError?: string }> {
-  const res = await fetch(`${origin}/api/voorraad?winkel=${winkelId}`, {
-    headers: {
-      cookie: cookie || '',
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  })
-
-  const text = await res.text()
-  let json: unknown
-  try {
-    json = JSON.parse(text)
-  } catch {
-    return { items: [], httpError: `Ongeldige response (${res.status})` }
-  }
-
-  if (!res.ok) {
-    const msg =
-      typeof json === 'object' && json !== null && 'message' in json
-        ? String((json as { message?: string }).message ?? '')
-        : ''
-    return { items: [], httpError: msg || `HTTP ${res.status}` }
-  }
-
-  if (typeof json === 'object' && json !== null && 'error' in json && (json as { error?: unknown }).error) {
-    const msg = String((json as { message?: string }).message ?? (json as { error?: unknown }).error ?? 'Fout')
-    return { items: [], httpError: msg }
-  }
-
-  return { items: parseVoorraadItems(json) }
-}
-
 function bronLabel(w: WinkelRow): string {
-  const t = w.api_type
-  if (t === 'vendit' || t === 'vendit_api') return 'vendit'
-  if (w.wilmar_branch_id && w.wilmar_organisation_id) return 'wilmar'
-  return 'cyclesoftware'
+  return resolveVoorraadBron(w)
 }
 
 /** GET: voorraad campagnefietsen over alle winkels (actieve fietsen) */
@@ -114,8 +74,8 @@ export async function GET(request: NextRequest) {
   if (wErr) return NextResponse.json({ error: wErr.message }, { status: 500 })
   const winkels = (winkelsRaw ?? []) as WinkelRow[]
 
-  const origin = request.nextUrl.origin
-  const cookie = request.headers.get('cookie') ?? ''
+  const needsWilmar = winkels.some(w => resolveVoorraadBron(w) === 'wilmar')
+  const wilmarToken = needsWilmar ? await getWilmarTokenForCampagne() : null
 
   type PerWinkel = {
     winkel: WinkelRow
@@ -124,8 +84,8 @@ export async function GET(request: NextRequest) {
   }
 
   const perWinkel: PerWinkel[] = await mapInBatches(winkels, FETCH_CONCURRENCY, async w => {
-    const { items, httpError } = await fetchVoorraadForWinkel(origin, cookie, w.id)
-    return { winkel: w, items, err: httpError }
+    const { items, err } = await fetchCampagneVoorraadItemsVoorWinkel(supabase, w, bikes, wilmarToken)
+    return { winkel: w, items, err }
   })
 
   const winkel_fouten: { winkel_id: number; naam: string; message: string }[] = []
