@@ -35,8 +35,6 @@ export const dashboardUi = {
   },
   cardHoverShadow: `0 14px 42px rgba(${DYNAMO_BLUE_RGB}, 0.12)`,
   sectionDivider: `rgba(${DYNAMO_BLUE_LIGHT_RGB}, 0.35)`,
-  /** Subtiele lichtblauwe gloed op hero (leesbaarheid tekst blijft: donkerblauw als basis) */
-  heroAccentWash: `linear-gradient(200deg, transparent 35%, rgba(${DYNAMO_BLUE_LIGHT_RGB}, 0.22) 100%)`,
 } as const
 
 export const WINKEL_KLEUREN = [
