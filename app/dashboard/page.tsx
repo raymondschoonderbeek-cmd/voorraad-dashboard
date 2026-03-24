@@ -913,173 +913,14 @@ export default function Dashboard() {
               <p className="text-pretty text-sm leading-relaxed max-w-2xl m-0" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
                 {lunchOnly
                   ? 'Kies hieronder een module om verder te gaan.'
-                  : 'Zoek een winkel op naam of plaats, of gebruik de kaart. Daarna open je voorraad of scroll je naar andere modules.'}
+                  : 'Werk per module: open hieronder wat je nodig hebt. Voor voorraad per vestiging kies je daarna een winkel — of gebruik verderop de kaart en snelle zoekfunctie.'}
               </p>
 
-              {/* LOCATIES & VOORRAAD — eerst winkel kiezen (plan: laag A vóór overige modules) */}
-              {!lunchOnly && (
-              <section className="s2" aria-labelledby="dashboard-heading-locaties">
-                <div className="flex flex-col gap-2 sm:gap-3 mb-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 id="dashboard-heading-locaties" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Locaties & voorraad</h2>
-                    <div className="flex-1 min-w-[2rem] h-px" style={{ background: dashboardUi.sectionDivider }} aria-hidden />
-                  </div>
-                  <p className="m-0 text-sm max-w-3xl text-pretty" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
-                    Filters gelden voor de kaart en de winkelkaarten hieronder.
-                  </p>
-                </div>
-
-                {winkelsVoorGebruiker.length > 0 && (
-                  <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-start">
-                    {orderedModules.includes('voorraad') && (
-                      <button
-                        type="button"
-                        onClick={openWinkelSelect}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 shrink-0 w-full sm:w-auto"
-                        style={{ background: DYNAMO_BLUE, fontFamily: F, boxShadow: '0 6px 24px rgba(45,69,124,0.25)' }}
-                      >
-                        <IconBox /> Voorraad bekijken — kies een winkel
-                      </button>
-                    )}
-                    <div className="relative flex-1 min-w-0 max-w-md">
-                      <label htmlFor="dashboard-winkel-quick" className="sr-only">Zoek winkel op naam, plaats of postcode</label>
-                      <input
-                        id="dashboard-winkel-quick"
-                        type="search"
-                        autoComplete="off"
-                        value={winkelQuickZoek}
-                        onChange={e => setWinkelQuickZoek(e.target.value)}
-                        placeholder="Zoek op naam, plaats of postcode…"
-                        className="w-full rounded-xl px-3 py-2.5 text-sm"
-                        style={{ background: 'white', border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
-                      />
-                      {winkelsQuickPick.length > 0 && (
-                        <ul
-                          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-xl border bg-white py-1 shadow-lg"
-                          style={{ borderColor: 'rgba(45,69,124,0.12)' }}
-                          role="listbox"
-                          aria-label="Zoekresultaten winkels"
-                        >
-                          {winkelsQuickPick.map(w => (
-                            <li key={w.id} role="option">
-                              <button
-                                type="button"
-                                className="w-full px-3 py-2.5 text-left text-sm transition hover:bg-dynamo-blue/5"
-                                style={{ fontFamily: F, color: DYNAMO_BLUE }}
-                                onClick={() => { void selecteerWinkel(w); setWinkelQuickZoek('') }}
-                              >
-                                <span className="font-semibold">{w.naam}</span>
-                                {(w.stad || w.postcode) && (
-                                  <span className="block text-xs mt-0.5" style={{ color: dashboardUi.textMuted }}>
-                                    {[w.stad, w.postcode].filter(Boolean).join(' · ')}
-                                  </span>
-                                )}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op land">
-                      <option value="alle">Alle landen</option>
-                      <option value="Netherlands">Nederland</option>
-                      <option value="Belgium">België</option>
-                    </select>
-                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op kassapakket">
-                      <option value="alle">Kassa pakket: alle</option>
-                      <option value="cyclesoftware">CycleSoftware</option>
-                      <option value="wilmar">Wilmar</option>
-                      <option value="vendit">Vendit</option>
-                    </select>
-                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op Bike Totaal">
-                      <option value="alle">Bike Totaal: alle</option>
-                      <option value="ja">Bike Totaal: ja</option>
-                      <option value="nee">Bike Totaal: nee</option>
-                    </select>
-                  </div>
-                  {kaartFiltersActief && (
-                    <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold border transition hover:opacity-90" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
-                      Alles tonen
-                    </button>
-                  )}
-                  <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }} aria-live="polite">
-                    {winkelsLoading ? 'Kaart laden…' : `${winkelsGefilterd.filter(w => w.lat && w.lng).length} van ${winkelsGefilterd.length} op kaart`}
-                  </span>
-                </div>
-                <p className="text-xs mb-4 m-0 max-w-3xl" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
-                  Tip: staan alle filters op “alle”, dan zie je alle locaties die aan je account zijn gekoppeld.
-                </p>
-
-                <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
-                  {showKaartFilterEmpty && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.1)' }}>
-                      <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen locaties met deze filters</p>
-                      <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                        Alle filters resetten
-                      </button>
-                    </div>
-                  )}
-                  {winkelsLoading ? (
-                    <div className="flex items-center justify-center gap-3 px-4 py-16" style={{ background: 'rgba(45,69,124,0.06)', fontFamily: F }} role="status" aria-live="polite">
-                      <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
-                      <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Winkels en kaart laden…</span>
-                    </div>
-                  ) : winkelsGefilterd.length === 0 ? (
-                    <div className="px-6 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
-                      {winkelsVoorGebruiker.length === 0
-                        ? 'Geen locaties gekoppeld aan dit account.'
-                        : showKaartFilterEmpty
-                          ? 'Geen locaties binnen deze filters — gebruik de balk hierboven om te resetten.'
-                          : 'Geen locaties om te tonen.'}
-                    </div>
-                  ) : (
-                    <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
-                  )}
-                </div>
-
-                {winkelsGefilterd.length > 0 && (
-                  <div className="mt-8 space-y-6">
-                    {favorieten.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_BLUE, fontFamily: F }}>★ Mijn winkels</span>
-                          <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.2)' }} />
-                          <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
-                            <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkelsGefilterd.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Alle winkels</span>
-                        <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {winkelsGefilterd.map((w, i) => (
-                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </section>
-              )}
-
-              {/* MODULES — overige portalmodules (laag B) */}
-              <section className="s3" aria-labelledby="dashboard-heading-modules">
+              {/* MODULES — primaire portal-laag */}
+              <section className="s2" aria-labelledby="dashboard-heading-modules">
                 <div className="flex flex-col gap-2 mb-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 id="dashboard-heading-modules" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>{lunchOnly ? 'Modules' : 'Overige modules'}</h2>
+                    <h2 id="dashboard-heading-modules" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>{lunchOnly ? 'Modules' : 'Jouw modules'}</h2>
                     <div className="flex-1 min-w-[2rem] h-px" style={{ background: dashboardUi.sectionDivider }} aria-hidden />
                   </div>
                   {!lunchOnly && (
@@ -1274,6 +1115,156 @@ export default function Dashboard() {
                 </div>
                 )}
               </section>
+
+              {/* LOCATIES — vestigingscontext (o.a. voorraad); ondersteunt module-keuze */}
+              {!lunchOnly && (
+              <section className="s3" aria-labelledby="dashboard-heading-locaties">
+                <div className="flex flex-col gap-2 sm:gap-3 mb-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 id="dashboard-heading-locaties" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Locaties & vestiging</h2>
+                    <div className="flex-1 min-w-[2rem] h-px" style={{ background: dashboardUi.sectionDivider }} aria-hidden />
+                  </div>
+                  <p className="m-0 text-sm max-w-3xl text-pretty" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                    Voor modules die per winkel werken: kies je vestiging op de kaart of via de zoekbalk. Filters gelden voor de kaart en de winkelkaarten hieronder.
+                  </p>
+                </div>
+
+                {winkelsVoorGebruiker.length > 0 && (
+                  <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-start">
+                    <div className="relative flex-1 min-w-0 max-w-md">
+                      <label htmlFor="dashboard-winkel-quick" className="sr-only">Zoek winkel op naam, plaats of postcode</label>
+                      <input
+                        id="dashboard-winkel-quick"
+                        type="search"
+                        autoComplete="off"
+                        value={winkelQuickZoek}
+                        onChange={e => setWinkelQuickZoek(e.target.value)}
+                        placeholder="Zoek op naam, plaats of postcode…"
+                        className="w-full rounded-xl px-3 py-2.5 text-sm"
+                        style={{ background: 'white', border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                      />
+                      {winkelsQuickPick.length > 0 && (
+                        <ul
+                          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-xl border bg-white py-1 shadow-lg"
+                          style={{ borderColor: 'rgba(45,69,124,0.12)' }}
+                          role="listbox"
+                          aria-label="Zoekresultaten winkels"
+                        >
+                          {winkelsQuickPick.map(w => (
+                            <li key={w.id} role="option">
+                              <button
+                                type="button"
+                                className="w-full px-3 py-2.5 text-left text-sm transition hover:bg-dynamo-blue/5"
+                                style={{ fontFamily: F, color: DYNAMO_BLUE }}
+                                onClick={() => { void selecteerWinkel(w); setWinkelQuickZoek('') }}
+                              >
+                                <span className="font-semibold">{w.naam}</span>
+                                {(w.stad || w.postcode) && (
+                                  <span className="block text-xs mt-0.5" style={{ color: dashboardUi.textMuted }}>
+                                    {[w.stad, w.postcode].filter(Boolean).join(' · ')}
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3 mb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op land">
+                      <option value="alle">Alle landen</option>
+                      <option value="Netherlands">Nederland</option>
+                      <option value="Belgium">België</option>
+                    </select>
+                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op kassapakket">
+                      <option value="alle">Kassa pakket: alle</option>
+                      <option value="cyclesoftware">CycleSoftware</option>
+                      <option value="wilmar">Wilmar</option>
+                      <option value="vendit">Vendit</option>
+                    </select>
+                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op Bike Totaal">
+                      <option value="alle">Bike Totaal: alle</option>
+                      <option value="ja">Bike Totaal: ja</option>
+                      <option value="nee">Bike Totaal: nee</option>
+                    </select>
+                  </div>
+                  {kaartFiltersActief && (
+                    <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold border transition hover:opacity-90" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
+                      Alles tonen
+                    </button>
+                  )}
+                  <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }} aria-live="polite">
+                    {winkelsLoading ? 'Kaart laden…' : `${winkelsGefilterd.filter(w => w.lat && w.lng).length} van ${winkelsGefilterd.length} op kaart`}
+                  </span>
+                </div>
+                <p className="text-xs mb-4 m-0 max-w-3xl" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                  Tip: staan alle filters op “alle”, dan zie je alle locaties die aan je account zijn gekoppeld.
+                </p>
+
+                <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
+                  {showKaartFilterEmpty && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.1)' }}>
+                      <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen locaties met deze filters</p>
+                      <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                        Alle filters resetten
+                      </button>
+                    </div>
+                  )}
+                  {winkelsLoading ? (
+                    <div className="flex items-center justify-center gap-3 px-4 py-16" style={{ background: 'rgba(45,69,124,0.06)', fontFamily: F }} role="status" aria-live="polite">
+                      <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
+                      <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Winkels en kaart laden…</span>
+                    </div>
+                  ) : winkelsGefilterd.length === 0 ? (
+                    <div className="px-6 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                      {winkelsVoorGebruiker.length === 0
+                        ? 'Geen locaties gekoppeld aan dit account.'
+                        : showKaartFilterEmpty
+                          ? 'Geen locaties binnen deze filters — gebruik de balk hierboven om te resetten.'
+                          : 'Geen locaties om te tonen.'}
+                    </div>
+                  ) : (
+                    <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
+                  )}
+                </div>
+
+                {winkelsGefilterd.length > 0 && (
+                  <div className="mt-8 space-y-6">
+                    {favorieten.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-3 mb-4">
+                          <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_BLUE, fontFamily: F }}>★ Mijn winkels</span>
+                          <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.2)' }} />
+                          <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
+                            <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkelsGefilterd.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Alle winkels</span>
+                        <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
+                        <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {winkelsGefilterd.map((w, i) => (
+                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+              )}
+
             </div>
 
           ) : (
