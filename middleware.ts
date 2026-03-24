@@ -59,5 +59,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // icon / apple-icon: Next.js metadata-routes (favicon); niet door auth laten lopen
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon|apple-icon).*)'],
 }
