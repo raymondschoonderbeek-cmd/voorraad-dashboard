@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false, mustChangePassword: false })
+      return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: null, ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false, campagneFietsenEnabled: false, mustChangePassword: false })
     }
 
     const { data: rolData } = await supabase
@@ -29,13 +29,15 @@ export async function GET(request: NextRequest) {
     const mfaVerplicht = rolData?.mfa_verplicht === true
 
     let lunchModuleEnabled = lunchOnly
+    let campagneFietsenEnabled = isAdmin
     try {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('lunch_module_enabled')
+        .select('lunch_module_enabled, campagne_fietsen_toegang')
         .eq('user_id', user.id)
         .maybeSingle()
       if (!lunchOnly) lunchModuleEnabled = profileData?.lunch_module_enabled === true
+      if (!isAdmin) campagneFietsenEnabled = profileData?.campagne_fietsen_toegang === true
     } catch {
       // profiles tabel bestaat mogelijk nog niet
     }
@@ -75,10 +77,11 @@ export async function GET(request: NextRequest) {
       isAdmin,
       lunchOnly,
       lunchModuleEnabled,
+      campagneFietsenEnabled,
       mustChangePassword,
     })
   } catch (err) {
     console.error('Session info error:', err)
-    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false, mustChangePassword: false })
+    return NextResponse.json({ requiresMfaChallenge: false, requiresMfaSetup: false, aal: 'aal1', ipTrusted: false, isAdmin: false, lunchOnly: false, lunchModuleEnabled: false, campagneFietsenEnabled: false, mustChangePassword: false })
   }
 }

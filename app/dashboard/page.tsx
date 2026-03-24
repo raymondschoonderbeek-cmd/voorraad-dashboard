@@ -424,9 +424,10 @@ export default function Dashboard() {
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchModuleEnabled?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchModuleEnabled?: boolean; campagneFietsenEnabled?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
   const lunchModuleEnabled = sessionData?.lunchModuleEnabled === true
+  const campagneFietsenEnabled = sessionData?.campagneFietsenEnabled === true
 
   const { data: profileData, mutate: mutateProfile } = useSWR<{ modules_order?: string[] }>('/api/profile', fetcher)
   const savedOrder = profileData?.modules_order
@@ -671,12 +672,12 @@ export default function Dashboard() {
       'voorraad',
       ...(lunchModuleEnabled ? ['lunch' as ModuleId] : []),
       'brand-groep',
-      'campagne-fietsen',
+      ...(campagneFietsenEnabled ? ['campagne-fietsen' as ModuleId] : []),
       'meer',
     ]
     const byOrder = new Map(moduleOrder.map((id, i) => [id, i]))
     return [...available].sort((a, b) => (byOrder.get(a) ?? 999) - (byOrder.get(b) ?? 999))
-  }, [moduleOrder, lunchModuleEnabled])
+  }, [moduleOrder, lunchModuleEnabled, campagneFietsenEnabled])
 
   async function moveModule(fromIndex: number, toIndex: number) {
     const arr = [...orderedModules]

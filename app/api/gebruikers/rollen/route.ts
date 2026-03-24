@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { user_id, rol, naam, email, mfa_verplicht, winkel_ids } = await request.json()
+  const { user_id, rol, naam, email, mfa_verplicht, winkel_ids, campagne_fietsen_toegang } = await request.json()
 
   // Update rol, naam en mfa_verplicht in gebruiker_rollen
   const updateData: { rol: string; naam: string; mfa_verplicht?: boolean } = { rol, naam }
@@ -54,6 +54,29 @@ export async function PUT(request: NextRequest) {
     await supabase.from('gebruiker_winkels').insert(
       winkel_ids.map((wid: number) => ({ user_id: user_id, winkel_id: wid }))
     )
+  }
+
+  if (hasAdminKey() && rol !== 'admin' && typeof campagne_fietsen_toegang === 'boolean') {
+    const adminClient = createAdminClient()
+    try {
+      const { data: ex } = await adminClient
+        .from('profiles')
+        .select('lunch_module_enabled, modules_order')
+        .eq('user_id', user_id)
+        .maybeSingle()
+      await adminClient.from('profiles').upsert(
+        {
+          user_id,
+          lunch_module_enabled: ex?.lunch_module_enabled ?? false,
+          modules_order: ex?.modules_order ?? ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer'],
+          campagne_fietsen_toegang: campagne_fietsen_toegang === true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
+    } catch {
+      // profiles niet beschikbaar
+    }
   }
 
   return NextResponse.json({ success: true })

@@ -110,6 +110,9 @@ export default function BeheerPage() {
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
   const [userLastSignIns, setUserLastSignIns] = useState<Record<string, string | null>>({})
+  const [profileCampagneFietsen, setProfileCampagneFietsen] = useState<Record<string, boolean>>({})
+  const [bewerkCampagneFietsToegang, setBewerkCampagneFietsToegang] = useState(false)
+  const [nieuwCampagneFietsToegang, setNieuwCampagneFietsToegang] = useState(false)
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -148,6 +151,7 @@ export default function BeheerPage() {
     setMfaStatus(data.mfaStatus ?? {})
     setUserEmails(data.userEmails ?? {})
     setUserLastSignIns(data.userLastSignIns ?? {})
+    setProfileCampagneFietsen(data.profileCampagneFietsen ?? {})
     setLoading(false)
   }, [])
 
@@ -180,6 +184,7 @@ export default function BeheerPage() {
         setMfaStatus(data.mfaStatus ?? {})
         setUserEmails(data.userEmails ?? {})
         setUserLastSignIns(data.userLastSignIns ?? {})
+        setProfileCampagneFietsen(data.profileCampagneFietsen ?? {})
       }
     } else {
       const res = await fetch('/api/winkels')
@@ -432,7 +437,15 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: nieuwEmail, naam: nieuwNaam, wachtwoord: nieuwWachtwoord || undefined, rol: nieuwRol, mfa_verplicht: nieuwMfaVerplicht, winkel_ids: nieuwRol === 'lunch' ? [] : geselecteerdeWinkels }),
+      body: JSON.stringify({
+        email: nieuwEmail,
+        naam: nieuwNaam,
+        wachtwoord: nieuwWachtwoord || undefined,
+        rol: nieuwRol,
+        mfa_verplicht: nieuwMfaVerplicht,
+        winkel_ids: nieuwRol === 'lunch' ? [] : geselecteerdeWinkels,
+        ...(nieuwRol !== 'admin' ? { campagne_fietsen_toegang: nieuwCampagneFietsToegang } : {}),
+      }),
     })
     const data = await res.json()
     setFormLoading(false)
@@ -443,7 +456,7 @@ export default function BeheerPage() {
         : nieuwWachtwoord
           ? `Gebruiker aangemaakt. E-mail met wachtwoord verstuurd naar ${nieuwEmail}.`
           : `Uitnodiging verstuurd naar ${nieuwEmail}!`)
-      setNieuwEmail(''); setNieuwNaam(''); setNieuwWachtwoord(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setGeselecteerdeWinkels([])
+      setNieuwEmail(''); setNieuwNaam(''); setNieuwWachtwoord(''); setNieuwRol('viewer'); setNieuwMfaVerplicht(false); setNieuwCampagneFietsToegang(false); setGeselecteerdeWinkels([])
       setToonForm(false)
       await haalGebruikersOp(true)
     }
@@ -482,7 +495,15 @@ export default function BeheerPage() {
     const res = await fetch('/api/gebruikers/rollen', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: bewerkGebruiker.user_id, rol: bewerkGebruiker.rol, naam: bewerkGebruiker.naam, email: emailChanged ? newEmail : undefined, mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false, winkel_ids: bewerkGebruiker.rol === 'lunch' ? [] : geselecteerdeWinkels }),
+      body: JSON.stringify({
+        user_id: bewerkGebruiker.user_id,
+        rol: bewerkGebruiker.rol,
+        naam: bewerkGebruiker.naam,
+        email: emailChanged ? newEmail : undefined,
+        mfa_verplicht: bewerkGebruiker.mfa_verplicht ?? false,
+        winkel_ids: bewerkGebruiker.rol === 'lunch' ? [] : geselecteerdeWinkels,
+        ...(bewerkGebruiker.rol !== 'admin' ? { campagne_fietsen_toegang: bewerkCampagneFietsToegang } : {}),
+      }),
     })
     const data = await res.json().catch(() => ({}))
     setFormLoading(false)
@@ -613,6 +634,7 @@ export default function BeheerPage() {
   function startBewerken(rol: Rol) {
     setBewerkGebruiker(rol)
     setBewerkEmail(userEmails[rol.user_id] ?? '')
+    setBewerkCampagneFietsToegang(rol.rol === 'admin' ? true : (profileCampagneFietsen[rol.user_id] === true))
     setToonForm(false)
     setGeselecteerdeWinkels(winkelToegang.filter(wt => wt.user_id === rol.user_id).map(wt => wt.winkel_id))
   }
@@ -1030,6 +1052,12 @@ export default function BeheerPage() {
                     <input type="checkbox" id="nieuw_mfa_verplicht" checked={nieuwMfaVerplicht} onChange={e => setNieuwMfaVerplicht(e.target.checked)} className="accent-[#2D457C]" />
                     <label htmlFor="nieuw_mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                   </div>
+                  {nieuwRol !== 'admin' && (
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="nieuw_campagne_fiets" checked={nieuwCampagneFietsToegang} onChange={e => setNieuwCampagneFietsToegang(e.target.checked)} className="accent-[#2D457C]" />
+                      <label htmlFor="nieuw_campagne_fiets" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Toegang tot pagina Campagnefietsen (landelijk voorraad)</label>
+                    </div>
+                  )}
                   {nieuwRol !== 'lunch' && (
                   <div>
                     <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkeltoegang <span style={{ fontWeight: 400, opacity: 0.6 }}>(standaard alle; vink uit om te beperken)</span></label>
@@ -1080,6 +1108,14 @@ export default function BeheerPage() {
                       <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-[#2D457C]" />
                       <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
                     </div>
+                    {bewerkGebruiker.rol === 'admin' ? (
+                      <p className="text-xs sm:col-span-2" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Admins hebben altijd toegang tot Campagnefietsen.</p>
+                    ) : (
+                      <div className="sm:col-span-2 flex items-center gap-2">
+                        <input type="checkbox" id="campagne_fiets_toegang" checked={bewerkCampagneFietsToegang} onChange={e => setBewerkCampagneFietsToegang(e.target.checked)} className="accent-[#2D457C]" />
+                        <label htmlFor="campagne_fiets_toegang" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Pagina Campagnefietsen (landelijk voorraad) tonen</label>
+                      </div>
+                    )}
                   </div>
                   {bewerkGebruiker.rol !== 'lunch' && (
                   <div>
@@ -1099,7 +1135,7 @@ export default function BeheerPage() {
                   )}
                   <div className="flex gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail(''); setBewerkCampagneFietsToegang(false); setGeselecteerdeWinkels([]) }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
                   </div>
                 </form>
               </div>
@@ -1137,6 +1173,9 @@ export default function BeheerPage() {
                           )}
                           {rol.mfa_verplicht && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }} title="MFA verplicht">MFA verplicht</span>
+                          )}
+                          {rol.rol !== 'admin' && profileCampagneFietsen[rol.user_id] === true && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE }} title="Campagnefietsen">🚲 Campagnefietsen</span>
                           )}
                         </div>
                         <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>

@@ -226,6 +226,22 @@ export async function GET(request: NextRequest) {
     haalUserLastSignInsOp(supabase, userIds),
   ])
 
+  const profileCampagneFietsen: Record<string, boolean> = {}
+  if (userIds.length > 0) {
+    try {
+      const { data: profRows } = await client
+        .from('profiles')
+        .select('user_id, campagne_fietsen_toegang')
+        .in('user_id', userIds)
+      for (const row of profRows ?? []) {
+        const uid = (row as { user_id: string }).user_id
+        if (uid) profileCampagneFietsen[uid] = (row as { campagne_fietsen_toegang?: boolean }).campagne_fietsen_toegang === true
+      }
+    } catch {
+      // kolom of tabel ontbreekt op oudere omgeving
+    }
+  }
+
   return NextResponse.json({
     rollen: rollen ?? [],
     winkelToegang: winkelToegang ?? [],
@@ -233,6 +249,7 @@ export async function GET(request: NextRequest) {
     mfaStatus,
     userEmails,
     userLastSignIns,
+    profileCampagneFietsen,
   })
 }
 
@@ -245,7 +262,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!await isAdmin(supabase, user.id)) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { email, rol, naam, mfa_verplicht, winkel_ids, wachtwoord } = await request.json()
+  const { email, rol, naam, mfa_verplicht, winkel_ids, wachtwoord, campagne_fietsen_toegang } = await request.json()
   const emailTrim = String(email ?? '').trim().toLowerCase()
   const naamTrim = String(naam ?? email ?? '').trim() || emailTrim
 
@@ -366,6 +383,28 @@ export async function POST(request: NextRequest) {
     await adminClient.from('gebruiker_winkels').insert(
       winkel_ids.map((wid: number) => ({ user_id: newUserId, winkel_id: wid }))
     )
+  }
+
+  if (hasAdminKey() && (rol ?? 'viewer') !== 'admin' && typeof campagne_fietsen_toegang === 'boolean') {
+    try {
+      const { data: ex } = await adminClient
+        .from('profiles')
+        .select('lunch_module_enabled, modules_order')
+        .eq('user_id', newUserId)
+        .maybeSingle()
+      await adminClient.from('profiles').upsert(
+        {
+          user_id: newUserId,
+          lunch_module_enabled: ex?.lunch_module_enabled ?? false,
+          modules_order: ex?.modules_order ?? ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer'],
+          campagne_fietsen_toegang: campagne_fietsen_toegang === true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
+    } catch {
+      // profiles niet beschikbaar
+    }
   }
 
   return NextResponse.json({

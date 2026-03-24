@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAuth, requireAdmin, canAccessCampagneFietsen } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
 export async function GET(request: NextRequest) {
@@ -7,6 +7,9 @@ export async function GET(request: NextRequest) {
   if (rl) return rl
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessCampagneFietsen(supabase, user.id))) {
+    return NextResponse.json({ error: 'Geen toegang tot Campagnefietsen' }, { status: 403 })
+  }
 
   const admin = await requireAdmin()
   const { searchParams } = new URL(request.url)

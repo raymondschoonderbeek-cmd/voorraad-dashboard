@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, canAccessCampagneFietsen } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { parseVoorraadItems, stockForCampagneFiets } from '@/lib/campagne-fiets-stock'
 
@@ -89,6 +89,9 @@ export async function GET(request: NextRequest) {
   if (rl) return rl
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessCampagneFietsen(supabase, user.id))) {
+    return NextResponse.json({ error: 'Geen toegang tot Campagnefietsen' }, { status: 403 })
+  }
 
   const { data: fietsen, error: fErr } = await supabase
     .from('campagne_fietsen')

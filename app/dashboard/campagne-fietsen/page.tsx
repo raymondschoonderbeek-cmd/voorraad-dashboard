@@ -48,10 +48,20 @@ export default function CampagneFietsenPage() {
   const supabase = createClient()
   const [openId, setOpenId] = useState<string | null>(null)
 
-  const { data, error, isLoading, mutate } = useSWR<VoorraadResponse>('/api/campagne-fietsen/voorraad', fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60_000,
-  })
+  const { data: sessionData, isLoading: sessionLoading } = useSWR<{ campagneFietsenEnabled?: boolean }>(
+    '/api/auth/session-info',
+    fetcher
+  )
+  const mayViewCampagneFietsen = sessionData?.campagneFietsenEnabled === true
+
+  const { data, error, isLoading, mutate } = useSWR<VoorraadResponse>(
+    mayViewCampagneFietsen ? '/api/campagne-fietsen/voorraad' : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  )
 
   const fietsen = data?.fietsen ?? []
   const winkelFouten = data?.winkel_fouten ?? []
@@ -98,6 +108,25 @@ export default function CampagneFietsenPage() {
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto w-full p-4 sm:p-6 space-y-6">
+        {!sessionLoading && !mayViewCampagneFietsen && (
+          <div className="rounded-2xl p-6 bg-white border border-gray-200 shadow-sm text-center space-y-3">
+            <p className="text-gray-800 font-semibold" style={{ fontFamily: F }}>
+              Je hebt geen toegang tot deze pagina.
+            </p>
+            <p className="text-sm text-gray-600">
+              Vraag een beheerder om toegang tot Campagnefietsen, of ga terug naar het dashboard.
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-block text-sm font-semibold px-4 py-2 rounded-xl text-white"
+              style={{ background: DYNAMO_BLUE, fontFamily: F }}
+            >
+              Naar dashboard
+            </Link>
+          </div>
+        )}
+
+        {mayViewCampagneFietsen && (
         <div className="rounded-2xl p-5 sm:p-6 text-white shadow-lg" style={{ background: DYNAMO_BLUE }}>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ fontFamily: F }}>
             Campagnefietsen — landelijk overzicht
@@ -113,8 +142,9 @@ export default function CampagneFietsenPage() {
             Vernieuwen
           </button>
         </div>
+        )}
 
-        {isLoading && (
+        {mayViewCampagneFietsen && isLoading && (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-48 rounded-2xl bg-white border border-gray-100 animate-pulse" />
@@ -122,13 +152,13 @@ export default function CampagneFietsenPage() {
           </div>
         )}
 
-        {error && (
+        {mayViewCampagneFietsen && error && (
           <div className="rounded-2xl p-4 bg-red-50 border border-red-100 text-red-800 text-sm">
             Kon voorraadgegevens niet laden. Probeer het opnieuw of neem contact op met een beheerder.
           </div>
         )}
 
-        {!isLoading && data && !data.error && fietsen.length === 0 && (
+        {mayViewCampagneFietsen && !isLoading && data && !data.error && fietsen.length === 0 && (
           <div className="rounded-2xl p-8 text-center bg-white border border-gray-100 text-gray-600">
             Geen actieve campagnefietsen. Voeg fietsen toe onder{' '}
             <Link href="/dashboard/beheer?tab=campagnefietsen" className="font-semibold text-dynamo-blue underline">
@@ -138,7 +168,7 @@ export default function CampagneFietsenPage() {
           </div>
         )}
 
-        {winkelFouten.length > 0 && (
+        {mayViewCampagneFietsen && winkelFouten.length > 0 && (
           <details className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             <summary className="cursor-pointer font-semibold">
               {winkelFouten.length} winkel(s) niet volledig opgehaald (API)
@@ -153,7 +183,7 @@ export default function CampagneFietsenPage() {
           </details>
         )}
 
-        {!isLoading &&
+        {mayViewCampagneFietsen && !isLoading &&
           fietsen.map(f => {
             const open = openId === f.id
             return (
