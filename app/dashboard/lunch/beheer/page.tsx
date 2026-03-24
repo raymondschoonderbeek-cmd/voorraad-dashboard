@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
+import { WEEKDAYS_NL } from '@/lib/lunch-schedule'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -353,17 +354,46 @@ export default function LunchBeheerPage() {
 
 function InstellingenBeheer() {
   const [tikkieLink, setTikkieLink] = useState('')
+  const [orderWeekdays, setOrderWeekdays] = useState<number[]>([1, 2, 3, 4, 5])
+  const [closedDates, setClosedDates] = useState<string[]>([])
+  const [newClosedDate, setNewClosedDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
-  const { data: settings, mutate } = useSWR<{ tikkie_pay_link?: string }>('/api/lunch/settings', fetcher)
+  const { data: settings, mutate } = useSWR<{
+    tikkie_pay_link?: string
+    order_weekdays?: number[]
+    closed_dates?: string[]
+  }>('/api/lunch/settings', fetcher)
 
   useEffect(() => {
-    if (settings?.tikkie_pay_link !== undefined) {
-      setTikkieLink(settings.tikkie_pay_link ?? '')
+    if (!settings) return
+    if (settings.tikkie_pay_link !== undefined) setTikkieLink(settings.tikkie_pay_link ?? '')
+    if (Array.isArray(settings.order_weekdays) && settings.order_weekdays.length > 0) {
+      setOrderWeekdays([...settings.order_weekdays].sort((a, b) => a - b))
     }
+    if (Array.isArray(settings.closed_dates)) setClosedDates([...settings.closed_dates].sort())
   }, [settings])
+
+  function toggleWeekday(iso: number) {
+    setOrderWeekdays(prev => {
+      const has = prev.includes(iso)
+      const next = has ? prev.filter(d => d !== iso) : [...prev, iso].sort((a, b) => a - b)
+      return next.length > 0 ? next : prev
+    })
+  }
+
+  function addClosedDate() {
+    const d = newClosedDate.trim()
+    if (!d || closedDates.includes(d)) return
+    setClosedDates(prev => [...prev, d].sort())
+    setNewClosedDate('')
+  }
+
+  function removeClosedDate(d: string) {
+    setClosedDates(prev => prev.filter(x => x !== d))
+  }
 
   async function handleSave() {
     setError('')
@@ -373,11 +403,15 @@ function InstellingenBeheer() {
       const res = await fetch('/api/lunch/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tikkie_pay_link: tikkieLink }),
+        body: JSON.stringify({
+          tikkie_pay_link: tikkieLink,
+          order_weekdays: orderWeekdays,
+          closed_dates: closedDates,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
-      mutate({ tikkie_pay_link: tikkieLink })
+      mutate(data)
       setSuccess(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Er ging iets mis')
@@ -388,6 +422,89 @@ function InstellingenBeheer() {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+        <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Besteldagen</h2>
+        <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
+          Vink aan op welke weekdagen medewerkers mogen bestellen (ISO: maandag t/m zondag).
+        </p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {WEEKDAYS_NL.map(({ iso, label, short }) => (
+            <label
+              key={iso}
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer border"
+              style={{
+                borderColor: orderWeekdays.includes(iso) ? DYNAMO_BLUE : 'rgba(45,69,124,0.15)',
+                background: orderWeekdays.includes(iso) ? 'rgba(45,69,124,0.08)' : 'white',
+                color: DYNAMO_BLUE,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={orderWeekdays.includes(iso)}
+                onChange={() => toggleWeekday(iso)}
+                className="rounded border-gray-300"
+              />
+              <span className="font-medium">{short}</span>
+              <span className="hidden sm:inline text-gray-500 font-normal">{label}</span>
+            </label>
+          ))}
+        </div>
+
+        <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>
+          Gesloten dagen
+        </h3>
+        <p className="text-sm mb-2" style={{ color: 'rgba(45,69,124,0.6)' }}>
+          Feestdagen of andere dagen waarop niet besteld kan worden (naast niet-aangevinkte weekdagen).
+        </p>
+        <div className="flex flex-wrap items-end gap-2 mb-3">
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+              Datum
+            </label>
+            <input
+              type="date"
+              value={newClosedDate}
+              onChange={e => setNewClosedDate(e.target.value)}
+              className="rounded-lg px-3 py-2 text-sm border"
+              style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={addClosedDate}
+            disabled={!newClosedDate}
+            className="px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 border"
+            style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
+          >
+            Toevoegen
+          </button>
+        </div>
+        {closedDates.length > 0 ? (
+          <ul className="space-y-1 mb-4">
+            {closedDates.map(d => (
+              <li
+                key={d}
+                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                style={{ background: 'rgba(45,69,124,0.04)', color: DYNAMO_BLUE }}
+              >
+                <span>{new Date(d + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                <button
+                  type="button"
+                  onClick={() => removeClosedDate(d)}
+                  className="text-red-600 font-medium hover:underline text-xs"
+                >
+                  Verwijderen
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.45)' }}>
+            Geen extra gesloten dagen.
+          </p>
+        )}
+      </div>
+
       <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
         <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Tikkie betaallink</h2>
         <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
@@ -410,7 +527,7 @@ function InstellingenBeheer() {
           className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
           style={{ background: DYNAMO_BLUE, color: 'white' }}
         >
-          {saving ? 'Opslaan...' : 'Opslaan'}
+          {saving ? 'Opslaan...' : 'Alles opslaan'}
         </button>
       </div>
     </div>

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
+import { DYNAMO_BLUE, FONT_FAMILY } from '@/lib/theme'
+import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -51,6 +52,23 @@ export default function LunchPage() {
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
   const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: lunchSettings } = useSWR<{
+    order_weekdays?: number[]
+    closed_dates?: string[]
+  }>('/api/lunch/settings', fetcher)
+
+  const orderWeekdays = useMemo(
+    () => normalizeOrderWeekdays(lunchSettings?.order_weekdays) ?? [1, 2, 3, 4, 5],
+    [lunchSettings?.order_weekdays]
+  )
+  const closedDates = useMemo(
+    () => (Array.isArray(lunchSettings?.closed_dates) ? lunchSettings.closed_dates : []),
+    [lunchSettings?.closed_dates]
+  )
+  const dateCheck = useMemo(
+    () => checkOrderDateAllowed(orderDate, orderWeekdays, closedDates),
+    [orderDate, orderWeekdays, closedDates]
+  )
   const isAdmin = sessionData?.isAdmin === true
   const lunchOnly = sessionData?.lunchOnly === true
 
@@ -182,9 +200,18 @@ export default function LunchPage() {
             value={orderDate}
             onChange={e => setOrderDate(e.target.value)}
             className="rounded-xl px-3 py-2 text-sm border placeholder:text-gray-500"
-            style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE }}
+            style={{
+              borderColor: dateCheck.ok ? 'rgba(45,69,124,0.2)' : '#f97373',
+              background: 'white',
+              color: DYNAMO_BLUE,
+            }}
           />
         </div>
+        {!dateCheck.ok && (
+          <div className="rounded-xl p-3 text-sm font-medium" style={{ background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa' }}>
+            {dateCheck.message}
+          </div>
+        )}
 
         {error && (
           <div className="rounded-xl p-3 text-sm font-medium" style={{ background: '#fef2f2', color: '#b91c1c' }}>
@@ -401,11 +428,11 @@ export default function LunchPage() {
                 <button
                   type="button"
                   onClick={doCheckout}
-                  disabled={cart.length === 0 || checkoutLoading}
+                  disabled={cart.length === 0 || checkoutLoading || !dateCheck.ok}
                   className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
                   style={{ background: DYNAMO_BLUE, color: 'white' }}
                 >
-                  {checkoutLoading ? 'Bezig...' : 'Bestellen & betalen via Tikkie'}
+                  {checkoutLoading ? 'Bezig...' : !dateCheck.ok ? 'Kies een geldige besteldatum' : 'Bestellen & betalen via Tikkie'}
                 </button>
               </div>
             </div>

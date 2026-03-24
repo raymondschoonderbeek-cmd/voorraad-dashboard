@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
+import { checkOrderDateAllowed, normalizeOrderWeekdays, ymdFromDate } from '@/lib/lunch-schedule'
 
 /** GET: mijn bestellingen of alle (admin) */
 export async function GET(request: NextRequest) {
@@ -69,6 +70,23 @@ export async function POST(request: NextRequest) {
 
     const today = new Date().toISOString().slice(0, 10)
     const date = orderDate || today
+
+    const { data: cfg } = await supabase
+      .from('lunch_config')
+      .select('order_weekdays, closed_dates')
+      .eq('id', 1)
+      .single()
+
+    const orderWeekdays = normalizeOrderWeekdays(cfg?.order_weekdays) ?? [1, 2, 3, 4, 5]
+    const closedRaw = cfg?.closed_dates
+    const closedDates: string[] = Array.isArray(closedRaw)
+      ? closedRaw.map(d => (typeof d === 'string' ? d.slice(0, 10) : d instanceof Date ? ymdFromDate(d) : String(d).slice(0, 10)))
+      : []
+
+    const allowed = checkOrderDateAllowed(date, orderWeekdays, closedDates)
+    if (!allowed.ok) {
+      return NextResponse.json({ error: allowed.message }, { status: 400 })
+    }
 
     // Haal producten op voor prijzen
     const productIds = [...new Set(items.map((i: { product_id: string }) => i.product_id))]
