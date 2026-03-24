@@ -82,14 +82,14 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-6">
+    <div className="min-h-screen flex items-center justify-center bg-dynamo-page px-4 py-6" style={{ fontFamily: "'Outfit', sans-serif" }}>
       <form
         onSubmit={handleLogin}
-        className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-200 space-y-5"
+        className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl shadow-[0_8px_40px_rgba(45,69,124,0.08)] border border-dynamo-blue-light/40 space-y-5"
       >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inloggen</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-3xl font-bold text-dynamo-blue tracking-tight">Inloggen</h1>
+          <p className="text-sm text-dynamo-blue-light mt-1">
             Log in op DRG Portal.
           </p>
         </div>
@@ -113,7 +113,7 @@ function LoginForm() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue"
+            className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-dynamo-blue-light/35 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue/25"
           />
 
           {!magicLinkMode && (
@@ -125,13 +125,13 @@ function LoginForm() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-xl pl-4 pr-12 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue"
+                  className="w-full rounded-xl pl-4 pr-12 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-dynamo-blue-light/35 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue/25"
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm text-dynamo-blue/50 hover:bg-dynamo-blue/5"
                 >
                   {showPassword ? '🙈' : '👁️'}
                 </button>
@@ -162,7 +162,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => { setMagicLinkMode(v => !v); setError(''); setMessage(''); }}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-dynamo-blue/45 hover:text-dynamo-blue/70"
           >
             {magicLinkMode ? '← Inloggen met wachtwoord' : 'Inloggen via e-mail (magic link)'}
           </button>
@@ -175,8 +175,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-6">
-        <div className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-200 animate-pulse">
+      <div className="min-h-screen flex items-center justify-center bg-dynamo-page px-4 py-6">
+        <div className="w-full max-w-md bg-white p-6 sm:p-8 rounded-2xl border border-dynamo-blue-light/40 animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/2 mb-4" />
           <div className="h-4 bg-gray-100 rounded w-3/4 mb-6" />
           <div className="h-12 bg-gray-100 rounded mb-4" />

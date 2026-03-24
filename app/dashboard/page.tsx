@@ -7,11 +7,10 @@ import Link from 'next/link'
 import { BrancheNieuwsModule, BRANCHE_NIEUWS_MEER_URL } from '@/components/BrancheNieuws'
 import useSWR from 'swr'
 import { WinkelModal } from '@/components/WinkelModal'
-import { DYNAMO_BLUE, DYNAMO_LOGO } from '@/lib/theme'
+import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO, dashboardUi } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
-const DYNAMO_GOLD = '#f0c040'
 const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
@@ -759,11 +758,11 @@ export default function Dashboard() {
     return <span style={{ color: 'rgba(45,69,124,0.3)', fontSize: '12px', marginLeft: '2px' }}>→</span>
   }
 
-  const inputStyle = { background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
+  const inputStyle = { background: 'rgba(45,69,124,0.05)', border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "rounded-xl px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none"
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb', fontFamily: F }}>
+    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
 
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
@@ -771,10 +770,11 @@ export default function Dashboard() {
         .s2{animation:fadeUp .5s .08s ease forwards;opacity:0}
         .s3{animation:fadeUp .5s .16s ease forwards;opacity:0}
         .s4{animation:fadeUp .5s .24s ease forwards;opacity:0}
-        .mod-card{transition:transform .2s ease,box-shadow .2s ease}
-        .mod-card:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(45,69,124,.18)!important}
+        .mod-card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+        .mod-card:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(45,69,124,.13)!important}
+        .mod-card:focus-visible{outline:2px solid rgba(45,69,124,.35);outline-offset:3px}
         .wink-card{transition:transform .2s ease,box-shadow .2s ease}
-        .wink-card:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(45,69,124,.14)!important}
+        .wink-card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(45,69,124,.12)!important}
       `}</style>
 
       {/* NAVIGATIE */}
@@ -818,9 +818,11 @@ export default function Dashboard() {
             <div className="space-y-8">
 
               {/* HERO */}
-              <div className="s1 relative rounded-xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 140 }}>
-                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%)' }} />
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.2)' }} />
+              <div className="s1 relative rounded-xl overflow-hidden shadow-lg shadow-[rgba(45,69,124,0.12)] ring-1 ring-white/10" style={{ background: `linear-gradient(145deg, ${DYNAMO_BLUE} 0%, #243a63 50%, #2a4a6e 100%)`, minHeight: 140 }}>
+                <div className="pointer-events-none absolute top-0 left-0 right-0 h-[3px] opacity-95" style={{ background: `linear-gradient(90deg, transparent 0%, ${DYNAMO_GOLD} 45%, ${DYNAMO_GOLD} 55%, transparent 100%)` }} aria-hidden />
+                <div className="pointer-events-none absolute inset-0" style={{ background: dashboardUi.heroAccentWash }} aria-hidden />
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 75% 30%, rgba(255,255,255,0.09) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.05) 0%, transparent 40%)' }} />
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.25)' }} />
                 <div className="hidden sm:block" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '200px', background: 'rgba(255,255,255,0.025)', borderLeft: '1px solid rgba(255,255,255,0.06)' }} />
                 <div className="relative p-4 sm:p-5 sm:pr-52 flex flex-wrap items-center gap-x-6 gap-y-3">
                   <div className="flex items-center gap-3 min-w-0">
@@ -865,15 +867,17 @@ export default function Dashboard() {
               {/* MODULES */}
               <div className="s2">
                 <div className="flex items-center gap-3 mb-4">
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Modules</span>
-                  <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Modules</span>
+                  <div className="flex-1 h-px" style={{ background: dashboardUi.sectionDivider }} />
                   {!lunchOnly && (
-                    <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.35)', fontFamily: F }}>Sleep om te herschikken</span>
+                    <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }}>Sleep om te herschikken</span>
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
                   {orderedModules.map((id, idx) => {
-                    const modCard = 'mod-card rounded-2xl overflow-hidden'
+                    /** Max hoogte gelijk aan compacte tegels (bovenste rij); branche-nieuws scrollt binnen dit kader */
+                    const modCardMax = 'max-h-[270px]'
+                    const modCard = `mod-card rounded-2xl overflow-hidden ${modCardMax}`
                     const isBlue = id === 'voorraad'
                     const dragHandle = !lunchOnly ? (
                       <div
@@ -882,7 +886,7 @@ export default function Dashboard() {
                         onDragOver={e => e.preventDefault()}
                         onClick={e => { e.preventDefault(); e.stopPropagation() }}
                         className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing opacity-50 hover:opacity-90 transition-opacity"
-                        style={isBlue ? { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' } : { background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.5)' }}
+                        style={isBlue ? { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' } : { background: 'rgba(45,69,124,0.07)', color: dashboardUi.textMuted }}
                         title="Sleep om volgorde te wijzigen"
                       >
                         <IconGrip />
@@ -891,7 +895,7 @@ export default function Dashboard() {
                     if (id === 'voorraad') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className={`${modCard} cursor-pointer flex flex-col h-full`} style={{ background: DYNAMO_BLUE, boxShadow: '0 4px 24px rgba(45,69,124,0.2)' }} onClick={openWinkelSelect}>
+                          <div className={`${modCard} cursor-pointer flex flex-col h-full`} style={{ background: DYNAMO_BLUE, boxShadow: '0 8px 36px rgba(45,69,124,0.28)' }} onClick={openWinkelSelect}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(255,255,255,0.15)' }}>
@@ -911,16 +915,16 @@ export default function Dashboard() {
                     if (id === 'lunch') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,69,124,0.1)' }}>
+                          <Link href="/dashboard/lunch" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardUi.cardWhite }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
                                 <span style={{ color: 'white', fontSize: '20px' }}>🥪</span>
                               </div>
                               <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Lunch bestellen</div>
-                              <div style={{ color: 'rgba(45,69,124,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
+                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Bestel broodjes voor op kantoor</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardUi.cardFooter }}>
                               <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bestellen →</span>
                               <span style={{ color: DYNAMO_BLUE, opacity: 0.6, fontSize: '18px' }}>🥪</span>
                             </div>
@@ -931,16 +935,16 @@ export default function Dashboard() {
                     if (id === 'brand-groep') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,69,124,0.1)' }}>
+                          <Link href="/dashboard/brand-groep" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardUi.cardWhite }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
                                 <div style={{ color: 'white' }}><IconChart /></div>
                               </div>
                               <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Merk / Groep</div>
-                              <div style={{ color: 'rgba(45,69,124,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
+                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Voorraad per merk en productgroep</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardUi.cardFooter }}>
                               <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Ga naar analyse →</span>
                               <div style={{ color: DYNAMO_BLUE, opacity: 0.4 }}><IconChart /></div>
                             </div>
@@ -951,16 +955,16 @@ export default function Dashboard() {
                     if (id === 'campagne-fietsen') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <Link href="/dashboard/campagne-fietsen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,69,124,0.1)' }}>
+                          <Link href="/dashboard/campagne-fietsen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardUi.cardWhite }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: DYNAMO_BLUE }}>
                                 <span style={{ color: 'white', fontSize: '22px' }}>🚲</span>
                               </div>
                               <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Campagnefietsen</div>
-                              <div style={{ color: 'rgba(45,69,124,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Landelijk voorraad per campagnefiets</div>
+                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Landelijk voorraad per campagnefiets</div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardUi.cardFooter }}>
                               <span style={{ color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk overzicht →</span>
                               <span style={{ color: DYNAMO_BLUE, opacity: 0.5, fontSize: '18px' }}>🚲</span>
                             </div>
@@ -973,7 +977,7 @@ export default function Dashboard() {
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <div
                             className={`${modCard} h-full flex flex-col`}
-                            style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 4px 24px rgba(45,69,124,0.1)' }}
+                            style={{ ...dashboardUi.cardWhite }}
                           >
                             {dragHandle}
                             <div className="p-6 flex-1 flex flex-col min-h-0">
@@ -981,14 +985,14 @@ export default function Dashboard() {
                                 <span style={{ color: 'white', fontSize: '22px' }} aria-hidden>📰</span>
                               </div>
                               <div style={{ fontFamily: F, color: DYNAMO_BLUE, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>Branche nieuws</div>
-                              <div style={{ color: 'rgba(45,69,124,0.5)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>
-                                Actuele artikelen van NieuwsFiets — klik om te lezen
+                              <div style={{ color: dashboardUi.textMuted, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>
+                                Actuele artikelen van NieuwsFiets
                               </div>
-                              <div className="flex-1 min-h-0 flex flex-col">
-                                <BrancheNieuwsModule maxItems={3} />
+                              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 -mr-0.5">
+                                <BrancheNieuwsModule maxItems={3} compact />
                               </div>
                             </div>
-                            <div className="px-6 py-3 flex items-center justify-between mt-auto shrink-0" style={{ background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(45,69,124,0.08)' }}>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto shrink-0" style={{ ...dashboardUi.cardFooter }}>
                               <a
                                 href={BRANCHE_NIEUWS_MEER_URL}
                                 target="_blank"
@@ -1008,17 +1012,17 @@ export default function Dashboard() {
                     if (id === 'meer') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className="rounded-2xl overflow-hidden flex flex-col h-full" style={{ background: 'rgba(45,69,124,0.03)', border: '1px solid rgba(45,69,124,0.07)' }}>
+                          <div className={`mod-card rounded-2xl overflow-hidden flex flex-col h-full ${modCardMax}`} style={{ background: 'rgba(45,69,124,0.045)', border: '1px dashed rgba(45,69,124,0.22)', boxShadow: '0 2px 16px rgba(45,69,124,0.06)' }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(45,69,124,0.06)' }}>
-                                <div style={{ color: 'rgba(45,69,124,0.25)' }}><IconMap /></div>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(45,69,124,0.1)' }}>
+                                <div style={{ color: 'rgba(45,69,124,0.38)' }}><IconMap /></div>
                               </div>
-                              <div style={{ fontFamily: F, color: 'rgba(45,69,124,0.35)', fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
-                              <div style={{ color: 'rgba(45,69,124,0.25)', fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
+                              <div style={{ fontFamily: F, color: dashboardUi.textMuted, fontSize: '18px', fontWeight: 600 }}>Meer modules</div>
+                              <div style={{ color: dashboardUi.textSubtle, fontSize: '13px', marginTop: '6px', lineHeight: 1.55, fontFamily: F }}>Export, vergelijking, alerts</div>
                             </div>
-                            <div className="px-6 py-3 mt-auto" style={{ background: 'rgba(45,69,124,0.02)', borderTop: '1px solid rgba(45,69,124,0.05)' }}>
-                              <span style={{ color: 'rgba(45,69,124,0.25)', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
+                            <div className="px-6 py-3 mt-auto" style={{ ...dashboardUi.cardFooter }}>
+                              <span style={{ color: dashboardUi.textSubtle, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Binnenkort beschikbaar</span>
                             </div>
                           </div>
                         </div>
@@ -1033,8 +1037,8 @@ export default function Dashboard() {
               {!lunchOnly && (
               <div className="s3">
                 <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Locaties</span>
-                  <div className="flex-1 min-w-0 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Locaties</span>
+                  <div className="flex-1 min-w-0 h-px" style={{ background: dashboardUi.sectionDivider }} />
                   <div className="flex flex-wrap items-center gap-2">
                     <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }}>
                       <option value="alle">Alle landen</option>
@@ -1053,9 +1057,9 @@ export default function Dashboard() {
                       <option value="nee">Bike Totaal: nee</option>
                     </select>
                   </div>
-                  <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => w.lat && w.lng).length} van {winkelsGefilterd.length} op kaart</span>
+                  <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }}>{winkelsGefilterd.filter(w => w.lat && w.lng).length} van {winkelsGefilterd.length} op kaart</span>
                 </div>
-                <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: '1px solid rgba(45,69,124,0.07)' }}>
+                <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
                   <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
                 </div>
               </div>
