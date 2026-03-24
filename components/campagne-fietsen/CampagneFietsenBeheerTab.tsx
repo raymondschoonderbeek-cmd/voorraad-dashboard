@@ -224,16 +224,16 @@ export function CampagneFietsenBeheerTab() {
           ) : rows.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-8">Nog geen campagnefietsen.</p>
           ) : (
-            <table className="w-full text-xs text-left">
+            <table className="w-full text-xs text-left text-gray-900">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="pb-2 pr-2 font-semibold text-gray-500">Merk</th>
-                  <th className="pb-2 pr-2 font-semibold text-gray-500">Omschrijving</th>
-                  <th className="pb-2 pr-2 font-semibold text-gray-500">EAN</th>
-                  <th className="pb-2 pr-2 font-semibold text-gray-500 hidden md:table-cell">Bestelnr</th>
-                  <th className="pb-2 pr-2 font-semibold text-gray-500 hidden lg:table-cell">Kleur</th>
-                  <th className="pb-2 pr-2 font-semibold text-gray-500">Maat</th>
-                  <th className="pb-2 font-semibold text-gray-500">Actief</th>
+                  <th className="pb-2 pr-2 font-semibold text-gray-700">Merk</th>
+                  <th className="pb-2 pr-2 font-semibold text-gray-700">Omschrijving</th>
+                  <th className="pb-2 pr-2 font-semibold text-gray-700">EAN</th>
+                  <th className="pb-2 pr-2 font-semibold text-gray-700 hidden md:table-cell">Bestelnr</th>
+                  <th className="pb-2 pr-2 font-semibold text-gray-700 hidden lg:table-cell">Kleur</th>
+                  <th className="pb-2 pr-2 font-semibold text-gray-700">Maat</th>
+                  <th className="pb-2 font-semibold text-gray-700">Actief</th>
                   <th className="pb-2 w-28" />
                 </tr>
               </thead>
@@ -243,12 +243,12 @@ export function CampagneFietsenBeheerTab() {
                     <td className="py-2 pr-2 font-medium" style={{ color: DYNAMO_BLUE }}>
                       {f.merk}
                     </td>
-                    <td className="py-2 pr-2 max-w-[200px] truncate">{f.omschrijving_fiets}</td>
-                    <td className="py-2 pr-2 font-mono">{f.ean_code}</td>
-                    <td className="py-2 pr-2 hidden md:table-cell font-mono text-gray-600">{f.bestelnummer_leverancier || '—'}</td>
-                    <td className="py-2 pr-2 hidden lg:table-cell text-gray-600">{f.kleur || '—'}</td>
-                    <td className="py-2 pr-2">{f.framemaat || '—'}</td>
-                    <td className="py-2">{f.active ? '✓' : '—'}</td>
+                    <td className="py-2 pr-2 max-w-[200px] truncate text-gray-900">{f.omschrijving_fiets}</td>
+                    <td className="py-2 pr-2 font-mono text-gray-900">{f.ean_code}</td>
+                    <td className="py-2 pr-2 hidden md:table-cell font-mono text-gray-800">{f.bestelnummer_leverancier || '—'}</td>
+                    <td className="py-2 pr-2 hidden lg:table-cell text-gray-800">{f.kleur || '—'}</td>
+                    <td className="py-2 pr-2 text-gray-900">{f.framemaat || '—'}</td>
+                    <td className="py-2 text-gray-900 tabular-nums">{f.active ? '✓' : '—'}</td>
                     <td className="py-2 text-right space-x-1 whitespace-nowrap">
                       <button type="button" onClick={() => startEdit(f)} className="text-dynamo-blue font-semibold hover:underline">
                         Bewerk

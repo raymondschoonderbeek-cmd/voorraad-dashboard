@@ -242,7 +242,7 @@ export default function CampagneFietsenPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
+    <div className="min-h-screen flex flex-col text-gray-900" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50 shadow-md">
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/dashboard" className="flex items-center gap-2 text-white hover:opacity-90 min-w-0">
@@ -484,13 +484,13 @@ export default function CampagneFietsenPage() {
                       <p className="text-sm text-gray-500">Nergens voorraad gevonden voor deze barcode.</p>
                     ) : (
                       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-sm text-left text-gray-900">
                           <thead>
                             <tr className="bg-gray-50 border-b border-gray-100">
-                              <th className="px-4 py-2 font-semibold text-gray-600">Winkel</th>
-                              <th className="px-4 py-2 font-semibold text-gray-600">Plaats</th>
-                              <th className="px-4 py-2 font-semibold text-gray-600">Bron</th>
-                              <th className="px-4 py-2 font-semibold text-gray-600 text-right">Voorraad</th>
+                              <th className="px-4 py-2 font-semibold text-gray-700">Winkel</th>
+                              <th className="px-4 py-2 font-semibold text-gray-700">Plaats</th>
+                              <th className="px-4 py-2 font-semibold text-gray-700">Bron</th>
+                              <th className="px-4 py-2 font-semibold text-gray-700 text-right">Voorraad</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -501,13 +501,13 @@ export default function CampagneFietsenPage() {
                                 <td className="px-4 py-2 font-medium" style={{ color: DYNAMO_BLUE }}>
                                   {w.naam}
                                 </td>
-                                <td className="px-4 py-2 text-gray-600">{w.stad ?? '—'}</td>
+                                <td className="px-4 py-2 text-gray-700">{w.stad ?? '—'}</td>
                                 <td className="px-4 py-2">
-                                  <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
+                                  <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
                                     {w.bron}
                                   </span>
                                 </td>
-                                <td className="px-4 py-2 text-right font-bold tabular-nums">{w.voorraad}</td>
+                                <td className="px-4 py-2 text-right font-bold tabular-nums text-gray-950">{w.voorraad}</td>
                               </tr>
                             ))}
                           </tbody>
