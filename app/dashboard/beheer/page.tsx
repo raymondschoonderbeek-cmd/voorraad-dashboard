@@ -621,13 +621,29 @@ export default function BeheerPage() {
     setWinkelLoading(true)
     setFormError('')
     setFormSuccess('')
-    const heeftWilmarKoppeling = wilmarBranchId != null && wilmarOrganisationId != null
-    const geselecteerdeWilmarStore = wilmarStores.find(
-      s => s.organisationId === wilmarOrganisationId && s.branchId === wilmarBranchId
-    )
-    const wilmarNaam = geselecteerdeWilmarStore?.name
-      ? `${geselecteerdeWilmarStore.name}${geselecteerdeWilmarStore.city ? ` (${geselecteerdeWilmarStore.city})` : ''}`
-      : null
+    /** Radioknop is leidend: oude logica forceerde Wilmar zolang branch/org in state stonden, ook na switch naar CycleSoftware. */
+    const gekozenApi: Winkel['api_type'] =
+      bewerkWinkel.api_type ??
+      (bewerkWinkel.wilmar_branch_id != null && bewerkWinkel.wilmar_organisation_id != null ? 'wilmar' : 'cyclesoftware')
+
+    let wilmarOrg: number | null = null
+    let wilmarBranch: number | null = null
+    let wilmarNaam: string | null = null
+    if (gekozenApi === 'wilmar') {
+      wilmarOrg = wilmarOrganisationId ?? null
+      wilmarBranch = wilmarBranchId ?? null
+      const geselecteerdeWilmarStore = wilmarStores.find(
+        s => s.organisationId === wilmarOrg && s.branchId === wilmarBranch
+      )
+      const uitStore = geselecteerdeWilmarStore?.name
+        ? `${geselecteerdeWilmarStore.name}${geselecteerdeWilmarStore.city ? ` (${geselecteerdeWilmarStore.city})` : ''}`
+        : null
+      wilmarNaam =
+        wilmarOrg != null && wilmarBranch != null
+          ? (uitStore ?? bewerkWinkel.wilmar_store_naam ?? null)
+          : null
+    }
+
     const payload = {
       id: bewerkWinkel.id,
       naam: bewerkWinkel.naam,
@@ -637,10 +653,10 @@ export default function BeheerPage() {
       huisnummer: bewerkHuisnummer?.trim() || null,
       stad: bewerkWinkel.stad,
       land: bewerkWinkel.land ?? null,
-      wilmar_organisation_id: wilmarOrganisationId ?? null,
-      wilmar_branch_id: wilmarBranchId ?? null,
-      wilmar_store_naam: heeftWilmarKoppeling ? (wilmarNaam ?? bewerkWinkel.wilmar_store_naam ?? null) : null,
-      api_type: heeftWilmarKoppeling ? 'wilmar' : (bewerkWinkel.api_type ?? 'cyclesoftware'),
+      wilmar_organisation_id: gekozenApi === 'wilmar' ? wilmarOrg : null,
+      wilmar_branch_id: gekozenApi === 'wilmar' ? wilmarBranch : null,
+      wilmar_store_naam: gekozenApi === 'wilmar' ? wilmarNaam : null,
+      api_type: gekozenApi ?? 'cyclesoftware',
       vendit_api_key: (bewerkWinkel.vendit_api_key ?? '').trim() || null,
       vendit_api_username: (bewerkWinkel.vendit_api_username ?? '').trim() || null,
       ...((bewerkWinkel.vendit_api_password ?? '').trim() ? { vendit_api_password: (bewerkWinkel.vendit_api_password ?? '').trim() } : {}),
@@ -1475,9 +1491,16 @@ export default function BeheerPage() {
                                   ? 'wilmar'
                                   : 'cyclesoftware')) === opt.value
                             }
-                            onChange={() =>
+                            onChange={() => {
                               setBewerkWinkel({ ...bewerkWinkel, api_type: opt.value })
-                            }
+                              if (opt.value !== 'wilmar') {
+                                setWilmarBranchId(null)
+                                setWilmarOrganisationId(null)
+                              } else {
+                                setWilmarBranchId(bewerkWinkel.wilmar_branch_id ?? null)
+                                setWilmarOrganisationId(bewerkWinkel.wilmar_organisation_id ?? null)
+                              }
+                            }}
                             className="sr-only"
                           />
                           <div
