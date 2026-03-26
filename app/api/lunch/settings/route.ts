@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('lunch_config')
       .select(
-        'tikkie_pay_link, order_weekdays, closed_dates, reminder_mail_enabled, reminder_weekday, reminder_time_local, reminder_mail_subject, reminder_mail_html'
+        'tikkie_pay_link, order_weekdays, closed_dates, order_end_time_local, reminder_mail_enabled, reminder_weekday, reminder_time_local, reminder_mail_subject, reminder_mail_html'
       )
       .eq('id', 1)
       .single()
@@ -46,10 +46,14 @@ export async function GET(request: NextRequest) {
     const rt = data?.reminder_time_local
     const reminder_time_local =
       typeof rt === 'string' && parseHHmmToMinutes(rt) != null ? rt : '08:00'
+    const oet = data?.order_end_time_local
+    const order_end_time_local =
+      typeof oet === 'string' && parseHHmmToMinutes(oet) != null ? oet : '10:30'
     return NextResponse.json({
       tikkie_pay_link: data?.tikkie_pay_link ?? '',
       order_weekdays: orderWeekdays,
       closed_dates: formatClosedDates(data?.closed_dates),
+      order_end_time_local,
       reminder_mail_enabled: data?.reminder_mail_enabled === true,
       reminder_weekday,
       reminder_time_local,
@@ -93,6 +97,14 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'closed_dates: ongeldige datums (gebruik YYYY-MM-DD).' }, { status: 400 })
       }
       update.closed_dates = c
+    }
+
+    if (body.order_end_time_local !== undefined) {
+      const s = String(body.order_end_time_local).trim()
+      if (parseHHmmToMinutes(s) == null) {
+        return NextResponse.json({ error: 'order_end_time_local: gebruik HH:mm (24 uur).' }, { status: 400 })
+      }
+      update.order_end_time_local = s
     }
 
     if (body.reminder_mail_enabled !== undefined) {
@@ -156,7 +168,7 @@ export async function PATCH(request: NextRequest) {
     const { data: row } = await admin.supabase
       .from('lunch_config')
       .select(
-        'tikkie_pay_link, order_weekdays, closed_dates, reminder_mail_enabled, reminder_weekday, reminder_time_local, reminder_mail_subject, reminder_mail_html'
+        'tikkie_pay_link, order_weekdays, closed_dates, order_end_time_local, reminder_mail_enabled, reminder_weekday, reminder_time_local, reminder_mail_subject, reminder_mail_html'
       )
       .eq('id', 1)
       .single()
@@ -168,10 +180,14 @@ export async function PATCH(request: NextRequest) {
     const rt = row?.reminder_time_local
     const reminder_time_local =
       typeof rt === 'string' && parseHHmmToMinutes(rt) != null ? rt : '08:00'
+    const oet = row?.order_end_time_local
+    const order_end_time_local =
+      typeof oet === 'string' && parseHHmmToMinutes(oet) != null ? oet : '10:30'
     return NextResponse.json({
       tikkie_pay_link: row?.tikkie_pay_link ?? '',
       order_weekdays: orderWeekdays,
       closed_dates: formatClosedDates(row?.closed_dates),
+      order_end_time_local,
       reminder_mail_enabled: row?.reminder_mail_enabled === true,
       reminder_weekday,
       reminder_time_local,

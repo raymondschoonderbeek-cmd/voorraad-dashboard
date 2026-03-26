@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
+import { getAmsterdamYmd } from '@/lib/amsterdam-time'
 import { checkOrderDateAllowed, normalizeOrderWeekdays, ymdFromDate } from '@/lib/lunch-schedule'
+import { formatOrderEndTimeNl, isOrderClosedForDate, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
 
 /** GET: mijn bestellingen of alle (admin) */
 export async function GET(request: NextRequest) {
@@ -68,12 +70,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Geen items in bestelling' }, { status: 400 })
     }
 
-    const today = new Date().toISOString().slice(0, 10)
-    const date = orderDate || today
+    const todayAmsterdam = getAmsterdamYmd(new Date())
+    const date = orderDate?.trim() || todayAmsterdam
 
     const { data: cfg } = await supabase
       .from('lunch_config')
-      .select('order_weekdays, closed_dates')
+      .select('order_weekdays, closed_dates, order_end_time_local')
       .eq('id', 1)
       .single()
 
@@ -82,10 +84,32 @@ export async function POST(request: NextRequest) {
     const closedDates: string[] = Array.isArray(closedRaw)
       ? closedRaw.map(d => (typeof d === 'string' ? d.slice(0, 10) : d instanceof Date ? ymdFromDate(d) : String(d).slice(0, 10)))
       : []
+    const endTime = normalizeOrderEndTimeLocal(
+      typeof cfg?.order_end_time_local === 'string' ? cfg.order_end_time_local : null
+    )
+
+    if (date < todayAmsterdam) {
+      return NextResponse.json(
+        {
+          error:
+            'Deze besteldag ligt in het verleden. Kies de datum van vandaag of een toekomstige besteldag.',
+        },
+        { status: 400 }
+      )
+    }
 
     const allowed = checkOrderDateAllowed(date, orderWeekdays, closedDates)
     if (!allowed.ok) {
       return NextResponse.json({ error: allowed.description }, { status: 400 })
+    }
+
+    if (isOrderClosedForDate(date, new Date(), endTime)) {
+      return NextResponse.json(
+        {
+          error: `Bestellen voor deze dag is gesloten — de uiterste tijd (${formatOrderEndTimeNl(endTime)}, Amsterdam) is verstreken. Kies een volgende besteldag.`,
+        },
+        { status: 400 }
+      )
     }
 
     // Haal producten op voor prijzen

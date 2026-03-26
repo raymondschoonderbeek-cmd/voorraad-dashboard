@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, FONT_FAMILY } from '@/lib/theme'
+import { formatOrderEndTimeNl, isOrderClosedForDate, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
 import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -64,6 +65,7 @@ export default function LunchPage() {
   const { data: lunchSettings } = useSWR<{
     order_weekdays?: number[]
     closed_dates?: string[]
+    order_end_time_local?: string
   }>('/api/lunch/settings', fetcher)
 
   const orderWeekdays = useMemo(
@@ -74,10 +76,24 @@ export default function LunchPage() {
     () => (Array.isArray(lunchSettings?.closed_dates) ? lunchSettings.closed_dates : []),
     [lunchSettings?.closed_dates]
   )
+  const orderEndTime = useMemo(
+    () => normalizeOrderEndTimeLocal(lunchSettings?.order_end_time_local),
+    [lunchSettings?.order_end_time_local]
+  )
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(t)
+  }, [])
   const dateCheck = useMemo(
     () => checkOrderDateAllowed(orderDate, orderWeekdays, closedDates),
     [orderDate, orderWeekdays, closedDates]
   )
+  const orderDeadlineClosed = useMemo(
+    () => dateCheck.ok && isOrderClosedForDate(orderDate, now, orderEndTime),
+    [dateCheck.ok, orderDate, now, orderEndTime]
+  )
+  const canPlaceOrder = dateCheck.ok && !orderDeadlineClosed
   const isAdmin = sessionData?.isAdmin === true
   const lunchOnly = sessionData?.lunchOnly === true
 
@@ -256,6 +272,26 @@ export default function LunchPage() {
             }}
           />
         </div>
+        {dateCheck.ok && orderDeadlineClosed && (
+          <div
+            className="rounded-2xl p-4 sm:p-5 border-2 shadow-sm"
+            style={{
+              background: '#fff7ed',
+              borderColor: '#fdba74',
+              color: '#7c2d12',
+            }}
+            role="alert"
+          >
+            <p className="text-base sm:text-lg font-bold mb-2" style={{ color: '#9a3412' }}>
+              Bestellen voor deze dag is gesloten
+            </p>
+            <p className="text-sm sm:text-base leading-relaxed" style={{ color: '#7c2d12' }}>
+              Je kunt tot <strong>{formatOrderEndTimeNl(orderEndTime)}</strong> (Amsterdam) bestellen voor de gekozen
+              besteldag. Kies een volgende besteldag in de kalender hierboven.
+            </p>
+          </div>
+        )}
+
         {!dateCheck.ok && (
           <div
             className="rounded-2xl p-4 sm:p-5 border-2 shadow-sm"
@@ -491,7 +527,7 @@ export default function LunchPage() {
                 <button
                   type="button"
                   onClick={doCheckout}
-                  disabled={cart.length === 0 || checkoutLoading || !dateCheck.ok}
+                  disabled={cart.length === 0 || checkoutLoading || !canPlaceOrder}
                   className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
                   style={{ background: DYNAMO_BLUE, color: 'white' }}
                 >
@@ -503,7 +539,9 @@ export default function LunchPage() {
                         : dateCheck.variant === 'invalid'
                           ? 'Kies een geldige datum'
                           : 'Kies een toegestane dag om te bestellen'
-                      : 'Bestellen & betalen via Tikkie'}
+                      : orderDeadlineClosed
+                        ? 'Bestellen gesloten voor deze dag'
+                        : 'Bestellen & betalen via Tikkie'}
                 </button>
               </div>
             </div>

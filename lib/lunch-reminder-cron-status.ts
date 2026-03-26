@@ -6,6 +6,7 @@ import {
   isWithinReminderWindow,
   parseHHmmToMinutes,
 } from '@/lib/amsterdam-time'
+import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
 import { WEEKDAYS_NL, checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
@@ -100,7 +101,7 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
   const { data: cfg, error: cfgErr } = await admin
     .from('lunch_config')
     .select(
-      'reminder_mail_enabled, reminder_weekday, reminder_time_local, order_weekdays, closed_dates'
+      'reminder_mail_enabled, reminder_weekday, reminder_time_local, order_weekdays, closed_dates, order_end_time_local'
     )
     .eq('id', 1)
     .single()
@@ -120,7 +121,16 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
   }
   push('lunch_config', true, 'Database lunch_config', 'OK')
 
-  const ymd = getAmsterdamYmd(now)
+  const orderWeekdays = normalizeOrderWeekdays(cfg.order_weekdays) ?? [1, 2, 3, 4, 5]
+  const closedRaw = cfg.closed_dates
+  const closedDates: string[] = Array.isArray(closedRaw)
+    ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
+    : []
+  const endNorm = normalizeOrderEndTimeLocal(
+    typeof cfg.order_end_time_local === 'string' ? cfg.order_end_time_local : null
+  )
+  const ymd =
+    effectiveOrderDateForReminderAt(now, orderWeekdays, closedDates, endNorm) ?? getAmsterdamYmd(now)
   const isoToday = getAmsterdamIsoWeekday(now)
   const { hour, minute } = getAmsterdamHourMinute(now)
   const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
@@ -166,16 +176,11 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
     }
   }
 
-  const orderWeekdays = normalizeOrderWeekdays(cfg.order_weekdays) ?? [1, 2, 3, 4, 5]
-  const closedRaw = cfg.closed_dates
-  const closedDates: string[] = Array.isArray(closedRaw)
-    ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
-    : []
   const dateCheck = checkOrderDateAllowed(ymd, orderWeekdays, closedDates)
   if (!dateCheck.ok) {
-    push('order_day', false, 'Bestellen mogelijk vandaag', dateCheck.description)
+    push('order_day', false, 'Besteldag in de mail', dateCheck.description)
   } else {
-    push('order_day', true, 'Bestellen mogelijk vandaag', `Datum ${ymd} is toegestaan`)
+    push('order_day', true, 'Besteldag in de mail', `De herinnering zou linken naar ${ymd} (rekening houdend met uiterste besteltijd).`)
   }
 
   let recipientCount: number | null = null
@@ -208,7 +213,7 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
         'recipients',
         true,
         'Ontvangers (lunch-module)',
-        `${recipientCount} gebruiker(s); ${pendingSendCount} nog geen mail vandaag (${ymd}), ${alreadySentToday} al verstuurd`
+        `${recipientCount} gebruiker(s); ${pendingSendCount} nog geen herinnering voor besteldag ${ymd}, ${alreadySentToday} al verstuurd`
       )
     }
   } catch (e) {

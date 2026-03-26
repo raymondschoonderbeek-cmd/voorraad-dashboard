@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { getAmsterdamYmd } from '@/lib/amsterdam-time'
+import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
+import { normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
@@ -33,6 +35,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     if (typeof body.orderDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.orderDate)) {
       orderDate = body.orderDate
+    } else {
+      const { data: cfg } = await admin.supabase
+        .from('lunch_config')
+        .select('order_weekdays, closed_dates, order_end_time_local')
+        .eq('id', 1)
+        .maybeSingle()
+      const orderWeekdays = normalizeOrderWeekdays(cfg?.order_weekdays) ?? [1, 2, 3, 4, 5]
+      const closedRaw = cfg?.closed_dates
+      const closedDates: string[] = Array.isArray(closedRaw)
+        ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
+        : []
+      const endNorm = normalizeOrderEndTimeLocal(
+        typeof cfg?.order_end_time_local === 'string' ? cfg.order_end_time_local : null
+      )
+      orderDate =
+        effectiveOrderDateForReminderAt(new Date(), orderWeekdays, closedDates, endNorm) ?? orderDate
     }
   } catch {
     /* default vandaag */

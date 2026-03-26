@@ -392,10 +392,26 @@ function InstellingenBeheer() {
   } | null>(null)
   const [cronStatusError, setCronStatusError] = useState('')
 
+  const [broadcastOrderDate, setBroadcastOrderDate] = useState('')
+  const [broadcastPreview, setBroadcastPreview] = useState<{
+    orderDate: string
+    orderDatePretty: string
+    eligibleRecipients: number
+    alreadySentForDate: number
+    wouldSend: number
+  } | null>(null)
+  const [broadcastPreviewLoading, setBroadcastPreviewLoading] = useState(false)
+  const [broadcastSendLoading, setBroadcastSendLoading] = useState(false)
+  const [broadcastError, setBroadcastError] = useState('')
+  const [broadcastSuccess, setBroadcastSuccess] = useState('')
+
+  const [orderEndTimeLocal, setOrderEndTimeLocal] = useState('10:30')
+
   const { data: settings, mutate } = useSWR<{
     tikkie_pay_link?: string
     order_weekdays?: number[]
     closed_dates?: string[]
+    order_end_time_local?: string
     reminder_mail_enabled?: boolean
     reminder_weekday?: number
     reminder_time_local?: string
@@ -410,6 +426,10 @@ function InstellingenBeheer() {
       setOrderWeekdays([...settings.order_weekdays].sort((a, b) => a - b))
     }
     if (Array.isArray(settings.closed_dates)) setClosedDates([...settings.closed_dates].sort())
+    if (typeof settings.order_end_time_local === 'string' && /^\d{1,2}:\d{2}$/.test(settings.order_end_time_local)) {
+      const [h, m] = settings.order_end_time_local.split(':')
+      setOrderEndTimeLocal(`${h.padStart(2, '0')}:${m.padStart(2, '0')}`)
+    }
     if (typeof settings.reminder_mail_enabled === 'boolean') setReminderMailEnabled(settings.reminder_mail_enabled)
     if (typeof settings.reminder_weekday === 'number' && settings.reminder_weekday >= 1 && settings.reminder_weekday <= 7) {
       setReminderWeekday(settings.reminder_weekday)
@@ -547,6 +567,68 @@ function InstellingenBeheer() {
     setTestMsg('')
   }
 
+  async function loadBroadcastPreview(clearFeedback = true, silent = false) {
+    if (clearFeedback) {
+      setBroadcastError('')
+      setBroadcastSuccess('')
+    } else if (!silent) {
+      setBroadcastError('')
+    }
+    setBroadcastPreviewLoading(true)
+    try {
+      const q = broadcastOrderDate.trim() ? `?orderDate=${encodeURIComponent(broadcastOrderDate.trim())}` : ''
+      const res = await fetch(`/api/lunch/reminder-broadcast${q}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Ophalen mislukt')
+      setBroadcastPreview({
+        orderDate: data.orderDate,
+        orderDatePretty: data.orderDatePretty,
+        eligibleRecipients: data.eligibleRecipients,
+        alreadySentForDate: data.alreadySentForDate,
+        wouldSend: data.wouldSend,
+      })
+    } catch (e) {
+      if (!silent) {
+        setBroadcastPreview(null)
+        setBroadcastError(e instanceof Error ? e.message : 'Mislukt')
+      }
+    } finally {
+      setBroadcastPreviewLoading(false)
+    }
+  }
+
+  async function sendBroadcastToAll() {
+    if (!broadcastPreview || broadcastPreview.wouldSend <= 0) return
+    const ok = window.confirm(
+      `Weet je het zeker? Er worden ${broadcastPreview.wouldSend} e-mail(s) verstuurd naar lunch-gebruikers. De inloglink gebruikt de besteldag ${broadcastPreview.orderDatePretty}.`
+    )
+    if (!ok) return
+    setBroadcastError('')
+    setBroadcastSuccess('')
+    setBroadcastSendLoading(true)
+    try {
+      const res = await fetch('/api/lunch/reminder-broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          broadcastOrderDate.trim() ? { orderDate: broadcastOrderDate.trim() } : {}
+        ),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Versturen mislukt')
+      const errPart =
+        Array.isArray(data.errors) && data.errors.length > 0
+          ? ` Bij ${data.errors.length} adres(sen) ging iets mis.`
+          : ''
+      await loadBroadcastPreview(false, true)
+      setBroadcastSuccess(`Verstuurd: ${data.sent ?? 0} mail(s).${errPart}`)
+    } catch (e) {
+      setBroadcastError(e instanceof Error ? e.message : 'Mislukt')
+    } finally {
+      setBroadcastSendLoading(false)
+    }
+  }
+
   async function fetchCronStatus() {
     setCronStatusLoading(true)
     setCronStatusError('')
@@ -563,7 +645,9 @@ function InstellingenBeheer() {
     }
   }
 
-  async function persistSchedule(partial: { order_weekdays: number[] } | { closed_dates: string[] }) {
+  async function persistSchedule(
+    partial: { order_weekdays: number[] } | { closed_dates: string[] } | { order_end_time_local: string }
+  ) {
     setError('')
     setSavingSchedule(true)
     try {
@@ -659,6 +743,27 @@ function InstellingenBeheer() {
         <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
           Vink aan op welke weekdagen medewerkers mogen bestellen. Wijzigingen worden direct opgeslagen. Gesloten dagen idem.
         </p>
+        <div className="mb-4">
+          <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+            Uiterste besteltijd (Europe/Amsterdam)
+          </label>
+          <p className="text-xs mb-2" style={{ color: 'rgba(45,69,124,0.5)' }}>
+            Op een besteldag sluit het bestellen na dit tijdstip voor die kalenderdag. Daarna wijst de herinneringsmail naar de eerstvolgende besteldag.
+          </p>
+          <input
+            type="time"
+            value={orderEndTimeLocal}
+            disabled={savingSchedule}
+            onChange={e => setOrderEndTimeLocal(e.target.value)}
+            onBlur={() => {
+              if (orderEndTimeLocal && orderEndTimeLocal !== settings?.order_end_time_local) {
+                void persistSchedule({ order_end_time_local: orderEndTimeLocal })
+              }
+            }}
+            className="rounded-lg px-3 py-2 text-sm border max-w-[10rem]"
+            style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+          />
+        </div>
         <div className="flex flex-wrap gap-2 mb-4">
           {WEEKDAYS_NL.map(({ iso, label, short }) => (
             <label
@@ -850,6 +955,86 @@ function InstellingenBeheer() {
         )}
 
         <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(45,69,124,0.1)' }}>
+          <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>Handmatig naar alle lunch-gebruikers</h3>
+          <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
+            Zelfde ontvangers als de automatische herinnering (lunch-module, geen afmelding). Eerst aantal controleren; daarna versturen. Gebruikers die deze besteldatum al een herinnering kregen, worden overgeslagen.
+          </p>
+          <div className="flex flex-wrap items-end gap-2 mb-3">
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+                Besteldag in de link (optioneel)
+              </label>
+              <input
+                type="date"
+                value={broadcastOrderDate}
+                onChange={e => {
+                  setBroadcastOrderDate(e.target.value)
+                  setBroadcastPreview(null)
+                  setBroadcastSuccess('')
+                  setBroadcastError('')
+                }}
+                className="rounded-lg px-3 py-2 text-sm border"
+                style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadBroadcastPreview()}
+              disabled={broadcastPreviewLoading || savingReminder}
+              className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50 border"
+              style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
+            >
+              {broadcastPreviewLoading ? 'Laden…' : 'Toon aantal ontvangers'}
+            </button>
+          </div>
+          <p className="text-xs mb-2" style={{ color: 'rgba(45,69,124,0.45)' }}>
+            Leeg = automatische besteldag: vóór uiterste tijd vandaag, daarna de eerstvolgende besteldag (Europe/Amsterdam).
+          </p>
+          {broadcastError && (
+            <p className="text-sm text-red-600 mb-2 rounded-lg bg-red-50 px-3 py-2 border border-red-100">{broadcastError}</p>
+          )}
+          {broadcastSuccess && (
+            <p className="text-sm text-green-700 mb-2 rounded-lg bg-green-50 px-3 py-2 border border-green-100">{broadcastSuccess}</p>
+          )}
+          {broadcastPreview && (
+            <div
+              className="rounded-xl p-3 mb-3 space-y-2"
+              style={{ background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.12)' }}
+            >
+              <p className="text-sm font-semibold m-0" style={{ color: DYNAMO_BLUE }}>
+                Besteldag in de mail: {broadcastPreview.orderDatePretty}
+              </p>
+              <p className="text-sm m-0" style={{ color: 'rgba(45,69,124,0.85)' }}>
+                {broadcastPreview.eligibleRecipients} lunch-gebruiker(s) met e-mail.{' '}
+                {broadcastPreview.alreadySentForDate > 0 && (
+                  <>
+                    {broadcastPreview.alreadySentForDate} heeft/hebben deze datum al een herinnering ontvangen.{' '}
+                  </>
+                )}
+                <strong>
+                  {broadcastPreview.wouldSend === 0
+                    ? 'Er worden nu geen nieuwe mails verstuurd.'
+                    : `De mail gaat naar ${broadcastPreview.wouldSend} gebruiker(s).`}
+                </strong>
+              </p>
+              <button
+                type="button"
+                onClick={() => void sendBroadcastToAll()}
+                disabled={
+                  broadcastSendLoading ||
+                  savingReminder ||
+                  broadcastPreview.wouldSend <= 0
+                }
+                className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
+                style={{ background: DYNAMO_BLUE, color: 'white' }}
+              >
+                {broadcastSendLoading ? 'Versturen…' : 'Verstuur nu naar iedereen'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(45,69,124,0.1)' }}>
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>Automatische mail (cron)</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Controleert dezelfde voorwaarden als <code className="text-[11px] bg-gray-100 px-1 rounded">/api/lunch/reminder-cron</code> op dit moment — er wordt <strong>geen</strong> mail verstuurd. Externe scheduler (elke 5 min + CRON_SECRET) moet nog steeds geconfigureerd zijn op productie.
@@ -913,7 +1098,7 @@ function InstellingenBeheer() {
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
-            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{actionLink}} {{siteUrl}}'}</code>
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{actionLink}} {{siteUrl}}'}</code>
             . In HTML is <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code> verplicht zodra je eigen HTML opslaat.
           </p>
           <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>

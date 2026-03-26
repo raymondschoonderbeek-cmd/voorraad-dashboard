@@ -8,6 +8,7 @@ import {
   isWithinReminderWindow,
   parseHHmmToMinutes,
 } from '@/lib/amsterdam-time'
+import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
 import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
   const { data: cfg, error: cfgErr } = await admin
     .from('lunch_config')
     .select(
-      'reminder_mail_enabled, reminder_weekday, reminder_time_local, order_weekdays, closed_dates'
+      'reminder_mail_enabled, reminder_weekday, reminder_time_local, order_weekdays, closed_dates, order_end_time_local'
     )
     .eq('id', 1)
     .single()
@@ -66,13 +67,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: cfgErr?.message ?? 'Geen lunch_config' }, { status: 500 })
   }
 
+  const orderWeekdays = normalizeOrderWeekdays(cfg.order_weekdays) ?? [1, 2, 3, 4, 5]
+  const closedRaw = cfg.closed_dates
+  const closedDates: string[] = Array.isArray(closedRaw)
+    ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
+    : []
+  const endNorm = normalizeOrderEndTimeLocal(
+    typeof cfg.order_end_time_local === 'string' ? cfg.order_end_time_local : null
+  )
+  const ymd =
+    effectiveOrderDateForReminderAt(now, orderWeekdays, closedDates, endNorm) ?? getAmsterdamYmd(now)
+
   /** Eén testmail naar dit adres; geen insert in lunch_reminder_sent */
   if (testOnlyRaw) {
     if (!EMAIL_RE.test(testOnlyRaw)) {
       return NextResponse.json({ error: 'test_only_email: ongeldig e-mailadres' }, { status: 400 })
     }
-
-    const ymd = getAmsterdamYmd(now)
 
     if (!forceTest) {
       if (!cfg.reminder_mail_enabled) {
@@ -108,11 +118,6 @@ export async function GET(request: NextRequest) {
         }, { status: 200 })
       }
 
-      const orderWeekdays = normalizeOrderWeekdays(cfg.order_weekdays) ?? [1, 2, 3, 4, 5]
-      const closedRaw = cfg.closed_dates
-      const closedDates: string[] = Array.isArray(closedRaw)
-        ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
-        : []
       const dateCheck = checkOrderDateAllowed(ymd, orderWeekdays, closedDates)
       if (!dateCheck.ok) {
         return NextResponse.json({
@@ -170,13 +175,6 @@ export async function GET(request: NextRequest) {
       window_starts: timeStr,
     })
   }
-
-  const ymd = getAmsterdamYmd(now)
-  const orderWeekdays = normalizeOrderWeekdays(cfg.order_weekdays) ?? [1, 2, 3, 4, 5]
-  const closedRaw = cfg.closed_dates
-  const closedDates: string[] = Array.isArray(closedRaw)
-    ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
-    : []
 
   const dateCheck = checkOrderDateAllowed(ymd, orderWeekdays, closedDates)
   if (!dateCheck.ok) {
