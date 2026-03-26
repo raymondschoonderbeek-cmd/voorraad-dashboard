@@ -13,9 +13,15 @@ import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 /**
  * GET: aanroepen door scheduler (cron-job.org elke 5 min) met Authorization: Bearer CRON_SECRET
  * Vercel Hobby heeft geen ingebouwde cron — gebruik externe scheduler.
+ *
+ * Test (alleen jouw adres, geen DB-log lunch_reminder_sent):
+ *   ?test_only_email=jij@example.com          — zelfde regels als productie (dag/tijd/besteldag)
+ *   ?test_only_email=jij@example.com&force=1  — direct versturen (geen dag/tijd/besteldag-checks)
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -41,6 +47,10 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  const { searchParams } = new URL(request.url)
+  const testOnlyRaw = searchParams.get('test_only_email')?.trim().toLowerCase()
+  const forceTest = searchParams.get('force') === '1' || searchParams.get('force') === 'true'
+
   const now = new Date()
   const admin = createAdminClient()
 
@@ -54,6 +64,80 @@ export async function GET(request: NextRequest) {
 
   if (cfgErr || !cfg) {
     return NextResponse.json({ error: cfgErr?.message ?? 'Geen lunch_config' }, { status: 500 })
+  }
+
+  /** Eén testmail naar dit adres; geen insert in lunch_reminder_sent */
+  if (testOnlyRaw) {
+    if (!EMAIL_RE.test(testOnlyRaw)) {
+      return NextResponse.json({ error: 'test_only_email: ongeldig e-mailadres' }, { status: 400 })
+    }
+
+    const ymd = getAmsterdamYmd(now)
+
+    if (!forceTest) {
+      if (!cfg.reminder_mail_enabled) {
+        return NextResponse.json({ ok: false, skipped: 'reminder_mail_disabled', hint: 'Zet aan in Lunch beheer of gebruik force=1' }, { status: 200 })
+      }
+
+      const weekdayCfg = Number(cfg.reminder_weekday)
+      const isoToday = getAmsterdamIsoWeekday(now)
+      if (isoToday !== weekdayCfg) {
+        return NextResponse.json({
+          ok: false,
+          skipped: 'wrong_weekday',
+          amsterdam_weekday: isoToday,
+          configured: weekdayCfg,
+          hint: 'Of: test_only_email=...&force=1 om dag/tijd te negeren',
+        }, { status: 200 })
+      }
+
+      const timeStr = typeof cfg.reminder_time_local === 'string' ? cfg.reminder_time_local : '08:00'
+      const targetMin = parseHHmmToMinutes(timeStr)
+      if (targetMin == null) {
+        return NextResponse.json({ error: 'Ongeldige reminder_time_local in database' }, { status: 500 })
+      }
+
+      if (!isWithinReminderWindow(now, targetMin)) {
+        const { hour, minute } = getAmsterdamHourMinute(now)
+        return NextResponse.json({
+          ok: false,
+          skipped: 'outside_time_window',
+          amsterdam_time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+          window_starts: timeStr,
+          hint: 'Of: test_only_email=...&force=1',
+        }, { status: 200 })
+      }
+
+      const orderWeekdays = normalizeOrderWeekdays(cfg.order_weekdays) ?? [1, 2, 3, 4, 5]
+      const closedRaw = cfg.closed_dates
+      const closedDates: string[] = Array.isArray(closedRaw)
+        ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
+        : []
+      const dateCheck = checkOrderDateAllowed(ymd, orderWeekdays, closedDates)
+      if (!dateCheck.ok) {
+        return NextResponse.json({
+          ok: false,
+          skipped: 'order_date_not_allowed',
+          reason: dateCheck.variant,
+          ymd,
+          hint: 'Of: force=1',
+        }, { status: 200 })
+      }
+    }
+
+    try {
+      await sendLunchReminderToEmail(testOnlyRaw, ymd)
+      return NextResponse.json({
+        ok: true,
+        mode: 'test_only',
+        sent_to: testOnlyRaw,
+        order_date: ymd,
+        force: forceTest,
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return NextResponse.json({ ok: false, error: msg }, { status: 502 })
+    }
   }
 
   if (!cfg.reminder_mail_enabled) {

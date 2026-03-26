@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
@@ -9,6 +9,8 @@ import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
 import { WEEKDAYS_NL } from '@/lib/lunch-schedule'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+const REMINDER_TEST_DELAY_SEC = 30
 
 type OrderItem = {
   id: string
@@ -372,6 +374,8 @@ function InstellingenBeheer() {
   const [testLoading, setTestLoading] = useState(false)
   const [testMsg, setTestMsg] = useState('')
   const [testError, setTestError] = useState('')
+  const [testDelayRemaining, setTestDelayRemaining] = useState<number | null>(null)
+  const testDelayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [reminderMailSubject, setReminderMailSubject] = useState('')
   const [reminderMailHtml, setReminderMailHtml] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
@@ -407,6 +411,15 @@ function InstellingenBeheer() {
     )
     setReminderMailHtml(typeof settings.reminder_mail_html === 'string' ? settings.reminder_mail_html : '')
   }, [settings])
+
+  useEffect(() => {
+    return () => {
+      if (testDelayIntervalRef.current) {
+        clearInterval(testDelayIntervalRef.current)
+        testDelayIntervalRef.current = null
+      }
+    }
+  }, [])
 
   async function patchLunchSettings(partial: Record<string, unknown>) {
     setError('')
@@ -486,6 +499,40 @@ function InstellingenBeheer() {
     } finally {
       setTestLoading(false)
     }
+  }
+
+  function scheduleDelayedTestReminder() {
+    if (testDelayRemaining !== null || testLoading) return
+    setTestError('')
+    setTestMsg(`Testmail over ${REMINDER_TEST_DELAY_SEC} seconden…`)
+    setTestDelayRemaining(REMINDER_TEST_DELAY_SEC)
+    testDelayIntervalRef.current = setInterval(() => {
+      setTestDelayRemaining(prev => {
+        if (prev === null) return null
+        if (prev === 1) {
+          if (testDelayIntervalRef.current) {
+            clearInterval(testDelayIntervalRef.current)
+            testDelayIntervalRef.current = null
+          }
+          queueMicrotask(() => {
+            void sendTestReminder()
+          })
+          return null
+        }
+        const n = prev - 1
+        setTestMsg(`Testmail over ${n} seconden…`)
+        return n
+      })
+    }, 1000)
+  }
+
+  function cancelDelayedTestReminder() {
+    if (testDelayIntervalRef.current) {
+      clearInterval(testDelayIntervalRef.current)
+      testDelayIntervalRef.current = null
+    }
+    setTestDelayRemaining(null)
+    setTestMsg('')
   }
 
   async function persistSchedule(partial: { order_weekdays: number[] } | { closed_dates: string[] }) {
@@ -740,15 +787,39 @@ function InstellingenBeheer() {
           <button
             type="button"
             onClick={() => void sendTestReminder()}
-            disabled={testLoading || savingReminder}
+            disabled={testLoading || savingReminder || testDelayRemaining !== null}
             className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50 border"
             style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
           >
             {testLoading ? 'Versturen...' : 'Preview: testmail naar mij'}
           </button>
+          <button
+            type="button"
+            onClick={scheduleDelayedTestReminder}
+            disabled={testLoading || savingReminder || testDelayRemaining !== null}
+            className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50 border"
+            style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
+          >
+            Test over {REMINDER_TEST_DELAY_SEC} sec
+          </button>
+          {testDelayRemaining !== null && (
+            <button
+              type="button"
+              onClick={cancelDelayedTestReminder}
+              className="px-4 py-2 rounded-lg font-semibold text-sm border border-red-200 text-red-700 bg-red-50 hover:bg-red-100"
+            >
+              Annuleren
+            </button>
+          )}
         </div>
         {testError && <p className="text-sm text-red-600 mb-2">{testError}</p>}
-        {testMsg && <p className="text-sm text-green-700 mb-2">{testMsg}</p>}
+        {testMsg && (
+          <p
+            className={`text-sm mb-2 ${testDelayRemaining !== null ? 'text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2' : 'text-green-700'}`}
+          >
+            {testMsg}
+          </p>
+        )}
 
         <div className="mt-6 pt-4" style={{ borderTop: '1px solid rgba(45,69,124,0.1)' }}>
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
