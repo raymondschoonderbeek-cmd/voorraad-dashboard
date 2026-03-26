@@ -483,7 +483,7 @@ function InstellingenBeheer() {
 
   async function saveMailTemplate() {
     if (reminderMailHtml.trim() && !reminderHtmlContainsMagicLinkPlaceholder(reminderMailHtml)) {
-      setError('HTML moet {{actionLink}} of {{magicLink}} bevatten (magic link, inloggen zonder wachtwoord).')
+      setError('HTML moet minimaal {{loginMagicUrl}} en/of {{actionLink}} of {{magicLink}} bevatten.')
       return
     }
     setSavingTemplate(true)
@@ -1099,8 +1099,8 @@ function InstellingenBeheer() {
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
-            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
-            . In HTML is minimaal <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code> of <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{magicLink}}'}</code> verplicht (zelfde magic link; inloggen zonder wachtwoord).
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{loginMagicUrl}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
+            . Standaard: <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{loginMagicUrl}}'}</code> = inlogpagina om zelf de inloglink aan te vragen. <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code>/<code className="text-[11px] bg-gray-100 px-1 rounded">{'{{magicLink}}'}</code> = directe magic link uit deze mail (alleen als je dat expliciet in de template zet).
           </p>
           <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
             Onderwerp
@@ -1120,7 +1120,7 @@ function InstellingenBeheer() {
           <textarea
             value={reminderMailHtml}
             onChange={e => setReminderMailHtml(e.target.value)}
-            placeholder="Leeg = standaard lay-out. Eigen HTML: min. {{magicLink}} of {{actionLink}} in een &lt;a href=&quot;…&quot;&gt;."
+            placeholder="Leeg = standaard. Eigen HTML: min. {{loginMagicUrl}} en/of {{actionLink}} in een &lt;a href=&quot;…&quot;&gt;."
             rows={12}
             disabled={savingTemplate || savingReminder}
             className="w-full rounded-lg px-3 py-2 text-sm border font-mono mb-3 placeholder:text-gray-400"

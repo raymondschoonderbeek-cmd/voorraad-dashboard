@@ -152,7 +152,10 @@ export async function PATCH(request: NextRequest) {
         }
         if (h.length > 0 && !reminderHtmlContainsMagicLinkPlaceholder(h)) {
           return NextResponse.json(
-            { error: 'HTML moet {{actionLink}} of {{magicLink}} bevatten (magic link, inloggen zonder wachtwoord).' },
+            {
+              error:
+                'HTML moet minimaal {{loginMagicUrl}} (portal om inloglink aan te vragen) en/of {{actionLink}} of {{magicLink}} bevatten.',
+            },
             { status: 400 }
           )
         }

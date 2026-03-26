@@ -23,6 +23,15 @@ function LoginForm() {
     if (err === 'auth') setError('Inloggen mislukt. Probeer opnieuw of gebruik je wachtwoord.')
   }, [searchParams])
 
+  useEffect(() => {
+    const magic = searchParams.get('magic')
+    if (magic === '1' || magic === 'true' || magic === 'yes') {
+      setMagicLinkMode(true)
+    }
+    const preEmail = searchParams.get('email')?.trim()
+    if (preEmail) setEmail(preEmail)
+  }, [searchParams])
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -30,10 +39,16 @@ function LoginForm() {
     setLoading(true)
 
     if (magicLinkMode) {
+      const nextParam = searchParams.get('next')?.trim()
+      const nextPath =
+        nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+          ? nextParam
+          : '/dashboard'
+      const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       })
       if (otpError) {
@@ -54,7 +69,10 @@ function LoginForm() {
       setError(pwdError.message)
       setLoading(false)
     } else {
-      router.push('/dashboard')
+      const nextParam = searchParams.get('next')?.trim()
+      const nextPath =
+        nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/dashboard'
+      router.push(nextPath)
     }
   }
 
