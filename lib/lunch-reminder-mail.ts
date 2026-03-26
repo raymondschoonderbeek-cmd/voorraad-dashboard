@@ -11,7 +11,7 @@ export function formatOrderDateNl(ymd: string): string {
 
 /** Placeholders voor onderwerp en HTML (beheer) */
 export const LUNCH_REMINDER_PLACEHOLDER_HELP =
-  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{actionLink}}, {{siteUrl}}'
+  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{actionLink}}, {{siteUrl}}, {{settingsUrl}} (portal → herinneringen uit)'
 
 export function defaultReminderSubjectTemplate(): string {
   return 'Lunch: bestel je broodje voor {{prettyDate}}'
@@ -22,8 +22,9 @@ export function buildLunchReminderHtml(opts: {
   actionLink: string
   prettyDate: string
   orderEndTimePretty: string
+  settingsUrl: string
 }) {
-  const { actionLink, prettyDate, orderEndTimePretty } = opts
+  const { actionLink, prettyDate, orderEndTimePretty, settingsUrl } = opts
   return `<!DOCTYPE html>
 <html>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #1e293b;">
@@ -36,7 +37,10 @@ export function buildLunchReminderHtml(opts: {
     </a>
   </p>
   <p style="font-size: 13px; color: #64748b;">Deze link opent het portaal; je wordt veilig ingelogd (eenmalige link).</p>
-  <p style="font-size: 12px; color: #94a3b8;">Geen lunch meer nodig? Zet herinneringen uit onder Instellingen in het portaal.</p>
+  <p style="font-size: 12px; color: #64748b; margin-top: 1.25em;">
+    <a href="${escapeHtml(settingsUrl)}" style="color: #475569; text-decoration: underline;">Afmelden voor lunch-herinneringsmails</a>
+    <span style="color: #94a3b8;"> — log zo nodig eerst in via de knop hierboven; daarna schakel je dit uit onder Instellingen.</span>
+  </p>
 </body>
 </html>`
 }
@@ -56,11 +60,13 @@ type ReminderVars = {
   orderEndTimePretty: string
   actionLink: string
   siteUrl: string
+  /** Volledige URL naar portalinstellingen (herinneringen uit) */
+  settingsUrl: string
 }
 
 /** Vervangt placeholders; waarden in HTML worden ge-escaped behalve actionLink (URL) en ruwe HTML van gebruiker template */
 function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: boolean): string {
-  const { prettyDate, orderDateYmd, orderEndTime, orderEndTimePretty, actionLink, siteUrl } = vars
+  const { prettyDate, orderDateYmd, orderEndTime, orderEndTimePretty, actionLink, siteUrl, settingsUrl } = vars
   const map: Record<string, string> = {
     '{{prettyDate}}': escapeValues ? escapeHtml(prettyDate) : prettyDate,
     '{{orderDateYmd}}': escapeValues ? escapeHtml(orderDateYmd) : orderDateYmd,
@@ -68,6 +74,7 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     '{{orderEndTimePretty}}': escapeValues ? escapeHtml(orderEndTimePretty) : orderEndTimePretty,
     '{{actionLink}}': actionLink,
     '{{siteUrl}}': escapeValues ? escapeHtml(siteUrl) : siteUrl,
+    '{{settingsUrl}}': escapeValues ? escapeHtml(settingsUrl) : settingsUrl,
   }
   let out = template
   for (const [key, val] of Object.entries(map)) {
@@ -96,6 +103,7 @@ export function buildLunchReminderFromTemplates(
         actionLink: vars.actionLink,
         prettyDate: vars.prettyDate,
         orderEndTimePretty: vars.orderEndTimePretty,
+        settingsUrl: vars.settingsUrl,
       })
 
   return { subject, html }
@@ -131,6 +139,7 @@ export async function sendLunchReminderToEmail(email: string, orderDateYmd: stri
     typeof cfg?.order_end_time_local === 'string' ? cfg.order_end_time_local : null
   )
   const orderEndTimePretty = formatOrderEndTimeNl(orderEndTime)
+  const settingsUrl = `${site.replace(/\/$/, '')}/dashboard/instellingen`
   const vars: ReminderVars = {
     prettyDate,
     orderDateYmd,
@@ -138,6 +147,7 @@ export async function sendLunchReminderToEmail(email: string, orderDateYmd: stri
     orderEndTimePretty,
     actionLink,
     siteUrl: site,
+    settingsUrl,
   }
 
   const { subject, html } = buildLunchReminderFromTemplates(
