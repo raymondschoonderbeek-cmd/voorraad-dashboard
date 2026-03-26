@@ -380,6 +380,18 @@ function InstellingenBeheer() {
   const [reminderMailHtml, setReminderMailHtml] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
 
+  const [cronStatusLoading, setCronStatusLoading] = useState(false)
+  const [cronStatus, setCronStatus] = useState<{
+    wouldRunSendLoop: boolean
+    checks: { id: string; ok: boolean; title: string; detail?: string }[]
+    amsterdam: { ymd: string; weekdayLabel: string; time: string }
+    configured: { reminder_weekday_label: string; reminder_time_local: string }
+    recipientCount: number | null
+    pendingSendCount: number | null
+    alreadySentToday: number | null
+  } | null>(null)
+  const [cronStatusError, setCronStatusError] = useState('')
+
   const { data: settings, mutate } = useSWR<{
     tikkie_pay_link?: string
     order_weekdays?: number[]
@@ -533,6 +545,22 @@ function InstellingenBeheer() {
     }
     setTestDelayRemaining(null)
     setTestMsg('')
+  }
+
+  async function fetchCronStatus() {
+    setCronStatusLoading(true)
+    setCronStatusError('')
+    setCronStatus(null)
+    try {
+      const res = await fetch('/api/lunch/reminder-status')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Status ophalen mislukt')
+      setCronStatus(data)
+    } catch (e) {
+      setCronStatusError(e instanceof Error ? e.message : 'Mislukt')
+    } finally {
+      setCronStatusLoading(false)
+    }
   }
 
   async function persistSchedule(partial: { order_weekdays: number[] } | { closed_dates: string[] }) {
@@ -820,6 +848,66 @@ function InstellingenBeheer() {
             {testMsg}
           </p>
         )}
+
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(45,69,124,0.1)' }}>
+          <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>Automatische mail (cron)</h3>
+          <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
+            Controleert dezelfde voorwaarden als <code className="text-[11px] bg-gray-100 px-1 rounded">/api/lunch/reminder-cron</code> op dit moment — er wordt <strong>geen</strong> mail verstuurd. Externe scheduler (elke 5 min + CRON_SECRET) moet nog steeds geconfigureerd zijn op productie.
+          </p>
+          <button
+            type="button"
+            onClick={() => void fetchCronStatus()}
+            disabled={cronStatusLoading}
+            className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50 border mb-3"
+            style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
+          >
+            {cronStatusLoading ? 'Controleren…' : 'Controleer automatische mail'}
+          </button>
+          {cronStatusError && (
+            <p className="text-sm text-red-600 mb-2 rounded-lg bg-red-50 px-3 py-2 border border-red-100">{cronStatusError}</p>
+          )}
+          {cronStatus && (
+            <div className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)' }}>
+              <p
+                className="text-sm font-semibold m-0"
+                style={{ color: cronStatus.wouldRunSendLoop ? '#166534' : '#9a3412' }}
+              >
+                {cronStatus.wouldRunSendLoop
+                  ? '✓ Nu zou de cron de verzendronde starten (voor gebruikers die deze verzenddag nog geen mail kregen).'
+                  : '✗ Nu zou de cron géén mails versturen — zie onder.'}
+              </p>
+              <ul className="space-y-2 m-0 pl-0 list-none">
+                {cronStatus.checks.map(c => (
+                  <li
+                    key={c.id}
+                    className="text-sm rounded-lg px-3 py-2"
+                    style={{
+                      background: c.ok ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.06)',
+                      color: DYNAMO_BLUE,
+                    }}
+                  >
+                    <span className="font-semibold">{c.ok ? '✓' : '✗'} {c.title}</span>
+                    {c.detail && (
+                      <span className="block text-xs mt-0.5 font-normal" style={{ color: 'rgba(45,69,124,0.75)' }}>
+                        {c.detail}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs m-0" style={{ color: 'rgba(45,69,124,0.55)' }}>
+                Amsterdam nu: {cronStatus.amsterdam.weekdayLabel} {cronStatus.amsterdam.ymd}, klok {cronStatus.amsterdam.time}. Ingesteld: mail op{' '}
+                {cronStatus.configured.reminder_weekday_label} om {cronStatus.configured.reminder_time_local}.
+                {cronStatus.recipientCount != null && (
+                  <>
+                    {' '}
+                    Ontvangers: {cronStatus.recipientCount}, nog te mailen vandaag: {cronStatus.pendingSendCount ?? '—'}.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+        </div>
 
         <div className="mt-6 pt-4" style={{ borderTop: '1px solid rgba(45,69,124,0.1)' }}>
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
