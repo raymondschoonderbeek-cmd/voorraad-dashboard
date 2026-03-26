@@ -372,6 +372,9 @@ function InstellingenBeheer() {
   const [testLoading, setTestLoading] = useState(false)
   const [testMsg, setTestMsg] = useState('')
   const [testError, setTestError] = useState('')
+  const [reminderMailSubject, setReminderMailSubject] = useState('')
+  const [reminderMailHtml, setReminderMailHtml] = useState('')
+  const [savingTemplate, setSavingTemplate] = useState(false)
 
   const { data: settings, mutate } = useSWR<{
     tikkie_pay_link?: string
@@ -380,6 +383,8 @@ function InstellingenBeheer() {
     reminder_mail_enabled?: boolean
     reminder_weekday?: number
     reminder_time_local?: string
+    reminder_mail_subject?: string | null
+    reminder_mail_html?: string | null
   }>('/api/lunch/settings', fetcher)
 
   useEffect(() => {
@@ -397,28 +402,69 @@ function InstellingenBeheer() {
       const [h, m] = settings.reminder_time_local.split(':')
       setReminderTimeLocal(`${h.padStart(2, '0')}:${m.padStart(2, '0')}`)
     }
+    setReminderMailSubject(
+      typeof settings.reminder_mail_subject === 'string' ? settings.reminder_mail_subject : ''
+    )
+    setReminderMailHtml(typeof settings.reminder_mail_html === 'string' ? settings.reminder_mail_html : '')
   }, [settings])
 
-  async function persistReminder(partial: Record<string, unknown>) {
+  async function patchLunchSettings(partial: Record<string, unknown>) {
     setError('')
+    const res = await fetch('/api/lunch/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(partial),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
+    mutate(data)
+    setSuccess(true)
+    window.setTimeout(() => setSuccess(false), 2500)
+  }
+
+  async function persistReminder(partial: Record<string, unknown>) {
     setSavingReminder(true)
     try {
-      const res = await fetch('/api/lunch/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(partial),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
-      mutate(data)
-      setSuccess(true)
-      window.setTimeout(() => setSuccess(false), 2500)
+      await patchLunchSettings(partial)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Er ging iets mis')
       await mutate()
       throw e
     } finally {
       setSavingReminder(false)
+    }
+  }
+
+  async function saveMailTemplate() {
+    if (reminderMailHtml.trim() && !reminderMailHtml.includes('{{actionLink}}')) {
+      setError('HTML moet {{actionLink}} bevatten (inloglink).')
+      return
+    }
+    setSavingTemplate(true)
+    try {
+      await patchLunchSettings({
+        reminder_mail_subject: reminderMailSubject.trim() || null,
+        reminder_mail_html: reminderMailHtml.trim() || null,
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Er ging iets mis')
+      await mutate()
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
+  async function resetMailTemplate() {
+    setReminderMailSubject('')
+    setReminderMailHtml('')
+    setSavingTemplate(true)
+    try {
+      await patchLunchSettings({ reminder_mail_subject: null, reminder_mail_html: null })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Er ging iets mis')
+      await mutate()
+    } finally {
+      setSavingTemplate(false)
     }
   }
 
@@ -703,7 +749,61 @@ function InstellingenBeheer() {
         </div>
         {testError && <p className="text-sm text-red-600 mb-2">{testError}</p>}
         {testMsg && <p className="text-sm text-green-700 mb-2">{testMsg}</p>}
-        <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>
+
+        <div className="mt-6 pt-4" style={{ borderTop: '1px solid rgba(45,69,124,0.1)' }}>
+          <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
+          <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
+            Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{actionLink}} {{siteUrl}}'}</code>
+            . In HTML is <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code> verplicht zodra je eigen HTML opslaat.
+          </p>
+          <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+            Onderwerp
+          </label>
+          <input
+            type="text"
+            value={reminderMailSubject}
+            onChange={e => setReminderMailSubject(e.target.value)}
+            placeholder="Leeg = standaard: Lunch: bestel je broodje voor {{prettyDate}}"
+            disabled={savingTemplate || savingReminder}
+            className="w-full rounded-lg px-3 py-2 text-sm border mb-3 placeholder:text-gray-400"
+            style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+          />
+          <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+            HTML-body
+          </label>
+          <textarea
+            value={reminderMailHtml}
+            onChange={e => setReminderMailHtml(e.target.value)}
+            placeholder="Leeg = standaard lay-out. Eigen HTML met minimaal {{actionLink}} in de inhoud."
+            rows={12}
+            disabled={savingTemplate || savingReminder}
+            className="w-full rounded-lg px-3 py-2 text-sm border font-mono mb-3 placeholder:text-gray-400"
+            style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void saveMailTemplate()}
+              disabled={savingTemplate || savingReminder}
+              className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50"
+              style={{ background: DYNAMO_BLUE, color: 'white' }}
+            >
+              {savingTemplate ? 'Opslaan...' : 'Mailtemplate opslaan'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void resetMailTemplate()}
+              disabled={savingTemplate || savingReminder}
+              className="px-4 py-2 rounded-lg font-semibold text-sm border disabled:opacity-50"
+              style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
+            >
+              Herstel standaard
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs mt-4" style={{ color: 'rgba(45,69,124,0.45)' }}>
           Zelfde Mailgun als welkomstmail: MAILGUN_API_KEY, MAILGUN_DOMAIN, optioneel MAILGUN_EU=true en MAILGUN_FROM_EMAIL. Gebruikers kunnen zich afmelden onder Portal → Instellingen.
         </p>
       </div>

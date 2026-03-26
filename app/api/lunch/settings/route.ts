@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('lunch_config')
       .select(
-        'tikkie_pay_link, order_weekdays, closed_dates, reminder_mail_enabled, reminder_weekday, reminder_time_local'
+        'tikkie_pay_link, order_weekdays, closed_dates, reminder_mail_enabled, reminder_weekday, reminder_time_local, reminder_mail_subject, reminder_mail_html'
       )
       .eq('id', 1)
       .single()
@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
       reminder_mail_enabled: data?.reminder_mail_enabled === true,
       reminder_weekday,
       reminder_time_local,
+      reminder_mail_subject: typeof data?.reminder_mail_subject === 'string' ? data.reminder_mail_subject : null,
+      reminder_mail_html: typeof data?.reminder_mail_html === 'string' ? data.reminder_mail_html : null,
     })
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij ophalen instellingen' }, { status: 500 })
@@ -113,6 +115,40 @@ export async function PATCH(request: NextRequest) {
       update.reminder_time_local = s
     }
 
+    if (body.reminder_mail_subject !== undefined) {
+      if (body.reminder_mail_subject === null || body.reminder_mail_subject === '') {
+        update.reminder_mail_subject = null
+      } else if (typeof body.reminder_mail_subject === 'string') {
+        const s = body.reminder_mail_subject.trim()
+        if (s.length > 500) {
+          return NextResponse.json({ error: 'Onderwerp mag max. 500 tekens.' }, { status: 400 })
+        }
+        update.reminder_mail_subject = s.length > 0 ? s : null
+      } else {
+        return NextResponse.json({ error: 'reminder_mail_subject: ongeldig' }, { status: 400 })
+      }
+    }
+
+    if (body.reminder_mail_html !== undefined) {
+      if (body.reminder_mail_html === null || body.reminder_mail_html === '') {
+        update.reminder_mail_html = null
+      } else if (typeof body.reminder_mail_html === 'string') {
+        const h = body.reminder_mail_html.trim()
+        if (h.length > 120_000) {
+          return NextResponse.json({ error: 'HTML mag max. 120.000 tekens.' }, { status: 400 })
+        }
+        if (h.length > 0 && !h.includes('{{actionLink}}')) {
+          return NextResponse.json(
+            { error: 'HTML moet {{actionLink}} bevatten (link om in te loggen).' },
+            { status: 400 }
+          )
+        }
+        update.reminder_mail_html = h.length > 0 ? h : null
+      } else {
+        return NextResponse.json({ error: 'reminder_mail_html: ongeldig' }, { status: 400 })
+      }
+    }
+
     const { error } = await admin.supabase.from('lunch_config').update(update).eq('id', 1)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -120,7 +156,7 @@ export async function PATCH(request: NextRequest) {
     const { data: row } = await admin.supabase
       .from('lunch_config')
       .select(
-        'tikkie_pay_link, order_weekdays, closed_dates, reminder_mail_enabled, reminder_weekday, reminder_time_local'
+        'tikkie_pay_link, order_weekdays, closed_dates, reminder_mail_enabled, reminder_weekday, reminder_time_local, reminder_mail_subject, reminder_mail_html'
       )
       .eq('id', 1)
       .single()
@@ -139,6 +175,8 @@ export async function PATCH(request: NextRequest) {
       reminder_mail_enabled: row?.reminder_mail_enabled === true,
       reminder_weekday,
       reminder_time_local,
+      reminder_mail_subject: typeof row?.reminder_mail_subject === 'string' ? row.reminder_mail_subject : null,
+      reminder_mail_html: typeof row?.reminder_mail_html === 'string' ? row.reminder_mail_html : null,
     })
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij bijwerken instellingen' }, { status: 500 })
