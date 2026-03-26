@@ -11,6 +11,7 @@ import {
 import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
+import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
 /**
  * GET: aanroepen door scheduler (cron-job.org elke 5 min) met Authorization: Bearer CRON_SECRET
@@ -33,12 +34,11 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const mailgunOk =
-    !!process.env.MAILGUN_API_KEY?.trim() &&
-    !!process.env.MAILGUN_DOMAIN?.trim() &&
-    !!process.env.MAILGUN_FROM?.trim()
-  if (!mailgunOk) {
-    return NextResponse.json({ error: 'Mailgun niet geconfigureerd (MAILGUN_*).' }, { status: 503 })
+  if (!isMailgunConfigured()) {
+    return NextResponse.json(
+      { error: 'Mailgun niet geconfigureerd (MAILGUN_API_KEY, MAILGUN_DOMAIN).' },
+      { status: 503 }
+    )
   }
 
   const now = new Date()

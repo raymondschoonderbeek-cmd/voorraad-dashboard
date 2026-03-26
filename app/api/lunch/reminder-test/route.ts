@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { getAmsterdamYmd } from '@/lib/amsterdam-time'
 import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
+import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
 /**
  * POST: stuur test-herinnering naar het e-mailadres van de ingelogde beheerder.
@@ -14,12 +15,11 @@ export async function POST(request: NextRequest) {
   const admin = await requireAdmin()
   if (!admin.ok) return NextResponse.json({ error: 'Forbidden' }, { status: admin.status })
 
-  const mailgunOk =
-    !!process.env.MAILGUN_API_KEY?.trim() &&
-    !!process.env.MAILGUN_DOMAIN?.trim() &&
-    !!process.env.MAILGUN_FROM?.trim()
-  if (!mailgunOk) {
-    return NextResponse.json({ error: 'Mailgun niet geconfigureerd (MAILGUN_*).' }, { status: 503 })
+  if (!isMailgunConfigured()) {
+    return NextResponse.json(
+      { error: 'Mailgun niet geconfigureerd (MAILGUN_API_KEY, MAILGUN_DOMAIN).' },
+      { status: 503 }
+    )
   }
 
   const { user } = admin

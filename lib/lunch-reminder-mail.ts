@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
-import { sendMailgunEmail } from '@/lib/mailgun-send'
+import { sendMailgunHtmlEmail } from '@/lib/send-welcome-email'
 
 export function formatOrderDateNl(ymd: string): string {
   const d = new Date(ymd + 'T12:00:00')
@@ -48,7 +48,7 @@ export async function sendLunchReminderToEmail(email: string, orderDateYmd: stri
   const prettyDate = formatOrderDateNl(orderDateYmd)
   const html = buildLunchReminderHtml({ orderDateYmd, actionLink, prettyDate })
 
-  await sendMailgunEmail({
+  await sendMailgunHtmlEmail({
     to: email.trim(),
     subject: `Lunch: bestel je broodje voor ${prettyDate}`,
     html,

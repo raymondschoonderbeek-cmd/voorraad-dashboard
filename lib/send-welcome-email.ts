@@ -21,6 +21,35 @@ function getMailgunClient() {
 
 const FROM = process.env.MAILGUN_FROM_EMAIL ?? 'DRG Portal <noreply@mailgun.org>'
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/** Zelfde Mailgun-setup als welkomstmail (MAILGUN_API_KEY, MAILGUN_DOMAIN, optioneel MAILGUN_EU, MAILGUN_FROM_EMAIL). */
+export function isMailgunConfigured(): boolean {
+  return getMailgunClient() != null
+}
+
+/** Transactionele HTML-mail via het bestaande Mailgun-account. */
+export async function sendMailgunHtmlEmail(opts: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+}): Promise<void> {
+  const mg = getMailgunClient()
+  if (!mg) {
+    throw new Error('MAILGUN_API_KEY of MAILGUN_DOMAIN niet geconfigureerd')
+  }
+  await mg.client.messages.create(mg.domain, {
+    from: FROM,
+    to: [opts.to],
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text ?? stripHtml(opts.html),
+  })
+}
+
 export async function sendWelcomeEmail(params: {
   to: string
   naam: string

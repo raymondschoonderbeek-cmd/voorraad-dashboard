@@ -704,7 +704,7 @@ function InstellingenBeheer() {
         {testError && <p className="text-sm text-red-600 mb-2">{testError}</p>}
         {testMsg && <p className="text-sm text-green-700 mb-2">{testMsg}</p>}
         <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>
-          Zet MAILGUN_API_KEY, MAILGUN_DOMAIN, MAILGUN_FROM en optioneel MAILGUN_REGION=eu in Vercel. Gebruikers kunnen zich afmelden onder Portal → Instellingen.
+          Zelfde Mailgun als welkomstmail: MAILGUN_API_KEY, MAILGUN_DOMAIN, optioneel MAILGUN_EU=true en MAILGUN_FROM_EMAIL. Gebruikers kunnen zich afmelden onder Portal → Instellingen.
         </p>
       </div>
 
