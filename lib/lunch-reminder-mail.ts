@@ -9,12 +9,12 @@ export function formatOrderDateNl(ymd: string): string {
   return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** Placeholders voor onderwerp en HTML (beheer) */
+/** Placeholders voor onderwerp en HTML (beheer); NL-stuurcodes: {{eindTijd}} (= pretty), {{eindTijdUur}} (= HH:mm) */
 export const LUNCH_REMINDER_PLACEHOLDER_HELP =
-  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{actionLink}}, {{siteUrl}}, {{settingsUrl}} (portal → herinneringen uit)'
+  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{actionLink}}, {{siteUrl}}, {{settingsUrl}}'
 
 export function defaultReminderSubjectTemplate(): string {
-  return 'Lunch: bestel je broodje voor {{prettyDate}}'
+  return 'Lunch: bestel je broodje voor {{prettyDate}} (uiterlijk {{eindTijd}} op die dag)'
 }
 
 export function buildLunchReminderHtml(opts: {
@@ -72,13 +72,17 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     '{{orderDateYmd}}': escapeValues ? escapeHtml(orderDateYmd) : orderDateYmd,
     '{{orderEndTime}}': escapeValues ? escapeHtml(orderEndTime) : orderEndTime,
     '{{orderEndTimePretty}}': escapeValues ? escapeHtml(orderEndTimePretty) : orderEndTimePretty,
+    // NL-stuurcodes (zelfde waarden als orderEndTime*)
+    '{{eindTijd}}': escapeValues ? escapeHtml(orderEndTimePretty) : orderEndTimePretty,
+    '{{eindTijdUur}}': escapeValues ? escapeHtml(orderEndTime) : orderEndTime,
     '{{actionLink}}': actionLink,
     '{{siteUrl}}': escapeValues ? escapeHtml(siteUrl) : siteUrl,
     '{{settingsUrl}}': escapeValues ? escapeHtml(settingsUrl) : settingsUrl,
   }
   let out = template
-  for (const [key, val] of Object.entries(map)) {
-    out = out.split(key).join(val)
+  const keys = Object.keys(map).sort((a, b) => b.length - a.length)
+  for (const key of keys) {
+    out = out.split(key).join(map[key]!)
   }
   return out
 }

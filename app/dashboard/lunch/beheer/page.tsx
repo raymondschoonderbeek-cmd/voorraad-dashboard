@@ -1098,7 +1098,7 @@ function InstellingenBeheer() {
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
-            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{actionLink}} {{siteUrl}} {{settingsUrl}}'}</code>
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{actionLink}} {{siteUrl}} {{settingsUrl}}'}</code>
             . In HTML is <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code> verplicht zodra je eigen HTML opslaat.
           </p>
           <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
@@ -1108,7 +1108,7 @@ function InstellingenBeheer() {
             type="text"
             value={reminderMailSubject}
             onChange={e => setReminderMailSubject(e.target.value)}
-            placeholder="Leeg = standaard: Lunch: bestel je broodje voor {{prettyDate}}"
+            placeholder="Leeg = standaard: Lunch: bestel … voor {{prettyDate}} (uiterlijk {{eindTijd}} op die dag)"
             disabled={savingTemplate || savingReminder}
             className="w-full rounded-lg px-3 py-2 text-sm border mb-3 placeholder:text-gray-400"
             style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
