@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
+import { reminderHtmlContainsMagicLinkPlaceholder } from '@/lib/lunch-reminder-placeholders'
 import { WEEKDAYS_NL } from '@/lib/lunch-schedule'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -481,8 +482,8 @@ function InstellingenBeheer() {
   }
 
   async function saveMailTemplate() {
-    if (reminderMailHtml.trim() && !reminderMailHtml.includes('{{actionLink}}')) {
-      setError('HTML moet {{actionLink}} bevatten (inloglink).')
+    if (reminderMailHtml.trim() && !reminderHtmlContainsMagicLinkPlaceholder(reminderMailHtml)) {
+      setError('HTML moet {{actionLink}} of {{magicLink}} bevatten (magic link, inloggen zonder wachtwoord).')
       return
     }
     setSavingTemplate(true)
@@ -1098,8 +1099,8 @@ function InstellingenBeheer() {
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
-            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{actionLink}} {{siteUrl}} {{settingsUrl}}'}</code>
-            . In HTML is <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code> verplicht zodra je eigen HTML opslaat.
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
+            . In HTML is minimaal <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code> of <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{magicLink}}'}</code> verplicht (zelfde magic link; inloggen zonder wachtwoord).
           </p>
           <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
             Onderwerp
@@ -1119,7 +1120,7 @@ function InstellingenBeheer() {
           <textarea
             value={reminderMailHtml}
             onChange={e => setReminderMailHtml(e.target.value)}
-            placeholder="Leeg = standaard lay-out. Eigen HTML met minimaal {{actionLink}} in de inhoud."
+            placeholder="Leeg = standaard lay-out. Eigen HTML: min. {{magicLink}} of {{actionLink}} in een &lt;a href=&quot;…&quot;&gt;."
             rows={12}
             disabled={savingTemplate || savingReminder}
             className="w-full rounded-lg px-3 py-2 text-sm border font-mono mb-3 placeholder:text-gray-400"

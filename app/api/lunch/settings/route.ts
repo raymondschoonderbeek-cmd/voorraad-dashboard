@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { parseHHmmToMinutes } from '@/lib/amsterdam-time'
+import { reminderHtmlContainsMagicLinkPlaceholder } from '@/lib/lunch-reminder-placeholders'
 import {
   normalizeClosedDates,
   normalizeOrderWeekdays,
@@ -149,9 +150,9 @@ export async function PATCH(request: NextRequest) {
         if (h.length > 120_000) {
           return NextResponse.json({ error: 'HTML mag max. 120.000 tekens.' }, { status: 400 })
         }
-        if (h.length > 0 && !h.includes('{{actionLink}}')) {
+        if (h.length > 0 && !reminderHtmlContainsMagicLinkPlaceholder(h)) {
           return NextResponse.json(
-            { error: 'HTML moet {{actionLink}} bevatten (link om in te loggen).' },
+            { error: 'HTML moet {{actionLink}} of {{magicLink}} bevatten (magic link, inloggen zonder wachtwoord).' },
             { status: 400 }
           )
         }

@@ -9,9 +9,9 @@ export function formatOrderDateNl(ymd: string): string {
   return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** Placeholders voor onderwerp en HTML (beheer); NL-stuurcodes: {{eindTijd}} (= pretty), {{eindTijdUur}} (= HH:mm) */
+/** Placeholders voor onderwerp en HTML (beheer). Magic link (zonder wachtwoord): {{actionLink}} of {{magicLink}} (zelfde URL). */
 export const LUNCH_REMINDER_PLACEHOLDER_HELP =
-  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{actionLink}}, {{siteUrl}}, {{settingsUrl}}'
+  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{actionLink}}, {{magicLink}}, {{siteUrl}}, {{settingsUrl}}'
 
 export function defaultReminderSubjectTemplate(): string {
   return 'Lunch: bestel je broodje voor {{prettyDate}} (uiterlijk {{eindTijd}} op die dag)'
@@ -33,10 +33,10 @@ export function buildLunchReminderHtml(opts: {
   <p style="font-size: 14px; color: #334155;">Je kunt nog bestellen tot <strong>${escapeHtml(orderEndTimePretty)}</strong> op die dag (Europe/Amsterdam).</p>
   <p>
     <a href="${escapeHtml(actionLink)}" style="display:inline-block; padding: 12px 20px; background: #2D457C; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600;">
-      Inloggen en bestellen
+      Inloggen zonder wachtwoord — bestellen
     </a>
   </p>
-  <p style="font-size: 13px; color: #64748b;">Deze link opent het portaal; je wordt veilig ingelogd (eenmalige link).</p>
+  <p style="font-size: 13px; color: #64748b;">Eenmalige magic link: je hoeft geen wachtwoord in te vullen. Na inloggen ga je direct naar de lunchpagina voor deze besteldag.</p>
   <p style="font-size: 12px; color: #64748b; margin-top: 1.25em;">
     <a href="${escapeHtml(settingsUrl)}" style="color: #475569; text-decoration: underline;">Afmelden voor lunch-herinneringsmails</a>
     <span style="color: #94a3b8;"> — log zo nodig eerst in via de knop hierboven; daarna schakel je dit uit onder Instellingen.</span>
@@ -64,7 +64,7 @@ type ReminderVars = {
   settingsUrl: string
 }
 
-/** Vervangt placeholders; waarden in HTML worden ge-escaped behalve actionLink (URL) en ruwe HTML van gebruiker template */
+/** Vervangt placeholders; URL-placeholders (magic link) worden niet ge-escaped. */
 function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: boolean): string {
   const { prettyDate, orderDateYmd, orderEndTime, orderEndTimePretty, actionLink, siteUrl, settingsUrl } = vars
   const map: Record<string, string> = {
@@ -76,6 +76,7 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     '{{eindTijd}}': escapeValues ? escapeHtml(orderEndTimePretty) : orderEndTimePretty,
     '{{eindTijdUur}}': escapeValues ? escapeHtml(orderEndTime) : orderEndTime,
     '{{actionLink}}': actionLink,
+    '{{magicLink}}': actionLink,
     '{{siteUrl}}': escapeValues ? escapeHtml(siteUrl) : siteUrl,
     '{{settingsUrl}}': escapeValues ? escapeHtml(settingsUrl) : settingsUrl,
   }
