@@ -204,10 +204,10 @@ export async function GET(request: NextRequest) {
   let sent = 0
   const errors: string[] = []
 
-  for (const { userId, email } of recipients) {
+  for (const { userId, email, firstName } of recipients) {
     if (sentSet.has(userId)) continue
     try {
-      await sendLunchReminderToEmail(email, ymd)
+      await sendLunchReminderToEmail(email, ymd, firstName)
       const { error: insErr } = await admin.from('lunch_reminder_sent').insert({
         user_id: userId,
         reminder_date: ymd,

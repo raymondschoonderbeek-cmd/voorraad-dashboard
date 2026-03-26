@@ -1099,7 +1099,7 @@ function InstellingenBeheer() {
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
-            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{loginMagicUrl}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{voornaam}} {{firstName}} {{loginMagicUrl}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
             . Standaard: <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{loginMagicUrl}}'}</code> = inlogpagina om zelf de inloglink aan te vragen. <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code>/<code className="text-[11px] bg-gray-100 px-1 rounded">{'{{magicLink}}'}</code> = directe magic link uit deze mail (alleen als je dat expliciet in de template zet).
           </p>
           <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>

@@ -4,7 +4,8 @@ import { withRateLimit } from '@/lib/api-middleware'
 import { getAmsterdamYmd } from '@/lib/amsterdam-time'
 import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
 import { normalizeOrderWeekdays } from '@/lib/lunch-schedule'
-import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { sendLunchReminderToEmail, voornaamUitVolledigeNaam } from '@/lib/lunch-reminder-mail'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
 /**
@@ -56,8 +57,26 @@ export async function POST(request: NextRequest) {
     /* default vandaag */
   }
 
+  let firstName = ''
   try {
-    await sendLunchReminderToEmail(email, orderDate)
+    const svc = createAdminClient()
+    const { data: rollen } = await svc
+      .from('gebruiker_rollen')
+      .select('naam')
+      .eq('user_id', user.id)
+    for (const r of rollen ?? []) {
+      const fn = voornaamUitVolledigeNaam((r as { naam?: string | null }).naam)
+      if (fn) {
+        firstName = fn
+        break
+      }
+    }
+  } catch {
+    /* geen voornaam */
+  }
+
+  try {
+    await sendLunchReminderToEmail(email, orderDate, firstName)
     return NextResponse.json({ ok: true, to: email, orderDate })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Versturen mislukt'

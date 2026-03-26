@@ -51,9 +51,16 @@ export function formatOrderDateNl(ymd: string): string {
   return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+/** Eerste woord van volledige naam (gebruiker_rollen.naam); leeg als onbekend. */
+export function voornaamUitVolledigeNaam(naam: string | null | undefined): string {
+  const t = naam?.trim()
+  if (!t) return ''
+  return t.split(/\s+/)[0] ?? ''
+}
+
 /** Placeholders: {{loginMagicUrl}} = portal-login om zelf inloglink aan te vragen; {{actionLink}}/{{magicLink}} = directe magic link (alleen als beheer die gebruikt). */
 export const LUNCH_REMINDER_PLACEHOLDER_HELP =
-  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{loginMagicUrl}}, {{actionLink}}, {{magicLink}}, {{siteUrl}}, {{settingsUrl}}'
+  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{voornaam}}, {{firstName}}, {{loginMagicUrl}}, {{actionLink}}, {{magicLink}}, {{siteUrl}}, {{settingsUrl}}'
 
 export function defaultReminderSubjectTemplate(): string {
   return 'Lunch: bestel je broodje voor {{prettyDate}} (uiterlijk {{eindTijd}} op die dag)'
@@ -85,12 +92,16 @@ export function buildLunchReminderHtml(opts: {
   orderEndTimePretty: string
   settingsUrl: string
   loginMagicUrl: string
+  /** Eerste woord van gebruiker_rollen.naam; leeg = “Beste collega,” */
+  firstName?: string
 }) {
-  const { prettyDate, orderEndTimePretty, settingsUrl, loginMagicUrl } = opts
+  const { prettyDate, orderEndTimePretty, settingsUrl, loginMagicUrl, firstName } = opts
+  const greeting =
+    firstName?.trim() ? `Beste ${escapeHtml(firstName.trim())},` : 'Beste collega,'
   return `<!DOCTYPE html>
 <html>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #1e293b;">
-  <p>Beste collega,</p>
+  <p>${greeting}</p>
   <p>Vergeet niet je broodje voor de lunch te bestellen voor <strong>${escapeHtml(prettyDate)}</strong>.</p>
   <p style="font-size: 14px; color: #334155;">Je kunt nog bestellen tot <strong>${escapeHtml(orderEndTimePretty)}</strong> op die dag (Europe/Amsterdam).</p>
   <p>
@@ -120,6 +131,8 @@ type ReminderVars = {
   orderDateYmd: string
   orderEndTime: string
   orderEndTimePretty: string
+  /** Eerste woord van gebruiker_rollen.naam; leeg als onbekend. */
+  firstName: string
   /** Portal-login om OTP/magic link aan te vragen (standaard in de mail). */
   loginMagicUrl: string
   /** Alleen ingevuld als template {{actionLink}}/{{magicLink}} gebruikt; anders leeg. */
@@ -136,6 +149,7 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     orderDateYmd,
     orderEndTime,
     orderEndTimePretty,
+    firstName,
     loginMagicUrl,
     actionLink,
     siteUrl,
@@ -149,6 +163,8 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     // NL-stuurcodes (zelfde waarden als orderEndTime*)
     '{{eindTijd}}': escapeValues ? escapeHtml(orderEndTimePretty) : orderEndTimePretty,
     '{{eindTijdUur}}': escapeValues ? escapeHtml(orderEndTime) : orderEndTime,
+    '{{voornaam}}': escapeValues ? escapeHtml(firstName) : firstName,
+    '{{firstName}}': escapeValues ? escapeHtml(firstName) : firstName,
     '{{loginMagicUrl}}': escapeValues ? escapeHtml(loginMagicUrl) : loginMagicUrl,
     '{{actionLink}}': actionLink,
     '{{magicLink}}': actionLink,
@@ -183,6 +199,7 @@ export function buildLunchReminderFromTemplates(
         orderEndTimePretty: vars.orderEndTimePretty,
         settingsUrl: vars.settingsUrl,
         loginMagicUrl: vars.loginMagicUrl,
+        firstName: vars.firstName,
       })
 
   return { subject, html }
@@ -191,7 +208,11 @@ export function buildLunchReminderFromTemplates(
 /**
  * Genereert magic link en verstuurt herinneringsmail (template uit lunch_config indien gezet).
  */
-export async function sendLunchReminderToEmail(email: string, orderDateYmd: string): Promise<void> {
+export async function sendLunchReminderToEmail(
+  email: string,
+  orderDateYmd: string,
+  firstName?: string
+): Promise<void> {
   const admin = createAdminClient()
   const site = getSiteUrl()
   const nextPath = `/dashboard/lunch?orderDate=${encodeURIComponent(orderDateYmd)}`
@@ -217,11 +238,13 @@ export async function sendLunchReminderToEmail(email: string, orderDateYmd: stri
   )
   const actionLink = needServerLink ? await generateLunchMagicLink(admin, email, redirectTo) : ''
 
+  const fn = firstName?.trim() ?? ''
   const vars: ReminderVars = {
     prettyDate,
     orderDateYmd,
     orderEndTime,
     orderEndTimePretty,
+    firstName: fn,
     loginMagicUrl,
     actionLink,
     siteUrl: site,

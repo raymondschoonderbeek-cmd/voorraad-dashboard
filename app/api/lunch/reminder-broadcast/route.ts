@@ -119,10 +119,10 @@ export async function POST(request: NextRequest) {
   let sent = 0
   const errors: string[] = []
 
-  for (const { userId, email } of recipients) {
+  for (const { userId, email, firstName } of recipients) {
     if (sentSet.has(userId)) continue
     try {
-      await sendLunchReminderToEmail(email, orderDate)
+      await sendLunchReminderToEmail(email, orderDate, firstName)
       const { error: insErr } = await client.from('lunch_reminder_sent').insert({
         user_id: userId,
         reminder_date: orderDate,

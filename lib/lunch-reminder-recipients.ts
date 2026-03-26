@@ -1,8 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { DashboardModuleId } from '@/lib/dashboard-modules'
 import { resolveDashboardModules } from '@/lib/dashboard-modules'
+import { voornaamUitVolledigeNaam } from '@/lib/lunch-reminder-mail'
 
-export type LunchRecipient = { userId: string; email: string }
+export type LunchRecipient = { userId: string; email: string; firstName: string }
 
 /**
  * Alle gebruikers met lunch-dashboardmodule en zonder reminder opt-out.
@@ -12,11 +13,19 @@ export async function fetchLunchReminderRecipients(): Promise<LunchRecipient[]> 
 
   const { data: rollen, error: rollenErr } = await admin
     .from('gebruiker_rollen')
-    .select('user_id, rol')
+    .select('user_id, rol, naam')
 
   if (rollenErr) throw new Error(rollenErr.message)
   const rows = rollen ?? []
   if (rows.length === 0) return []
+
+  const firstNameByUser = new Map<string, string>()
+  for (const r of rows) {
+    const uid = (r as { user_id: string }).user_id
+    if (!uid) continue
+    const fn = voornaamUitVolledigeNaam((r as { naam?: string | null }).naam)
+    if (fn && !firstNameByUser.has(uid)) firstNameByUser.set(uid, fn)
+  }
 
   const userIds = [...new Set(rows.map((r: { user_id: string }) => r.user_id).filter(Boolean))]
 
@@ -68,7 +77,7 @@ export async function fetchLunchReminderRecipients(): Promise<LunchRecipient[]> 
     const email = emailByUser[uid]
     if (!email?.includes('@')) continue
 
-    out.push({ userId: uid, email })
+    out.push({ userId: uid, email, firstName: firstNameByUser.get(uid) ?? '' })
   }
 
   const seen = new Set<string>()
