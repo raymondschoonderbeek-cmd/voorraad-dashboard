@@ -38,6 +38,12 @@ export default function LunchPage() {
   const supabase = createClient()
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10))
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const q = new URLSearchParams(window.location.search).get('orderDate')
+    if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) setOrderDate(q)
+  }, [])
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const checkoutRef = useRef<HTMLDivElement>(null)
   const [checkoutResult, setCheckoutResult] = useState<{

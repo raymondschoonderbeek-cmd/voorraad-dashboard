@@ -13,13 +13,17 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('lunch_module_enabled, modules_order')
+      .select('lunch_module_enabled, modules_order, lunch_reminder_opt_out')
       .eq('user_id', user.id)
       .maybeSingle()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     const modules_order = Array.isArray(data?.modules_order) ? data.modules_order : null
-    return NextResponse.json({ lunch_module_enabled: data?.lunch_module_enabled === true, modules_order })
+    return NextResponse.json({
+      lunch_module_enabled: data?.lunch_module_enabled === true,
+      modules_order,
+      lunch_reminder_opt_out: data?.lunch_reminder_opt_out === true,
+    })
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij ophalen profiel' }, { status: 500 })
   }
@@ -37,17 +41,26 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const hasLunch = typeof body.lunch_module_enabled === 'boolean'
     const hasModulesOrder = Array.isArray(body.modules_order)
+    const hasReminderOptOut = typeof body.lunch_reminder_opt_out === 'boolean'
 
     const { data: existing } = await supabase
       .from('profiles')
-      .select('lunch_module_enabled, modules_order')
+      .select('lunch_module_enabled, modules_order, lunch_reminder_opt_out')
       .eq('user_id', user.id)
       .maybeSingle()
 
     const lunch_module_enabled = hasLunch ? body.lunch_module_enabled === true : (existing?.lunch_module_enabled === true)
     const modules_order = hasModulesOrder ? body.modules_order : (Array.isArray(existing?.modules_order) ? existing.modules_order : null)
+    const lunch_reminder_opt_out = hasReminderOptOut
+      ? body.lunch_reminder_opt_out === true
+      : (existing?.lunch_reminder_opt_out === true)
 
-    const payload: Record<string, unknown> = { user_id: user.id, lunch_module_enabled, updated_at: new Date().toISOString() }
+    const payload: Record<string, unknown> = {
+      user_id: user.id,
+      lunch_module_enabled,
+      lunch_reminder_opt_out,
+      updated_at: new Date().toISOString(),
+    }
     if (hasModulesOrder) payload.modules_order = body.modules_order
 
     const { error } = await supabase
@@ -55,7 +68,7 @@ export async function PATCH(request: NextRequest) {
       .upsert(payload, { onConflict: 'user_id' })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ lunch_module_enabled, modules_order })
+    return NextResponse.json({ lunch_module_enabled, modules_order, lunch_reminder_opt_out })
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij bijwerken profiel' }, { status: 500 })
   }

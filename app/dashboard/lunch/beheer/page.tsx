@@ -365,10 +365,21 @@ function InstellingenBeheer() {
   const [tikkieError, setTikkieError] = useState('')
   const [tikkieSaved, setTikkieSaved] = useState(false)
 
+  const [reminderMailEnabled, setReminderMailEnabled] = useState(false)
+  const [reminderWeekday, setReminderWeekday] = useState(5)
+  const [reminderTimeLocal, setReminderTimeLocal] = useState('08:00')
+  const [savingReminder, setSavingReminder] = useState(false)
+  const [testLoading, setTestLoading] = useState(false)
+  const [testMsg, setTestMsg] = useState('')
+  const [testError, setTestError] = useState('')
+
   const { data: settings, mutate } = useSWR<{
     tikkie_pay_link?: string
     order_weekdays?: number[]
     closed_dates?: string[]
+    reminder_mail_enabled?: boolean
+    reminder_weekday?: number
+    reminder_time_local?: string
   }>('/api/lunch/settings', fetcher)
 
   useEffect(() => {
@@ -378,7 +389,58 @@ function InstellingenBeheer() {
       setOrderWeekdays([...settings.order_weekdays].sort((a, b) => a - b))
     }
     if (Array.isArray(settings.closed_dates)) setClosedDates([...settings.closed_dates].sort())
+    if (typeof settings.reminder_mail_enabled === 'boolean') setReminderMailEnabled(settings.reminder_mail_enabled)
+    if (typeof settings.reminder_weekday === 'number' && settings.reminder_weekday >= 1 && settings.reminder_weekday <= 7) {
+      setReminderWeekday(settings.reminder_weekday)
+    }
+    if (typeof settings.reminder_time_local === 'string' && /^\d{1,2}:\d{2}$/.test(settings.reminder_time_local)) {
+      const [h, m] = settings.reminder_time_local.split(':')
+      setReminderTimeLocal(`${h.padStart(2, '0')}:${m.padStart(2, '0')}`)
+    }
   }, [settings])
+
+  async function persistReminder(partial: Record<string, unknown>) {
+    setError('')
+    setSavingReminder(true)
+    try {
+      const res = await fetch('/api/lunch/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partial),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Opslaan mislukt')
+      mutate(data)
+      setSuccess(true)
+      window.setTimeout(() => setSuccess(false), 2500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Er ging iets mis')
+      await mutate()
+      throw e
+    } finally {
+      setSavingReminder(false)
+    }
+  }
+
+  async function sendTestReminder() {
+    setTestError('')
+    setTestMsg('')
+    setTestLoading(true)
+    try {
+      const res = await fetch('/api/lunch/reminder-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Versturen mislukt')
+      setTestMsg(`Testmail verstuurd naar ${data.to ?? 'je e-mailadres'}.`)
+    } catch (e) {
+      setTestError(e instanceof Error ? e.message : 'Mislukt')
+    } finally {
+      setTestLoading(false)
+    }
+  }
 
   async function persistSchedule(partial: { order_weekdays: number[] } | { closed_dates: string[] }) {
     setError('')
@@ -554,6 +616,96 @@ function InstellingenBeheer() {
             Geen extra gesloten dagen.
           </p>
         )}
+      </div>
+
+      <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+        <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Herinneringsmail (Mailgun)</h2>
+        <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
+          Op de gekozen dag en tijd (Europe/Amsterdam) ontvangen lunch-gebruikers een mail met een inloglink om snel te bestellen.
+          Plan op de gratis Vercel-tier een externe cron (bijv. cron-job.org) elke <strong>5 minuten</strong> op{' '}
+          <code className="text-xs bg-gray-100 px-1 rounded">GET /api/lunch/reminder-cron</code> met header{' '}
+          <code className="text-xs bg-gray-100 px-1 rounded">Authorization: Bearer CRON_SECRET</code>.
+        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <span className="text-sm font-medium" style={{ color: DYNAMO_BLUE }}>Herinneringen versturen</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={reminderMailEnabled}
+            disabled={savingReminder}
+            onClick={() => {
+              const next = !reminderMailEnabled
+              setReminderMailEnabled(next)
+              void persistReminder({ reminder_mail_enabled: next }).catch(() => setReminderMailEnabled(!next))
+            }}
+            className={`relative inline-flex h-7 w-12 shrink-0 rounded-full border-2 border-transparent transition-colors ${
+              reminderMailEnabled ? '' : 'bg-gray-200'
+            } disabled:opacity-50`}
+            style={reminderMailEnabled ? { background: DYNAMO_BLUE } : {}}
+          >
+            <span
+              className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                reminderMailEnabled ? 'translate-x-5' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+              Dag van verzending
+            </label>
+            <select
+              value={reminderWeekday}
+              disabled={savingReminder}
+              onChange={e => {
+                const v = parseInt(e.target.value, 10)
+                setReminderWeekday(v)
+                void persistReminder({ reminder_weekday: v })
+              }}
+              className="w-full rounded-lg px-3 py-2 text-sm border"
+              style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+            >
+              {WEEKDAYS_NL.map(({ iso, label }) => (
+                <option key={iso} value={iso}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+              Tijd (Amsterdam)
+            </label>
+            <input
+              type="time"
+              value={reminderTimeLocal}
+              disabled={savingReminder}
+              onChange={e => setReminderTimeLocal(e.target.value)}
+              onBlur={() => {
+                if (reminderTimeLocal && reminderTimeLocal !== settings?.reminder_time_local) {
+                  void persistReminder({ reminder_time_local: reminderTimeLocal })
+                }
+              }}
+              className="w-full rounded-lg px-3 py-2 text-sm border"
+              style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => void sendTestReminder()}
+            disabled={testLoading || savingReminder}
+            className="px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50 border"
+            style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE }}
+          >
+            {testLoading ? 'Versturen...' : 'Preview: testmail naar mij'}
+          </button>
+        </div>
+        {testError && <p className="text-sm text-red-600 mb-2">{testError}</p>}
+        {testMsg && <p className="text-sm text-green-700 mb-2">{testMsg}</p>}
+        <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>
+          Zet MAILGUN_API_KEY, MAILGUN_DOMAIN, MAILGUN_FROM en optioneel MAILGUN_REGION=eu in Vercel. Gebruikers kunnen zich afmelden onder Portal → Instellingen.
+        </p>
       </div>
 
       <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>

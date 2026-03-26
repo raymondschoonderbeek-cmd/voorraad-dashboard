@@ -21,8 +21,12 @@ export default function InstellingenPage() {
   const [lunchSaving, setLunchSaving] = useState(false)
   const supabase = createClient()
 
-  const { data: profileData, mutate: mutateProfile } = useSWR<{ lunch_module_enabled?: boolean }>('/api/profile', fetcher)
+  const { data: profileData, mutate: mutateProfile } = useSWR<{
+    lunch_module_enabled?: boolean
+    lunch_reminder_opt_out?: boolean
+  }>('/api/profile', fetcher)
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
+  const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
 
   async function toggleLunchModule(enabled: boolean) {
     setLunchSaving(true)
@@ -33,9 +37,25 @@ export default function InstellingenPage() {
         body: JSON.stringify({ lunch_module_enabled: enabled }),
       })
       if (!res.ok) throw new Error('Opslaan mislukt')
-      mutateProfile({ lunch_module_enabled: enabled })
+      mutateProfile({ ...profileData, lunch_module_enabled: enabled })
     } catch {
       setMfaError('Lunch-module voorkeur kon niet worden opgeslagen.')
+    }
+    setLunchSaving(false)
+  }
+
+  async function toggleLunchReminderOptOut(optOut: boolean) {
+    setLunchSaving(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lunch_reminder_opt_out: optOut }),
+      })
+      if (!res.ok) throw new Error('Opslaan mislukt')
+      mutateProfile({ ...profileData, lunch_reminder_opt_out: optOut })
+    } catch {
+      setMfaError('Voorkeur voor herinneringsmail kon niet worden opgeslagen.')
     }
     setLunchSaving(false)
   }
@@ -145,6 +165,37 @@ export default function InstellingenPage() {
             </button>
           </div>
           {lunchSaving && <p className="mt-2 text-xs text-gray-500">Opslaan...</p>}
+          {lunchModuleEnabled && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">E-mailherinnering lunch</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Ontvang een herinnering op de ingestelde dag (indien ingeschakeld door beheer).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!lunchReminderOptOut}
+                  disabled={lunchSaving}
+                  onClick={() => toggleLunchReminderOptOut(!lunchReminderOptOut)}
+                  className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-dynamo-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    !lunchReminderOptOut ? 'bg-dynamo-blue' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      !lunchReminderOptOut ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Uit = geen herinneringsmails (je kunt nog wel via het portaal bestellen).
+              </p>
+            </div>
+          )}
         </div>
 
         {/* MFA */}
