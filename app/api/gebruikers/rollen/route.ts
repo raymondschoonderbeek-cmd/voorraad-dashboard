@@ -33,10 +33,30 @@ export async function PUT(request: NextRequest) {
 
   const updateData: { rol: string; naam: string; mfa_verplicht?: boolean } = { rol, naam }
   if (typeof mfa_verplicht === 'boolean') updateData.mfa_verplicht = mfa_verplicht
-  await supabase
+
+  // Andere gebruikers dan auth.uid(): RLS laat dat vaak niet toe met de user-client.
+  // Service role (zoals bij POST /api/gebruikers) is nodig voor betrouwbare rol-updates.
+  const rollenClient = hasAdminKey() ? createAdminClient() : supabase
+  const { data: updatedRollen, error: rollenErr } = await rollenClient
     .from('gebruiker_rollen')
     .update(updateData)
     .eq('user_id', user_id)
+    .select('user_id')
+
+  if (rollenErr) {
+    return NextResponse.json(
+      {
+        error: rollenErr.message,
+        hint: hasAdminKey()
+          ? undefined
+          : 'Zet SUPABASE_SERVICE_ROLE_KEY in de omgeving van de server (Vercel / .env.local) om rollen van anderen te wijzigen.',
+      },
+      { status: 400 }
+    )
+  }
+  if (!updatedRollen?.length) {
+    return NextResponse.json({ error: 'Geen gebruiker_rollen-rij gevonden voor dit user_id.' }, { status: 404 })
+  }
 
   if (email != null && email.trim() !== '') {
     if (!hasAdminKey()) {
