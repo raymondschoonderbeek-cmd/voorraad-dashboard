@@ -86,6 +86,13 @@ function cmdbUserCellDisplay(row: ItCmdbHardwareListItem, snap: IntuneSnapshot |
   return { label: '—', title: '' }
 }
 
+function isNonCompliantSnapshot(s: IntuneSnapshot | null): boolean {
+  const st = s?.complianceState?.trim()
+  if (!st) return false
+  const lo = st.toLowerCase()
+  return lo.includes('noncompliant') || lo.includes('non-compliant')
+}
+
 function ComplianceBadge({ state }: { state: string | null | undefined }) {
   const s = state?.trim()
   if (!s) {
@@ -133,7 +140,10 @@ function useDebouncedValue<T>(value: T, ms: number): T {
   return debounced
 }
 
-function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'assigned_user_id' | 'intune_snapshot'> & {
+function emptyForm(): Omit<
+  ItCmdbHardware,
+  'id' | 'created_at' | 'updated_at' | 'created_by' | 'assigned_user_id' | 'intune_snapshot' | 'freshdesk_ticket_id'
+> & {
   assigned_user_id: string
 } {
   return {
@@ -170,6 +180,8 @@ export default function ItCmdbPage() {
   const [statsOpen, setStatsOpen] = useState(false)
   const [intuneSyncing, setIntuneSyncing] = useState(false)
   const [intuneMsg, setIntuneMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [freshdeskBusyId, setFreshdeskBusyId] = useState<string | null>(null)
+  const [freshdeskMsg, setFreshdeskMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -230,6 +242,11 @@ export default function ItCmdbPage() {
   )
   const { data: intuneConfigData } = useSWR<{ configured: boolean }>(
     allowed ? '/api/it-cmdb/intune-sync' : null,
+    fetcher,
+    { shouldRetryOnError: false }
+  )
+  const { data: freshdeskConfigData } = useSWR<{ configured: boolean }>(
+    allowed ? '/api/it-cmdb/freshdesk-ticket' : null,
     fetcher,
     { shouldRetryOnError: false }
   )
@@ -422,6 +439,52 @@ export default function ItCmdbPage() {
     [mutate]
   )
 
+  const createFreshdeskTicketForDevice = useCallback(
+    async (row: ItCmdbHardwareListItem) => {
+      setFreshdeskMsg(null)
+      setFreshdeskBusyId(row.id)
+      try {
+        const res = await fetch('/api/it-cmdb/freshdesk-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hardwareId: row.id }),
+        })
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string
+          ticketId?: number
+          ticketUrl?: string | null
+        }
+        if (res.status === 409) {
+          setFreshdeskMsg({
+            ok: false,
+            text:
+              typeof j.ticketId === 'number'
+                ? `Er bestaat al een Freshdesk-ticket (#${j.ticketId}) voor dit apparaat.`
+                : j.error ?? 'Er bestaat al een ticket voor dit apparaat.',
+          })
+          await mutate()
+          return
+        }
+        if (!res.ok) {
+          setFreshdeskMsg({ ok: false, text: typeof j.error === 'string' ? j.error : 'Ticket aanmaken mislukt.' })
+          return
+        }
+        const tid = j.ticketId
+        const urlPart = typeof j.ticketUrl === 'string' && j.ticketUrl ? ` ${j.ticketUrl}` : ''
+        setFreshdeskMsg({
+          ok: true,
+          text: typeof tid === 'number' ? `Freshdesk-ticket #${tid} aangemaakt.${urlPart}` : `Ticket aangemaakt.${urlPart}`,
+        })
+        await mutate()
+      } catch {
+        setFreshdeskMsg({ ok: false, text: 'Netwerkfout — probeer opnieuw.' })
+      } finally {
+        setFreshdeskBusyId(null)
+      }
+    },
+    [mutate]
+  )
+
   if (allowed === null) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm" style={{ background: dashboardUi.pageBg, fontFamily: F, color: dashboardUi.textMuted }}>
@@ -548,6 +611,20 @@ export default function ItCmdbPage() {
           </div>
         )}
 
+        {freshdeskMsg && (
+          <div
+            className="rounded-2xl p-4 text-sm whitespace-pre-wrap break-all"
+            style={{
+              background: freshdeskMsg.ok ? '#f0fdf4' : '#fef2f2',
+              border: freshdeskMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)',
+              color: freshdeskMsg.ok ? '#15803d' : '#b91c1c',
+              fontFamily: F,
+            }}
+          >
+            {freshdeskMsg.text}
+          </div>
+        )}
+
         <div
           className="rounded-2xl p-4 flex flex-col sm:flex-row flex-wrap gap-3 sm:items-end"
           style={{ background: dashboardUi.cardWhite.background, border: dashboardUi.cardWhite.border, boxShadow: dashboardUi.cardWhite.boxShadow }}
@@ -560,7 +637,7 @@ export default function ItCmdbPage() {
               type="search"
               value={q}
               onChange={e => setQ(e.target.value)}
-              placeholder="Woord in serie, hostname, gebruiker, type, opmerkingen, locatie, Intune…"
+              placeholder="Serie, hostname, gebruiker, portal-e-mail, type, opmerkingen, locatie, Intune…"
               className="w-full rounded-xl px-3 py-2 text-sm border"
               style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
             />
@@ -594,7 +671,7 @@ export default function ItCmdbPage() {
                 ))}
               </datalist>
               <table
-                className="w-full text-sm border-collapse min-w-[1180px]"
+                className="w-full text-sm border-collapse min-w-[1280px]"
                 style={{ color: TABLE_TEXT, fontFamily: F }}
               >
                 <thead>
@@ -730,8 +807,22 @@ export default function ItCmdbPage() {
                   ) : (
                     items.map(row => {
                       const snap = isIntuneSnapshot(row.intune_snapshot) ? row.intune_snapshot : null
+                      const nonCompliant = isNonCompliantSnapshot(snap)
+                      const fdId =
+                        row.freshdesk_ticket_id != null
+                          ? typeof row.freshdesk_ticket_id === 'number'
+                            ? row.freshdesk_ticket_id
+                            : Number(row.freshdesk_ticket_id)
+                          : null
+                      const fdUrl = row.freshdesk_ticket_url ?? null
+                      const fdBusy = freshdeskBusyId === row.id
                       return (
-                      <tr key={row.id} className="border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)]">
+                      <tr
+                        key={row.id}
+                        className={`border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)] ${
+                          nonCompliant ? 'border-l-[3px] border-red-500 bg-red-50/50' : ''
+                        }`}
+                      >
                         <td className="px-3 py-2.5 font-mono text-xs font-semibold align-top" style={{ color: DYNAMO_BLUE }}>
                           {row.serial_number}
                         </td>
@@ -784,13 +875,54 @@ export default function ItCmdbPage() {
                         <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
                           {row.location || '—'}
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-right align-top">
-                          <button type="button" className="font-semibold mr-3" style={{ color: DYNAMO_BLUE }} onClick={() => openEdit(row)}>
-                            Bewerken
-                          </button>
-                          <button type="button" className="font-semibold" style={{ color: '#dc2626' }} onClick={() => remove(row)}>
-                            Verwijderen
-                          </button>
+                        <td className="px-3 py-2.5 text-right align-top min-w-[200px]">
+                          <div className="flex flex-col items-end gap-1.5">
+                            {fdId != null && Number.isFinite(fdId) ? (
+                              fdUrl ? (
+                                <a
+                                  href={fdUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-semibold underline-offset-2 hover:underline"
+                                  style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                                >
+                                  Freshdesk #{fdId}
+                                </a>
+                              ) : (
+                                <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                                  Freshdesk #{fdId}
+                                </span>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={!freshdeskConfigData?.configured || fdBusy}
+                                onClick={() => void createFreshdeskTicketForDevice(row)}
+                                className="text-xs font-semibold rounded-lg px-2 py-1 transition disabled:opacity-45"
+                                style={{
+                                  border: `1px solid ${DYNAMO_BLUE}`,
+                                  color: DYNAMO_BLUE,
+                                  fontFamily: F,
+                                  background: freshdeskConfigData?.configured ? 'rgba(45,69,124,0.06)' : 'rgba(45,69,124,0.04)',
+                                }}
+                                title={
+                                  !freshdeskConfigData?.configured
+                                    ? 'Freshdesk niet geconfigureerd op de server (FRESHDESK_DOMAIN, FRESHDESK_API_KEY).'
+                                    : 'Maak een supportticket met Intune/CMDB-gegevens'
+                                }
+                              >
+                                {fdBusy ? 'Ticket…' : 'Maak Freshdesk-ticket'}
+                              </button>
+                            )}
+                            <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5">
+                              <button type="button" className="font-semibold" style={{ color: DYNAMO_BLUE }} onClick={() => openEdit(row)}>
+                                Bewerken
+                              </button>
+                              <button type="button" className="font-semibold" style={{ color: '#dc2626' }} onClick={() => remove(row)}>
+                                Verwijderen
+                              </button>
+                            </div>
+                          </div>
                         </td>
                       </tr>
                       )

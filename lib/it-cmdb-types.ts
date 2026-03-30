@@ -8,6 +8,8 @@ export type IntuneSnapshot = {
   emailAddress: string | null
   manufacturer: string | null
   model: string | null
+  operatingSystem: string | null
+  osVersion: string | null
 }
 
 export type ItCmdbHardware = {
@@ -17,6 +19,8 @@ export type ItCmdbHardware = {
   intune: string | null
   /** Gestructureerde Intune-data (alleen gezet bij Graph-sync) */
   intune_snapshot: IntuneSnapshot | null
+  /** Freshdesk ticket (API v2); voorkomt dubbele aanmaak */
+  freshdesk_ticket_id: number | null
   user_name: string | null
   /** Gekoppelde DRG-portalgebruiker (gebruiker_rollen), indien bekend */
   assigned_user_id: string | null
@@ -31,4 +35,6 @@ export type ItCmdbHardware = {
 /** API GET /api/it-cmdb: verrijkt met e-mail van gekoppelde gebruiker */
 export type ItCmdbHardwareListItem = ItCmdbHardware & {
   assigned_user_email?: string | null
+  /** Alleen gezet wanneer Freshdesk server-side is geconfigureerd */
+  freshdesk_ticket_url?: string | null
 }

@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { assertPortalUser, enrichAssignedEmails, parseAssignedUserId } from '@/lib/it-cmdb-assigned-user'
+import { freshdeskTicketUrl, isFreshdeskConfigured } from '@/lib/freshdesk'
+
+function parseFdId(raw: unknown): number | null {
+  if (raw == null) return null
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'bigint') return Number(raw)
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : null
+  }
+  return null
+}
 
 function ilikeFragment(value: string): string {
   return value.replace(/%/g, '').trim()
@@ -66,15 +78,38 @@ export async function GET(request: NextRequest) {
   if (q) {
     const safe = ilikeFragment(q)
     if (safe) {
-      query = query.or(
-        `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%,intune.ilike.%${safe}%`
-      )
+      const baseOr = `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%,intune.ilike.%${safe}%`
+      let extra = ''
+      try {
+        const { data: rpcIds, error: rpcErr } = await auth.supabase.rpc('it_cmdb_user_ids_by_email_needle', {
+          p_needle: safe,
+        })
+        if (!rpcErr && rpcIds) {
+          const idList = (Array.isArray(rpcIds) ? rpcIds : []).filter((x): x is string => typeof x === 'string' && x.length > 0)
+          if (idList.length > 0) {
+            extra = `,assigned_user_id.in.(${idList.slice(0, 40).join(',')})`
+          }
+        }
+      } catch {
+        /* RPC ontbreekt op oude DB-migraties */
+      }
+      query = query.or(baseOr + extra)
     }
   }
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  const items = await enrichAssignedEmails(auth.supabase, (data ?? []) as { assigned_user_id: string | null }[])
+  const enriched = await enrichAssignedEmails(auth.supabase, (data ?? []) as { assigned_user_id: string | null }[])
+  const fd = isFreshdeskConfigured()
+  const items = fd
+    ? enriched.map(item => {
+        const id = parseFdId((item as { freshdesk_ticket_id?: unknown }).freshdesk_ticket_id)
+        return {
+          ...item,
+          freshdesk_ticket_url: id != null ? freshdeskTicketUrl(id) : null,
+        }
+      })
+    : enriched
   return NextResponse.json({ items })
 }
 

@@ -40,6 +40,8 @@ export type GraphManagedDevice = {
   complianceState?: string | null
   managementState?: string | null
   lastSyncDateTime?: string | null
+  operatingSystem?: string | null
+  osVersion?: string | null
 }
 
 async function fetchAccessToken(): Promise<string> {
@@ -86,6 +88,8 @@ export async function fetchAllManagedDevices(): Promise<GraphManagedDevice[]> {
     'complianceState',
     'managementState',
     'lastSyncDateTime',
+    'operatingSystem',
+    'osVersion',
   ].join(',')
   let url: string | null =
     `${GRAPH_BASE}/deviceManagement/managedDevices?$select=${encodeURIComponent(select)}&$top=100`
@@ -147,6 +151,8 @@ export function buildIntuneSnapshot(d: GraphManagedDevice): IntuneSnapshot {
     emailAddress: d.emailAddress?.trim() || null,
     manufacturer: d.manufacturer?.trim() || null,
     model: d.model?.trim() || null,
+    operatingSystem: d.operatingSystem != null ? String(d.operatingSystem).trim() || null : null,
+    osVersion: d.osVersion != null ? String(d.osVersion).trim() || null : null,
   }
 }
 
