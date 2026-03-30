@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
+import {
+  getAmsterdamIsoWeekday,
+  getAmsterdamYmd,
+  isWithinReminderWindow,
+  parseHHmmToMinutes,
+} from '@/lib/amsterdam-time'
 import { buildDigestEmailHtml, digestMailConfigured, sendNewsDigestEmail } from '@/lib/news-digest-mail'
 
 /**
  * GET: wekelijkse digest (cron-job.org + Authorization: Bearer CRON_SECRET).
- * Verstuurt naar gebruikers met weekly_digest_enabled (default true) een overzicht van berichten gepubliceerd in de laatste 7 dagen.
+ * Verstuurt volgens drg_news_digest_config (weekdag, tijd Amsterdam, aan/uit).
+ * Query: force=1 — dag/tijd/dedup overslaan (test).
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET?.trim()
@@ -25,7 +32,58 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  const { searchParams } = new URL(request.url)
+  const forceTest = searchParams.get('force') === '1' || searchParams.get('force') === 'true'
+
   const admin = createAdminClient()
+  const now = new Date()
+
+  const { data: cfgRow } = await admin.from('drg_news_digest_config').select('*').eq('id', 1).maybeSingle()
+  const cfg = cfgRow as {
+    digest_enabled?: boolean
+    digest_weekday?: number
+    digest_time_local?: string
+    last_digest_sent_at?: string | null
+  } | null
+
+  const digest_enabled = cfg?.digest_enabled !== false
+  const weekdayCfg = Number(cfg?.digest_weekday) || 5
+  const timeStr = typeof cfg?.digest_time_local === 'string' ? cfg.digest_time_local.trim() : '09:00'
+  const targetMin = parseHHmmToMinutes(timeStr)
+
+  if (!forceTest) {
+    if (!digest_enabled) {
+      return NextResponse.json({ ok: true, skipped: 'digest_disabled' })
+    }
+    if (targetMin == null) {
+      return NextResponse.json({ error: 'Ongeldige digest_time_local in database' }, { status: 500 })
+    }
+    const isoToday = getAmsterdamIsoWeekday(now)
+    if (isoToday !== weekdayCfg) {
+      return NextResponse.json({
+        ok: true,
+        skipped: 'wrong_weekday',
+        amsterdam_weekday: isoToday,
+        configured: weekdayCfg,
+      })
+    }
+    if (!isWithinReminderWindow(now, targetMin)) {
+      return NextResponse.json({
+        ok: true,
+        skipped: 'outside_time_window',
+        window_starts: timeStr,
+      })
+    }
+    const last = cfg?.last_digest_sent_at ? new Date(cfg.last_digest_sent_at) : null
+    if (last && !Number.isNaN(last.getTime()) && getAmsterdamYmd(last) === getAmsterdamYmd(now)) {
+      return NextResponse.json({
+        ok: true,
+        skipped: 'already_sent_today',
+        last_digest_sent_at: cfg?.last_digest_sent_at,
+      })
+    }
+  }
+
   const site = getSiteUrl()
   const since = new Date()
   since.setDate(since.getDate() - 7)
@@ -41,15 +99,28 @@ export async function GET(request: NextRequest) {
 
   if (pe) return NextResponse.json({ error: pe.message }, { status: 500 })
   const list = posts ?? []
+
+  async function markDigestRun() {
+    await admin
+      .from('drg_news_digest_config')
+      .update({
+        last_digest_sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 1)
+  }
+
   if (list.length === 0) {
-    return NextResponse.json({ ok: true, skipped: 'no_posts_in_window', sent: 0 })
+    await markDigestRun()
+    return NextResponse.json({ ok: true, skipped: 'no_posts_in_window', sent: 0, force: forceTest })
   }
 
   const { data: rollen, error: re } = await admin.from('gebruiker_rollen').select('user_id')
   if (re) return NextResponse.json({ error: re.message }, { status: 500 })
   const userIds = [...new Set((rollen ?? []).map((r: { user_id: string }) => r.user_id).filter(Boolean))]
   if (userIds.length === 0) {
-    return NextResponse.json({ ok: true, skipped: 'no_users', sent: 0 })
+    await markDigestRun()
+    return NextResponse.json({ ok: true, skipped: 'no_users', sent: 0, force: forceTest })
   }
 
   const { data: prefsRows } = await admin.from('drg_news_preferences').select('user_id, weekly_digest_enabled')
@@ -94,11 +165,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  await markDigestRun()
+
   return NextResponse.json({
     ok: true,
     posts_in_digest: list.length,
     recipients_attempted: emails.size,
     sent,
     errors: errors.length ? errors : undefined,
+    force: forceTest,
   })
 }

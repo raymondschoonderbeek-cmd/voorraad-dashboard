@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DYNAMO_BLUE } from '@/lib/theme'
 import { DRG_NEWS_CATEGORIES, type DrgNewsPost } from '@/lib/news-types'
+import { NieuwsDigestSettings } from '@/components/nieuws/NieuwsDigestSettings'
 
 const F = "'Outfit', sans-serif"
 
@@ -183,6 +184,8 @@ export function NieuwsBeheerTab() {
 
   return (
     <div className="space-y-4">
+      <NieuwsDigestSettings />
+
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <p className="text-sm m-0" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
           Beheer interne nieuwsberichten. Alleen gepubliceerde berichten zijn zichtbaar voor medewerkers.
