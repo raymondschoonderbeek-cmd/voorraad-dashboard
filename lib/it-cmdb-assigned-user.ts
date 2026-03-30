@@ -2,9 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const IT_CMDB_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+/** Of userId een portalgebruiker is (gebruiker_rollen). Via RPC (security definer) — directe select faalt door RLS. */
 export async function assertPortalUser(supabase: SupabaseClient, userId: string): Promise<boolean> {
-  const { data } = await supabase.from('gebruiker_rollen').select('user_id').eq('user_id', userId).maybeSingle()
-  return !!data
+  const { data, error } = await supabase.rpc('it_cmdb_is_valid_assigned_user', { target_user_id: userId })
+  if (error) return false
+  return data === true
 }
 
 /** undefined = veld niet meesturen; null = koppeling verwijderen */
