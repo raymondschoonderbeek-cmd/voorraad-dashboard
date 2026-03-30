@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
   const { data: posts, error: pe } = await admin
     .from('drg_news_posts')
-    .select('id, title, excerpt, published_at, category')
+    .select('id, title, excerpt, body_html, published_at, category')
     .not('published_at', 'is', null)
     .lte('published_at', new Date().toISOString())
     .gte('published_at', sinceIso)
@@ -163,6 +163,7 @@ export async function GET(request: NextRequest) {
       id: p.id,
       title: p.title,
       excerpt: p.excerpt,
+      body_html: typeof p.body_html === 'string' ? p.body_html : '',
       published_at: p.published_at,
       category: typeof p.category === 'string' && p.category.trim() ? p.category.trim() : 'algemeen',
     })),

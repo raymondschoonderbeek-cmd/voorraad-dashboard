@@ -541,14 +541,24 @@ export function NieuwsBeheerTab() {
                     </p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openEdit(p)}
-                  className="text-sm font-semibold shrink-0"
-                  style={{ color: DYNAMO_BLUE, fontFamily: F }}
-                >
-                  Bewerken
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(p)}
+                    className="text-sm font-semibold"
+                    style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                  >
+                    Bewerken
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(p.id)}
+                    className="text-sm font-semibold"
+                    style={{ color: '#dc2626', fontFamily: F }}
+                  >
+                    Verwijderen
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

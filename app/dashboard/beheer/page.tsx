@@ -142,6 +142,8 @@ export default function BeheerPage() {
   const [merkError, setMerkError] = useState('')
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+  /** Admin of dashboardmodule interne-nieuws: zelfde rechten als op /dashboard/nieuws/beheer */
+  const [canManageInterneNieuws, setCanManageInterneNieuws] = useState(false)
 
   // Winkel filters
   const [winkelFilterSysteem, setWinkelFilterSysteem] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
@@ -231,21 +233,27 @@ export default function BeheerPage() {
       const res = await fetch('/api/auth/session-info')
       const info = await res.json().catch(() => ({}))
       const admin = info.isAdmin === true
+      const canNews = info.canManageInterneNieuws === true
       if (cancelled) return
       setIsAdmin(admin)
+      setCanManageInterneNieuws(canNews)
+      const urlTab = searchParams.get('tab')
+      const adminTabs: Tab[] = ['gebruikers', 'winkels', 'import', 'ips', 'merken', 'campagnefietsen', 'nieuws']
       if (admin) {
         await haalGebruikersOp(true)
         if (cancelled) return
-        setTab('gebruikers')
+        if (urlTab && adminTabs.includes(urlTab as Tab)) setTab(urlTab as Tab)
+        else setTab('gebruikers')
       } else {
         await haalWinkelsOp()
         if (cancelled) return
-        setTab('winkels')
+        if (urlTab === 'nieuws' && canNews) setTab('nieuws')
+        else setTab('winkels')
       }
     }
     init()
     return () => { cancelled = true }
-  }, [haalGebruikersOp, haalWinkelsOp])
+  }, [haalGebruikersOp, haalWinkelsOp, searchParams])
 
   useEffect(() => {
     if (nieuwRol === 'admin') setNieuwModules([...DASHBOARD_MODULE_ORDER])
@@ -969,17 +977,23 @@ export default function BeheerPage() {
   const inputStyle = { background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
 
-  const tabs: { key: Tab; label: string; icon: string; count?: number }[] = isAdmin
-    ? [
-        { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
-        { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
-        ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
-        ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
-        { key: 'import', label: 'Excel Import', icon: '📊' },
-        { key: 'campagnefietsen', label: 'Campagnefietsen', icon: '🚲' },
-        { key: 'nieuws', label: 'Nieuws', icon: '📰' },
-      ]
-    : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
+  const tabs: { key: Tab; label: string; icon: string; count?: number }[] =
+    isAdmin === true
+      ? [
+          { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
+          { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
+          ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
+          ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
+          { key: 'import', label: 'Excel Import', icon: '📊' },
+          { key: 'campagnefietsen', label: 'Campagnefietsen', icon: '🚲' },
+          { key: 'nieuws', label: 'Nieuws', icon: '📰' },
+        ]
+      : canManageInterneNieuws
+        ? [
+            { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
+            { key: 'nieuws', label: 'Nieuws', icon: '📰' },
+          ]
+        : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb', fontFamily: F }}>
@@ -1919,7 +1933,7 @@ export default function BeheerPage() {
 
         {/* ── TAB: CAMPAGNEFIETSEN (alleen admin) ── */}
         {tab === 'campagnefietsen' && isAdmin && <CampagneFietsenBeheerTab />}
-        {tab === 'nieuws' && isAdmin && <NieuwsBeheerTab />}
+        {tab === 'nieuws' && (isAdmin || canManageInterneNieuws) && <NieuwsBeheerTab />}
 
         {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
         {tab === 'merken' && (

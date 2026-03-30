@@ -9,10 +9,21 @@ const DIGEST_BRAND_SECONDARY = process.env.NEXT_PUBLIC_DIGEST_BRAND_LINE2?.trim(
 
 const FONT_STACK =
   "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
-const COLOR_PAGE = '#121212'
+
+/** Pagina-achtergrond (lichtgrijs) */
+const COLOR_PAGE = '#f3f4f6'
+/** Dunne bovenbalk */
+const COLOR_TOPBAR_BG = '#e5e7eb'
+const COLOR_TOPBAR_TEXT = '#64748b'
+/** Banner */
 const COLOR_BANNER = '#1a365d'
-const COLOR_TEXT = '#ffffff'
-const COLOR_TEXT_MUTED = '#e2e8f0'
+const COLOR_BANNER_TEXT = '#ffffff'
+const COLOR_RETAIL_SUB = '#cbd5e1'
+/** Inhoud op wit */
+const COLOR_CONTENT_BG = '#ffffff'
+const COLOR_HEADING = '#1e293b'
+const COLOR_BODY = '#334155'
+const COLOR_LINK = '#1a365d'
 
 /** ISO 8601 weeknummer (1–53), voor o.a. onderwerpregel en banner. */
 export function getDigestIsoWeek(date: Date = new Date()): number {
@@ -85,6 +96,8 @@ export type DigestEmailPost = {
   id: string
   title: string
   excerpt: string | null
+  /** Volledige HTML-inhoud van het bericht (zoals in het portaal). */
+  body_html: string
   published_at: string | null
   /** Slug van drg_news_afdelingen */
   category: string
@@ -113,6 +126,49 @@ function orderedCategorySlugs(posts: DigestEmailPost[], afdelingen: DigestAfdeli
   })
 }
 
+/** Verwijdert riskante fragmenten uit door beheerders ingevoerde HTML (e-mail is geen volledige browser). */
+export function sanitizeDigestBodyHtml(html: string): string {
+  let s = html.trim()
+  if (!s) return ''
+  s = s.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  s = s.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+  s = s.replace(/<\/?(?:iframe|object|embed|form|meta|link)\b[^>]*>/gi, '')
+  s = s.replace(/on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+  s = s.replace(/javascript:/gi, '')
+  return s
+}
+
+function htmlToPlainText(html: string): string {
+  const s = sanitizeDigestBodyHtml(html)
+  const rough = s
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr|blockquote)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+  return decodeBasicEntities(rough)
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function decodeBasicEntities(s: string): string {
+  return s
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+}
+
+function articleBodyForEmail(p: DigestEmailPost): string {
+  const raw = p.body_html?.trim()
+  if (raw) return sanitizeDigestBodyHtml(raw)
+  const ex = p.excerpt?.trim()
+  if (ex) return `<p>${escapeHtml(ex)}</p>`
+  return '<p style="margin:0;color:#94a3b8;font-style:italic;">(Geen inhoud)</p>'
+}
+
 export function buildDigestEmailHtml(opts: {
   posts: DigestEmailPost[]
   siteUrl: string
@@ -134,46 +190,51 @@ export function buildDigestEmailHtml(opts: {
 
   if (posts.length === 0) {
     blocksHtml.push(
-      `<p style="margin:0;font-size:15px;line-height:1.6;color:${COLOR_TEXT_MUTED};font-family:${FONT_STACK};">Geen nieuwsberichten in de afgelopen 7 dagen.</p>`
+      `<p style="margin:0;font-size:15px;line-height:1.6;color:${COLOR_BODY};font-family:${FONT_STACK};">Geen nieuwsberichten in de afgelopen 7 dagen.</p>`
     )
     blocksText.push('Geen nieuwsberichten in de afgelopen 7 dagen.', '')
   } else {
     for (let i = 0; i < slugs.length; i++) {
       const slug = slugs[i]
-      const label = escapeHtml(labelForSlug(slug, afdelingen))
+      const labelEscaped = escapeHtml(labelForSlug(slug, afdelingen))
       const group = posts.filter(p => (p.category || 'algemeen') === slug)
-      const marginTop = i === 0 ? '0' : '36px'
+      const marginTop = i === 0 ? '0' : '40px'
 
       blocksHtml.push(`
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:${marginTop};margin-bottom:8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:${marginTop};margin-bottom:12px;">
   <tr>
     <td>
-      <h2 style="margin:0;font-size:22px;font-weight:700;color:${COLOR_TEXT};font-family:${FONT_STACK};letter-spacing:0.02em;">${label}</h2>
+      <h2 style="margin:0;font-size:24px;font-weight:700;color:${COLOR_HEADING};font-family:${FONT_STACK};letter-spacing:-0.02em;">${labelEscaped}</h2>
     </td>
   </tr>
 </table>`)
 
-      blocksText.push('', `${labelForSlug(slug, afdelingen)}`, '─'.repeat(Math.min(40, labelForSlug(slug, afdelingen).length + 4)))
+      blocksText.push('', labelForSlug(slug, afdelingen), '─'.repeat(Math.min(36, labelForSlug(slug, afdelingen).length + 2)))
 
       for (const p of group) {
         const url = `${base}/dashboard/nieuws/${p.id}`
         const title = escapeHtml(p.title)
-        const ex = p.excerpt?.trim()
+        const bodyHtml = articleBodyForEmail(p)
+
         blocksHtml.push(`
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:36px;">
   <tr>
     <td style="padding:0;">
-      <a href="${url}" style="font-size:16px;font-weight:700;color:${COLOR_TEXT};text-decoration:none;line-height:1.4;font-family:${FONT_STACK};border-bottom:1px solid rgba(255,255,255,0.25);">${title}</a>
-      ${
-        ex
-          ? `<p style="margin:10px 0 0;font-size:14px;line-height:1.55;color:${COLOR_TEXT_MUTED};font-family:${FONT_STACK};">${escapeHtml(ex)}</p>`
-          : ''
-      }
+      <p style="margin:0 0 12px;font-size:18px;font-weight:700;line-height:1.35;font-family:${FONT_STACK};">
+        <a href="${url}" style="color:${COLOR_HEADING};text-decoration:none;border-bottom:1px solid rgba(26,54,93,0.25);">${title}</a>
+      </p>
+      <div class="digest-body" style="font-size:15px;line-height:1.65;color:${COLOR_BODY};font-family:${FONT_STACK};">
+        ${bodyHtml}
+      </div>
+      <p style="margin:14px 0 0;font-size:13px;font-family:${FONT_STACK};">
+        <a href="${url}" style="color:${COLOR_LINK};font-weight:600;">Openen in ${escapeHtml(APP)} →</a>
+      </p>
     </td>
   </tr>
 </table>`)
 
-        blocksText.push('', p.title, ex ? ex : '', url, '')
+        const plainBody = htmlToPlainText(p.body_html?.trim() ? p.body_html : p.excerpt ?? '')
+        blocksText.push('', p.title, plainBody ? plainBody : '', url, '')
       }
     }
   }
@@ -187,34 +248,46 @@ export function buildDigestEmailHtml(opts: {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>${escapeHtml(topLine)}</title>
+<style type="text/css">
+.digest-body p { margin: 0 0 14px; }
+.digest-body p:last-child { margin-bottom: 0; }
+.digest-body ul, .digest-body ol { margin: 8px 0 14px; padding-left: 22px; }
+.digest-body li { margin: 4px 0; }
+.digest-body img { max-width: 100% !important; height: auto !important; border-radius: 6px; }
+.digest-body a { color: ${COLOR_LINK}; font-weight: 600; }
+.digest-body h1, .digest-body h2, .digest-body h3, .digest-body h4 { font-size: 16px; margin: 16px 0 8px; color: ${COLOR_HEADING}; font-weight: 700; }
+.digest-body blockquote { margin: 12px 0; padding-left: 14px; border-left: 3px solid #cbd5e1; color: #475569; }
+</style>
 </head>
 <body style="margin:0;padding:0;background-color:${COLOR_PAGE};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${COLOR_PAGE};">
   <tr>
     <td align="center" style="padding:0;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background-color:${COLOR_CONTENT_BG};">
         <tr>
-          <td style="background-color:${COLOR_BANNER};padding:36px 28px 40px;text-align:center;">
-            <p style="margin:0 0 20px;font-size:12px;letter-spacing:0.12em;color:${COLOR_TEXT};font-family:${FONT_STACK};text-transform:none;">${escapeHtml(
-              topLine
-            )}</p>
-            <p style="margin:0;font-size:34px;font-weight:800;letter-spacing:0.04em;color:${COLOR_TEXT};font-family:${FONT_STACK};line-height:1;">${escapeHtml(
-              DIGEST_BRAND_PRIMARY
-            )}</p>
-            <p style="margin:10px 0 0;font-size:13px;font-weight:400;letter-spacing:0.42em;color:${COLOR_TEXT};font-family:${FONT_STACK};line-height:1.2;">${escapeHtml(
-              DIGEST_BRAND_SECONDARY
-            )}</p>
-            <p style="margin:22px 0 0;font-size:11px;font-weight:600;letter-spacing:0.28em;color:${COLOR_TEXT};font-family:${FONT_STACK};">WEEK UPDATE</p>
+          <td style="background-color:${COLOR_TOPBAR_BG};padding:10px 16px;text-align:center;border-bottom:1px solid #d1d5db;">
+            <p style="margin:0;font-size:12px;letter-spacing:0.06em;color:${COLOR_TOPBAR_TEXT};font-family:${FONT_STACK};">${escapeHtml(topLine)}</p>
           </td>
         </tr>
         <tr>
-          <td style="padding:28px 24px 40px;color:${COLOR_TEXT};font-family:${FONT_STACK};">
+          <td style="background-color:${COLOR_BANNER};padding:32px 28px 36px;text-align:center;">
+            <p style="margin:0;font-size:32px;font-weight:800;letter-spacing:0.04em;color:${COLOR_BANNER_TEXT};font-family:${FONT_STACK};line-height:1;">${escapeHtml(
+              DIGEST_BRAND_PRIMARY
+            )}</p>
+            <p style="margin:8px 0 0;font-size:13px;font-weight:400;letter-spacing:0.38em;color:${COLOR_RETAIL_SUB};font-family:${FONT_STACK};line-height:1.2;">${escapeHtml(
+              DIGEST_BRAND_SECONDARY
+            )}</p>
+            <p style="margin:20px 0 0;font-size:11px;font-weight:600;letter-spacing:0.26em;color:${COLOR_BANNER_TEXT};font-family:${FONT_STACK};">WEEK UPDATE</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 28px 36px;background-color:${COLOR_CONTENT_BG};">
             ${innerContent}
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.12);">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;padding-top:24px;border-top:1px solid #e2e8f0;">
               <tr>
                 <td>
-                  <p style="margin:0;font-size:12px;line-height:1.5;color:rgba(255,255,255,0.55);font-family:${FONT_STACK};">
-                    <a href="${base}/dashboard/nieuws" style="color:#93c5fd;text-decoration:underline;">Alle berichten in ${escapeHtml(APP)} →</a>
+                  <p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;font-family:${FONT_STACK};">
+                    <a href="${base}/dashboard/nieuws" style="color:${COLOR_LINK};text-decoration:underline;">Alle berichten in ${escapeHtml(APP)} →</a>
                   </p>
                 </td>
               </tr>
