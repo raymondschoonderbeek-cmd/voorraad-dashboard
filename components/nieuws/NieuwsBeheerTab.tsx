@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DYNAMO_BLUE } from '@/lib/theme'
-import { DRG_NEWS_CATEGORIES, type DrgNewsPost } from '@/lib/news-types'
+import type { DrgNewsPost } from '@/lib/news-types'
+import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
 import { NieuwsDigestSettings } from '@/components/nieuws/NieuwsDigestSettings'
+import { NieuwsAfdelingenBeheer } from '@/components/nieuws/NieuwsAfdelingenBeheer'
 
 const F = "'Outfit', sans-serif"
 
@@ -48,6 +50,28 @@ export function NieuwsBeheerTab() {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
+
+  const [afdelingen, setAfdelingen] = useState<DrgNewsAfdeling[]>([])
+
+  const loadAfdelingen = useCallback(async () => {
+    try {
+      const res = await fetch('/api/news/afdelingen')
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && Array.isArray(d.afdelingen)) setAfdelingen(d.afdelingen)
+    } catch {
+      /* keep list */
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadAfdelingen()
+  }, [loadAfdelingen])
+
+  const labelVoorSlug = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const a of afdelingen) m.set(a.slug, a.label)
+    return (slug: string) => m.get(slug) ?? slug
+  }, [afdelingen])
 
   function insertAtCursor(insert: string) {
     const el = bodyRef.current
@@ -159,7 +183,7 @@ export function NieuwsBeheerTab() {
     setTitle('')
     setExcerpt('')
     setBodyHtml('')
-    setCategory('algemeen')
+    setCategory(afdelingen[0]?.slug ?? 'algemeen')
     setIsImportant(false)
     setPublishMode('now')
     setScheduledLocal(defaultScheduledLocal())
@@ -250,6 +274,7 @@ export function NieuwsBeheerTab() {
       setCreating(false)
       setEditing(null)
       await load()
+      await loadAfdelingen()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Opslaan mislukt')
     }
@@ -275,6 +300,8 @@ export function NieuwsBeheerTab() {
   return (
     <div className="space-y-4">
       <NieuwsDigestSettings />
+
+      <NieuwsAfdelingenBeheer onUpdated={loadAfdelingen} />
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <p className="text-sm m-0" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
@@ -316,14 +343,18 @@ export function NieuwsBeheerTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
-                Categorie
+                Afdeling
               </label>
               <select className={inputClass} style={inputStyle} value={category} onChange={e => setCategory(e.target.value)}>
-                {DRG_NEWS_CATEGORIES.map(c => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
+                {afdelingen.length === 0 ? (
+                  <option value={category}>{category}</option>
+                ) : (
+                  afdelingen.map(a => (
+                    <option key={a.id} value={a.slug}>
+                      {a.label}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div className="flex items-end pb-1">
@@ -495,7 +526,7 @@ export function NieuwsBeheerTab() {
                       </span>
                     )}
                     <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>
-                      {p.category}
+                      {labelVoorSlug(p.category)}
                     </span>
                   </div>
                   <p className="font-semibold text-sm mt-1 m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>

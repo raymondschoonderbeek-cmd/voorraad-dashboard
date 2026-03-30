@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import useSWR, { useSWRConfig } from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
+import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
 import type { DrgNewsPost } from '@/lib/news-types'
 
 async function fetcherNews(url: string) {
@@ -19,6 +20,17 @@ export default function NieuwsDetailPage() {
   const id = typeof params.id === 'string' ? params.id : ''
   const { mutate } = useSWRConfig()
   const { data, error, isLoading } = useSWR<{ post: DrgNewsPost }>(id ? `/api/news/${id}` : null, fetcherNews)
+  const { data: afdelingenData } = useSWR<{ afdelingen: DrgNewsAfdeling[] }>(
+    '/api/news/afdelingen',
+    (url: string) => fetch(url).then(r => r.json())
+  )
+
+  const afdelingLabel = useMemo(() => {
+    const slug = data?.post?.category
+    if (!slug) return ''
+    const a = afdelingenData?.afdelingen?.find(x => x.slug === slug)
+    return a?.label ?? slug
+  }, [data?.post?.category, afdelingenData?.afdelingen])
   const [markError, setMarkError] = useState('')
   const [markUnreadBusy, setMarkUnreadBusy] = useState(false)
   const [markUnreadOk, setMarkUnreadOk] = useState(false)
@@ -106,7 +118,7 @@ export default function NieuwsDetailPage() {
                 </span>
               )}
               <span className="text-xs" style={{ color: dashboardUi.textMuted }}>
-                {post.category}
+                {afdelingLabel || post.category}
               </span>
               {post.published_at && (
                 <time className="text-xs" style={{ color: dashboardUi.textMuted }} dateTime={post.published_at}>

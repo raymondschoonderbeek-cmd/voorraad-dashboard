@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
-import { isDrgNewsCategory } from '@/lib/news-types'
+import { isValidNewsAfdelingSlug } from '@/lib/news-afdelingen'
 
 /**
  * GET: lijst berichten (RLS: zonder beheerrecht alleen gepubliceerde).
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   let qy = supabase.from('drg_news_posts').select('*').order('published_at', { ascending: false, nullsFirst: true })
 
-  if (category && isDrgNewsCategory(category)) {
+  if (category && (await isValidNewsAfdelingSlug(supabase, category))) {
     qy = qy.eq('category', category)
   }
   if (importantOnly) {
@@ -59,10 +59,21 @@ export async function POST(request: NextRequest) {
 
   const body_html = typeof body.body_html === 'string' ? body.body_html : ''
   const excerpt = typeof body.excerpt === 'string' ? body.excerpt.trim() || null : null
-  const category =
-    typeof body.category === 'string' && isDrgNewsCategory(body.category.trim())
-      ? body.category.trim()
-      : 'algemeen'
+
+  let category = 'algemeen'
+  if (typeof body.category === 'string') {
+    const c = body.category.trim()
+    if (c && (await isValidNewsAfdelingSlug(auth.supabase, c))) category = c
+    else {
+      const { data: first } = await auth.supabase
+        .from('drg_news_afdelingen')
+        .select('slug')
+        .order('sort_order', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (first?.slug) category = first.slug
+    }
+  }
   const is_important = body.is_important === true
   let published_at: string | null = null
   if (typeof body.published_at === 'string' && body.published_at.trim() !== '') {

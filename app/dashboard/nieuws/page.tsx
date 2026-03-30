@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
-import { DRG_NEWS_CATEGORIES, type DrgNewsPost } from '@/lib/news-types'
+import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
+import type { DrgNewsPost } from '@/lib/news-types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -25,6 +26,13 @@ export default function NieuwsOverzichtPage() {
   const { data, error, isLoading, mutate: refetchNews } = useSWR<{ posts: DrgNewsPost[] }>(query, fetcher)
   const { data: unreadData } = useSWR<{ count: number }>('/api/news/unread', fetcher)
   const { data: sessionInfo } = useSWR<{ canManageInterneNieuws?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: afdelingenData } = useSWR<{ afdelingen: DrgNewsAfdeling[] }>('/api/news/afdelingen', fetcher)
+
+  const labelVoorSlug = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const a of afdelingenData?.afdelingen ?? []) m.set(a.slug, a.label)
+    return (slug: string) => m.get(slug) ?? slug
+  }, [afdelingenData?.afdelingen])
 
   const posts = data?.posts ?? []
   const unread = unreadData?.count ?? 0
@@ -81,7 +89,7 @@ export default function NieuwsOverzichtPage() {
         >
           <div className="flex-1 min-w-[140px]">
             <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: dashboardUi.textSubtle }}>
-              Categorie
+              Afdeling
             </label>
             <select
               value={category}
@@ -90,9 +98,9 @@ export default function NieuwsOverzichtPage() {
               style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
             >
               <option value="">Alle</option>
-              {DRG_NEWS_CATEGORIES.map(c => (
-                <option key={c} value={c}>
-                  {c}
+              {(afdelingenData?.afdelingen ?? []).map(a => (
+                <option key={a.id} value={a.slug}>
+                  {a.label}
                 </option>
               ))}
             </select>
@@ -159,7 +167,7 @@ export default function NieuwsOverzichtPage() {
                     </span>
                   )}
                   <span className="text-xs" style={{ color: dashboardUi.textMuted }}>
-                    {p.category}
+                    {labelVoorSlug(p.category)}
                   </span>
                   {p.published_at && (
                     <time className="text-xs ml-auto" style={{ color: dashboardUi.textMuted }} dateTime={p.published_at}>

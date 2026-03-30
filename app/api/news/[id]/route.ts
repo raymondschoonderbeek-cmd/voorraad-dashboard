@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
-import { isDrgNewsCategory } from '@/lib/news-types'
+import { isValidNewsAfdelingSlug } from '@/lib/news-afdelingen'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -38,8 +38,9 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (typeof body.title === 'string') update.title = body.title.trim()
   if (typeof body.body_html === 'string') update.body_html = body.body_html
   if (typeof body.excerpt === 'string') update.excerpt = body.excerpt.trim() || null
-  if (typeof body.category === 'string' && isDrgNewsCategory(body.category.trim())) {
-    update.category = body.category.trim()
+  if (typeof body.category === 'string') {
+    const c = body.category.trim()
+    if (c && (await isValidNewsAfdelingSlug(auth.supabase, c))) update.category = c
   }
   if (typeof body.is_important === 'boolean') update.is_important = body.is_important
   if (body.publish === true && !body.published_at) {
