@@ -10,6 +10,8 @@ import type { ItCmdbHardware } from '@/lib/it-cmdb-types'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 const F = FONT_FAMILY
+/** Vaste leesbare tekst op witte kaarten (niet `textMuted` — te licht op wit) */
+const TABLE_TEXT = '#1e293b'
 
 function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by'> {
   return {
@@ -77,6 +79,20 @@ export default function ItCmdbPage() {
     }
     return [...set].sort((a, b) => a.localeCompare(b, 'nl'))
   }, [items])
+
+  const hasActiveFilter = Boolean(q.trim() || filterLocation.trim() || filterIntune.trim())
+
+  /** Aantallen per type (apparaat), gesorteerd op frequentie. */
+  const statsByType = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const it of items) {
+      const t = it.device_type?.trim() || '(Geen type)'
+      m.set(t, (m.get(t) ?? 0) + 1)
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  }, [items])
+
+  const maxTypeCount = statsByType[0]?.[1] ?? 1
 
   function openCreate() {
     setEditing(null)
@@ -230,7 +246,7 @@ export default function ItCmdbPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-3 sm:p-5 max-w-[1400px] mx-auto w-full space-y-4">
+      <main className="flex-1 p-3 sm:p-5 max-w-[1400px] mx-auto w-full space-y-4" style={{ color: TABLE_TEXT }}>
         <div className="flex flex-col lg:flex-row lg:items-end gap-3 lg:justify-between">
           <div>
             <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>
@@ -332,6 +348,63 @@ export default function ItCmdbPage() {
           </div>
         </div>
 
+        {!isLoading && items.length > 0 && (
+          <section
+            className="rounded-2xl p-4 sm:p-5"
+            style={{ background: dashboardUi.cardWhite.background, border: dashboardUi.cardWhite.border, boxShadow: dashboardUi.cardWhite.boxShadow }}
+            aria-labelledby="it-cmdb-stats-heading"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+              <div>
+                <h2 id="it-cmdb-stats-heading" className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                  Statistiek per type
+                </h2>
+                <p className="text-xs m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
+                  {hasActiveFilter
+                    ? 'Gebaseerd op de huidige zoek- en filterresultaten.'
+                    : 'Alle apparaten in het overzicht.'}{' '}
+                  <span className="font-semibold" style={{ color: TABLE_TEXT }}>
+                    {items.length} totaal
+                  </span>
+                  {statsByType.length > 0 && (
+                    <span>
+                      {' '}
+                      · {statsByType.length} {statsByType.length === 1 ? 'type' : 'verschillende types'}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:gap-2">
+              {statsByType.map(([typeLabel, count]) => {
+                const pct = maxTypeCount > 0 ? Math.round((count / maxTypeCount) * 100) : 0
+                return (
+                  <div key={typeLabel}>
+                    <div className="flex items-baseline justify-between gap-3 mb-1">
+                      <span className="text-sm font-medium truncate min-w-0" style={{ color: TABLE_TEXT, fontFamily: F }} title={typeLabel}>
+                        {typeLabel}
+                      </span>
+                      <span className="text-sm font-bold tabular-nums shrink-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                        {count}
+                        <span className="font-normal ml-1" style={{ color: dashboardUi.textMuted }}>
+                          ({items.length > 0 ? Math.round((count / items.length) * 100) : 0}%)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(45,69,124,0.08)' }}>
+                      <div
+                        className="h-full rounded-full transition-[width] duration-300"
+                        style={{ width: `${pct}%`, background: DYNAMO_BLUE }}
+                        role="presentation"
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {error && (
           <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
             Kon gegevens niet laden.
@@ -352,7 +425,10 @@ export default function ItCmdbPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[900px]">
+              <table
+                className="w-full text-sm border-collapse min-w-[900px]"
+                style={{ color: TABLE_TEXT, fontFamily: F }}
+              >
                 <thead>
                   <tr style={{ background: 'rgba(45,69,124,0.06)', borderBottom: '1px solid rgba(45,69,124,0.1)' }}>
                     {['Serie', 'Hostname', 'Intune', 'Gebruiker', 'Type', 'Opmerkingen', 'Locatie', ''].map(h => (
@@ -364,21 +440,29 @@ export default function ItCmdbPage() {
                 </thead>
                 <tbody>
                   {items.map(row => (
-                    <tr key={row.id} className="border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.02)]">
-                      <td className="px-3 py-2.5 font-mono text-xs font-semibold" style={{ color: DYNAMO_BLUE }}>
+                    <tr key={row.id} className="border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)]">
+                      <td className="px-3 py-2.5 font-mono text-xs font-semibold align-top" style={{ color: DYNAMO_BLUE }}>
                         {row.serial_number}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-xs max-w-[180px]" style={{ color: dashboardUi.textMuted }}>
+                      <td className="px-3 py-2.5 font-mono text-xs max-w-[180px] align-top" style={{ color: TABLE_TEXT }}>
                         {row.hostname || '—'}
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{row.intune || '—'}</td>
-                      <td className="px-3 py-2.5 max-w-[160px]">{row.user_name || '—'}</td>
-                      <td className="px-3 py-2.5 max-w-[200px]">{row.device_type || '—'}</td>
-                      <td className="px-3 py-2.5 max-w-[240px] text-xs" style={{ color: dashboardUi.textMuted }}>
+                      <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
+                        {row.intune || '—'}
+                      </td>
+                      <td className="px-3 py-2.5 max-w-[160px] align-top" style={{ color: TABLE_TEXT }}>
+                        {row.user_name || '—'}
+                      </td>
+                      <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
+                        {row.device_type || '—'}
+                      </td>
+                      <td className="px-3 py-2.5 max-w-[280px] text-xs leading-relaxed align-top" style={{ color: TABLE_TEXT }}>
                         {row.notes || '—'}
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{row.location || '—'}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-right">
+                      <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
+                        {row.location || '—'}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-right align-top">
                         <button type="button" className="font-semibold mr-3" style={{ color: DYNAMO_BLUE }} onClick={() => openEdit(row)}>
                           Bewerken
                         </button>
