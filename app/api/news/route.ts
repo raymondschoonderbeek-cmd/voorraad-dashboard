@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
+import { canManageInterneNieuws, requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { isValidNewsAfdelingSlug } from '@/lib/news-afdelingen'
 
 /**
- * GET: lijst berichten (RLS: zonder beheerrecht alleen gepubliceerde).
- * Query: category, important_only=1, q=zoekterm
+ * GET: lijst berichten.
+ * Standaard (zonder beheer=1): alleen live gepubliceerde berichten (published_at ≤ nu), ook voor beheerders —
+ * het teamoverzicht toont geen concepten of toekomstige planning.
+ * Query beheer=1: alle berichten (incl. concept & gepland), alleen voor nieuwsbeheerders.
+ * Overige query: category, important_only=1, q=zoekterm
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -15,11 +18,21 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
+  const beheer = searchParams.get('beheer') === '1' || searchParams.get('beheer') === 'true'
   const category = searchParams.get('category')?.trim()
   const importantOnly = searchParams.get('important_only') === '1' || searchParams.get('important_only') === 'true'
   const q = searchParams.get('q')?.trim()
 
+  if (beheer && !(await canManageInterneNieuws(supabase, user.id))) {
+    return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  }
+
   let qy = supabase.from('drg_news_posts').select('*').order('published_at', { ascending: false, nullsFirst: true })
+
+  if (!beheer) {
+    const nowIso = new Date().toISOString()
+    qy = qy.not('published_at', 'is', null).lte('published_at', nowIso)
+  }
 
   if (category && (await isValidNewsAfdelingSlug(supabase, category))) {
     qy = qy.eq('category', category)

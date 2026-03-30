@@ -183,7 +183,7 @@ export function NieuwsBeheerTab() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/news')
+      const res = await fetch('/api/news?beheer=1')
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error ?? 'Laden mislukt')
       setPosts(Array.isArray(data.posts) ? data.posts : [])
