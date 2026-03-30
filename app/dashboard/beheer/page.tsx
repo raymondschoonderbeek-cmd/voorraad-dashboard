@@ -20,6 +20,7 @@ const MODULE_LABELS: Record<DashboardModuleId, string> = {
   'brand-groep': 'Brandgroep',
   'campagne-fietsen': 'Campagnefietsen',
   'branche-nieuws': 'Branche nieuws',
+  'interne-nieuws': 'Interne nieuwsberichten beheer',
   meer: 'Meer',
 }
 type LandFilter = 'alle' | LandCode

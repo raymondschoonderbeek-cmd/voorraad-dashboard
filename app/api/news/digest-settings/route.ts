@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { parseHHmmToMinutes } from '@/lib/amsterdam-time'
 
@@ -14,16 +14,16 @@ const WEEKDAY_LABELS: Record<number, string> = {
 }
 
 /**
- * GET: digest-config (alleen admin).
+ * GET: digest-config (admin of interne-nieuws-module).
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
 
-  const admin = await requireAdmin()
-  if (!admin.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireInterneNieuwsBeheer()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const { data, error } = await admin.supabase.from('drg_news_digest_config').select('*').eq('id', 1).maybeSingle()
+  const { data, error } = await auth.supabase.from('drg_news_digest_config').select('*').eq('id', 1).maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) {
@@ -49,14 +49,14 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * PATCH: digest-config (alleen admin).
+ * PATCH: digest-config (admin of interne-nieuws-module).
  */
 export async function PATCH(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
 
-  const admin = await requireAdmin()
-  if (!admin.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireInterneNieuwsBeheer()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
   let body: Record<string, unknown>
   try {
@@ -85,10 +85,10 @@ export async function PATCH(request: NextRequest) {
     update.digest_time_local = s
   }
 
-  let { data, error } = await admin.supabase.from('drg_news_digest_config').update(update).eq('id', 1).select('*').maybeSingle()
+  let { data, error } = await auth.supabase.from('drg_news_digest_config').update(update).eq('id', 1).select('*').maybeSingle()
 
   if (!error && !data) {
-    const ins = await admin.supabase
+    const ins = await auth.supabase
       .from('drg_news_digest_config')
       .insert({
         id: 1,

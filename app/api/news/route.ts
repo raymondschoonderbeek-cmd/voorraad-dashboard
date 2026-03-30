@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, requireAuth } from '@/lib/auth'
+import { requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { isDrgNewsCategory } from '@/lib/news-types'
 
 /**
- * GET: lijst berichten (RLS: niet-admin alleen gepubliceerde).
+ * GET: lijst berichten (RLS: zonder beheerrecht alleen gepubliceerde).
  * Query: category, important_only=1, q=zoekterm
  */
 export async function GET(request: NextRequest) {
@@ -38,14 +38,14 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST: nieuw bericht (alleen admin).
+ * POST: nieuw bericht (admin of interne-nieuws-module).
  */
 export async function POST(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
 
-  const admin = await requireAdmin()
-  if (!admin.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireInterneNieuwsBeheer()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
   let body: Record<string, unknown>
   try {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     published_at = new Date().toISOString()
   }
 
-  const { data, error } = await admin.supabase
+  const { data, error } = await auth.supabase
     .from('drg_news_posts')
     .insert({
       title,
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       category,
       is_important,
       published_at,
-      created_by: admin.user.id,
+      created_by: auth.user.id,
       updated_at: new Date().toISOString(),
     })
     .select('*')

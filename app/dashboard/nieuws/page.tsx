@@ -24,6 +24,7 @@ export default function NieuwsOverzichtPage() {
 
   const { data, error, isLoading, mutate: refetchNews } = useSWR<{ posts: DrgNewsPost[] }>(query, fetcher)
   const { data: unreadData } = useSWR<{ count: number }>('/api/news/unread', fetcher)
+  const { data: sessionInfo } = useSWR<{ canManageInterneNieuws?: boolean }>('/api/auth/session-info', fetcher)
 
   const posts = data?.posts ?? []
   const unread = unreadData?.count ?? 0
@@ -51,6 +52,15 @@ export default function NieuwsOverzichtPage() {
             >
               {unread} ongelezen
             </span>
+          )}
+          {sessionInfo?.canManageInterneNieuws && (
+            <Link
+              href="/dashboard/nieuws/beheer"
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-white/25 text-white hover:bg-white/10 ml-auto sm:ml-0"
+              style={{ fontFamily: FONT_FAMILY }}
+            >
+              Beheer nieuwsberichten
+            </Link>
           )}
         </div>
       </header>

@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         lunchOnly: false,
         lunchModuleEnabled: false,
         campagneFietsenEnabled: false,
+        canManageInterneNieuws: false,
         dashboardModules: [],
         allowedCountries: null,
         mustChangePassword: false,
@@ -62,6 +63,8 @@ export async function GET(request: NextRequest) {
       if (!isAdmin) campagneFietsenEnabled = dashboardModules.includes('campagne-fietsen')
     }
 
+    const canManageInterneNieuws = isAdmin || dashboardModules.includes('interne-nieuws')
+
     const clientIp = getClientIp(request)
     const { data: dbIps, error: dbErr } = await supabase.from('trusted_ips').select('ip_or_cidr')
     const dbEntries = !dbErr && dbIps ? dbIps.map(r => r.ip_or_cidr).filter(Boolean) : []
@@ -98,6 +101,7 @@ export async function GET(request: NextRequest) {
       lunchOnly,
       lunchModuleEnabled,
       campagneFietsenEnabled,
+      canManageInterneNieuws,
       dashboardModules,
       allowedCountries,
       mustChangePassword,
@@ -113,6 +117,7 @@ export async function GET(request: NextRequest) {
       lunchOnly: false,
       lunchModuleEnabled: false,
       campagneFietsenEnabled: false,
+      canManageInterneNieuws: false,
       dashboardModules: [],
       allowedCountries: null,
       mustChangePassword: false,

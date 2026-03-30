@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, requireAuth } from '@/lib/auth'
+import { requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { isDrgNewsCategory } from '@/lib/news-types'
 
@@ -23,8 +23,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const rl = withRateLimit(request)
   if (rl) return rl
 
-  const admin = await requireAdmin()
-  if (!admin.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireInterneNieuwsBeheer()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
   const { id } = await ctx.params
   let body: Record<string, unknown>
@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     update.published_at = body.published_at
   }
 
-  const { data, error } = await admin.supabase
+  const { data, error } = await auth.supabase
     .from('drg_news_posts')
     .update(update)
     .eq('id', id)
@@ -66,11 +66,11 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
   const rl = withRateLimit(request)
   if (rl) return rl
 
-  const admin = await requireAdmin()
-  if (!admin.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+  const auth = await requireInterneNieuwsBeheer()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
   const { id } = await ctx.params
-  const { error } = await admin.supabase.from('drg_news_posts').delete().eq('id', id)
+  const { error } = await auth.supabase.from('drg_news_posts').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
