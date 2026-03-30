@@ -18,7 +18,40 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const supabase = createClient()
 
+  /** Tokens in de hash (implicit flow) — o.a. als een oude server-callback de hash kwijtraakte en je op /login landt. */
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const h = window.location.hash
+    if (!h || h.length <= 1) return
+    const params = new URLSearchParams(h.substring(1))
+    const access_token = params.get('access_token')
+    const refresh_token = params.get('refresh_token')
+    if (!access_token || !refresh_token) return
+
+    const client = createClient()
+    let cancelled = false
+    void (async () => {
+      const { error } = await client.auth.setSession({ access_token, refresh_token })
+      if (cancelled) return
+      window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''))
+      if (error) {
+        setError(error.message)
+        return
+      }
+      const nextParam = searchParams.get('next')?.trim()
+      const nextPath =
+        nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/dashboard'
+      router.replace(nextPath)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [router, searchParams])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash?.includes('access_token')) {
+      return
+    }
     const err = searchParams.get('error')
     const detail = searchParams.get('detail')
     const reason = searchParams.get('reason')
