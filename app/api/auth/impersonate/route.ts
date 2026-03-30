@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { generateMagicLinkWithRetry } from '@/lib/auth-magic-link-server'
-import { getSiteUrl } from '@/lib/site-url'
+import { resolveAppOriginForAuthRedirect } from '@/lib/site-url'
 
 function isUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  let body: { user_id?: string }
+  let body: { user_id?: string; redirect_origin?: string }
   try {
     body = await request.json()
   } catch {
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
   }
 
   const email = targetUser.user.email.trim().toLowerCase()
-  const site = getSiteUrl()
-  const redirectTo = `${site}/auth/callback?next=${encodeURIComponent('/dashboard')}`
+  const origin = resolveAppOriginForAuthRedirect(request, body.redirect_origin)
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent('/dashboard')}`
 
   try {
     const action_link = await generateMagicLinkWithRetry(adminClient, email, redirectTo)

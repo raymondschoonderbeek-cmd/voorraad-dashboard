@@ -540,7 +540,10 @@ export default function BeheerPage() {
       const res = await fetch('/api/auth/impersonate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({
+          user_id: userId,
+          redirect_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Mislukt')

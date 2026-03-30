@@ -20,7 +20,19 @@ function LoginForm() {
 
   useEffect(() => {
     const err = searchParams.get('error')
-    if (err === 'auth') setError('Inloggen mislukt. Probeer opnieuw of gebruik je wachtwoord.')
+    const detail = searchParams.get('detail')
+    const reason = searchParams.get('reason')
+    if (err === 'auth') {
+      if (detail) {
+        setError(`Inloggen mislukt: ${detail}`)
+      } else if (reason === 'no_code') {
+        setError(
+          'De inloglink kon niet worden voltooid (geen autorisatiecode). Controleer of de link nog geldig is, of log opnieuw in via Beheer → Inloggen als.'
+        )
+      } else {
+        setError('Inloggen mislukt. Probeer opnieuw of gebruik je wachtwoord.')
+      }
+    }
   }, [searchParams])
 
   useEffect(() => {
