@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DYNAMO_BLUE } from '@/lib/theme'
+import { DYNAMO_BLUE, dashboardUi } from '@/lib/theme'
 import type { DrgNewsPost } from '@/lib/news-types'
 import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
 import { NieuwsDigestSettings } from '@/components/nieuws/NieuwsDigestSettings'
@@ -50,6 +50,7 @@ export function NieuwsBeheerTab() {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const [afdelingen, setAfdelingen] = useState<DrgNewsAfdeling[]>([])
   /** Lege string = alle afdelingen tonen */
@@ -69,11 +70,22 @@ export function NieuwsBeheerTab() {
     void loadAfdelingen()
   }, [loadAfdelingen])
 
+  useEffect(() => {
+    if (!previewOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewOpen])
+
   const labelVoorSlug = useMemo(() => {
     const m = new Map<string, string>()
     for (const a of afdelingen) m.set(a.slug, a.label)
     return (slug: string) => m.get(slug) ?? slug
   }, [afdelingen])
+
+  const previewAfdelingLabel = useMemo(() => labelVoorSlug(category), [labelVoorSlug, category])
 
   const filteredPosts = useMemo(() => {
     if (!listFilterAfdeling.trim()) return posts
@@ -472,6 +484,14 @@ export function NieuwsBeheerTab() {
               >
                 {uploadBusy ? 'Uploaden…' : 'Afbeelding toevoegen'}
               </button>
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-90"
+                style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE, fontFamily: F, border: '1px solid rgba(45,69,124,0.15)' }}
+              >
+                Voorbeeld
+              </button>
               {uploadErr && (
                 <span className="text-xs font-medium" style={{ color: '#dc2626', fontFamily: F }}>
                   {uploadErr}
@@ -480,15 +500,16 @@ export function NieuwsBeheerTab() {
             </div>
             <textarea
               ref={bodyRef}
-              className={`${inputClass} font-mono text-xs min-h-[200px]`}
+              className={`${inputClass} font-mono text-[13px] leading-relaxed min-h-[280px]`}
               style={inputStyle}
               value={bodyHtml}
               onChange={e => setBodyHtml(e.target.value)}
               onPaste={onBodyPaste}
               placeholder="<p>...</p>"
+              spellCheck={false}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
             <button type="submit" disabled={saving} className="rounded-xl px-5 py-2.5 text-sm font-bold text-white" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
               {saving ? 'Bezig…' : 'Opslaan'}
             </button>
@@ -503,6 +524,14 @@ export function NieuwsBeheerTab() {
             >
               Annuleren
             </button>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold"
+              style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.18)', color: DYNAMO_BLUE, fontFamily: F }}
+            >
+              Voorbeeld
+            </button>
             {editing && (
               <button
                 type="button"
@@ -515,6 +544,75 @@ export function NieuwsBeheerTab() {
             )}
           </div>
         </form>
+      )}
+
+      {previewOpen && (creating || editing) && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center p-3 sm:p-5"
+          style={{ background: 'rgba(15,23,42,0.5)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="nieuws-preview-title"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[min(90vh,880px)] flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+            style={{
+              background: dashboardUi.cardWhite.background,
+              border: dashboardUi.cardWhite.border,
+              boxShadow: dashboardUi.cardWhite.boxShadow,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5 border-b shrink-0"
+              style={{ borderColor: 'rgba(102,145,174,0.22)', background: 'rgba(45,69,124,0.03)' }}
+            >
+              <p className="text-xs font-bold uppercase tracking-wide m-0" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
+                Voorbeeld (zoals voor medewerkers)
+              </p>
+              <button
+                type="button"
+                className="rounded-lg px-3 py-1.5 text-xs font-bold shrink-0"
+                style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}
+                onClick={() => setPreviewOpen(false)}
+              >
+                Sluiten
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 py-5 sm:px-8 sm:py-7">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                {isImportant && (
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'rgba(220,38,38,0.12)', color: '#b91c1c' }}>
+                    Belangrijk
+                  </span>
+                )}
+                <span className="text-xs" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                  {previewAfdelingLabel}
+                </span>
+                {publishMode === 'draft' && (
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.65)' }}>
+                    Concept
+                  </span>
+                )}
+              </div>
+              <h1 id="nieuws-preview-title" className="m-0 text-xl sm:text-2xl font-bold leading-tight" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                {title.trim() || '(Nog geen titel)'}
+              </h1>
+              {excerpt.trim() ? (
+                <p className="m-0 mt-3 text-base leading-relaxed" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                  {excerpt}
+                </p>
+              ) : null}
+              <div
+                className="news-body-html mt-6"
+                dangerouslySetInnerHTML={{
+                  __html: bodyHtml.trim() ? bodyHtml : '<p><em>Geen inhoud — typ hierboven HTML of plak tekst.</em></p>',
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)' }}>
