@@ -9,12 +9,15 @@ export function isFreshdeskConfigured(): boolean {
   return !!(d && k)
 }
 
-/** Freshdesk-groep (bijv. IT); zet FRESHDESK_IT_GROUP_ID op de server (numeriek id uit Admin → Groups). */
+/** Standaard: IT (support_agent_group) in Freshdesk; override met FRESHDESK_IT_GROUP_ID. */
+export const DEFAULT_FRESHDESK_IT_GROUP_ID = 6000064080
+
 export function getFreshdeskItGroupId(): number | null {
   const raw = process.env.FRESHDESK_IT_GROUP_ID?.trim()
-  if (!raw) return null
+  if (!raw) return DEFAULT_FRESHDESK_IT_GROUP_ID
   const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_FRESHDESK_IT_GROUP_ID
+  return Math.floor(n)
 }
 
 function normalizeDomain(raw: string): string {

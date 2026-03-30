@@ -233,8 +233,6 @@ export default function ItCmdbPage() {
   const [freshdeskMsg, setFreshdeskMsg] = useState<{ ok: boolean; text: string } | null>(null)
   /** Apparaat openen voor detail + Freshdesk (klik op rij) */
   const [deviceDetailId, setDeviceDetailId] = useState<string | null>(null)
-  /** GET /api/it-cmdb/freshdesk-ticket?groups=1 — Freshdesk-groepen (id + naam) */
-  const [fdGroupsFetch, setFdGroupsFetch] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -293,12 +291,6 @@ export default function ItCmdbPage() {
     fetcher,
     { shouldRetryOnError: false }
   )
-  const { data: fdGroupsListData, isLoading: fdGroupsListLoading } = useSWR<{
-    configured?: boolean
-    freshdeskItGroupId?: number | null
-    groups?: { id: number; name: string; description: string | null; group_type: string | null }[]
-    error?: string
-  }>(allowed && fdGroupsFetch ? '/api/it-cmdb/freshdesk-ticket?groups=1' : null, fetcher, { shouldRetryOnError: false })
 
   const fdDetailUrl =
     allowed && deviceDetailId ? `/api/it-cmdb/freshdesk-ticket?hardwareId=${encodeURIComponent(deviceDetailId)}` : null
@@ -320,7 +312,6 @@ export default function ItCmdbPage() {
         clearedStoredId?: boolean
         fetchError?: string
         histError?: string
-        freshdeskItGroupConfigured?: boolean
         ticketHistory?: FdTicketHistoryRow[]
         item?: ItCmdbHardwareListItem
         activeTicket?: {
@@ -349,7 +340,6 @@ export default function ItCmdbPage() {
         lastTicket?: null
         clearedStoredId?: false
         ticketHistory?: readonly []
-        freshdeskItGroupConfigured?: false
       }
   >(fdDetailUrl, fetcher, { shouldRetryOnError: false })
 
@@ -366,10 +356,6 @@ export default function ItCmdbPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [deviceDetailId])
-
-  useEffect(() => {
-    setFdGroupsFetch(false)
   }, [deviceDetailId])
 
   const items = data?.items ?? []
@@ -1176,51 +1162,6 @@ export default function ItCmdbPage() {
                       Geschiedenis kon niet geladen worden: {fdDetailData.histError}
                     </p>
                   ) : null}
-                  {fdDetailData &&
-                    typeof fdDetailData === 'object' &&
-                    'configured' in fdDetailData &&
-                    fdDetailData.configured === true &&
-                    'freshdeskItGroupConfigured' in fdDetailData &&
-                    fdDetailData.freshdeskItGroupConfigured === false && (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs m-0 leading-relaxed" style={{ color: dashboardUi.textMuted }}>
-                        Nieuwe tickets worden nog niet automatisch aan de groep IT toegewezen. Zet op de server{' '}
-                        <code className="rounded px-1 py-0.5 text-[11px]" style={{ background: 'rgba(45,69,124,0.08)' }}>
-                          FRESHDESK_IT_GROUP_ID
-                        </code>{' '}
-                        op het numerieke <span className="font-semibold" style={{ color: TABLE_TEXT }}>id</span> van de
-                        juiste groep (zie Freshdesk Admin → Teams, of de lijst hieronder).
-                      </p>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold underline"
-                        style={{ color: DYNAMO_BLUE, fontFamily: F }}
-                        onClick={() => setFdGroupsFetch(true)}
-                      >
-                        {fdGroupsListLoading ? 'Groepen laden…' : 'Groepen uit Freshdesk-API tonen (id + naam)'}
-                      </button>
-                      {fdGroupsFetch && fdGroupsListData && typeof fdGroupsListData.error === 'string' && fdGroupsListData.error ? (
-                        <p className="text-xs m-0" style={{ color: '#b91c1c' }}>
-                          {fdGroupsListData.error}
-                        </p>
-                      ) : null}
-                      {fdGroupsFetch && fdGroupsListData?.groups && fdGroupsListData.groups.length > 0 ? (
-                        <ul className="m-0 p-0 list-none text-xs space-y-1 max-h-48 overflow-y-auto rounded-lg p-2" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.1)' }}>
-                          {fdGroupsListData.groups.map(g => (
-                            <li key={g.id} className="flex flex-wrap gap-x-2 gap-y-0.5" style={{ color: TABLE_TEXT }}>
-                              <span className="font-mono tabular-nums font-semibold" style={{ color: DYNAMO_BLUE }}>
-                                {g.id}
-                              </span>
-                              <span>{g.name}</span>
-                              {g.group_type ? (
-                                <span style={{ color: dashboardUi.textMuted }}>({g.group_type})</span>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  )}
                   {fdDetailData &&
                     typeof fdDetailData === 'object' &&
                     'ticketHistory' in fdDetailData &&
