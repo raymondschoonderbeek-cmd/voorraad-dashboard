@@ -59,6 +59,8 @@ export default function ItCmdbPage() {
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [statsOpen, setStatsOpen] = useState(false)
+  const [intuneSyncing, setIntuneSyncing] = useState(false)
+  const [intuneMsg, setIntuneMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -116,6 +118,11 @@ export default function ItCmdbPage() {
   const { data: portalUsersData } = useSWR<{ users: { user_id: string; email: string }[] }>(
     allowed ? '/api/it-cmdb/portal-users' : null,
     fetcher
+  )
+  const { data: intuneConfigData } = useSWR<{ configured: boolean }>(
+    allowed ? '/api/it-cmdb/intune-sync' : null,
+    fetcher,
+    { shouldRetryOnError: false }
   )
 
   const items = data?.items ?? []
@@ -226,6 +233,39 @@ export default function ItCmdbPage() {
       setFormError(err instanceof Error ? err.message : 'Opslaan mislukt')
     }
     setSaving(false)
+  }
+
+  async function onIntuneSync() {
+    setIntuneSyncing(true)
+    setIntuneMsg(null)
+    try {
+      const res = await fetch('/api/it-cmdb/intune-sync', { method: 'POST' })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setIntuneMsg({
+          ok: false,
+          text: typeof d.error === 'string' ? d.error : 'Intune-sync mislukt',
+        })
+        return
+      }
+      const parts = [
+        `${d.graphDevices ?? 0} apparaat/apparaten opgehaald bij Microsoft`,
+        `${d.inserted ?? 0} nieuw`,
+        `${d.updated ?? 0} bijgewerkt`,
+      ]
+      if (d.skippedNoSerial > 0) parts.push(`${d.skippedNoSerial} zonder serienummer overgeslagen`)
+      if (d.errorCount > 0) parts.push(`${d.errorCount} schrijffout(en)`)
+      let text = parts.join(' · ')
+      if (Array.isArray(d.errors) && d.errors.length > 0) {
+        text += `\n${d.errors.slice(0, 8).join('\n')}`
+        if (d.errors.length > 8) text += '\n…'
+      }
+      setIntuneMsg({ ok: d.errorCount > 0 ? false : true, text })
+      await mutate()
+    } catch {
+      setIntuneMsg({ ok: false, text: 'Netwerkfout bij Intune-sync' })
+    }
+    setIntuneSyncing(false)
   }
 
   async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -339,6 +379,20 @@ export default function ItCmdbPage() {
             </button>
             <button
               type="button"
+              disabled={intuneSyncing || intuneConfigData?.configured === false}
+              onClick={() => void onIntuneSync()}
+              className="rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ border: `2px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }}
+              title={
+                intuneConfigData?.configured === false
+                  ? 'Stel AZURE_TENANT_ID, AZURE_CLIENT_ID en AZURE_CLIENT_SECRET in (server) en verleen Graph DeviceManagementManagedDevices.Read.All'
+                  : 'Synchroniseer met Microsoft Intune (Graph API)'
+              }
+            >
+              {intuneSyncing ? 'Intune-sync…' : 'Sync Intune'}
+            </button>
+            <button
+              type="button"
               disabled={importing}
               onClick={() => importInputRef.current?.click()}
               className="rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:opacity-50"
@@ -368,6 +422,20 @@ export default function ItCmdbPage() {
             }}
           >
             {importMsg.text}
+          </div>
+        )}
+
+        {intuneMsg && (
+          <div
+            className="rounded-2xl p-4 text-sm whitespace-pre-wrap"
+            style={{
+              background: intuneMsg.ok ? '#f0fdf4' : '#fef2f2',
+              border: intuneMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)',
+              color: intuneMsg.ok ? '#15803d' : '#b91c1c',
+              fontFamily: F,
+            }}
+          >
+            {intuneMsg.text}
           </div>
         )}
 
