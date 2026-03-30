@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
-import type { ItCmdbHardware } from '@/lib/it-cmdb-types'
+import type { ItCmdbHardware, ItCmdbHardwareListItem } from '@/lib/it-cmdb-types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -13,12 +13,15 @@ const F = FONT_FAMILY
 /** Vaste leesbare tekst op witte kaarten (niet `textMuted` — te licht op wit) */
 const TABLE_TEXT = '#1e293b'
 
-function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by'> {
+function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'assigned_user_id'> & {
+  assigned_user_id: string
+} {
   return {
     serial_number: '',
     hostname: '',
     intune: '',
     user_name: '',
+    assigned_user_id: '',
     device_type: '',
     notes: '',
     location: '',
@@ -37,13 +40,14 @@ export default function ItCmdbPage() {
   const [filterNotes, setFilterNotes] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<ItCmdbHardware | null>(null)
+  const [editing, setEditing] = useState<ItCmdbHardwareListItem | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const importInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [statsOpen, setStatsOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -86,9 +90,14 @@ export default function ItCmdbPage() {
     filterLocation,
   ])
 
-  const { data, error, isLoading, mutate } = useSWR<{ items: ItCmdbHardware[] }>(allowed ? queryUrl : null, fetcher)
+  const { data, error, isLoading, mutate } = useSWR<{ items: ItCmdbHardwareListItem[] }>(allowed ? queryUrl : null, fetcher)
+  const { data: portalUsersData } = useSWR<{ users: { user_id: string; email: string }[] }>(
+    allowed ? '/api/it-cmdb/portal-users' : null,
+    fetcher
+  )
 
   const items = data?.items ?? []
+  const portalUsers = portalUsersData?.users ?? []
 
   const locationOptions = useMemo(() => {
     const set = new Set<string>()
@@ -129,13 +138,14 @@ export default function ItCmdbPage() {
     setModalOpen(true)
   }
 
-  function openEdit(row: ItCmdbHardware) {
+  function openEdit(row: ItCmdbHardwareListItem) {
     setEditing(row)
     setForm({
       serial_number: row.serial_number,
       hostname: row.hostname ?? '',
       intune: row.intune ?? '',
       user_name: row.user_name ?? '',
+      assigned_user_id: row.assigned_user_id ?? '',
       device_type: row.device_type ?? '',
       notes: row.notes ?? '',
       location: row.location ?? '',
@@ -162,6 +172,7 @@ export default function ItCmdbPage() {
             hostname: form.hostname,
             intune: form.intune || null,
             user_name: form.user_name || null,
+            assigned_user_id: form.assigned_user_id.trim() ? form.assigned_user_id : null,
             device_type: form.device_type || null,
             notes: form.notes || null,
             location: form.location || null,
@@ -178,6 +189,7 @@ export default function ItCmdbPage() {
             hostname: form.hostname,
             intune: form.intune || null,
             user_name: form.user_name || null,
+            assigned_user_id: form.assigned_user_id.trim() ? form.assigned_user_id : null,
             device_type: form.device_type || null,
             notes: form.notes || null,
             location: form.location || null,
@@ -226,7 +238,7 @@ export default function ItCmdbPage() {
   }
 
   const remove = useCallback(
-    async (row: ItCmdbHardware) => {
+    async (row: ItCmdbHardwareListItem) => {
       if (!confirm(`Regel ${row.serial_number} verwijderen?`)) return
       const res = await fetch(`/api/it-cmdb/${row.id}`, { method: 'DELETE' })
       if (!res.ok) {
@@ -295,6 +307,16 @@ export default function ItCmdbPage() {
             />
             <button
               type="button"
+              disabled={isLoading || items.length === 0}
+              onClick={() => setStatsOpen(true)}
+              className="rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ border: `2px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }}
+              title={items.length === 0 && !isLoading ? 'Geen regels om te tonen' : 'Verdeling per type'}
+            >
+              Statistiek
+            </button>
+            <button
+              type="button"
               disabled={importing}
               onClick={() => importInputRef.current?.click()}
               className="rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:opacity-50"
@@ -348,63 +370,6 @@ export default function ItCmdbPage() {
             Per kolom filter je in de tabel hieronder; kolomfilters worden gecombineerd met dit zoekveld.
           </p>
         </div>
-
-        {!isLoading && items.length > 0 && (
-          <section
-            className="rounded-2xl p-4 sm:p-5"
-            style={{ background: dashboardUi.cardWhite.background, border: dashboardUi.cardWhite.border, boxShadow: dashboardUi.cardWhite.boxShadow }}
-            aria-labelledby="it-cmdb-stats-heading"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
-              <div>
-                <h2 id="it-cmdb-stats-heading" className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-                  Statistiek per type
-                </h2>
-                <p className="text-xs m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
-                  {hasActiveFilter
-                    ? 'Gebaseerd op de huidige zoek- en filterresultaten.'
-                    : 'Alle apparaten in het overzicht.'}{' '}
-                  <span className="font-semibold" style={{ color: TABLE_TEXT }}>
-                    {items.length} totaal
-                  </span>
-                  {statsByType.length > 0 && (
-                    <span>
-                      {' '}
-                      · {statsByType.length} {statsByType.length === 1 ? 'type' : 'verschillende types'}
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:gap-2">
-              {statsByType.map(([typeLabel, count]) => {
-                const pct = maxTypeCount > 0 ? Math.round((count / maxTypeCount) * 100) : 0
-                return (
-                  <div key={typeLabel}>
-                    <div className="flex items-baseline justify-between gap-3 mb-1">
-                      <span className="text-sm font-medium truncate min-w-0" style={{ color: TABLE_TEXT, fontFamily: F }} title={typeLabel}>
-                        {typeLabel}
-                      </span>
-                      <span className="text-sm font-bold tabular-nums shrink-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-                        {count}
-                        <span className="font-normal ml-1" style={{ color: dashboardUi.textMuted }}>
-                          ({items.length > 0 ? Math.round((count / items.length) * 100) : 0}%)
-                        </span>
-                      </span>
-                    </div>
-                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(45,69,124,0.08)' }}>
-                      <div
-                        className="h-full rounded-full transition-[width] duration-300"
-                        style={{ width: `${pct}%`, background: DYNAMO_BLUE }}
-                        role="presentation"
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
 
         {error && (
           <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
@@ -559,8 +524,21 @@ export default function ItCmdbPage() {
                         <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
                           {row.intune || '—'}
                         </td>
-                        <td className="px-3 py-2.5 max-w-[160px] align-top" style={{ color: TABLE_TEXT }}>
-                          {row.user_name || '—'}
+                        <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
+                          {row.assigned_user_email ? (
+                            <span className="block">
+                              <span className="font-medium" title="Gekoppeld aan portal">
+                                {row.assigned_user_email}
+                              </span>
+                              {row.user_name?.trim() && row.user_name.trim() !== row.assigned_user_email ? (
+                                <span className="block text-xs mt-0.5 opacity-85" title="Vrije tekst / import">
+                                  {row.user_name}
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            row.user_name || '—'
+                          )}
                         </td>
                         <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
                           {row.device_type || '—'}
@@ -593,6 +571,78 @@ export default function ItCmdbPage() {
           )}
         </div>
       </main>
+
+      {statsOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-3"
+          style={{ background: 'rgba(15,23,42,0.45)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="it-cmdb-stats-heading"
+          onClick={() => setStatsOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5 space-y-4"
+            style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="it-cmdb-stats-heading" className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                Statistiek per type
+              </h2>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                style={{ border: `1px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }}
+                onClick={() => setStatsOpen(false)}
+              >
+                Sluiten
+              </button>
+            </div>
+            <p className="text-xs m-0" style={{ color: dashboardUi.textMuted }}>
+              {hasActiveFilter
+                ? 'Gebaseerd op de huidige zoek- en filterresultaten.'
+                : 'Alle apparaten in het overzicht.'}{' '}
+              <span className="font-semibold" style={{ color: TABLE_TEXT }}>
+                {items.length} totaal
+              </span>
+              {statsByType.length > 0 && (
+                <span>
+                  {' '}
+                  · {statsByType.length} {statsByType.length === 1 ? 'type' : 'verschillende types'}
+                </span>
+              )}
+            </p>
+            <div className="grid gap-3 sm:gap-2">
+              {statsByType.map(([typeLabel, count]) => {
+                const pct = maxTypeCount > 0 ? Math.round((count / maxTypeCount) * 100) : 0
+                return (
+                  <div key={typeLabel}>
+                    <div className="flex items-baseline justify-between gap-3 mb-1">
+                      <span className="text-sm font-medium truncate min-w-0" style={{ color: TABLE_TEXT, fontFamily: F }} title={typeLabel}>
+                        {typeLabel}
+                      </span>
+                      <span className="text-sm font-bold tabular-nums shrink-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                        {count}
+                        <span className="font-normal ml-1" style={{ color: dashboardUi.textMuted }}>
+                          ({items.length > 0 ? Math.round((count / items.length) * 100) : 0}%)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(45,69,124,0.08)' }}>
+                      <div
+                        className="h-full rounded-full transition-[width] duration-300"
+                        style={{ width: `${pct}%`, background: DYNAMO_BLUE }}
+                        role="presentation"
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalOpen && (
         <div
@@ -632,9 +682,37 @@ export default function ItCmdbPage() {
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
-                  Gebruiker
+                  Portalgebruiker (DRG)
                 </label>
-                <input className={inputClass} style={inputStyle} value={form.user_name ?? ''} onChange={e => setForm(f => ({ ...f, user_name: e.target.value }))} />
+                <select
+                  className={inputClass}
+                  style={inputStyle}
+                  value={form.assigned_user_id}
+                  onChange={e => setForm(f => ({ ...f, assigned_user_id: e.target.value }))}
+                  aria-label="Koppel aan portalgebruiker"
+                >
+                  <option value="">— Niet gekoppeld</option>
+                  {portalUsers.map(u => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.email || u.user_id}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
+                  Alleen gebruikers met een rol in Beheer (gebruiker_rollen).
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
+                  Gebruiker (vrije tekst / import)
+                </label>
+                <input
+                  className={inputClass}
+                  style={inputStyle}
+                  value={form.user_name ?? ''}
+                  onChange={e => setForm(f => ({ ...f, user_name: e.target.value }))}
+                  placeholder="Naam uit Intune of Excel, naast portal-koppeling"
+                />
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>

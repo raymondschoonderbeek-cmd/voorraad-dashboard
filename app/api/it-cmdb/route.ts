@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
+import { assertPortalUser, enrichAssignedEmails, parseAssignedUserId } from '@/lib/it-cmdb-assigned-user'
 
 function ilikeFragment(value: string): string {
   return value.replace(/%/g, '').trim()
@@ -73,7 +74,8 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ items: data ?? [] })
+  const items = await enrichAssignedEmails(auth.supabase, (data ?? []) as { assigned_user_id: string | null }[])
+  return NextResponse.json({ items })
 }
 
 export async function POST(request: NextRequest) {
@@ -93,6 +95,13 @@ export async function POST(request: NextRequest) {
   const serial_number = typeof body.serial_number === 'string' ? body.serial_number.trim() : ''
   if (!serial_number) return NextResponse.json({ error: 'serial_number is verplicht' }, { status: 400 })
 
+  const parsedAid = parseAssignedUserId(body)
+  if (!parsedAid.ok) return NextResponse.json({ error: 'Ongeldige assigned_user_id' }, { status: 400 })
+  const aid = parsedAid.value
+  if (aid != null && !(await assertPortalUser(auth.supabase, aid))) {
+    return NextResponse.json({ error: 'Gebruiker hoort niet bij het portal (gebruiker_rollen).' }, { status: 400 })
+  }
+
   const row = {
     serial_number,
     hostname: typeof body.hostname === 'string' ? body.hostname.trim() : '',
@@ -101,6 +110,7 @@ export async function POST(request: NextRequest) {
     device_type: typeof body.device_type === 'string' ? body.device_type.trim() || null : null,
     notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,
     location: typeof body.location === 'string' ? body.location.trim() || null : null,
+    assigned_user_id: aid === undefined ? null : aid,
     created_by: auth.user.id,
     updated_at: new Date().toISOString(),
   }
@@ -112,5 +122,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json({ item: data })
+  const [enriched] = await enrichAssignedEmails(auth.supabase, [data as { assigned_user_id: string | null }])
+  return NextResponse.json({ item: enriched })
 }

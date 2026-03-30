@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
+import { assertPortalUser, enrichAssignedEmails, parseAssignedUserId } from '@/lib/it-cmdb-assigned-user'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -15,7 +16,8 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { data, error } = await auth.supabase.from('it_cmdb_hardware').select('*').eq('id', id).maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Niet gevonden' }, { status: 404 })
-  return NextResponse.json({ item: data })
+  const [enriched] = await enrichAssignedEmails(auth.supabase, [data as { assigned_user_id: string | null }])
+  return NextResponse.json({ item: enriched })
 }
 
 export async function PATCH(request: NextRequest, ctx: Ctx) {
@@ -45,6 +47,15 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (body.location === null || typeof body.location === 'string')
     update.location = body.location === null ? null : String(body.location).trim() || null
 
+  const parsedAid = parseAssignedUserId(body)
+  if (!parsedAid.ok) return NextResponse.json({ error: 'Ongeldige assigned_user_id' }, { status: 400 })
+  if (parsedAid.value !== undefined) {
+    if (parsedAid.value != null && !(await assertPortalUser(auth.supabase, parsedAid.value))) {
+      return NextResponse.json({ error: 'Gebruiker hoort niet bij het portal (gebruiker_rollen).' }, { status: 400 })
+    }
+    update.assigned_user_id = parsedAid.value
+  }
+
   if (Object.keys(update).length <= 1) {
     return NextResponse.json({ error: 'Geen velden om bij te werken' }, { status: 400 })
   }
@@ -55,7 +66,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
   if (!data) return NextResponse.json({ error: 'Niet gevonden' }, { status: 404 })
-  return NextResponse.json({ item: data })
+  const [enriched] = await enrichAssignedEmails(auth.supabase, [data as { assigned_user_id: string | null }])
+  return NextResponse.json({ item: enriched })
 }
 
 export async function DELETE(request: NextRequest, ctx: Ctx) {
