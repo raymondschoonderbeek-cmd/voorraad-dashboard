@@ -29,8 +29,13 @@ export default function ItCmdbPage() {
   const router = useRouter()
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [q, setQ] = useState('')
-  const [filterLocation, setFilterLocation] = useState('')
+  const [filterSerial, setFilterSerial] = useState('')
+  const [filterHostname, setFilterHostname] = useState('')
   const [filterIntune, setFilterIntune] = useState('')
+  const [filterUserName, setFilterUserName] = useState('')
+  const [filterDeviceType, setFilterDeviceType] = useState('')
+  const [filterNotes, setFilterNotes] = useState('')
+  const [filterLocation, setFilterLocation] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ItCmdbHardware | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -61,11 +66,25 @@ export default function ItCmdbPage() {
   const queryUrl = useMemo(() => {
     const p = new URLSearchParams()
     if (q.trim()) p.set('q', q.trim())
-    if (filterLocation.trim()) p.set('location', filterLocation.trim())
+    if (filterSerial.trim()) p.set('serial', filterSerial.trim())
+    if (filterHostname.trim()) p.set('hostname', filterHostname.trim())
     if (filterIntune.trim()) p.set('intune', filterIntune.trim())
+    if (filterUserName.trim()) p.set('user_name', filterUserName.trim())
+    if (filterDeviceType.trim()) p.set('device_type', filterDeviceType.trim())
+    if (filterNotes.trim()) p.set('notes', filterNotes.trim())
+    if (filterLocation.trim()) p.set('location', filterLocation.trim())
     const s = p.toString()
     return s ? `/api/it-cmdb?${s}` : '/api/it-cmdb'
-  }, [q, filterLocation, filterIntune])
+  }, [
+    q,
+    filterSerial,
+    filterHostname,
+    filterIntune,
+    filterUserName,
+    filterDeviceType,
+    filterNotes,
+    filterLocation,
+  ])
 
   const { data, error, isLoading, mutate } = useSWR<{ items: ItCmdbHardware[] }>(allowed ? queryUrl : null, fetcher)
 
@@ -80,7 +99,16 @@ export default function ItCmdbPage() {
     return [...set].sort((a, b) => a.localeCompare(b, 'nl'))
   }, [items])
 
-  const hasActiveFilter = Boolean(q.trim() || filterLocation.trim() || filterIntune.trim())
+  const hasActiveFilter = Boolean(
+    q.trim() ||
+      filterSerial.trim() ||
+      filterHostname.trim() ||
+      filterIntune.trim() ||
+      filterUserName.trim() ||
+      filterDeviceType.trim() ||
+      filterNotes.trim() ||
+      filterLocation.trim()
+  )
 
   /** Aantallen per type (apparaat), gesorteerd op frequentie. */
   const statsByType = useMemo(() => {
@@ -300,52 +328,25 @@ export default function ItCmdbPage() {
         )}
 
         <div
-          className="rounded-2xl p-4 flex flex-col xl:flex-row flex-wrap gap-3"
+          className="rounded-2xl p-4 flex flex-col sm:flex-row flex-wrap gap-3 sm:items-end"
           style={{ background: dashboardUi.cardWhite.background, border: dashboardUi.cardWhite.border, boxShadow: dashboardUi.cardWhite.boxShadow }}
         >
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[220px]">
             <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: dashboardUi.textSubtle }}>
-              Zoeken
+              Zoeken in alle kolommen
             </label>
             <input
               type="search"
               value={q}
               onChange={e => setQ(e.target.value)}
-              placeholder="Serie, hostname, gebruiker, type, locatie…"
+              placeholder="Woord in serie, hostname, gebruiker, type, opmerkingen, locatie, Intune…"
               className="w-full rounded-xl px-3 py-2 text-sm border"
               style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
             />
           </div>
-          <div className="w-full sm:w-48">
-            <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: dashboardUi.textSubtle }}>
-              Locatie (filter)
-            </label>
-            <input
-              list="it-cmdb-locations"
-              value={filterLocation}
-              onChange={e => setFilterLocation(e.target.value)}
-              placeholder="bijv. Gebruiker"
-              className="w-full rounded-xl px-3 py-2 text-sm border"
-              style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
-            />
-            <datalist id="it-cmdb-locations">
-              {locationOptions.map(loc => (
-                <option key={loc} value={loc} />
-              ))}
-            </datalist>
-          </div>
-          <div className="w-full sm:w-40">
-            <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: dashboardUi.textSubtle }}>
-              Intune (filter)
-            </label>
-            <input
-              value={filterIntune}
-              onChange={e => setFilterIntune(e.target.value)}
-              placeholder="Intune, Ja, Nee…"
-              className="w-full rounded-xl px-3 py-2 text-sm border"
-              style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
-            />
-          </div>
+          <p className="text-xs m-0 sm:pb-2 max-w-md" style={{ color: dashboardUi.textMuted }}>
+            Per kolom filter je in de tabel hieronder; kolomfilters worden gecombineerd met dit zoekveld.
+          </p>
         </div>
 
         {!isLoading && items.length > 0 && (
@@ -419,64 +420,173 @@ export default function ItCmdbPage() {
             <p className="p-8 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
               Laden…
             </p>
-          ) : items.length === 0 ? (
-            <p className="p-8 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
-              Geen regels. Voeg hardware toe of pas de filters aan.
-            </p>
           ) : (
             <div className="overflow-x-auto">
+              <datalist id="it-cmdb-locations">
+                {locationOptions.map(loc => (
+                  <option key={loc} value={loc} />
+                ))}
+              </datalist>
               <table
-                className="w-full text-sm border-collapse min-w-[900px]"
+                className="w-full text-sm border-collapse min-w-[980px]"
                 style={{ color: TABLE_TEXT, fontFamily: F }}
               >
                 <thead>
                   <tr style={{ background: 'rgba(45,69,124,0.06)', borderBottom: '1px solid rgba(45,69,124,0.1)' }}>
                     {['Serie', 'Hostname', 'Intune', 'Gebruiker', 'Type', 'Opmerkingen', 'Locatie', ''].map(h => (
-                      <th key={h} className="text-left px-3 py-3 font-bold whitespace-nowrap" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                      <th key={h || 'acties'} className="text-left px-3 py-3 font-bold whitespace-nowrap" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                         {h}
                       </th>
                     ))}
                   </tr>
+                  <tr style={{ background: 'rgba(45,69,124,0.04)', borderBottom: '1px solid rgba(45,69,124,0.12)' }}>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        type="search"
+                        value={filterSerial}
+                        onChange={e => setFilterSerial(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op serienummer"
+                        className="w-full min-w-[7rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        type="search"
+                        value={filterHostname}
+                        onChange={e => setFilterHostname(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op hostname"
+                        className="w-full min-w-[7rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        type="search"
+                        value={filterIntune}
+                        onChange={e => setFilterIntune(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op Intune"
+                        className="w-full min-w-[5rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        type="search"
+                        value={filterUserName}
+                        onChange={e => setFilterUserName(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op gebruiker"
+                        className="w-full min-w-[6rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        type="search"
+                        value={filterDeviceType}
+                        onChange={e => setFilterDeviceType(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op type"
+                        className="w-full min-w-[6rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        type="search"
+                        value={filterNotes}
+                        onChange={e => setFilterNotes(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op opmerkingen"
+                        className="w-full min-w-[8rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal">
+                      <input
+                        list="it-cmdb-locations"
+                        value={filterLocation}
+                        onChange={e => setFilterLocation(e.target.value)}
+                        placeholder="Filter…"
+                        aria-label="Filter op locatie"
+                        className="w-full min-w-[6rem] rounded-lg px-2 py-1.5 text-xs border"
+                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
+                      />
+                    </th>
+                    <th className="px-2 py-2 align-top font-normal w-[1%] whitespace-nowrap">
+                      {hasActiveFilter && (
+                        <button
+                          type="button"
+                          className="text-xs font-semibold underline-offset-2 hover:underline"
+                          style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                          onClick={() => {
+                            setQ('')
+                            setFilterSerial('')
+                            setFilterHostname('')
+                            setFilterIntune('')
+                            setFilterUserName('')
+                            setFilterDeviceType('')
+                            setFilterNotes('')
+                            setFilterLocation('')
+                          }}
+                        >
+                          Wis filters
+                        </button>
+                      )}
+                    </th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {items.map(row => (
-                    <tr key={row.id} className="border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)]">
-                      <td className="px-3 py-2.5 font-mono text-xs font-semibold align-top" style={{ color: DYNAMO_BLUE }}>
-                        {row.serial_number}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-xs max-w-[180px] align-top" style={{ color: TABLE_TEXT }}>
-                        {row.hostname || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
-                        {row.intune || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[160px] align-top" style={{ color: TABLE_TEXT }}>
-                        {row.user_name || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
-                        {row.device_type || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[280px] text-xs leading-relaxed align-top" style={{ color: TABLE_TEXT }}>
-                        {row.notes || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
-                        {row.location || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-right align-top">
-                        <button type="button" className="font-semibold mr-3" style={{ color: DYNAMO_BLUE }} onClick={() => openEdit(row)}>
-                          Bewerken
-                        </button>
-                        <button type="button" className="font-semibold" style={{ color: '#dc2626' }} onClick={() => remove(row)}>
-                          Verwijderen
-                        </button>
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
+                        Geen regels. Voeg hardware toe of pas de filters aan.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    items.map(row => (
+                      <tr key={row.id} className="border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)]">
+                        <td className="px-3 py-2.5 font-mono text-xs font-semibold align-top" style={{ color: DYNAMO_BLUE }}>
+                          {row.serial_number}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-xs max-w-[180px] align-top" style={{ color: TABLE_TEXT }}>
+                          {row.hostname || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
+                          {row.intune || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 max-w-[160px] align-top" style={{ color: TABLE_TEXT }}>
+                          {row.user_name || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
+                          {row.device_type || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 max-w-[280px] text-xs leading-relaxed align-top" style={{ color: TABLE_TEXT }}>
+                          {row.notes || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
+                          {row.location || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-right align-top">
+                          <button type="button" className="font-semibold mr-3" style={{ color: DYNAMO_BLUE }} onClick={() => openEdit(row)}>
+                            Bewerken
+                          </button>
+                          <button type="button" className="font-semibold" style={{ color: '#dc2626' }} onClick={() => remove(row)}>
+                            Verwijderen
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           )}
-          {!isLoading && items.length > 0 && (
+          {!isLoading && (
             <p className="px-4 py-2 text-xs m-0" style={{ color: dashboardUi.textSubtle }}>
               {items.length} regel{items.length === 1 ? '' : 'en'}
             </p>

@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
+function ilikeFragment(value: string): string {
+  return value.replace(/%/g, '').trim()
+}
+
 /**
- * GET: alle hardware-regels (filter: q, location, intune).
- * POST: nieuwe regel.
+ * GET: alle hardware-regels.
+ * Kolomfilters (AND): serial, hostname, intune, user_name, device_type, notes, location.
+ * Globaal zoeken (OR over kolommen): q.
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -15,25 +20,53 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const q = searchParams.get('q')?.trim()
-  const location = searchParams.get('location')?.trim()
+  const serial = searchParams.get('serial')?.trim()
+  const hostname = searchParams.get('hostname')?.trim()
   const intune = searchParams.get('intune')?.trim()
+  const user_name = searchParams.get('user_name')?.trim()
+  const device_type = searchParams.get('device_type')?.trim()
+  const notes = searchParams.get('notes')?.trim()
+  const location = searchParams.get('location')?.trim()
 
   let query = auth.supabase
     .from('it_cmdb_hardware')
     .select('*')
     .order('serial_number', { ascending: true })
 
-  if (location) {
-    query = query.ilike('location', `%${location.replace(/%/g, '')}%`)
+  if (serial) {
+    const s = ilikeFragment(serial)
+    if (s) query = query.ilike('serial_number', `%${s}%`)
+  }
+  if (hostname) {
+    const s = ilikeFragment(hostname)
+    if (s) query = query.ilike('hostname', `%${s}%`)
   }
   if (intune) {
-    query = query.ilike('intune', `%${intune.replace(/%/g, '')}%`)
+    const s = ilikeFragment(intune)
+    if (s) query = query.ilike('intune', `%${s}%`)
   }
+  if (user_name) {
+    const s = ilikeFragment(user_name)
+    if (s) query = query.ilike('user_name', `%${s}%`)
+  }
+  if (device_type) {
+    const s = ilikeFragment(device_type)
+    if (s) query = query.ilike('device_type', `%${s}%`)
+  }
+  if (notes) {
+    const s = ilikeFragment(notes)
+    if (s) query = query.ilike('notes', `%${s}%`)
+  }
+  if (location) {
+    const s = ilikeFragment(location)
+    if (s) query = query.ilike('location', `%${s}%`)
+  }
+
   if (q) {
-    const safe = q.replace(/%/g, '').trim()
+    const safe = ilikeFragment(q)
     if (safe) {
       query = query.or(
-        `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%`
+        `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%,intune.ilike.%${safe}%`
       )
     }
   }
