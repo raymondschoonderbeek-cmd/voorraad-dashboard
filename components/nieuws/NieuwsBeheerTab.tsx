@@ -52,6 +52,8 @@ export function NieuwsBeheerTab() {
   const [uploadErr, setUploadErr] = useState('')
 
   const [afdelingen, setAfdelingen] = useState<DrgNewsAfdeling[]>([])
+  /** Lege string = alle afdelingen tonen */
+  const [listFilterAfdeling, setListFilterAfdeling] = useState('')
 
   const loadAfdelingen = useCallback(async () => {
     try {
@@ -72,6 +74,25 @@ export function NieuwsBeheerTab() {
     for (const a of afdelingen) m.set(a.slug, a.label)
     return (slug: string) => m.get(slug) ?? slug
   }, [afdelingen])
+
+  const filteredPosts = useMemo(() => {
+    if (!listFilterAfdeling.trim()) return posts
+    return posts.filter(p => p.category === listFilterAfdeling)
+  }, [posts, listFilterAfdeling])
+
+  /** Opties voor filter: afdelingen uit API + slugs die nog op berichten staan maar niet in de lijst. */
+  const afdelingFilterOptions = useMemo(() => {
+    const rows: { slug: string; label: string }[] = afdelingen.map(a => ({ slug: a.slug, label: a.label }))
+    const seen = new Set(rows.map(r => r.slug))
+    for (const p of posts) {
+      if (!seen.has(p.category)) {
+        seen.add(p.category)
+        rows.push({ slug: p.category, label: `${p.category}` })
+      }
+    }
+    rows.sort((a, b) => a.label.localeCompare(b.label, 'nl'))
+    return rows
+  }, [afdelingen, posts])
 
   function insertAtCursor(insert: string) {
     const el = bodyRef.current
@@ -506,8 +527,43 @@ export function NieuwsBeheerTab() {
             Nog geen berichten. Maak er een aan.
           </p>
         ) : (
+          <>
+            <div
+              className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b"
+              style={{ borderColor: 'rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}
+            >
+              <label className="text-xs font-semibold shrink-0" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
+                Filter op afdeling
+              </label>
+              <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                <select
+                  className={`${inputClass} max-w-xs`}
+                  style={inputStyle}
+                  value={listFilterAfdeling}
+                  onChange={e => setListFilterAfdeling(e.target.value)}
+                  aria-label="Filter berichten op afdeling"
+                >
+                  <option value="">Alle afdelingen</option>
+                  {afdelingFilterOptions.map(a => (
+                    <option key={a.slug} value={a.slug}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
+                  {filteredPosts.length === posts.length
+                    ? `${posts.length} bericht${posts.length === 1 ? '' : 'en'}`
+                    : `${filteredPosts.length} van ${posts.length} bericht${posts.length === 1 ? '' : 'en'}`}
+                </span>
+              </div>
+            </div>
+            {filteredPosts.length === 0 ? (
+              <p className="p-6 text-sm m-0" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
+                Geen berichten voor deze afdeling. Kies een andere filter of plaats een bericht in deze afdeling.
+              </p>
+            ) : (
           <ul className="divide-y divide-[rgba(45,69,124,0.08)]">
-            {posts.map(p => (
+            {filteredPosts.map(p => (
               <li key={p.id} className="px-4 py-3 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -562,6 +618,8 @@ export function NieuwsBeheerTab() {
               </li>
             ))}
           </ul>
+            )}
+          </>
         )}
       </div>
 
