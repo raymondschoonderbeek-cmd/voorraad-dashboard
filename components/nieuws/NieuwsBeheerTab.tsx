@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { DYNAMO_BLUE } from '@/lib/theme'
 import { DRG_NEWS_CATEGORIES, type DrgNewsPost } from '@/lib/news-types'
 import { NieuwsDigestSettings } from '@/components/nieuws/NieuwsDigestSettings'
@@ -43,6 +43,96 @@ export function NieuwsBeheerTab() {
   const [isImportant, setIsImportant] = useState(false)
   const [publishMode, setPublishMode] = useState<PublishMode>('now')
   const [scheduledLocal, setScheduledLocal] = useState(defaultScheduledLocal)
+
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [uploadBusy, setUploadBusy] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
+
+  function insertAtCursor(insert: string) {
+    const el = bodyRef.current
+    if (!el) {
+      setBodyHtml(h => h + insert)
+      return
+    }
+    const start = el.selectionStart ?? 0
+    const end = el.selectionEnd ?? 0
+    setBodyHtml(h => {
+      const next = h.slice(0, start) + insert + h.slice(end)
+      queueMicrotask(() => {
+        el.focus()
+        const pos = start + insert.length
+        try {
+          el.setSelectionRange(pos, pos)
+        } catch {
+          /* ignore */
+        }
+      })
+      return next
+    })
+  }
+
+  async function uploadImageFromFile(file: File) {
+    setUploadErr('')
+    setUploadBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/news/upload-image', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Upload mislukt')
+      const url = String(data.url ?? '')
+      if (!url) throw new Error('Geen URL ontvangen')
+      const safeSrc = url.replace(/"/g, '&quot;')
+      const snippet = `\n<p><img src="${safeSrc}" alt="" style="max-width:100%;height:auto;border-radius:8px" /></p>\n`
+      insertAtCursor(snippet)
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : 'Upload mislukt')
+    }
+    setUploadBusy(false)
+  }
+
+  function onImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    void uploadImageFromFile(file)
+  }
+
+  /** Plakken van schermafdrukken / afbeeldingen uit o.a. Word, browser, Snipping Tool */
+  function onBodyPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const dt = e.clipboardData
+    if (!dt) return
+
+    let imageFile: File | null = null
+    if (dt.files?.length) {
+      for (let i = 0; i < dt.files.length; i++) {
+        const f = dt.files[i]
+        if (f.type.startsWith('image/')) {
+          imageFile = f
+          break
+        }
+      }
+    }
+    if (!imageFile && dt.items?.length) {
+      for (let i = 0; i < dt.items.length; i++) {
+        const item = dt.items[i]
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const f = item.getAsFile()
+          if (f) {
+            imageFile = f
+            break
+          }
+        }
+      }
+    }
+
+    if (imageFile) {
+      e.preventDefault()
+      e.stopPropagation()
+      void uploadImageFromFile(imageFile)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -305,11 +395,43 @@ export function NieuwsBeheerTab() {
             <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
               Inhoud (HTML toegestaan)
             </label>
+            <p className="text-[11px] m-0 mb-2" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
+              Afbeeldingen: knop hieronder, of <strong>plakken</strong> in dit veld (Ctrl+V / ⌘V) vanuit schermafdrukken, browser, Word, enz. Ze worden
+              geüpload en als <code className="text-[10px]">&lt;img&gt;</code> ingevoegd. Pas zo nodig de{' '}
+              <code className="text-[10px]">alt</code>-tekst in de HTML aan.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="sr-only"
+                tabIndex={-1}
+                onChange={onImageFile}
+              />
+              <button
+                type="button"
+                disabled={uploadBusy}
+                onClick={() => imageInputRef.current?.click()}
+                aria-label="Afbeelding uploaden en in de inhoud invoegen"
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
+                style={{ border: '1px solid rgba(45,69,124,0.25)', color: DYNAMO_BLUE, fontFamily: F }}
+              >
+                {uploadBusy ? 'Uploaden…' : 'Afbeelding toevoegen'}
+              </button>
+              {uploadErr && (
+                <span className="text-xs font-medium" style={{ color: '#dc2626', fontFamily: F }}>
+                  {uploadErr}
+                </span>
+              )}
+            </div>
             <textarea
+              ref={bodyRef}
               className={`${inputClass} font-mono text-xs min-h-[200px]`}
               style={inputStyle}
               value={bodyHtml}
               onChange={e => setBodyHtml(e.target.value)}
+              onPaste={onBodyPaste}
               placeholder="<p>...</p>"
             />
           </div>

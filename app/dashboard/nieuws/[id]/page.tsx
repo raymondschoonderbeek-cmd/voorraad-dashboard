@@ -123,7 +123,7 @@ export default function NieuwsDetailPage() {
               </p>
             )}
             <div
-              className="prose prose-slate max-w-none mt-6 text-[15px] leading-relaxed"
+              className="prose prose-slate max-w-none mt-6 text-[15px] leading-relaxed [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_p:has(img)]:my-4"
               style={{ color: `rgba(45,69,124,0.92)` }}
               dangerouslySetInnerHTML={{ __html: post.body_html || '<p><em>Geen inhoud.</em></p>' }}
             />

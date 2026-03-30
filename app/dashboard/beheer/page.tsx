@@ -118,6 +118,7 @@ export default function BeheerPage() {
   const [venditTestLoading, setVenditTestLoading] = useState(false)
   const [venditTestResult, setVenditTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [resendInviteLoading, setResendInviteLoading] = useState<string | null>(null)
+  const [impersonateLoadingUserId, setImpersonateLoadingUserId] = useState<string | null>(null)
   const [gebruikerZoekterm, setGebruikerZoekterm] = useState('')
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
@@ -528,6 +529,28 @@ export default function BeheerPage() {
       setFormError('Versturen mislukt.')
     }
     setResendInviteLoading(null)
+  }
+
+  async function loginAlsGebruiker(userId: string, naam: string) {
+    if (!confirm(`Je wordt uitgelogd als admin en ingelogd als ${naam.trim() || 'deze gebruiker'}. Doorgaan?`)) return
+    setImpersonateLoadingUserId(userId)
+    setError('')
+    setFormError('')
+    try {
+      const res = await fetch('/api/auth/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Mislukt')
+      const link = typeof data.action_link === 'string' ? data.action_link : ''
+      if (!link) throw new Error('Geen inloglink ontvangen')
+      window.location.href = link
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Inloggen als mislukt')
+      setImpersonateLoadingUserId(null)
+    }
   }
 
   async function updateGebruiker(e: React.FormEvent) {
@@ -1219,9 +1242,19 @@ export default function BeheerPage() {
                       <option value="Belgium">Alleen België</option>
                     </select>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
                     <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
+                    <button
+                      type="button"
+                      onClick={() => loginAlsGebruiker(bewerkGebruiker.user_id, bewerkGebruiker.naam)}
+                      disabled={impersonateLoadingUserId === bewerkGebruiker.user_id}
+                      className="rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50"
+                      style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}
+                      title="Admin-sessie beëindigen; je logt in als deze gebruiker (magic link)"
+                    >
+                      {impersonateLoadingUserId === bewerkGebruiker.user_id ? 'Bezig…' : '🔑 Inloggen als deze gebruiker'}
+                    </button>
                   </div>
                 </form>
               </div>
@@ -1275,6 +1308,16 @@ export default function BeheerPage() {
                       </div>
                       <div className="flex gap-2 shrink-0 flex-wrap">
                         <button onClick={() => stuurUitnodigingOpnieuw(rol.user_id)} disabled={resendInviteLoading === rol.user_id} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }} title="Stuur inloggegevens opnieuw per e-mail">{resendInviteLoading === rol.user_id ? '...' : 'Opnieuw uitnodigen'}</button>
+                        <button
+                          type="button"
+                          onClick={() => loginAlsGebruiker(rol.user_id, rol.naam)}
+                          disabled={impersonateLoadingUserId === rol.user_id}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50"
+                          style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.15)', fontFamily: F }}
+                          title="Inloggen als deze gebruiker (je admin-sessie wordt beëindigd)"
+                        >
+                          {impersonateLoadingUserId === rol.user_id ? '…' : 'Inloggen als'}
+                        </button>
                         <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Bewerken</button>
                         <button onClick={() => verwijderGebruiker(rol.user_id, rol.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
