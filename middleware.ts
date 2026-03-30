@@ -43,7 +43,16 @@ export async function middleware(request: NextRequest) {
   }
 
   const path = request.nextUrl.pathname
-  const publicPaths = ['/login', '/update-password', '/auth/callback', '/api/auth/session-info', '/api/payments/tikkie/webhook']
+  /** Cron/webhooks: geen browser-sessie; route valideert zelf (bijv. Authorization: Bearer CRON_SECRET). */
+  const publicPaths = [
+    '/login',
+    '/update-password',
+    '/auth/callback',
+    '/api/auth/session-info',
+    '/api/payments/tikkie/webhook',
+    '/api/lunch/reminder-cron',
+    '/api/campagne-fietsen/voorraad/sync',
+  ]
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {
     const redirect = NextResponse.redirect(new URL('/login', request.url))
