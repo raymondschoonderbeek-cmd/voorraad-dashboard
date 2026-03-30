@@ -6,13 +6,66 @@ import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 import { IntuneOverview } from '@/components/it-cmdb/IntuneOverview'
-import type { ItCmdbHardware, ItCmdbHardwareListItem } from '@/lib/it-cmdb-types'
+import type { ItCmdbHardware, ItCmdbHardwareListItem, IntuneSnapshot } from '@/lib/it-cmdb-types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 const F = FONT_FAMILY
 /** Vaste leesbare tekst op witte kaarten (niet `textMuted` — te licht op wit) */
 const TABLE_TEXT = '#1e293b'
+
+function isIntuneSnapshot(v: unknown): v is IntuneSnapshot {
+  return v != null && typeof v === 'object' && !Array.isArray(v) && typeof (v as IntuneSnapshot).graphDeviceId === 'string'
+}
+
+function formatIntuneSyncDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('nl-NL', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function ComplianceBadge({ state }: { state: string | null | undefined }) {
+  const s = state?.trim()
+  if (!s) {
+    return (
+      <span className="text-xs" style={{ color: 'rgba(100,116,139,0.85)' }}>
+        —
+      </span>
+    )
+  }
+  const lower = s.toLowerCase()
+  let bg = 'rgba(100,116,139,0.12)'
+  let fg = '#475569'
+  if (lower === 'compliant') {
+    bg = '#dcfce7'
+    fg = '#15803d'
+  } else if (lower.includes('noncompliant') || lower.includes('non-compliant')) {
+    bg = '#fee2e2'
+    fg = '#b91c1c'
+  } else if (lower.includes('grace') || lower.includes('graceperiod')) {
+    bg = '#fef9c3'
+    fg = '#a16207'
+  } else if (lower === 'unknown' || lower === 'configmanager') {
+    bg = 'rgba(45,69,124,0.08)'
+    fg = DYNAMO_BLUE
+  }
+  return (
+    <span
+      className="inline-block max-w-[min(160px,100%)] truncate rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight"
+      style={{ background: bg, color: fg, fontFamily: F }}
+      title={s}
+    >
+      {s}
+    </span>
+  )
+}
 
 const FILTER_DEBOUNCE_MS = 350
 
@@ -486,14 +539,14 @@ export default function ItCmdbPage() {
                 ))}
               </datalist>
               <table
-                className="w-full text-sm border-collapse min-w-[980px]"
+                className="w-full text-sm border-collapse min-w-[1180px]"
                 style={{ color: TABLE_TEXT, fontFamily: F }}
               >
                 <thead>
                   <tr style={{ background: 'rgba(45,69,124,0.06)', borderBottom: '1px solid rgba(45,69,124,0.1)' }}>
-                    {['Serie', 'Hostname', 'Intune', 'Gebruiker', 'Type', 'Opmerkingen', 'Locatie', ''].map(h => (
+                    {['Serie', 'Hostname', 'Compliance', 'Sync', 'Beheer', 'Gebruiker', 'Type', 'Opmerkingen', 'Locatie', ''].map(h => (
                       <th key={h || 'acties'} className="text-left px-3 py-3 font-bold whitespace-nowrap" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-                        {h}
+                        {h || '\u00A0'}
                       </th>
                     ))}
                   </tr>
@@ -520,14 +573,28 @@ export default function ItCmdbPage() {
                         style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
                       />
                     </th>
+                    <th
+                      className="px-2 py-2 align-top font-normal text-[10px] font-medium leading-tight max-w-[4.5rem]"
+                      style={{ color: dashboardUi.textMuted }}
+                      title="Geen aparte kolomfilter; gebruik de zoekbalk bovenaan."
+                    >
+                      —
+                    </th>
+                    <th
+                      className="px-2 py-2 align-top font-normal text-[10px] font-medium leading-tight max-w-[4.5rem]"
+                      style={{ color: dashboardUi.textMuted }}
+                      title="Geen aparte kolomfilter; gebruik de zoekbalk bovenaan."
+                    >
+                      —
+                    </th>
                     <th className="px-2 py-2 align-top font-normal">
                       <input
                         type="search"
                         value={filterIntune}
                         onChange={e => setFilterIntune(e.target.value)}
                         placeholder="Filter…"
-                        aria-label="Filter op Intune"
-                        className="w-full min-w-[5rem] rounded-lg px-2 py-1.5 text-xs border"
+                        aria-label="Filter op beheerstatus / Intune-tekst"
+                        className="w-full min-w-[5.5rem] rounded-lg px-2 py-1.5 text-xs border"
                         style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
                       />
                     </th>
@@ -601,21 +668,35 @@ export default function ItCmdbPage() {
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
+                      <td colSpan={10} className="px-4 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
                         Geen regels. Voeg hardware toe of pas de filters aan.
                       </td>
                     </tr>
                   ) : (
-                    items.map(row => (
+                    items.map(row => {
+                      const snap = isIntuneSnapshot(row.intune_snapshot) ? row.intune_snapshot : null
+                      return (
                       <tr key={row.id} className="border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)]">
                         <td className="px-3 py-2.5 font-mono text-xs font-semibold align-top" style={{ color: DYNAMO_BLUE }}>
                           {row.serial_number}
                         </td>
-                        <td className="px-3 py-2.5 font-mono text-xs max-w-[180px] align-top" style={{ color: TABLE_TEXT }}>
-                          {row.hostname || '—'}
+                        <td className="px-3 py-2.5 font-mono text-xs max-w-[160px] align-top" style={{ color: TABLE_TEXT }}>
+                          <span className="break-all">{row.hostname || '—'}</span>
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
-                          {row.intune || '—'}
+                        <td className="px-3 py-2.5 align-top max-w-[150px]">
+                          <ComplianceBadge state={snap?.complianceState} />
+                        </td>
+                        <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap align-top" style={{ color: TABLE_TEXT }} title={snap?.lastSyncDateTime ?? undefined}>
+                          {formatIntuneSyncDate(snap?.lastSyncDateTime)}
+                        </td>
+                        <td className="px-3 py-2.5 max-w-[140px] align-top text-xs leading-snug" style={{ color: TABLE_TEXT }} title={snap?.managementState ? String(snap.managementState) : row.intune ?? ''}>
+                          {snap?.managementState != null && String(snap.managementState).trim() !== '' ? (
+                            <span className="font-medium">{String(snap.managementState)}</span>
+                          ) : row.intune ? (
+                            <span className="opacity-90">{row.intune.length > 48 ? `${row.intune.slice(0, 48)}…` : row.intune}</span>
+                          ) : (
+                            <span style={{ color: 'rgba(100,116,139,0.85)' }}>—</span>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
                           {row.assigned_user_email ? (
@@ -629,12 +710,27 @@ export default function ItCmdbPage() {
                                 </span>
                               ) : null}
                             </span>
+                          ) : row.user_name?.trim() ? (
+                            row.user_name
+                          ) : snap?.emailAddress || snap?.userPrincipalName ? (
+                            <span
+                              className="text-sm break-all"
+                              title="Uit Microsoft Intune (geen portalgebruiker gekoppeld)"
+                              style={{ color: TABLE_TEXT }}
+                            >
+                              {snap.emailAddress || snap.userPrincipalName}
+                            </span>
                           ) : (
-                            row.user_name || '—'
+                            '—'
                           )}
                         </td>
                         <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
-                          {row.device_type || '—'}
+                          <span className="block">{row.device_type || '—'}</span>
+                          {snap?.manufacturer || snap?.model ? (
+                            <span className="block text-[11px] mt-0.5 leading-snug" style={{ color: dashboardUi.textSubtle }} title={[snap.manufacturer, snap.model].filter(Boolean).join(' ')}>
+                              {[snap.manufacturer, snap.model].filter(Boolean).join(' · ')}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-3 py-2.5 max-w-[280px] text-xs leading-relaxed align-top" style={{ color: TABLE_TEXT }}>
                           {row.notes || '—'}
@@ -651,7 +747,8 @@ export default function ItCmdbPage() {
                           </button>
                         </td>
                       </tr>
-                    ))
+                      )
+                    })
                   )}
                 </tbody>
               </table>
