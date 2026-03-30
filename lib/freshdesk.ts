@@ -74,3 +74,77 @@ export function freshdeskTicketUrl(ticketId: number): string | null {
   if (!domain) return null
   return `https://${domain}/a/tickets/${ticketId}`
 }
+
+/** Standaard Freshdesk v2: 2 Open, 3 Pending, 4 Resolved, 5 Closed */
+export function isFreshdeskStatusClosed(status: number): boolean {
+  return status === 4 || status === 5
+}
+
+export type FreshdeskTicketSnapshot = {
+  id: number
+  subject: string
+  status: number
+  priority: number
+}
+
+export async function fetchFreshdeskTicketById(
+  ticketId: number
+): Promise<{ ok: true; ticket: FreshdeskTicketSnapshot } | { ok: false; httpStatus: number; notFound: boolean }> {
+  const domain = normalizeDomain(process.env.FRESHDESK_DOMAIN ?? '')
+  const key = process.env.FRESHDESK_API_KEY?.trim()
+  if (!domain || !key) {
+    throw new Error('Freshdesk niet geconfigureerd (FRESHDESK_DOMAIN, FRESHDESK_API_KEY).')
+  }
+
+  const url = `https://${domain}/api/v2/tickets/${ticketId}`
+  const auth = Buffer.from(`${key}:X`).toString('base64')
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Basic ${auth}` },
+  })
+
+  if (res.status === 404) {
+    return { ok: false, httpStatus: 404, notFound: true }
+  }
+
+  const json = (await res.json().catch(() => ({}))) as {
+    id?: number
+    subject?: string
+    status?: number
+    priority?: number
+  }
+
+  if (!res.ok) {
+    return { ok: false, httpStatus: res.status, notFound: false }
+  }
+
+  const id = Number(json.id)
+  if (!Number.isFinite(id)) {
+    return { ok: false, httpStatus: res.status, notFound: false }
+  }
+
+  return {
+    ok: true,
+    ticket: {
+      id,
+      subject: typeof json.subject === 'string' ? json.subject : '(Geen onderwerp)',
+      status: typeof json.status === 'number' ? json.status : 0,
+      priority: typeof json.priority === 'number' ? json.priority : 0,
+    },
+  }
+}
+
+export function freshdeskStatusLabelNl(status: number): string {
+  switch (status) {
+    case 2:
+      return 'Open'
+    case 3:
+      return 'In behandeling'
+    case 4:
+      return 'Opgelost'
+    case 5:
+      return 'Gesloten'
+    default:
+      return `Status ${status}`
+  }
+}

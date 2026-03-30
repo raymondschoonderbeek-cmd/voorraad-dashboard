@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { enrichAssignedEmails } from '@/lib/it-cmdb-assigned-user'
-import { createFreshdeskTicket, freshdeskTicketUrl, isFreshdeskConfigured } from '@/lib/freshdesk'
+import {
+  createFreshdeskTicket,
+  freshdeskTicketUrl,
+  freshdeskStatusLabelNl,
+  isFreshdeskConfigured,
+} from '@/lib/freshdesk'
+import { reconcileFreshdeskTicketForHardware } from '@/lib/it-cmdb-freshdesk-reconcile'
 import {
   buildIntuneFreshdeskDescription,
   buildIntuneFreshdeskSubject,
@@ -32,7 +38,73 @@ export async function GET(request: NextRequest) {
   const auth = await requireItCmdbAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  return NextResponse.json({ configured: isFreshdeskConfigured() })
+  const hardwareId = new URL(request.url).searchParams.get('hardwareId')?.trim()
+  if (!hardwareId) {
+    return NextResponse.json({ configured: isFreshdeskConfigured() })
+  }
+
+  const { data: row, error } = await auth.supabase.from('it_cmdb_hardware').select('*').eq('id', hardwareId).maybeSingle()
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!row) return NextResponse.json({ error: 'Apparaat niet gevonden' }, { status: 404 })
+
+  if (!isFreshdeskConfigured()) {
+    const [enriched] = await enrichAssignedEmails(auth.supabase, [row as { assigned_user_id: string | null }])
+    const listItem = enriched as ItCmdbHardwareListItem
+    return NextResponse.json({
+      configured: false,
+      error: 'Freshdesk niet geconfigureerd op de server.',
+      item: { ...listItem, freshdesk_ticket_url: null },
+      activeTicket: null,
+      lastTicket: null,
+      clearedStoredId: false,
+    })
+  }
+
+  const reconcile = await reconcileFreshdeskTicketForHardware(auth.supabase, hardwareId, row)
+
+  const { data: rowFresh, error: err2 } = await auth.supabase.from('it_cmdb_hardware').select('*').eq('id', hardwareId).maybeSingle()
+  if (err2) return NextResponse.json({ error: err2.message }, { status: 500 })
+  if (!rowFresh) return NextResponse.json({ error: 'Apparaat niet gevonden' }, { status: 404 })
+
+  const [enriched] = await enrichAssignedEmails(auth.supabase, [rowFresh as { assigned_user_id: string | null }])
+  const listItem = enriched as ItCmdbHardwareListItem
+  const fdNum = parseFreshdeskId(listItem.freshdesk_ticket_id)
+  const ticketUrl = fdNum != null ? freshdeskTicketUrl(fdNum) : null
+
+  const active = reconcile.activeTicket
+  const last = reconcile.lastSeenTicket
+
+  return NextResponse.json({
+    configured: true,
+    clearedStoredId: reconcile.clearedStoredId,
+    fetchError: reconcile.fetchError,
+    item: {
+      ...listItem,
+      freshdesk_ticket_url: ticketUrl,
+    },
+    activeTicket:
+      active != null
+        ? {
+            id: active.id,
+            subject: active.subject,
+            status: active.status,
+            statusLabel: freshdeskStatusLabelNl(active.status),
+            priority: active.priority,
+            url: freshdeskTicketUrl(active.id),
+          }
+        : null,
+    lastTicket:
+      last != null
+        ? {
+            id: last.id,
+            subject: last.subject,
+            status: last.status,
+            statusLabel: freshdeskStatusLabelNl(last.status),
+            priority: last.priority,
+            url: freshdeskTicketUrl(last.id),
+          }
+        : null,
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -61,15 +133,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'hardwareId is verplicht' }, { status: 400 })
   }
 
-  const { data: row, error } = await auth.supabase.from('it_cmdb_hardware').select('*').eq('id', hardwareId).maybeSingle()
+  let { data: row, error } = await auth.supabase.from('it_cmdb_hardware').select('*').eq('id', hardwareId).maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!row) return NextResponse.json({ error: 'Apparaat niet gevonden' }, { status: 404 })
+
+  await reconcileFreshdeskTicketForHardware(auth.supabase, hardwareId, row)
+
+  const { data: rowFresh, error: errFresh } = await auth.supabase
+    .from('it_cmdb_hardware')
+    .select('*')
+    .eq('id', hardwareId)
+    .maybeSingle()
+  if (errFresh) return NextResponse.json({ error: errFresh.message }, { status: 500 })
+  if (!rowFresh) return NextResponse.json({ error: 'Apparaat niet gevonden' }, { status: 404 })
+  row = rowFresh
 
   const existingFd = parseFreshdeskId((row as { freshdesk_ticket_id?: unknown }).freshdesk_ticket_id)
   if (existingFd != null) {
     return NextResponse.json(
       {
-        error: 'Er is al een Freshdesk-ticket voor dit apparaat.',
+        error: 'Er is al een open Freshdesk-ticket voor dit apparaat.',
         ticketId: existingFd,
         ticketUrl: freshdeskTicketUrl(existingFd),
       },

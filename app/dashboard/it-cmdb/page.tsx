@@ -7,6 +7,7 @@ import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 import { IntuneOverview } from '@/components/it-cmdb/IntuneOverview'
 import type { ItCmdbHardware, ItCmdbHardwareListItem, IntuneSnapshot } from '@/lib/it-cmdb-types'
+import type { CmdbSortKey } from '@/lib/it-cmdb-list-sort'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -93,6 +94,45 @@ function isNonCompliantSnapshot(s: IntuneSnapshot | null): boolean {
   return lo.includes('noncompliant') || lo.includes('non-compliant')
 }
 
+function CmdbSortTh({
+  col,
+  label,
+  sortKey,
+  sortDir,
+  onSort,
+}: {
+  col: CmdbSortKey
+  label: string
+  sortKey: CmdbSortKey
+  sortDir: 'asc' | 'desc'
+  onSort: (c: CmdbSortKey) => void
+}) {
+  const active = sortKey === col
+  return (
+    <th scope="col" className="text-left px-3 py-3 font-bold whitespace-nowrap align-bottom" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 max-w-full rounded-lg px-1 -mx-1 py-0.5 hover:bg-[rgba(45,69,124,0.08)] text-left"
+        onClick={e => {
+          e.stopPropagation()
+          onSort(col)
+        }}
+      >
+        <span>{label}</span>
+        {active ? (
+          <span className="text-[11px] font-semibold opacity-90 shrink-0" aria-hidden>
+            {sortDir === 'asc' ? '▲' : '▼'}
+          </span>
+        ) : (
+          <span className="text-[10px] opacity-25 shrink-0" aria-hidden>
+            ↕
+          </span>
+        )}
+      </button>
+    </th>
+  )
+}
+
 function ComplianceBadge({ state }: { state: string | null | undefined }) {
   const s = state?.trim()
   if (!s) {
@@ -162,13 +202,8 @@ export default function ItCmdbPage() {
   const router = useRouter()
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [q, setQ] = useState('')
-  const [filterSerial, setFilterSerial] = useState('')
-  const [filterHostname, setFilterHostname] = useState('')
-  const [filterIntune, setFilterIntune] = useState('')
-  const [filterUserName, setFilterUserName] = useState('')
-  const [filterDeviceType, setFilterDeviceType] = useState('')
-  const [filterNotes, setFilterNotes] = useState('')
-  const [filterLocation, setFilterLocation] = useState('')
+  const [sortKey, setSortKey] = useState<CmdbSortKey>('serial_number')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ItCmdbHardwareListItem | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -182,6 +217,8 @@ export default function ItCmdbPage() {
   const [intuneMsg, setIntuneMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [freshdeskBusyId, setFreshdeskBusyId] = useState<string | null>(null)
   const [freshdeskMsg, setFreshdeskMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  /** Apparaat openen voor detail + Freshdesk (klik op rij) */
+  const [deviceDetailId, setDeviceDetailId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -202,36 +239,25 @@ export default function ItCmdbPage() {
   }, [allowed, router])
 
   const dq = useDebouncedValue(q, FILTER_DEBOUNCE_MS)
-  const dFilterSerial = useDebouncedValue(filterSerial, FILTER_DEBOUNCE_MS)
-  const dFilterHostname = useDebouncedValue(filterHostname, FILTER_DEBOUNCE_MS)
-  const dFilterIntune = useDebouncedValue(filterIntune, FILTER_DEBOUNCE_MS)
-  const dFilterUserName = useDebouncedValue(filterUserName, FILTER_DEBOUNCE_MS)
-  const dFilterDeviceType = useDebouncedValue(filterDeviceType, FILTER_DEBOUNCE_MS)
-  const dFilterNotes = useDebouncedValue(filterNotes, FILTER_DEBOUNCE_MS)
-  const dFilterLocation = useDebouncedValue(filterLocation, FILTER_DEBOUNCE_MS)
 
   const queryUrl = useMemo(() => {
     const p = new URLSearchParams()
     if (dq.trim()) p.set('q', dq.trim())
-    if (dFilterSerial.trim()) p.set('serial', dFilterSerial.trim())
-    if (dFilterHostname.trim()) p.set('hostname', dFilterHostname.trim())
-    if (dFilterIntune.trim()) p.set('intune', dFilterIntune.trim())
-    if (dFilterUserName.trim()) p.set('user_name', dFilterUserName.trim())
-    if (dFilterDeviceType.trim()) p.set('device_type', dFilterDeviceType.trim())
-    if (dFilterNotes.trim()) p.set('notes', dFilterNotes.trim())
-    if (dFilterLocation.trim()) p.set('location', dFilterLocation.trim())
-    const s = p.toString()
-    return s ? `/api/it-cmdb?${s}` : '/api/it-cmdb'
-  }, [
-    dq,
-    dFilterSerial,
-    dFilterHostname,
-    dFilterIntune,
-    dFilterUserName,
-    dFilterDeviceType,
-    dFilterNotes,
-    dFilterLocation,
-  ])
+    p.set('sort', sortKey)
+    p.set('dir', sortDir)
+    return `/api/it-cmdb?${p.toString()}`
+  }, [dq, sortKey, sortDir])
+
+  const toggleSort = useCallback((key: CmdbSortKey) => {
+    setSortKey(prevKey => {
+      if (prevKey === key) {
+        setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+        return prevKey
+      }
+      setSortDir('asc')
+      return key
+    })
+  }, [])
 
   const { data, error, isLoading, mutate } = useSWR<{ items: ItCmdbHardwareListItem[] }>(allowed ? queryUrl : null, fetcher, {
     keepPreviousData: true,
@@ -251,8 +277,68 @@ export default function ItCmdbPage() {
     { shouldRetryOnError: false }
   )
 
+  const fdDetailUrl =
+    allowed && deviceDetailId ? `/api/it-cmdb/freshdesk-ticket?hardwareId=${encodeURIComponent(deviceDetailId)}` : null
+  const { data: fdDetailData, isLoading: fdDetailLoading, mutate: mutateFdDetail } = useSWR<
+    | { configured: boolean }
+    | {
+        configured: boolean
+        clearedStoredId?: boolean
+        fetchError?: string
+        item?: ItCmdbHardwareListItem
+        activeTicket?: {
+          id: number
+          subject: string
+          status: number
+          statusLabel: string
+          priority: number
+          url: string | null
+        } | null
+        lastTicket?: {
+          id: number
+          subject: string
+          status: number
+          statusLabel: string
+          priority: number
+          url: string | null
+        } | null
+        error?: string
+      }
+    | {
+        configured: false
+        error?: string
+        item: ItCmdbHardwareListItem
+        activeTicket?: null
+        lastTicket?: null
+        clearedStoredId?: false
+      }
+  >(fdDetailUrl, fetcher, { shouldRetryOnError: false })
+
+  useEffect(() => {
+    if (fdDetailData && typeof fdDetailData === 'object' && 'clearedStoredId' in fdDetailData && fdDetailData.clearedStoredId) {
+      void mutate()
+    }
+  }, [fdDetailData, mutate])
+
+  useEffect(() => {
+    if (!deviceDetailId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDeviceDetailId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [deviceDetailId])
+
   const items = data?.items ?? []
   const portalUsers = portalUsersData?.users ?? []
+
+  const detailRow = useMemo(() => {
+    if (!deviceDetailId) return null
+    if (fdDetailData && typeof fdDetailData === 'object' && 'item' in fdDetailData && fdDetailData.item) {
+      return fdDetailData.item
+    }
+    return items.find(i => i.id === deviceDetailId) ?? null
+  }, [deviceDetailId, fdDetailData, items])
 
   const locationOptions = useMemo(() => {
     const set = new Set<string>()
@@ -263,16 +349,7 @@ export default function ItCmdbPage() {
     return [...set].sort((a, b) => a.localeCompare(b, 'nl'))
   }, [items])
 
-  const hasActiveFilter = Boolean(
-    q.trim() ||
-      filterSerial.trim() ||
-      filterHostname.trim() ||
-      filterIntune.trim() ||
-      filterUserName.trim() ||
-      filterDeviceType.trim() ||
-      filterNotes.trim() ||
-      filterLocation.trim()
-  )
+  const hasActiveSearch = Boolean(q.trim())
 
   /** Aantallen per type (apparaat), gesorteerd op frequentie. */
   const statsByType = useMemo(() => {
@@ -463,6 +540,7 @@ export default function ItCmdbPage() {
                 : j.error ?? 'Er bestaat al een ticket voor dit apparaat.',
           })
           await mutate()
+          if (deviceDetailId === row.id) void mutateFdDetail()
           return
         }
         if (!res.ok) {
@@ -476,13 +554,14 @@ export default function ItCmdbPage() {
           text: typeof tid === 'number' ? `Freshdesk-ticket #${tid} aangemaakt.${urlPart}` : `Ticket aangemaakt.${urlPart}`,
         })
         await mutate()
+        if (deviceDetailId === row.id) void mutateFdDetail()
       } catch {
         setFreshdeskMsg({ ok: false, text: 'Netwerkfout — probeer opnieuw.' })
       } finally {
         setFreshdeskBusyId(null)
       }
     },
-    [mutate]
+    [mutate, mutateFdDetail, deviceDetailId]
   )
 
   if (allowed === null) {
@@ -631,19 +710,32 @@ export default function ItCmdbPage() {
         >
           <div className="flex-1 min-w-[220px]">
             <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: dashboardUi.textSubtle }}>
-              Zoeken in alle kolommen
+              Zoeken
             </label>
-            <input
-              type="search"
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              placeholder="Serie, hostname, gebruiker, portal-e-mail, type, opmerkingen, locatie, Intune…"
-              className="w-full rounded-xl px-3 py-2 text-sm border"
-              style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
-            />
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                type="search"
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder="Woorden (alle moeten matchen): serie, hostname, gebruiker, e-mail, type…"
+                className="flex-1 min-w-[200px] rounded-xl px-3 py-2 text-sm border"
+                style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
+              />
+              {hasActiveSearch && (
+                <button
+                  type="button"
+                  className="rounded-xl px-3 py-2 text-xs font-semibold shrink-0"
+                  style={{ border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F }}
+                  onClick={() => setQ('')}
+                >
+                  Wis zoekveld
+                </button>
+              )}
+            </div>
           </div>
           <p className="text-xs m-0 sm:pb-2 max-w-md" style={{ color: dashboardUi.textMuted }}>
-            Per kolom filter je in de tabel hieronder; kolomfilters worden gecombineerd met dit zoekveld.
+            Meerdere woorden: elk woord moet ergens in de regel voorkomen. Sorteer op kolomkoppen. Klik op een regel voor details en
+            Freshdesk.
           </p>
         </div>
 
@@ -676,124 +768,17 @@ export default function ItCmdbPage() {
               >
                 <thead>
                   <tr style={{ background: 'rgba(45,69,124,0.06)', borderBottom: '1px solid rgba(45,69,124,0.1)' }}>
-                    {['Serie', 'Hostname', 'Compliance', 'Sync', 'Beheer', 'Gebruiker', 'Type', 'Opmerkingen', 'Locatie', ''].map(h => (
-                      <th key={h || 'acties'} className="text-left px-3 py-3 font-bold whitespace-nowrap" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-                        {h || '\u00A0'}
-                      </th>
-                    ))}
-                  </tr>
-                  <tr style={{ background: 'rgba(45,69,124,0.04)', borderBottom: '1px solid rgba(45,69,124,0.12)' }}>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        type="search"
-                        value={filterSerial}
-                        onChange={e => setFilterSerial(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op serienummer"
-                        className="w-full min-w-[7rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        type="search"
-                        value={filterHostname}
-                        onChange={e => setFilterHostname(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op hostname"
-                        className="w-full min-w-[7rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th
-                      className="px-2 py-2 align-top font-normal text-[10px] font-medium leading-tight max-w-[4.5rem]"
-                      style={{ color: dashboardUi.textMuted }}
-                      title="Geen aparte kolomfilter; gebruik de zoekbalk bovenaan."
-                    >
-                      —
-                    </th>
-                    <th
-                      className="px-2 py-2 align-top font-normal text-[10px] font-medium leading-tight max-w-[4.5rem]"
-                      style={{ color: dashboardUi.textMuted }}
-                      title="Geen aparte kolomfilter; gebruik de zoekbalk bovenaan."
-                    >
-                      —
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        type="search"
-                        value={filterIntune}
-                        onChange={e => setFilterIntune(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op beheerstatus / Intune-tekst"
-                        className="w-full min-w-[5.5rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        type="search"
-                        value={filterUserName}
-                        onChange={e => setFilterUserName(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op gebruiker"
-                        className="w-full min-w-[6rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        type="search"
-                        value={filterDeviceType}
-                        onChange={e => setFilterDeviceType(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op type"
-                        className="w-full min-w-[6rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        type="search"
-                        value={filterNotes}
-                        onChange={e => setFilterNotes(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op opmerkingen"
-                        className="w-full min-w-[8rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal">
-                      <input
-                        list="it-cmdb-locations"
-                        value={filterLocation}
-                        onChange={e => setFilterLocation(e.target.value)}
-                        placeholder="Filter…"
-                        aria-label="Filter op locatie"
-                        className="w-full min-w-[6rem] rounded-lg px-2 py-1.5 text-xs border"
-                        style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE, fontFamily: F }}
-                      />
-                    </th>
-                    <th className="px-2 py-2 align-top font-normal w-[1%] whitespace-nowrap">
-                      {hasActiveFilter && (
-                        <button
-                          type="button"
-                          className="text-xs font-semibold underline-offset-2 hover:underline"
-                          style={{ color: DYNAMO_BLUE, fontFamily: F }}
-                          onClick={() => {
-                            setQ('')
-                            setFilterSerial('')
-                            setFilterHostname('')
-                            setFilterIntune('')
-                            setFilterUserName('')
-                            setFilterDeviceType('')
-                            setFilterNotes('')
-                            setFilterLocation('')
-                          }}
-                        >
-                          Wis filters
-                        </button>
-                      )}
+                    <CmdbSortTh col="serial_number" label="Serie" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="hostname" label="Hostname" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="compliance" label="Compliance" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="last_sync" label="Sync" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="management" label="Beheer" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="user" label="Gebruiker" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="device_type" label="Type" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="notes" label="Opmerkingen" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <CmdbSortTh col="location" label="Locatie" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <th scope="col" className="text-right px-3 py-3 font-bold whitespace-nowrap" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                      Acties
                     </th>
                   </tr>
                 </thead>
@@ -801,7 +786,7 @@ export default function ItCmdbPage() {
                   {items.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="px-4 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
-                        Geen regels. Voeg hardware toe of pas de filters aan.
+                        Geen regels. Voeg hardware toe of pas de zoekopdracht aan.
                       </td>
                     </tr>
                   ) : (
@@ -819,7 +804,16 @@ export default function ItCmdbPage() {
                       return (
                       <tr
                         key={row.id}
-                        className={`border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.03)] ${
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setDeviceDetailId(row.id)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setDeviceDetailId(row.id)
+                          }
+                        }}
+                        className={`border-b border-[rgba(45,69,124,0.06)] hover:bg-[rgba(45,69,124,0.06)] cursor-pointer ${
                           nonCompliant ? 'border-l-[3px] border-red-500 bg-red-50/50' : ''
                         }`}
                       >
@@ -875,7 +869,10 @@ export default function ItCmdbPage() {
                         <td className="px-3 py-2.5 whitespace-nowrap align-top" style={{ color: TABLE_TEXT }}>
                           {row.location || '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-right align-top min-w-[200px]">
+                        <td
+                          className="px-3 py-2.5 text-right align-top min-w-[200px]"
+                          onClick={e => e.stopPropagation()}
+                        >
                           <div className="flex flex-col items-end gap-1.5">
                             {fdId != null && Number.isFinite(fdId) ? (
                               fdUrl ? (
@@ -940,6 +937,186 @@ export default function ItCmdbPage() {
         </div>
       </main>
 
+      {deviceDetailId && (
+        <div
+          className="fixed inset-0 z-[210] flex items-center justify-center p-3"
+          style={{ background: 'rgba(15,23,42,0.5)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="it-cmdb-device-detail-heading"
+          onClick={() => setDeviceDetailId(null)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[min(90vh,720px)] overflow-y-auto rounded-2xl p-5 space-y-4 shadow-2xl"
+            style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {fdDetailLoading && !detailRow ? (
+              <p className="text-sm m-0" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
+                Laden…
+              </p>
+            ) : !detailRow ? (
+              <p className="text-sm m-0" style={{ color: '#b91c1c', fontFamily: F }}>
+                Deze regel is niet gevonden (meer) in het huidige filter.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <h2
+                    id="it-cmdb-device-detail-heading"
+                    className="text-base font-bold m-0 pr-2 leading-snug"
+                    style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                  >
+                    {detailRow.hostname?.trim() || '—'}{' '}
+                    <span className="font-mono text-sm font-semibold opacity-90">· {detailRow.serial_number}</span>
+                  </h2>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                    style={{ border: `1px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }}
+                    onClick={() => setDeviceDetailId(null)}
+                  >
+                    Sluiten
+                  </button>
+                </div>
+                {(() => {
+                  const snap = isIntuneSnapshot(detailRow.intune_snapshot) ? detailRow.intune_snapshot : null
+                  const { label: userLabel, title: userTitle } = cmdbUserCellDisplay(detailRow, snap)
+                  return (
+                    <div className="rounded-xl p-3 space-y-2 text-sm" style={{ background: 'rgba(45,69,124,0.04)', fontFamily: F }}>
+                      <p className="m-0" style={{ color: TABLE_TEXT }}>
+                        <span className="font-semibold" style={{ color: DYNAMO_BLUE }}>
+                          Gebruiker:{' '}
+                        </span>
+                        {userLabel !== '—' ? (
+                          <span title={userTitle || undefined}>{userLabel}</span>
+                        ) : (
+                          <span style={{ color: dashboardUi.textMuted }}>—</span>
+                        )}
+                      </p>
+                      <p className="m-0" style={{ color: TABLE_TEXT }}>
+                        <span className="font-semibold" style={{ color: DYNAMO_BLUE }}>
+                          Compliance:{' '}
+                        </span>
+                        {snap?.complianceState ? (
+                          <ComplianceBadge state={snap.complianceState} />
+                        ) : (
+                          <span style={{ color: dashboardUi.textMuted }}>—</span>
+                        )}
+                      </p>
+                      <p className="m-0 text-xs" style={{ color: dashboardUi.textMuted }}>
+                        Laatste sync: {formatIntuneSyncDate(snap?.lastSyncDateTime)}
+                      </p>
+                      <p className="m-0 text-xs" style={{ color: dashboardUi.textMuted }}>
+                        Type: {detailRow.device_type || '—'}
+                        {snap?.manufacturer || snap?.model
+                          ? ` · ${[snap.manufacturer, snap.model].filter(Boolean).join(' · ')}`
+                          : ''}
+                      </p>
+                    </div>
+                  )
+                })()}
+                <div className="border-t pt-3" style={{ borderColor: dashboardUi.sectionDivider }}>
+                  <p className="text-[11px] font-bold uppercase tracking-wide m-0 mb-2" style={{ color: dashboardUi.textSubtle, fontFamily: F }}>
+                    Freshdesk
+                  </p>
+                  {fdDetailLoading ? (
+                    <p className="text-sm m-0" style={{ color: dashboardUi.textMuted }}>
+                      Ticketstatus laden…
+                    </p>
+                  ) : fdDetailData && typeof fdDetailData === 'object' && 'configured' in fdDetailData && fdDetailData.configured === false ? (
+                    <p className="text-sm m-0" style={{ color: dashboardUi.textMuted }}>
+                      {'error' in fdDetailData && typeof fdDetailData.error === 'string' ? fdDetailData.error : 'Freshdesk is niet geconfigureerd.'}
+                    </p>
+                  ) : fdDetailData && typeof fdDetailData === 'object' && 'fetchError' in fdDetailData && fdDetailData.fetchError ? (
+                    <p className="text-sm m-0" style={{ color: '#b91c1c' }}>
+                      {String(fdDetailData.fetchError)}
+                    </p>
+                  ) : fdDetailData &&
+                    typeof fdDetailData === 'object' &&
+                    'activeTicket' in fdDetailData &&
+                    fdDetailData.activeTicket != null ? (
+                    <div className="space-y-2">
+                      <p className="text-sm m-0 font-semibold" style={{ color: TABLE_TEXT }}>
+                        {fdDetailData.activeTicket.subject}
+                      </p>
+                      <p className="text-xs m-0" style={{ color: dashboardUi.textMuted }}>
+                        {fdDetailData.activeTicket.statusLabel} · prioriteit {fdDetailData.activeTicket.priority}
+                      </p>
+                      {fdDetailData.activeTicket.url ? (
+                        <a
+                          href={fdDetailData.activeTicket.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-sm font-semibold underline"
+                          style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                        >
+                          Ticket #{fdDetailData.activeTicket.id} openen →
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : fdDetailData &&
+                    typeof fdDetailData === 'object' &&
+                    'lastTicket' in fdDetailData &&
+                    fdDetailData.lastTicket != null ? (
+                    <div className="space-y-2">
+                      <p className="text-sm m-0" style={{ color: dashboardUi.textMuted }}>
+                        Het gekoppelde ticket is in Freshdesk opgelost of gesloten (of verwijderd). Je kunt een nieuw ticket aanmaken.
+                      </p>
+                      <p className="text-sm m-0 font-medium" style={{ color: TABLE_TEXT }}>
+                        {fdDetailData.lastTicket.subject}
+                      </p>
+                      <p className="text-xs m-0" style={{ color: dashboardUi.textMuted }}>
+                        Laatst bekend: {fdDetailData.lastTicket.statusLabel}
+                      </p>
+                      {fdDetailData.lastTicket.url ? (
+                        <a
+                          href={fdDetailData.lastTicket.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-xs font-semibold underline"
+                          style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                        >
+                          Oud ticket #{fdDetailData.lastTicket.id} (archief) →
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-sm m-0" style={{ color: dashboardUi.textMuted }}>
+                      {fdDetailData &&
+                      typeof fdDetailData === 'object' &&
+                      'clearedStoredId' in fdDetailData &&
+                      fdDetailData.clearedStoredId &&
+                      !('lastTicket' in fdDetailData && fdDetailData.lastTicket)
+                        ? 'Het eerder gekoppelde ticket bestaat niet meer in Freshdesk (verwijderd). Je kunt een nieuw ticket aanmaken.'
+                        : 'Geen actief Freshdesk-ticket voor dit apparaat.'}
+                    </p>
+                  )}
+                  {freshdeskConfigData?.configured &&
+                    fdDetailData &&
+                    typeof fdDetailData === 'object' &&
+                    'configured' in fdDetailData &&
+                    fdDetailData.configured === true &&
+                    !('fetchError' in fdDetailData && fdDetailData.fetchError) &&
+                    'activeTicket' in fdDetailData &&
+                    fdDetailData.activeTicket == null && (
+                      <button
+                        type="button"
+                        disabled={freshdeskBusyId === detailRow.id}
+                        onClick={() => void createFreshdeskTicketForDevice(detailRow)}
+                        className="mt-3 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
+                        style={{ background: DYNAMO_BLUE, fontFamily: F }}
+                      >
+                        {freshdeskBusyId === detailRow.id ? 'Bezig…' : 'Maak Freshdesk-ticket'}
+                      </button>
+                    )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {statsOpen && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-3"
@@ -968,8 +1145,8 @@ export default function ItCmdbPage() {
               </button>
             </div>
             <p className="text-xs m-0" style={{ color: dashboardUi.textMuted }}>
-              {hasActiveFilter
-                ? 'Gebaseerd op de huidige zoek- en filterresultaten.'
+              {hasActiveSearch
+                ? 'Gebaseerd op de huidige zoekopdracht.'
                 : 'Alle apparaten in het overzicht.'}{' '}
               <span className="font-semibold" style={{ color: TABLE_TEXT }}>
                 {items.length} totaal

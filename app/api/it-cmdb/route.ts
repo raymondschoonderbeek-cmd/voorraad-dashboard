@@ -3,6 +3,8 @@ import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { assertPortalUser, enrichAssignedEmails, parseAssignedUserId } from '@/lib/it-cmdb-assigned-user'
 import { freshdeskTicketUrl, isFreshdeskConfigured } from '@/lib/freshdesk'
+import { isCmdbSortKey, sortCmdbHardwareList, type CmdbSortKey } from '@/lib/it-cmdb-list-sort'
+import type { ItCmdbHardwareListItem } from '@/lib/it-cmdb-types'
 
 function parseFdId(raw: unknown): number | null {
   if (raw == null) return null
@@ -19,10 +21,24 @@ function ilikeFragment(value: string): string {
   return value.replace(/%/g, '').trim()
 }
 
+const DB_SORT_COLUMNS = new Set([
+  'serial_number',
+  'hostname',
+  'user_name',
+  'device_type',
+  'notes',
+  'location',
+  'intune',
+  'updated_at',
+])
+
+/** Sorteren op Intune JSON / portal-e-mail na enrich */
+const MEMORY_SORT_KEYS = new Set<CmdbSortKey>(['user', 'compliance', 'last_sync', 'management'])
+
 /**
  * GET: alle hardware-regels.
- * Kolomfilters (AND): serial, hostname, intune, user_name, device_type, notes, location.
- * Globaal zoeken (OR over kolommen): q.
+ * Zoeken: q (meerdere woorden = alle woorden moeten ergens matchen, AND over tokens).
+ * Sorteren: sort + dir (asc|desc).
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -32,52 +48,23 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
   const { searchParams } = new URL(request.url)
-  const q = searchParams.get('q')?.trim()
-  const serial = searchParams.get('serial')?.trim()
-  const hostname = searchParams.get('hostname')?.trim()
-  const intune = searchParams.get('intune')?.trim()
-  const user_name = searchParams.get('user_name')?.trim()
-  const device_type = searchParams.get('device_type')?.trim()
-  const notes = searchParams.get('notes')?.trim()
-  const location = searchParams.get('location')?.trim()
+  const qRaw = searchParams.get('q')?.trim()
+  const sortParam = searchParams.get('sort')?.trim() ?? 'serial_number'
+  const ascending = searchParams.get('dir')?.trim().toLowerCase() !== 'desc'
 
-  let query = auth.supabase
-    .from('it_cmdb_hardware')
-    .select('*')
-    .order('serial_number', { ascending: true })
+  const sortKey: CmdbSortKey = isCmdbSortKey(sortParam) ? sortParam : 'serial_number'
+  const needsMemorySort = MEMORY_SORT_KEYS.has(sortKey)
 
-  if (serial) {
-    const s = ilikeFragment(serial)
-    if (s) query = query.ilike('serial_number', `%${s}%`)
-  }
-  if (hostname) {
-    const s = ilikeFragment(hostname)
-    if (s) query = query.ilike('hostname', `%${s}%`)
-  }
-  if (intune) {
-    const s = ilikeFragment(intune)
-    if (s) query = query.ilike('intune', `%${s}%`)
-  }
-  if (user_name) {
-    const s = ilikeFragment(user_name)
-    if (s) query = query.ilike('user_name', `%${s}%`)
-  }
-  if (device_type) {
-    const s = ilikeFragment(device_type)
-    if (s) query = query.ilike('device_type', `%${s}%`)
-  }
-  if (notes) {
-    const s = ilikeFragment(notes)
-    if (s) query = query.ilike('notes', `%${s}%`)
-  }
-  if (location) {
-    const s = ilikeFragment(location)
-    if (s) query = query.ilike('location', `%${s}%`)
-  }
+  let query = auth.supabase.from('it_cmdb_hardware').select('*')
 
-  if (q) {
-    const safe = ilikeFragment(q)
-    if (safe) {
+  if (qRaw) {
+    const tokens = qRaw
+      .split(/\s+/)
+      .map(t => ilikeFragment(t))
+      .filter(t => t.length > 0)
+      .slice(0, 12)
+
+    for (const safe of tokens) {
       const baseOr = `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%,intune.ilike.%${safe}%`
       let extra = ''
       try {
@@ -97,9 +84,25 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (needsMemorySort) {
+    query = query.order('serial_number', { ascending: true })
+  } else if (DB_SORT_COLUMNS.has(sortKey)) {
+    query = query.order(sortKey, { ascending })
+  } else {
+    query = query.order('serial_number', { ascending: true })
+  }
+
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  const enriched = await enrichAssignedEmails(auth.supabase, (data ?? []) as { assigned_user_id: string | null }[])
+  let enriched = (await enrichAssignedEmails(
+    auth.supabase,
+    (data ?? []) as { assigned_user_id: string | null }[]
+  )) as ItCmdbHardwareListItem[]
+
+  if (needsMemorySort) {
+    enriched = sortCmdbHardwareList(enriched, sortKey, ascending)
+  }
+
   const fd = isFreshdeskConfigured()
   const items = fd
     ? enriched.map(item => {
