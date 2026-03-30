@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const { data: posts, error } = await auth.supabase
     .from('drg_news_posts')
-    .select('id, title, excerpt, published_at')
+    .select('id, title, excerpt, published_at, category')
     .not('published_at', 'is', null)
     .lte('published_at', nowIso)
     .gte('published_at', sinceIso)
@@ -31,6 +31,18 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const list = posts ?? []
+
+  const { data: afRows } = await auth.supabase
+    .from('drg_news_afdelingen')
+    .select('slug, label, sort_order')
+    .order('sort_order', { ascending: true })
+
+  const afdelingen = (afRows ?? []).map((r: { slug: string; label: string; sort_order: number }) => ({
+    slug: r.slug,
+    label: r.label,
+    sort_order: r.sort_order ?? 0,
+  }))
+
   const site = getSiteUrl()
   const { html, text } = buildDigestEmailHtml({
     posts: list.map(p => ({
@@ -38,8 +50,10 @@ export async function GET(request: NextRequest) {
       title: p.title,
       excerpt: p.excerpt,
       published_at: p.published_at,
+      category: typeof p.category === 'string' && p.category.trim() ? p.category.trim() : 'algemeen',
     })),
     siteUrl: site,
+    afdelingen,
   })
 
   return NextResponse.json({

@@ -7,7 +7,12 @@ import {
   isWithinReminderWindow,
   parseHHmmToMinutes,
 } from '@/lib/amsterdam-time'
-import { buildDigestEmailHtml, digestMailConfigured, sendNewsDigestEmail } from '@/lib/news-digest-mail'
+import {
+  buildDigestEmailHtml,
+  buildDigestEmailSubject,
+  digestMailConfigured,
+  sendNewsDigestEmail,
+} from '@/lib/news-digest-mail'
 
 /**
  * GET: wekelijkse digest (cron-job.org + Authorization: Bearer CRON_SECRET).
@@ -91,7 +96,7 @@ export async function GET(request: NextRequest) {
 
   const { data: posts, error: pe } = await admin
     .from('drg_news_posts')
-    .select('id, title, excerpt, published_at')
+    .select('id, title, excerpt, published_at, category')
     .not('published_at', 'is', null)
     .lte('published_at', new Date().toISOString())
     .gte('published_at', sinceIso)
@@ -99,6 +104,17 @@ export async function GET(request: NextRequest) {
 
   if (pe) return NextResponse.json({ error: pe.message }, { status: 500 })
   const list = posts ?? []
+
+  const { data: afRows } = await admin
+    .from('drg_news_afdelingen')
+    .select('slug, label, sort_order')
+    .order('sort_order', { ascending: true })
+
+  const afdelingen = (afRows ?? []).map((r: { slug: string; label: string; sort_order: number }) => ({
+    slug: r.slug,
+    label: r.label,
+    sort_order: r.sort_order ?? 0,
+  }))
 
   async function markDigestRun() {
     await admin
@@ -148,11 +164,13 @@ export async function GET(request: NextRequest) {
       title: p.title,
       excerpt: p.excerpt,
       published_at: p.published_at,
+      category: typeof p.category === 'string' && p.category.trim() ? p.category.trim() : 'algemeen',
     })),
     siteUrl: site,
+    afdelingen,
   })
 
-  const subject = `DRG Portal — ${list.length} nieuwsbericht${list.length === 1 ? '' : 'en'} deze week`
+  const subject = buildDigestEmailSubject(now)
 
   let sent = 0
   const errors: string[] = []
