@@ -87,10 +87,12 @@ export function NieuwsDigestSettings() {
           Wekelijkse samenvatting per e-mail
         </h2>
         <p className="text-xs m-0 mt-1" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
-          Gebruikers kunnen dit in Instellingen uitzetten. Hier bepaal je of de digest überhaupt verstuurd wordt, op welke dag
-          (weekdag in Europe/Amsterdam) en rond welk tijdstip. Plan een externe cron (elke 5 min) op{' '}
-          <code className="text-[11px] bg-gray-100 px-1 rounded">GET /api/news/digest-cron</code> met{' '}
-          <code className="text-[11px] bg-gray-100 px-1 rounded">Authorization: Bearer CRON_SECRET</code> — zelfde patroon als lunch-herinnering.
+          Medewerkers kunnen hun eigen voorkeur aanpassen onder Instellingen. Hier stel je in of de wekelijkse e-mail
+          automatisch wordt verstuurd, op welke dag (Nederlandse tijd, Amsterdam) en rond welk tijdstip. Laat een externe
+          planning (bijv. elke 5 minuten) <code className="text-[11px] bg-gray-100 px-1 rounded">GET /api/news/digest-cron</code>{' '}
+          aanroepen met{' '}
+          <code className="text-[11px] bg-gray-100 px-1 rounded">Authorization: Bearer CRON_SECRET</code> — hetzelfde principe
+          als bij de lunch-herinnering.
         </p>
       </div>
 
@@ -113,11 +115,12 @@ export function NieuwsDigestSettings() {
         <form onSubmit={save} className="space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <span className="text-sm font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-              Digest actief
+              Wekelijkse samenvatting per e-mail versturen
             </span>
             <button
               type="button"
               role="switch"
+              aria-label={digestEnabled ? 'Wekelijkse e-mail uit' : 'Wekelijkse e-mail aan'}
               aria-checked={digestEnabled}
               disabled={saving}
               onClick={() => setDigestEnabled(v => !v)}
@@ -137,7 +140,7 @@ export function NieuwsDigestSettings() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
-                Dag (Amsterdam)
+                Dag van verzending (Amsterdam)
               </label>
               <select
                 className={inputClass}
@@ -154,7 +157,7 @@ export function NieuwsDigestSettings() {
             </div>
             <div>
               <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
-                Tijd (24 uur, HH:mm)
+                Tijdstip (24-uursnotatie, bijv. 09:00)
               </label>
               <input
                 type="text"
