@@ -9,6 +9,14 @@ export function isFreshdeskConfigured(): boolean {
   return !!(d && k)
 }
 
+/** Freshdesk-groep (bijv. IT); zet FRESHDESK_IT_GROUP_ID op de server (numeriek id uit Admin → Groups). */
+export function getFreshdeskItGroupId(): number | null {
+  const raw = process.env.FRESHDESK_IT_GROUP_ID?.trim()
+  if (!raw) return null
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null
+}
+
 function normalizeDomain(raw: string): string {
   return raw.replace(/^https?:\/\//, '').replace(/\/$/, '').trim()
 }
@@ -19,6 +27,8 @@ export type CreateFreshdeskTicketInput = {
   description: string
   priority: number
   status: number
+  /** Overschrijft FRESHDESK_IT_GROUP_ID; weglaten = gebruik env FRESHDESK_IT_GROUP_ID. */
+  groupId?: number | null
 }
 
 export async function createFreshdeskTicket(input: CreateFreshdeskTicketInput): Promise<{ id: number }> {
@@ -30,6 +40,9 @@ export async function createFreshdeskTicket(input: CreateFreshdeskTicketInput): 
 
   const url = `https://${domain}/api/v2/tickets`
   const auth = Buffer.from(`${key}:X`).toString('base64')
+
+  const resolvedGroup =
+    input.groupId !== undefined && input.groupId !== null ? input.groupId : getFreshdeskItGroupId()
 
   const res = await fetch(url, {
     method: 'POST',
@@ -43,6 +56,7 @@ export async function createFreshdeskTicket(input: CreateFreshdeskTicketInput): 
       description: input.description,
       priority: input.priority,
       status: input.status,
+      ...(resolvedGroup != null ? { group_id: resolvedGroup } : {}),
     }),
   })
 
@@ -132,6 +146,29 @@ export async function fetchFreshdeskTicketById(
       priority: typeof json.priority === 'number' ? json.priority : 0,
     },
   }
+}
+
+/** Parallel ophalen van meerdere tickets (voor geschiedenis per apparaat). */
+export async function fetchFreshdeskTicketsByIds(
+  ticketIds: number[]
+): Promise<Map<number, FreshdeskTicketSnapshot | 'missing' | 'error'>> {
+  const unique = [...new Set(ticketIds.filter(id => Number.isFinite(id) && id > 0))] as number[]
+  const out = new Map<number, FreshdeskTicketSnapshot | 'missing' | 'error'>()
+  await Promise.all(
+    unique.map(async id => {
+      try {
+        const r = await fetchFreshdeskTicketById(id)
+        if (!r.ok) {
+          out.set(id, r.notFound ? 'missing' : 'error')
+        } else {
+          out.set(id, r.ticket)
+        }
+      } catch {
+        out.set(id, 'error')
+      }
+    })
+  )
+  return out
 }
 
 export function freshdeskStatusLabelNl(status: number): string {

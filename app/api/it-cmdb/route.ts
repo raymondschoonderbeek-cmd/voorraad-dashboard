@@ -37,7 +37,8 @@ const MEMORY_SORT_KEYS = new Set<CmdbSortKey>(['user', 'compliance', 'last_sync'
 
 /**
  * GET: alle hardware-regels.
- * Zoeken: q (meerdere woorden = alle woorden moeten ergens matchen, AND over tokens).
+ * Zoeken: q (meerdere woorden = AND over tokens). RPC it_cmdb_hardware_search_ids:
+ * accent-neutraal (andre ↔ André), intune_snapshot JSON, portal-e-mail via auth.users.
  * Sorteren: sort + dir (asc|desc).
  */
 export async function GET(request: NextRequest) {
@@ -64,23 +65,38 @@ export async function GET(request: NextRequest) {
       .filter(t => t.length > 0)
       .slice(0, 12)
 
-    for (const safe of tokens) {
-      const baseOr = `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%,intune.ilike.%${safe}%`
-      let extra = ''
-      try {
-        const { data: rpcIds, error: rpcErr } = await auth.supabase.rpc('it_cmdb_user_ids_by_email_needle', {
-          p_needle: safe,
-        })
-        if (!rpcErr && rpcIds) {
-          const idList = (Array.isArray(rpcIds) ? rpcIds : []).filter((x): x is string => typeof x === 'string' && x.length > 0)
-          if (idList.length > 0) {
-            extra = `,assigned_user_id.in.(${idList.slice(0, 40).join(',')})`
-          }
+    if (tokens.length > 0) {
+      const { data: searchIds, error: searchErr } = await auth.supabase.rpc('it_cmdb_hardware_search_ids', {
+        p_tokens: tokens,
+      })
+
+      if (!searchErr && searchIds != null) {
+        const ids = (Array.isArray(searchIds) ? searchIds : []).filter((x): x is string => typeof x === 'string' && x.length > 0)
+        if (ids.length === 0) {
+          return NextResponse.json({ items: [] })
         }
-      } catch {
-        /* RPC ontbreekt op oude DB-migraties */
+        query = query.in('id', ids)
+      } else {
+        /* Fallback als migratie nog niet is gedraaid */
+        for (const safe of tokens) {
+          const baseOr = `serial_number.ilike.%${safe}%,hostname.ilike.%${safe}%,user_name.ilike.%${safe}%,device_type.ilike.%${safe}%,notes.ilike.%${safe}%,location.ilike.%${safe}%,intune.ilike.%${safe}%`
+          let extra = ''
+          try {
+            const { data: rpcIds, error: rpcErr } = await auth.supabase.rpc('it_cmdb_user_ids_by_email_needle', {
+              p_needle: safe,
+            })
+            if (!rpcErr && rpcIds) {
+              const idList = (Array.isArray(rpcIds) ? rpcIds : []).filter((x): x is string => typeof x === 'string' && x.length > 0)
+              if (idList.length > 0) {
+                extra = `,assigned_user_id.in.(${idList.slice(0, 40).join(',')})`
+              }
+            }
+          } catch {
+            /* RPC ontbreekt op oude DB-migraties */
+          }
+          query = query.or(baseOr + extra)
+        }
       }
-      query = query.or(baseOr + extra)
     }
   }
 

@@ -32,6 +32,18 @@ function formatIntuneSyncDate(iso: string | null | undefined): string {
   })
 }
 
+function formatTicketLinkedAt(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('nl-NL', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 /** `jeroen.schrijver@domein.nl` → `Jeroen Schrijver` (local part gesplitst op . _ -) */
 function prettyNameFromEmail(email: string): string {
   const local = email.trim().split('@')[0] ?? ''
@@ -279,12 +291,26 @@ export default function ItCmdbPage() {
 
   const fdDetailUrl =
     allowed && deviceDetailId ? `/api/it-cmdb/freshdesk-ticket?hardwareId=${encodeURIComponent(deviceDetailId)}` : null
+  type FdTicketHistoryRow = {
+    id: number
+    linkedAt: string
+    subject: string
+    status: number
+    statusLabel: string
+    priority: number
+    url: string | null
+    fetchState: 'ok' | 'missing' | 'error'
+  }
+
   const { data: fdDetailData, isLoading: fdDetailLoading, mutate: mutateFdDetail } = useSWR<
     | { configured: boolean }
     | {
         configured: boolean
         clearedStoredId?: boolean
         fetchError?: string
+        histError?: string
+        freshdeskItGroupConfigured?: boolean
+        ticketHistory?: FdTicketHistoryRow[]
         item?: ItCmdbHardwareListItem
         activeTicket?: {
           id: number
@@ -311,6 +337,8 @@ export default function ItCmdbPage() {
         activeTicket?: null
         lastTicket?: null
         clearedStoredId?: false
+        ticketHistory?: readonly []
+        freshdeskItGroupConfigured?: false
       }
   >(fdDetailUrl, fetcher, { shouldRetryOnError: false })
 
@@ -1110,6 +1138,89 @@ export default function ItCmdbPage() {
                         {freshdeskBusyId === detailRow.id ? 'Bezig…' : 'Maak Freshdesk-ticket'}
                       </button>
                     )}
+                  {fdDetailData &&
+                    typeof fdDetailData === 'object' &&
+                    'configured' in fdDetailData &&
+                    fdDetailData.configured === true &&
+                    'histError' in fdDetailData &&
+                    typeof fdDetailData.histError === 'string' &&
+                    fdDetailData.histError ? (
+                    <p className="text-xs m-0 mt-3" style={{ color: '#b45309' }}>
+                      Geschiedenis kon niet geladen worden: {fdDetailData.histError}
+                    </p>
+                  ) : null}
+                  {fdDetailData &&
+                    typeof fdDetailData === 'object' &&
+                    'configured' in fdDetailData &&
+                    fdDetailData.configured === true &&
+                    'freshdeskItGroupConfigured' in fdDetailData &&
+                    fdDetailData.freshdeskItGroupConfigured === false && (
+                    <p className="text-xs m-0 mt-3 leading-relaxed" style={{ color: dashboardUi.textMuted }}>
+                      Nieuwe tickets worden nog niet automatisch aan de groep IT toegewezen. Zet op de server{' '}
+                      <code className="rounded px-1 py-0.5 text-[11px]" style={{ background: 'rgba(45,69,124,0.08)' }}>
+                        FRESHDESK_IT_GROUP_ID
+                      </code>{' '}
+                      (numeriek groeps-id uit Freshdesk Admin → Teams → IT).
+                    </p>
+                  )}
+                  {fdDetailData &&
+                    typeof fdDetailData === 'object' &&
+                    'ticketHistory' in fdDetailData &&
+                    Array.isArray(fdDetailData.ticketHistory) &&
+                    fdDetailData.ticketHistory.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide m-0" style={{ color: dashboardUi.textSubtle, fontFamily: F }}>
+                        Ticketgeschiedenis
+                      </p>
+                      <ul className="m-0 p-0 list-none space-y-2.5">
+                        {fdDetailData.ticketHistory.map(h => {
+                          const isActive =
+                            'activeTicket' in fdDetailData &&
+                            fdDetailData.activeTicket != null &&
+                            fdDetailData.activeTicket.id === h.id
+                          return (
+                            <li
+                              key={`${h.id}-${h.linkedAt}`}
+                              className="rounded-lg p-2.5 text-sm"
+                              style={{ background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.08)' }}
+                            >
+                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                <span className="font-semibold tabular-nums" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                                  #{h.id}
+                                </span>
+                                {isActive ? (
+                                  <span
+                                    className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                                    style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d' }}
+                                  >
+                                    Actief
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="m-0 mt-1 line-clamp-2" style={{ color: TABLE_TEXT }}>
+                                {h.subject}
+                              </p>
+                              <p className="text-xs m-0 mt-0.5" style={{ color: dashboardUi.textMuted }}>
+                                {h.statusLabel}
+                                {h.fetchState === 'ok' ? ` · prioriteit ${h.priority}` : null} · gekoppeld {formatTicketLinkedAt(h.linkedAt)}
+                              </p>
+                              {h.url ? (
+                                <a
+                                  href={h.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-block mt-1.5 text-xs font-semibold underline"
+                                  style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                                >
+                                  Openen in Freshdesk →
+                                </a>
+                              ) : null}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </>
             )}

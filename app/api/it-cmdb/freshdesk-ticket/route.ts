@@ -4,8 +4,10 @@ import { withRateLimit } from '@/lib/api-middleware'
 import { enrichAssignedEmails } from '@/lib/it-cmdb-assigned-user'
 import {
   createFreshdeskTicket,
+  fetchFreshdeskTicketsByIds,
   freshdeskTicketUrl,
   freshdeskStatusLabelNl,
+  getFreshdeskItGroupId,
   isFreshdeskConfigured,
 } from '@/lib/freshdesk'
 import { reconcileFreshdeskTicketForHardware } from '@/lib/it-cmdb-freshdesk-reconcile'
@@ -57,6 +59,8 @@ export async function GET(request: NextRequest) {
       activeTicket: null,
       lastTicket: null,
       clearedStoredId: false,
+      ticketHistory: [] as const,
+      freshdeskItGroupConfigured: false,
     })
   }
 
@@ -74,14 +78,83 @@ export async function GET(request: NextRequest) {
   const active = reconcile.activeTicket
   const last = reconcile.lastSeenTicket
 
+  const { data: histRows, error: histErr } = await auth.supabase
+    .from('it_cmdb_hardware_freshdesk_ticket')
+    .select('freshdesk_ticket_id, created_at')
+    .eq('hardware_id', hardwareId)
+    .order('created_at', { ascending: false })
+
+  let historyRows = histErr ? [] : (histRows ?? [])
+  const curFd = parseFreshdeskId(listItem.freshdesk_ticket_id)
+  if (curFd != null && !historyRows.some(r => Number(r.freshdesk_ticket_id) === curFd)) {
+    const { error: repairErr } = await auth.supabase.from('it_cmdb_hardware_freshdesk_ticket').insert({
+      hardware_id: hardwareId,
+      freshdesk_ticket_id: curFd,
+    })
+    if (!repairErr) {
+      const { data: again } = await auth.supabase
+        .from('it_cmdb_hardware_freshdesk_ticket')
+        .select('freshdesk_ticket_id, created_at')
+        .eq('hardware_id', hardwareId)
+        .order('created_at', { ascending: false })
+      historyRows = again ?? historyRows
+    }
+  }
+
+  const histIds = historyRows.map(r => Number(r.freshdesk_ticket_id)).filter(n => Number.isFinite(n)) as number[]
+  const fdMap = histErr ? new Map() : await fetchFreshdeskTicketsByIds(histIds)
+
+  const ticketHistory = historyRows.map(row => {
+    const id = Number(row.freshdesk_ticket_id)
+    const snap = fdMap.get(id)
+    const linkedAt = typeof row.created_at === 'string' ? row.created_at : new Date().toISOString()
+    if (snap === 'missing' || snap === 'error') {
+      return {
+        id,
+        linkedAt,
+        subject: snap === 'missing' ? '(Ticket niet meer gevonden in Freshdesk)' : '(Status ophalen mislukt)',
+        status: 0,
+        statusLabel: snap === 'missing' ? 'Onbekend' : 'Onbekend',
+        priority: 0,
+        url: freshdeskTicketUrl(id),
+        fetchState: snap as 'missing' | 'error',
+      }
+    }
+    if (snap) {
+      return {
+        id: snap.id,
+        linkedAt,
+        subject: snap.subject,
+        status: snap.status,
+        statusLabel: freshdeskStatusLabelNl(snap.status),
+        priority: snap.priority,
+        url: freshdeskTicketUrl(snap.id),
+        fetchState: 'ok' as const,
+      }
+    }
+    return {
+      id,
+      linkedAt,
+      subject: '(Geen gegevens)',
+      status: 0,
+      statusLabel: 'Onbekend',
+      priority: 0,
+      url: freshdeskTicketUrl(id),
+      fetchState: 'error' as const,
+    }
+  })
+
   return NextResponse.json({
     configured: true,
+    freshdeskItGroupConfigured: getFreshdeskItGroupId() != null,
     clearedStoredId: reconcile.clearedStoredId,
     fetchError: reconcile.fetchError,
+    histError: histErr ? histErr.message : undefined,
     item: {
       ...listItem,
       freshdesk_ticket_url: ticketUrl,
     },
+    ticketHistory,
     activeTicket:
       active != null
         ? {
@@ -201,6 +274,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: `Ticket aangemaakt (${ticketId}) maar opslaan in CMDB mislukt${updErr ? `: ${updErr.message}` : ''}. Koppel het ticket handmatig.`,
+        ticketId,
+        ticketUrl: freshdeskTicketUrl(ticketId),
+      },
+      { status: 500 }
+    )
+  }
+
+  const { error: histInsErr } = await auth.supabase.from('it_cmdb_hardware_freshdesk_ticket').insert({
+    hardware_id: hardwareId,
+    freshdesk_ticket_id: ticketId,
+  })
+  if (histInsErr && histInsErr.code !== '23505') {
+    return NextResponse.json(
+      {
+        error: `Ticket en CMDB bijgewerkt, maar geschiedenis opslaan mislukt: ${histInsErr.message}`,
         ticketId,
         ticketUrl: freshdeskTicketUrl(ticketId),
       },
