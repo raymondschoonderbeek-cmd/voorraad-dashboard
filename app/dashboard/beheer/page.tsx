@@ -21,6 +21,7 @@ const MODULE_LABELS: Record<DashboardModuleId, string> = {
   'campagne-fietsen': 'Campagnefietsen',
   'branche-nieuws': 'Branche nieuws',
   'interne-nieuws': 'Interne nieuwsberichten beheer',
+  'it-cmdb': 'IT-hardware (CMDB)',
   meer: 'Meer',
 }
 type LandFilter = 'alle' | LandCode

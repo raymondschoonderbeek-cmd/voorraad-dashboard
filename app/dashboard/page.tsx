@@ -15,7 +15,7 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
-const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'meer'] as const
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 const WINKEL_KLEUREN = [
@@ -162,6 +162,13 @@ const IconNewspaper = () => (
     <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v18a2 2 0 0 1-2 2z" />
     <path d="M18 10h-4" /><path d="M18 14h-4" /><path d="M18 6h-4" />
     <path d="M6 10h.01" /><path d="M6 14h.01" />
+  </svg>
+)
+
+const IconLaptop = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="12" rx="2" />
+    <path d="M2 18h20" />
   </svg>
 )
 
@@ -1150,6 +1157,28 @@ export default function Dashboard() {
                             <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
                               <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Naar beheer →</span>
                               <div style={{ color: 'rgba(255,255,255,0.45)' }} aria-hidden><IconNewspaper /></div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
+                    if (id === 'it-cmdb') {
+                      return (
+                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/it-cmdb" aria-label="IT-hardware CMDB: interne voorraad" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
+                            {dragHandle}
+                            <div className="p-6 flex-1">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }} aria-hidden><IconLaptop /></div>
+                              </div>
+                              <div style={modTitleStyle}>IT-hardware</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>
+                                CMDB: laptops, serienummers, Intune, locatie
+                              </div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Open overzicht →</span>
+                              <div style={{ color: 'rgba(255,255,255,0.45)' }} aria-hidden><IconLaptop /></div>
                             </div>
                           </Link>
                         </div>
