@@ -25,8 +25,15 @@ export default function InstellingenPage() {
     lunch_module_enabled?: boolean
     lunch_reminder_opt_out?: boolean
   }>('/api/profile', fetcher)
+  const { data: newsPrefData, mutate: mutateNewsPref } = useSWR<{ weekly_digest_enabled: boolean }>(
+    '/api/news/preferences',
+    fetcher,
+    { shouldRetryOnError: false }
+  )
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
+  const weeklyDigestEnabled = newsPrefData?.weekly_digest_enabled !== false
+  const [newsPrefSaving, setNewsPrefSaving] = useState(false)
 
   async function toggleLunchModule(enabled: boolean) {
     setLunchSaving(true)
@@ -42,6 +49,22 @@ export default function InstellingenPage() {
       setMfaError('Lunch-module voorkeur kon niet worden opgeslagen.')
     }
     setLunchSaving(false)
+  }
+
+  async function toggleWeeklyDigest(enabled: boolean) {
+    setNewsPrefSaving(true)
+    try {
+      const res = await fetch('/api/news/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekly_digest_enabled: enabled }),
+      })
+      if (!res.ok) throw new Error('Opslaan mislukt')
+      mutateNewsPref({ weekly_digest_enabled: enabled })
+    } catch {
+      setMfaError('Voorkeur voor nieuwsbrief kon niet worden opgeslagen.')
+    }
+    setNewsPrefSaving(false)
   }
 
   async function toggleLunchReminderOptOut(optOut: boolean) {
@@ -196,6 +219,41 @@ export default function InstellingenPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Intern nieuws — e-mail digest */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">📰 Intern nieuws</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Wekelijkse samenvatting per e-mail (indien aan staat in het portaal). Beheer stuurt berichten via Beheer → Nieuws.
+              </p>
+            </div>
+            <Link href="/dashboard/nieuws" className="text-sm font-medium text-gray-600 hover:text-gray-900 shrink-0">
+              Naar nieuws →
+            </Link>
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">Wekelijkse e-mail met nieuws</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={weeklyDigestEnabled}
+              disabled={newsPrefSaving || newsPrefData === undefined}
+              onClick={() => toggleWeeklyDigest(!weeklyDigestEnabled)}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-dynamo-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                weeklyDigestEnabled ? 'bg-dynamo-blue' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  weeklyDigestEnabled ? 'translate-x-5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {newsPrefSaving && <p className="mt-2 text-xs text-gray-500">Opslaan...</p>}
         </div>
 
         {/* MFA */}

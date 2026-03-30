@@ -446,6 +446,10 @@ export default function Dashboard() {
     dashboardModules?: string[]
     allowedCountries?: ('Netherlands' | 'Belgium')[] | null
   }>('/api/auth/session-info', fetcher)
+  const { data: newsUnreadData } = useSWR<{ count: number }>('/api/news/unread', fetcher, {
+    revalidateOnFocus: true,
+    shouldRetryOnError: false,
+  })
   const isAdmin = sessionData?.isAdmin === true
   const lunchOnly = sessionData?.lunchOnly === true
   const allowedCountries = sessionData?.allowedCountries ?? null
@@ -820,6 +824,24 @@ export default function Dashboard() {
           </Link>
           <div className="flex items-center gap-2 pl-2 sm:pl-4 shrink-0 w-full sm:w-auto justify-end sm:justify-start ml-auto">
             <span className="text-xs hidden md:block px-2 truncate max-w-[120px]" style={{ color: 'white', fontFamily: F }}>{gebruiker}</span>
+            <Link
+              href="/dashboard/nieuws"
+              className="rounded-lg p-2 sm:px-3 sm:py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5 relative"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}
+              title="Intern nieuws"
+            >
+              <span className="hidden sm:inline">Nieuws</span>
+              <span className="sm:hidden">📰</span>
+              {(newsUnreadData?.count ?? 0) > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold px-1"
+                  style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}
+                  aria-label={`${newsUnreadData?.count} ongelezen`}
+                >
+                  {(newsUnreadData?.count ?? 0) > 99 ? '99+' : newsUnreadData?.count ?? 0}
+                </span>
+              )}
+            </Link>
             <Link href="/dashboard/beheer" className="rounded-lg p-2 sm:px-3 sm:py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Beheer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -909,6 +931,26 @@ export default function Dashboard() {
                   </div>
                 </div>
               </section>
+
+              {(newsUnreadData?.count ?? 0) > 0 && (
+                <Link
+                  href="/dashboard/nieuws"
+                  className="block rounded-xl px-4 py-3 text-sm font-semibold transition hover:opacity-95"
+                  style={{
+                    background: 'rgba(45,69,124,0.06)',
+                    border: '1px solid rgba(45,69,124,0.15)',
+                    color: DYNAMO_BLUE,
+                    fontFamily: F,
+                  }}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full text-xs font-bold" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
+                      {newsUnreadData?.count ?? 0}
+                    </span>
+                    Ongelezen nieuwsberichten — open het overzicht
+                  </span>
+                </Link>
+              )}
 
               <p className="text-pretty text-sm leading-relaxed max-w-2xl m-0" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
                 {lunchOnly

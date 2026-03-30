@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
 import { CampagneFietsenBeheerTab } from '@/components/campagne-fietsen/CampagneFietsenBeheerTab'
+import { NieuwsBeheerTab } from '@/components/nieuws/NieuwsBeheerTab'
 import { DASHBOARD_MODULE_ORDER, type DashboardModuleId, type LandCode } from '@/lib/dashboard-modules'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
@@ -45,7 +46,7 @@ type Winkel = {
   vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
 }
-type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen'
+type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen' | 'nieuws'
 
 const IconArrowLeft = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -219,6 +220,7 @@ export default function BeheerPage() {
     if (searchParams.get('tab') === 'winkels') setTab('winkels')
     if (searchParams.get('tab') === 'gebruikers') setTab('gebruikers')
     if (searchParams.get('tab') === 'campagnefietsen') setTab('campagnefietsen')
+    if (searchParams.get('tab') === 'nieuws') setTab('nieuws')
   }, [searchParams])
 
   useEffect(() => {
@@ -948,6 +950,7 @@ export default function BeheerPage() {
         ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
         { key: 'import', label: 'Excel Import', icon: '📊' },
         { key: 'campagnefietsen', label: 'Campagnefietsen', icon: '🚲' },
+        { key: 'nieuws', label: 'Nieuws', icon: '📰' },
       ]
     : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
 
@@ -1869,6 +1872,7 @@ export default function BeheerPage() {
 
         {/* ── TAB: CAMPAGNEFIETSEN (alleen admin) ── */}
         {tab === 'campagnefietsen' && isAdmin && <CampagneFietsenBeheerTab />}
+        {tab === 'nieuws' && isAdmin && <NieuwsBeheerTab />}
 
         {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
         {tab === 'merken' && (

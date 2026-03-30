@@ -52,6 +52,7 @@ export async function middleware(request: NextRequest) {
     '/api/payments/tikkie/webhook',
     '/api/lunch/reminder-cron',
     '/api/campagne-fietsen/voorraad/sync',
+    '/api/news/digest-cron',
   ]
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {
