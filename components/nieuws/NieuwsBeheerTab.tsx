@@ -299,14 +299,15 @@ export function NieuwsBeheerTab() {
 
   return (
     <div className="space-y-4">
-      <NieuwsDigestSettings />
-
-      <NieuwsAfdelingenBeheer onUpdated={loadAfdelingen} />
-
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <p className="text-sm m-0" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
-          Beheer interne nieuwsberichten. Alleen gepubliceerde berichten zijn zichtbaar voor medewerkers.
-        </p>
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+            Nieuwsberichten
+          </h2>
+          <p className="text-sm m-0 mt-1" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
+            Hier beheer je berichten voor het team. Alleen gepubliceerde berichten zijn voor medewerkers zichtbaar.
+          </p>
+        </div>
         <button
           type="button"
           onClick={openCreate}
@@ -552,6 +553,17 @@ export function NieuwsBeheerTab() {
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="space-y-4 pt-6 mt-2 border-t" style={{ borderColor: 'rgba(45,69,124,0.12)' }}>
+        <p
+          className="text-[11px] font-bold uppercase tracking-wider m-0"
+          style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}
+        >
+          Instellingen — digest-mail & afdelingen
+        </p>
+        <NieuwsDigestSettings />
+        <NieuwsAfdelingenBeheer onUpdated={loadAfdelingen} />
       </div>
     </div>
   )
