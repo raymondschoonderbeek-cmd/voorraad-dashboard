@@ -25,6 +25,12 @@ export function NieuwsDigestSettings() {
   const [digestTimeLocal, setDigestTimeLocal] = useState('09:00')
   const [lastSent, setLastSent] = useState<string | null>(null)
 
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [previewCount, setPreviewCount] = useState<number | null>(null)
+  const [previewError, setPreviewError] = useState('')
+
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -72,6 +78,24 @@ export function NieuwsDigestSettings() {
       setError(err instanceof Error ? err.message : 'Opslaan mislukt')
     }
     setSaving(false)
+  }
+
+  async function openPreview() {
+    setPreviewOpen(true)
+    setPreviewLoading(true)
+    setPreviewHtml(null)
+    setPreviewCount(null)
+    setPreviewError('')
+    try {
+      const res = await fetch('/api/news/digest-preview')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Preview mislukt')
+      setPreviewHtml(typeof data.html === 'string' ? data.html : '')
+      setPreviewCount(typeof data.post_count === 'number' ? data.post_count : 0)
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : 'Preview mislukt')
+    }
+    setPreviewLoading(false)
   }
 
   const inputStyle = { background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
@@ -178,15 +202,87 @@ export function NieuwsDigestSettings() {
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-            style={{ background: DYNAMO_BLUE, fontFamily: F }}
-          >
-            {saving ? 'Opslaan…' : 'Instellingen opslaan'}
-          </button>
+          <div className="flex flex-wrap gap-3 items-center">
+            <button
+              type="button"
+              onClick={openPreview}
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
+              style={{ border: `2px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }}
+            >
+              Preview nieuwsbrief
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+              style={{ background: DYNAMO_BLUE, fontFamily: F }}
+            >
+              {saving ? 'Opslaan…' : 'Instellingen opslaan'}
+            </button>
+          </div>
+          <p className="text-[11px] m-0" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
+            Preview toont dezelfde inhoud als de echte mail: alle gepubliceerde berichten van de <strong>afgelopen 7 dagen</strong>.
+          </p>
         </form>
+      )}
+
+      {previewOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6"
+          style={{ background: 'rgba(15,23,42,0.45)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Preview nieuwsbrief"
+        >
+          <div
+            className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
+            style={{ background: 'white', border: `1px solid rgba(45,69,124,0.15)` }}
+          >
+            <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0" style={{ borderBottom: '1px solid rgba(45,69,124,0.1)' }}>
+              <div>
+                <h3 className="text-sm font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                  Preview nieuwsbrief
+                </h3>
+                {previewCount !== null && (
+                  <p className="text-xs m-0 mt-0.5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
+                    {previewCount === 0
+                      ? 'Geen berichten in het venster van 7 dagen — de mail zou alleen de koptekst tonen.'
+                      : `${previewCount} bericht${previewCount === 1 ? '' : 'en'} in deze preview.`}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(false)}
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold shrink-0"
+                style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}
+              >
+                Sluiten
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 bg-slate-100 p-3">
+              {previewLoading && (
+                <p className="text-sm text-center py-12" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
+                  Laden…
+                </p>
+              )}
+              {previewError && (
+                <p className="text-sm py-8 text-center" style={{ color: '#b91c1c', fontFamily: F }}>
+                  {previewError}
+                </p>
+              )}
+              {!previewLoading && !previewError && previewHtml !== null && (
+                <iframe
+                  title="E-mail preview"
+                  className="w-full h-[min(70vh,560px)] rounded-lg border bg-white"
+                  style={{ borderColor: 'rgba(45,69,124,0.12)' }}
+                  srcDoc={previewHtml}
+                  sandbox="allow-same-origin"
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

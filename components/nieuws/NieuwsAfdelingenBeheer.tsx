@@ -6,11 +6,22 @@ import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
 
 const F = "'Outfit', sans-serif"
 
+function IconChevronDown({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
 type Props = {
   onUpdated?: () => void
 }
 
+const PANEL_ID = 'nieuws-afdelingen-beheer-panel'
+
 export function NieuwsAfdelingenBeheer({ onUpdated }: Props) {
+  const [open, setOpen] = useState(false)
   const [items, setItems] = useState<DrgNewsAfdeling[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -116,23 +127,48 @@ export function NieuwsAfdelingenBeheer({ onUpdated }: Props) {
   const inputClass = 'w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400'
 
   return (
-    <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `1px solid rgba(45,69,124,0.1)` }}>
-      <div>
-        <h2 className="text-sm font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
-          Afdelingen
-        </h2>
-        <p className="text-xs m-0 mt-1" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
-          Beheer welke afdelingen verschijnen bij nieuwsberichten. Technische sleutel (slug) is bij aanmaken instelbaar en daarna niet meer te wijzigen.
-        </p>
-      </div>
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: `1px solid rgba(45,69,124,0.1)` }}>
+      <button
+        type="button"
+        id="nieuws-afdelingen-beheer-trigger"
+        aria-expanded={open}
+        aria-controls={PANEL_ID}
+        onClick={() => setOpen(o => !o)}
+        className="w-full text-left px-5 py-4 flex items-start gap-3 transition hover:bg-[rgba(45,69,124,0.03)]"
+        style={{ fontFamily: F }}
+      >
+        <IconChevronDown
+          className={`shrink-0 mt-0.5 text-[rgba(45,69,124,0.55)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+            Afdelingen
+          </h2>
+          <p className="text-xs m-0 mt-1" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
+            {open
+              ? 'Beheer welke afdelingen verschijnen bij nieuwsberichten. Technische sleutel (slug) is bij aanmaken instelbaar en daarna niet meer te wijzigen.'
+              : !loading
+                ? `${items.length} afdeling${items.length === 1 ? '' : 'en'} — klik om te beheren`
+                : 'Laden…'}
+          </p>
+        </div>
+      </button>
 
+      <div
+        id={PANEL_ID}
+        role="region"
+        aria-labelledby="nieuws-afdelingen-beheer-trigger"
+        hidden={!open}
+        className="px-5 pb-5 pt-4 space-y-4 border-t"
+        style={{ borderColor: 'rgba(45,69,124,0.08)' }}
+      >
       {error && (
         <div className="rounded-xl p-3 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>
           {error}
         </div>
       )}
 
-      <form onSubmit={toevoegen} className="flex flex-col sm:flex-row flex-wrap gap-3 items-end border-t border-b py-4" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
+      <form onSubmit={toevoegen} className="flex flex-col sm:flex-row flex-wrap gap-3 items-end border-b py-4" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
         <div className="flex-1 min-w-[140px]">
           <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
             Nieuwe afdeling (naam) *
@@ -269,6 +305,7 @@ export function NieuwsAfdelingenBeheer({ onUpdated }: Props) {
           ))}
         </ul>
       )}
+      </div>
     </div>
   )
 }
