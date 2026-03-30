@@ -23,7 +23,7 @@ export default function MfaVerifyPage() {
 
       const totpFactor = factors?.totp?.[0]
       if (!totpFactor) {
-        setError('Geen authenticator gevonden. Schakel eerst MFA in via Instellingen.')
+        setError('Geen authenticator gevonden. Schakel eerst MFA in via Mijn instellingen.')
         setLoading(false)
         return
       }

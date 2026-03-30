@@ -71,7 +71,7 @@ export function buildLunchReminderHtml(opts: {
   <p style="font-size: 13px; color: #64748b;">Je gaat naar de inlogpagina (je e-mail staat al ingevuld). Klik op <strong>Stuur inloglink</strong>; je ontvangt daarna een tweede e-mail met de echte inloglink — geen wachtwoord nodig. Na inloggen kom je op de lunchpagina voor deze besteldag.</p>
   <p style="font-size: 12px; color: #64748b; margin-top: 1.25em;">
     <a href="${escapeHtml(settingsUrl)}" style="color: #475569; text-decoration: underline;">Afmelden voor lunch-herinneringsmails</a>
-    <span style="color: #94a3b8;"> — na inloggen kun je dit onder Instellingen uitzetten.</span>
+    <span style="color: #94a3b8;"> — na inloggen kun je dit onder Mijn instellingen uitzetten.</span>
   </p>
 </body>
 </html>`

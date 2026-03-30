@@ -111,7 +111,7 @@ export function NieuwsDigestSettings() {
           Wekelijkse samenvatting per e-mail
         </h2>
         <p className="text-xs m-0 mt-1" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
-          Medewerkers kunnen hun eigen voorkeur aanpassen onder Instellingen. Hier stel je in of de wekelijkse e-mail
+          Medewerkers kunnen hun eigen voorkeur aanpassen onder Mijn instellingen. Hier stel je in of de wekelijkse e-mail
           automatisch wordt verstuurd, op welke dag (Nederlandse tijd, Amsterdam) en rond welk tijdstip. Laat een externe
           planning (bijv. elke 5 minuten) <code className="text-[11px] bg-gray-100 px-1 rounded">GET /api/news/digest-cron</code>{' '}
           aanroepen met{' '}

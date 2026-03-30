@@ -8,6 +8,25 @@ import useSWR from 'swr'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
+async function fetcherJson<T>(url: string): Promise<T> {
+  const res = await fetch(url)
+  const data = (await res.json()) as T & { error?: string }
+  if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Verzoek mislukt')
+  return data as T
+}
+
+type MijnHardwareRow = {
+  id: string
+  serial_number: string
+  hostname: string
+  intune: string | null
+  user_name: string | null
+  device_type: string | null
+  notes: string | null
+  location: string | null
+  updated_at: string
+}
+
 export default function InstellingenPage() {
   const searchParams = useSearchParams()
   const mfaVerplicht = searchParams.get('mfa') === 'verplicht'
@@ -30,6 +49,12 @@ export default function InstellingenPage() {
     fetcher,
     { shouldRetryOnError: false }
   )
+  const { data: mijnHardwareData, error: mijnHardwareError } = useSWR<{ items: MijnHardwareRow[] }>(
+    '/api/it-cmdb/mijn-hardware',
+    fetcherJson,
+    { shouldRetryOnError: false }
+  )
+  const mijnHardware = mijnHardwareData?.items ?? []
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
   const weeklyDigestEnabled = newsPrefData?.weekly_digest_enabled !== false
@@ -154,7 +179,56 @@ export default function InstellingenPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 p-4 sm:p-6">
-      <div className="max-w-md mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-bold text-gray-900">Mijn instellingen</h1>
+          <p className="text-sm text-gray-500">Voorkeuren voor het DRG-portal, beveiliging en je toegewezen IT-middelen.</p>
+        </header>
+
+        {/* IT-hardware aan deze gebruiker */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">💻 Mijn IT-apparaten</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Apparaten die in het interne hardware-overzicht aan jouw portalaccount zijn gekoppeld.
+              </p>
+            </div>
+          </div>
+          {mijnHardwareError ? (
+            <p className="mt-4 text-sm text-amber-800">
+              Hardwareoverzicht kon niet worden geladen. Controleer of de database bijgewerkt is, of probeer het later opnieuw.
+            </p>
+          ) : mijnHardware.length === 0 ? (
+            <p className="mt-4 text-sm text-gray-600">
+              Er zijn nog geen apparaten aan jouw account gekoppeld. IT kan dit koppelen in het CMDB-overzicht.
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-sm text-left min-w-[520px]">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-3 py-2 font-semibold text-gray-700">Serie</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700">Hostname</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700">Type</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700">Locatie</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mijnHardware.map(row => (
+                    <tr key={row.id} className="border-b border-gray-100 last:border-0">
+                      <td className="px-3 py-2 font-mono text-xs text-gray-900">{row.serial_number}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-gray-800">{row.hostname || '—'}</td>
+                      <td className="px-3 py-2 text-gray-800">{row.device_type || '—'}</td>
+                      <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{row.location || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Lunch module */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
           <div className="flex items-start justify-between gap-3">
