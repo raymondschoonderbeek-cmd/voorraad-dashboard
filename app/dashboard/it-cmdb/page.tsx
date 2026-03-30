@@ -13,6 +13,17 @@ const F = FONT_FAMILY
 /** Vaste leesbare tekst op witte kaarten (niet `textMuted` — te licht op wit) */
 const TABLE_TEXT = '#1e293b'
 
+const FILTER_DEBOUNCE_MS = 350
+
+function useDebouncedValue<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms)
+    return () => clearTimeout(id)
+  }, [value, ms])
+  return debounced
+}
+
 function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'assigned_user_id'> & {
   assigned_user_id: string
 } {
@@ -67,30 +78,41 @@ export default function ItCmdbPage() {
     if (allowed === false) router.replace('/dashboard')
   }, [allowed, router])
 
+  const dq = useDebouncedValue(q, FILTER_DEBOUNCE_MS)
+  const dFilterSerial = useDebouncedValue(filterSerial, FILTER_DEBOUNCE_MS)
+  const dFilterHostname = useDebouncedValue(filterHostname, FILTER_DEBOUNCE_MS)
+  const dFilterIntune = useDebouncedValue(filterIntune, FILTER_DEBOUNCE_MS)
+  const dFilterUserName = useDebouncedValue(filterUserName, FILTER_DEBOUNCE_MS)
+  const dFilterDeviceType = useDebouncedValue(filterDeviceType, FILTER_DEBOUNCE_MS)
+  const dFilterNotes = useDebouncedValue(filterNotes, FILTER_DEBOUNCE_MS)
+  const dFilterLocation = useDebouncedValue(filterLocation, FILTER_DEBOUNCE_MS)
+
   const queryUrl = useMemo(() => {
     const p = new URLSearchParams()
-    if (q.trim()) p.set('q', q.trim())
-    if (filterSerial.trim()) p.set('serial', filterSerial.trim())
-    if (filterHostname.trim()) p.set('hostname', filterHostname.trim())
-    if (filterIntune.trim()) p.set('intune', filterIntune.trim())
-    if (filterUserName.trim()) p.set('user_name', filterUserName.trim())
-    if (filterDeviceType.trim()) p.set('device_type', filterDeviceType.trim())
-    if (filterNotes.trim()) p.set('notes', filterNotes.trim())
-    if (filterLocation.trim()) p.set('location', filterLocation.trim())
+    if (dq.trim()) p.set('q', dq.trim())
+    if (dFilterSerial.trim()) p.set('serial', dFilterSerial.trim())
+    if (dFilterHostname.trim()) p.set('hostname', dFilterHostname.trim())
+    if (dFilterIntune.trim()) p.set('intune', dFilterIntune.trim())
+    if (dFilterUserName.trim()) p.set('user_name', dFilterUserName.trim())
+    if (dFilterDeviceType.trim()) p.set('device_type', dFilterDeviceType.trim())
+    if (dFilterNotes.trim()) p.set('notes', dFilterNotes.trim())
+    if (dFilterLocation.trim()) p.set('location', dFilterLocation.trim())
     const s = p.toString()
     return s ? `/api/it-cmdb?${s}` : '/api/it-cmdb'
   }, [
-    q,
-    filterSerial,
-    filterHostname,
-    filterIntune,
-    filterUserName,
-    filterDeviceType,
-    filterNotes,
-    filterLocation,
+    dq,
+    dFilterSerial,
+    dFilterHostname,
+    dFilterIntune,
+    dFilterUserName,
+    dFilterDeviceType,
+    dFilterNotes,
+    dFilterLocation,
   ])
 
-  const { data, error, isLoading, mutate } = useSWR<{ items: ItCmdbHardwareListItem[] }>(allowed ? queryUrl : null, fetcher)
+  const { data, error, isLoading, mutate } = useSWR<{ items: ItCmdbHardwareListItem[] }>(allowed ? queryUrl : null, fetcher, {
+    keepPreviousData: true,
+  })
   const { data: portalUsersData } = useSWR<{ users: { user_id: string; email: string }[] }>(
     allowed ? '/api/it-cmdb/portal-users' : null,
     fetcher
@@ -381,7 +403,7 @@ export default function ItCmdbPage() {
           className="rounded-2xl overflow-hidden"
           style={{ background: dashboardUi.cardWhite.background, border: dashboardUi.cardWhite.border, boxShadow: dashboardUi.cardWhite.boxShadow }}
         >
-          {isLoading ? (
+          {isLoading && !data ? (
             <p className="p-8 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
               Laden…
             </p>
