@@ -214,6 +214,8 @@ export default function ItCmdbPage() {
   const router = useRouter()
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [q, setQ] = useState('')
+  /** true = API krijgt scope=full (ook serie, hostname, locatie …); false = automatisch (alleen letters → alleen naam/e-mail) */
+  const [searchAllFields, setSearchAllFields] = useState(false)
   const [sortKey, setSortKey] = useState<CmdbSortKey>('serial_number')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [modalOpen, setModalOpen] = useState(false)
@@ -231,6 +233,8 @@ export default function ItCmdbPage() {
   const [freshdeskMsg, setFreshdeskMsg] = useState<{ ok: boolean; text: string } | null>(null)
   /** Apparaat openen voor detail + Freshdesk (klik op rij) */
   const [deviceDetailId, setDeviceDetailId] = useState<string | null>(null)
+  /** GET /api/it-cmdb/freshdesk-ticket?groups=1 — Freshdesk-groepen (id + naam) */
+  const [fdGroupsFetch, setFdGroupsFetch] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -255,10 +259,11 @@ export default function ItCmdbPage() {
   const queryUrl = useMemo(() => {
     const p = new URLSearchParams()
     if (dq.trim()) p.set('q', dq.trim())
+    if (searchAllFields) p.set('scope', 'full')
     p.set('sort', sortKey)
     p.set('dir', sortDir)
     return `/api/it-cmdb?${p.toString()}`
-  }, [dq, sortKey, sortDir])
+  }, [dq, sortKey, sortDir, searchAllFields])
 
   const toggleSort = useCallback((key: CmdbSortKey) => {
     setSortKey(prevKey => {
@@ -288,6 +293,12 @@ export default function ItCmdbPage() {
     fetcher,
     { shouldRetryOnError: false }
   )
+  const { data: fdGroupsListData, isLoading: fdGroupsListLoading } = useSWR<{
+    configured?: boolean
+    freshdeskItGroupId?: number | null
+    groups?: { id: number; name: string; description: string | null; group_type: string | null }[]
+    error?: string
+  }>(allowed && fdGroupsFetch ? '/api/it-cmdb/freshdesk-ticket?groups=1' : null, fetcher, { shouldRetryOnError: false })
 
   const fdDetailUrl =
     allowed && deviceDetailId ? `/api/it-cmdb/freshdesk-ticket?hardwareId=${encodeURIComponent(deviceDetailId)}` : null
@@ -355,6 +366,10 @@ export default function ItCmdbPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [deviceDetailId])
+
+  useEffect(() => {
+    setFdGroupsFetch(false)
   }, [deviceDetailId])
 
   const items = data?.items ?? []
@@ -745,7 +760,7 @@ export default function ItCmdbPage() {
                 type="search"
                 value={q}
                 onChange={e => setQ(e.target.value)}
-                placeholder="Woorden (alle moeten matchen): serie, hostname, gebruiker, e-mail, type…"
+                placeholder="Naam (alleen letters) of serienummer / locatie met optie hieronder…"
                 className="flex-1 min-w-[200px] rounded-xl px-3 py-2 text-sm border"
                 style={{ borderColor: dashboardUi.borderSoft, color: DYNAMO_BLUE }}
               />
@@ -760,10 +775,22 @@ export default function ItCmdbPage() {
                 </button>
               )}
             </div>
+            <label className="flex items-center gap-2 mt-2 cursor-pointer select-none text-xs" style={{ color: TABLE_TEXT }}>
+              <input
+                type="checkbox"
+                className="rounded border-gray-300"
+                checked={searchAllFields}
+                onChange={e => setSearchAllFields(e.target.checked)}
+              />
+              <span style={{ color: dashboardUi.textMuted }}>
+                Zoek in <span className="font-semibold" style={{ color: TABLE_TEXT }}>alle velden</span> (serie, hostname, locatie, type, notities). Uit: alleen letters (bijv. voornaam) → standaard{' '}
+                <span className="font-semibold" style={{ color: TABLE_TEXT }}>gebruiker / e-mail / UPN</span>
+              </span>
+            </label>
           </div>
           <p className="text-xs m-0 sm:pb-2 max-w-md" style={{ color: dashboardUi.textMuted }}>
-            Meerdere woorden: elk woord moet ergens in de regel voorkomen. Sorteer op kolomkoppen. Klik op een regel voor details en
-            Freshdesk.
+            Meerdere woorden: elk woord moet matchen (EN). Alleen letters (bijv. andré, raymond): alleen namen en e-mail. Sorteer op
+            kolomkoppen; klik op een regel voor details en Freshdesk.
           </p>
         </div>
 
@@ -1155,13 +1182,44 @@ export default function ItCmdbPage() {
                     fdDetailData.configured === true &&
                     'freshdeskItGroupConfigured' in fdDetailData &&
                     fdDetailData.freshdeskItGroupConfigured === false && (
-                    <p className="text-xs m-0 mt-3 leading-relaxed" style={{ color: dashboardUi.textMuted }}>
-                      Nieuwe tickets worden nog niet automatisch aan de groep IT toegewezen. Zet op de server{' '}
-                      <code className="rounded px-1 py-0.5 text-[11px]" style={{ background: 'rgba(45,69,124,0.08)' }}>
-                        FRESHDESK_IT_GROUP_ID
-                      </code>{' '}
-                      (numeriek groeps-id uit Freshdesk Admin → Teams → IT).
-                    </p>
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs m-0 leading-relaxed" style={{ color: dashboardUi.textMuted }}>
+                        Nieuwe tickets worden nog niet automatisch aan de groep IT toegewezen. Zet op de server{' '}
+                        <code className="rounded px-1 py-0.5 text-[11px]" style={{ background: 'rgba(45,69,124,0.08)' }}>
+                          FRESHDESK_IT_GROUP_ID
+                        </code>{' '}
+                        op het numerieke <span className="font-semibold" style={{ color: TABLE_TEXT }}>id</span> van de
+                        juiste groep (zie Freshdesk Admin → Teams, of de lijst hieronder).
+                      </p>
+                      <button
+                        type="button"
+                        className="text-xs font-semibold underline"
+                        style={{ color: DYNAMO_BLUE, fontFamily: F }}
+                        onClick={() => setFdGroupsFetch(true)}
+                      >
+                        {fdGroupsListLoading ? 'Groepen laden…' : 'Groepen uit Freshdesk-API tonen (id + naam)'}
+                      </button>
+                      {fdGroupsFetch && fdGroupsListData && typeof fdGroupsListData.error === 'string' && fdGroupsListData.error ? (
+                        <p className="text-xs m-0" style={{ color: '#b91c1c' }}>
+                          {fdGroupsListData.error}
+                        </p>
+                      ) : null}
+                      {fdGroupsFetch && fdGroupsListData?.groups && fdGroupsListData.groups.length > 0 ? (
+                        <ul className="m-0 p-0 list-none text-xs space-y-1 max-h-48 overflow-y-auto rounded-lg p-2" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.1)' }}>
+                          {fdGroupsListData.groups.map(g => (
+                            <li key={g.id} className="flex flex-wrap gap-x-2 gap-y-0.5" style={{ color: TABLE_TEXT }}>
+                              <span className="font-mono tabular-nums font-semibold" style={{ color: DYNAMO_BLUE }}>
+                                {g.id}
+                              </span>
+                              <span>{g.name}</span>
+                              {g.group_type ? (
+                                <span style={{ color: dashboardUi.textMuted }}>({g.group_type})</span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
                   )}
                   {fdDetailData &&
                     typeof fdDetailData === 'object' &&

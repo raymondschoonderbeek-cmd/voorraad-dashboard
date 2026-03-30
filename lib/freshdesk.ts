@@ -83,6 +83,75 @@ export async function createFreshdeskTicket(input: CreateFreshdeskTicketInput): 
   return { id }
 }
 
+/** Rij uit GET /api/v2/groups (Freshdesk v2). */
+export type FreshdeskGroupListItem = {
+  id: number
+  name: string
+  description: string | null
+  /** o.a. support_agent_group */
+  group_type: string | null
+}
+
+/**
+ * Alle agent-groepen (pagina’s doorlopen). Vereist API-key met recht op groepen.
+ * @see https://developers.freshdesk.com/api/#list_all_groups
+ */
+export async function listFreshdeskGroups(): Promise<FreshdeskGroupListItem[]> {
+  const domain = normalizeDomain(process.env.FRESHDESK_DOMAIN ?? '')
+  const key = process.env.FRESHDESK_API_KEY?.trim()
+  if (!domain || !key) {
+    throw new Error('Freshdesk niet geconfigureerd (FRESHDESK_DOMAIN, FRESHDESK_API_KEY).')
+  }
+
+  const auth = Buffer.from(`${key}:X`).toString('base64')
+  const out: FreshdeskGroupListItem[] = []
+  let page = 1
+  const perPage = 100
+
+  for (;;) {
+    const url = `https://${domain}/api/v2/groups?page=${page}&per_page=${perPage}`
+    const res = await fetch(url, {
+      headers: { Authorization: `Basic ${auth}` },
+    })
+
+    const raw = await res.text()
+    let json: unknown
+    try {
+      json = JSON.parse(raw) as unknown
+    } catch {
+      throw new Error(`Freshdesk groups (${res.status}): geen JSON`)
+    }
+
+    if (!res.ok) {
+      const detail = typeof json === 'object' && json && 'description' in json
+        ? String((json as { description?: unknown }).description ?? '')
+        : raw.slice(0, 400)
+      throw new Error(`Freshdesk groups (${res.status}): ${detail}`)
+    }
+
+    const arr = Array.isArray(json) ? json : []
+    for (const g of arr) {
+      if (g == null || typeof g !== 'object') continue
+      const row = g as { id?: unknown; name?: unknown; description?: unknown; group_type?: unknown }
+      const id = Number(row.id)
+      const name = typeof row.name === 'string' ? row.name : ''
+      if (!Number.isFinite(id)) continue
+      out.push({
+        id,
+        name: name || `(groep ${id})`,
+        description: typeof row.description === 'string' ? row.description : null,
+        group_type: typeof row.group_type === 'string' ? row.group_type : null,
+      })
+    }
+
+    if (arr.length < perPage) break
+    page += 1
+    if (page > 30) break
+  }
+
+  return out
+}
+
 export function freshdeskTicketUrl(ticketId: number): string | null {
   const domain = normalizeDomain(process.env.FRESHDESK_DOMAIN ?? '')
   if (!domain) return null
@@ -99,6 +168,8 @@ export type FreshdeskTicketSnapshot = {
   subject: string
   status: number
   priority: number
+  /** Freshdesk ticket field `group_id` (API v2). */
+  group_id: number | null
 }
 
 export async function fetchFreshdeskTicketById(
@@ -126,6 +197,7 @@ export async function fetchFreshdeskTicketById(
     subject?: string
     status?: number
     priority?: number
+    group_id?: number | null
   }
 
   if (!res.ok) {
@@ -137,6 +209,9 @@ export async function fetchFreshdeskTicketById(
     return { ok: false, httpStatus: res.status, notFound: false }
   }
 
+  const gid = json.group_id
+  const group_id = typeof gid === 'number' && Number.isFinite(gid) ? gid : null
+
   return {
     ok: true,
     ticket: {
@@ -144,6 +219,7 @@ export async function fetchFreshdeskTicketById(
       subject: typeof json.subject === 'string' ? json.subject : '(Geen onderwerp)',
       status: typeof json.status === 'number' ? json.status : 0,
       priority: typeof json.priority === 'number' ? json.priority : 0,
+      group_id,
     },
   }
 }

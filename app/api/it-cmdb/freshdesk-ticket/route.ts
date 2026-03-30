@@ -9,6 +9,7 @@ import {
   freshdeskStatusLabelNl,
   getFreshdeskItGroupId,
   isFreshdeskConfigured,
+  listFreshdeskGroups,
 } from '@/lib/freshdesk'
 import { reconcileFreshdeskTicketForHardware } from '@/lib/it-cmdb-freshdesk-reconcile'
 import {
@@ -40,8 +41,35 @@ export async function GET(request: NextRequest) {
   const auth = await requireItCmdbAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  const hardwareId = new URL(request.url).searchParams.get('hardwareId')?.trim()
+  const { searchParams } = new URL(request.url)
+  const hardwareId = searchParams.get('hardwareId')?.trim()
+  const listGroups = searchParams.get('groups') === '1'
+
   if (!hardwareId) {
+    if (listGroups) {
+      if (!isFreshdeskConfigured()) {
+        return NextResponse.json({
+          configured: false,
+          freshdeskItGroupId: null,
+          groups: [] as const,
+          error: 'Freshdesk niet geconfigureerd op de server.',
+        })
+      }
+      try {
+        const groups = await listFreshdeskGroups()
+        return NextResponse.json({
+          configured: true,
+          freshdeskItGroupId: getFreshdeskItGroupId(),
+          groups,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Freshdesk-fout'
+        return NextResponse.json(
+          { configured: true, freshdeskItGroupId: getFreshdeskItGroupId(), groups: [], error: msg },
+          { status: 502 }
+        )
+      }
+    }
     return NextResponse.json({ configured: isFreshdeskConfigured() })
   }
 

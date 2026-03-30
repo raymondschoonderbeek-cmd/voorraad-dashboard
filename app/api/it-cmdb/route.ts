@@ -21,6 +21,16 @@ function ilikeFragment(value: string): string {
   return value.replace(/%/g, '').trim()
 }
 
+/**
+ * Tokens die alleen uit letters (Unicode) + streepje/apostrof bestaan (min. 2 tekens):
+ * dan zoeken we alleen op gebruiker / portal-e-mail / Intune UPN-e-mail — niet op serie, hostname, notities, enz.
+ */
+function isNameLikeToken(t: string): boolean {
+  const s = t.trim()
+  if (s.length < 2 || s.length > 80) return false
+  return /^[\p{L}\p{M}\-']+$/u.test(s)
+}
+
 const DB_SORT_COLUMNS = new Set([
   'serial_number',
   'hostname',
@@ -37,8 +47,8 @@ const MEMORY_SORT_KEYS = new Set<CmdbSortKey>(['user', 'compliance', 'last_sync'
 
 /**
  * GET: alle hardware-regels.
- * Zoeken: q (meerdere woorden = AND over tokens). RPC it_cmdb_hardware_search_ids:
- * accent-neutraal (andre ↔ André), intune_snapshot JSON, portal-e-mail via auth.users.
+ * Zoeken: q (AND over tokens). Pure letter-woorden (bijv. andre, raymond): alleen naam/e-mail/UPN.
+ * scope=full: ook serie, hostname, locatie, notities, … (queryparam).
  * Sorteren: sort + dir (asc|desc).
  */
 export async function GET(request: NextRequest) {
@@ -49,6 +59,7 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
   const { searchParams } = new URL(request.url)
+  const scopeParam = searchParams.get('scope')?.trim().toLowerCase()
   const qRaw = searchParams.get('q')?.trim()
   const sortParam = searchParams.get('sort')?.trim() ?? 'serial_number'
   const ascending = searchParams.get('dir')?.trim().toLowerCase() !== 'desc'
@@ -66,8 +77,12 @@ export async function GET(request: NextRequest) {
       .slice(0, 12)
 
     if (tokens.length > 0) {
+      const nameOnly =
+        scopeParam === 'full' ? false : scopeParam === 'name' ? true : tokens.length > 0 && tokens.every(isNameLikeToken)
+
       const { data: searchIds, error: searchErr } = await auth.supabase.rpc('it_cmdb_hardware_search_ids', {
         p_tokens: tokens,
+        p_name_only: nameOnly,
       })
 
       if (!searchErr && searchIds != null) {
