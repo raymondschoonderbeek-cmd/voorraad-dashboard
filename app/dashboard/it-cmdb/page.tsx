@@ -31,6 +31,61 @@ function formatIntuneSyncDate(iso: string | null | undefined): string {
   })
 }
 
+/** `jeroen.schrijver@domein.nl` → `Jeroen Schrijver` (local part gesplitst op . _ -) */
+function prettyNameFromEmail(email: string): string {
+  const local = email.trim().split('@')[0] ?? ''
+  if (!local) return email.trim()
+  const parts = local.split(/[._-]+/).filter(Boolean)
+  if (parts.length === 0) return email.trim()
+  return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ')
+}
+
+function looksLikeEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+/.test(s.trim())
+}
+
+function cmdbUserCellDisplay(row: ItCmdbHardwareListItem, snap: IntuneSnapshot | null): { label: string; title: string } {
+  const portalEmail = row.assigned_user_email?.trim() || ''
+  const intuneAddr = (snap?.emailAddress || snap?.userPrincipalName)?.trim() || ''
+  const rawName = row.user_name?.trim() || ''
+
+  const lines: string[] = []
+  if (portalEmail) lines.push(portalEmail)
+  if (intuneAddr && intuneAddr.toLowerCase() !== portalEmail.toLowerCase()) {
+    lines.push(`Intune: ${intuneAddr}`)
+  }
+
+  if (rawName && !looksLikeEmail(rawName)) {
+    return {
+      label: rawName,
+      title: lines.length ? lines.join('\n') : rawName,
+    }
+  }
+
+  if (portalEmail) {
+    return {
+      label: prettyNameFromEmail(portalEmail),
+      title: lines.join('\n') || portalEmail,
+    }
+  }
+
+  if (intuneAddr) {
+    return {
+      label: prettyNameFromEmail(intuneAddr),
+      title: lines.join('\n') || intuneAddr,
+    }
+  }
+
+  if (rawName && looksLikeEmail(rawName)) {
+    return {
+      label: prettyNameFromEmail(rawName),
+      title: rawName,
+    }
+  }
+
+  return { label: '—', title: '' }
+}
+
 function ComplianceBadge({ state }: { state: string | null | undefined }) {
   const s = state?.trim()
   if (!s) {
@@ -699,30 +754,21 @@ export default function ItCmdbPage() {
                           )}
                         </td>
                         <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
-                          {row.assigned_user_email ? (
-                            <span className="block">
-                              <span className="font-medium" title="Gekoppeld aan portal">
-                                {row.assigned_user_email}
+                          {(() => {
+                            const { label, title } = cmdbUserCellDisplay(row, snap)
+                            if (label === '—') {
+                              return <span style={{ color: 'rgba(100,116,139,0.85)' }}>—</span>
+                            }
+                            return (
+                              <span
+                                className="block font-medium truncate max-w-[min(220px,100%)]"
+                                style={{ color: TABLE_TEXT, fontFamily: F }}
+                                title={title || undefined}
+                              >
+                                {label}
                               </span>
-                              {row.user_name?.trim() && row.user_name.trim() !== row.assigned_user_email ? (
-                                <span className="block text-xs mt-0.5 opacity-85" title="Vrije tekst / import">
-                                  {row.user_name}
-                                </span>
-                              ) : null}
-                            </span>
-                          ) : row.user_name?.trim() ? (
-                            row.user_name
-                          ) : snap?.emailAddress || snap?.userPrincipalName ? (
-                            <span
-                              className="text-sm break-all"
-                              title="Uit Microsoft Intune (geen portalgebruiker gekoppeld)"
-                              style={{ color: TABLE_TEXT }}
-                            >
-                              {snap.emailAddress || snap.userPrincipalName}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
+                            )
+                          })()}
                         </td>
                         <td className="px-3 py-2.5 max-w-[200px] align-top" style={{ color: TABLE_TEXT }}>
                           <span className="block">{row.device_type || '—'}</span>
