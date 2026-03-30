@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
           serial_number: m.serial_number,
           hostname: m.hostname,
           intune: m.intune,
+          intune_snapshot: m.intune_snapshot,
           user_name: m.user_name,
           device_type: m.device_type,
           notes: null,
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
           .update({
             hostname: m.hostname,
             intune: m.intune,
+            intune_snapshot: m.intune_snapshot,
             user_name: m.user_name,
             device_type: m.device_type,
             updated_at: now,

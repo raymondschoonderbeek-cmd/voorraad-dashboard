@@ -1,3 +1,5 @@
+import type { IntuneSnapshot } from '@/lib/it-cmdb-types'
+
 /**
  * Microsoft Graph → Intune managed devices (app-only / client credentials).
  * Vereist: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
@@ -6,6 +8,19 @@
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0'
 const TOKEN_URL = (tenant: string) => `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`
+
+/** Uitleg bij HTTP 403 van Intune/Graph (rechten of tenant). */
+function formatIntune403Help(technical: string): string {
+  return [
+    'Microsoft weigerde toegang tot Intune-apparaten (403). Controleer in Entra ID:',
+    '• API-machtigingen → Microsoft Graph → Application (niet alleen Delegated): DeviceManagementManagedDevices.Read.All',
+    '• Knop “Grant admin consent for [organisatie]” voor de app (Global Admin / Cloud App Admin).',
+    '• AZURE_TENANT_ID = Directory (tenant) ID van de tenant waar Intune actief is.',
+    '• Tenant heeft Intune / Endpoint Manager in gebruik (licentie + workload).',
+    '',
+    `Technisch: ${technical.slice(0, 600)}${technical.length > 600 ? '…' : ''}`,
+  ].join('\n')
+}
 
 export function isIntuneGraphConfigured(): boolean {
   const t = process.env.AZURE_TENANT_ID?.trim()
@@ -73,7 +88,7 @@ export async function fetchAllManagedDevices(): Promise<GraphManagedDevice[]> {
     'lastSyncDateTime',
   ].join(',')
   let url: string | null =
-    `${GRAPH_BASE}/deviceManagement/managedDevices?$select=${encodeURIComponent(select)}&$top=999`
+    `${GRAPH_BASE}/deviceManagement/managedDevices?$select=${encodeURIComponent(select)}&$top=100`
   const out: GraphManagedDevice[] = []
 
   while (url) {
@@ -83,11 +98,15 @@ export async function fetchAllManagedDevices(): Promise<GraphManagedDevice[]> {
     const json = (await res.json()) as {
       value?: GraphManagedDevice[]
       '@odata.nextLink'?: string
-      error?: { message?: string }
+      error?: { message?: string; code?: string }
     }
     if (!res.ok) {
-      const msg = json.error?.message ?? `Graph HTTP ${res.status}`
-      throw new Error(msg)
+      const raw = json.error?.message ?? JSON.stringify(json).slice(0, 1200)
+      if (res.status === 403) {
+        throw new Error(formatIntune403Help(raw))
+      }
+      const code = json.error?.code ? ` [${json.error.code}]` : ''
+      throw new Error(`${raw}${code}`)
     }
     for (const row of json.value ?? []) {
       out.push(row)
@@ -118,12 +137,26 @@ function formatDeviceType(d: GraphManagedDevice): string | null {
   return m.length > 0 ? m.join(' ') : null
 }
 
+export function buildIntuneSnapshot(d: GraphManagedDevice): IntuneSnapshot {
+  return {
+    graphDeviceId: d.id,
+    complianceState: d.complianceState != null ? String(d.complianceState) : null,
+    managementState: d.managementState != null ? String(d.managementState) : null,
+    lastSyncDateTime: d.lastSyncDateTime ?? null,
+    userPrincipalName: d.userPrincipalName?.trim() || null,
+    emailAddress: d.emailAddress?.trim() || null,
+    manufacturer: d.manufacturer?.trim() || null,
+    model: d.model?.trim() || null,
+  }
+}
+
 export function mapManagedDeviceToCmdb(d: GraphManagedDevice): {
   serial_number: string
   hostname: string
   intune: string | null
   user_name: string | null
   device_type: string | null
+  intune_snapshot: IntuneSnapshot
 } {
   const serial = d.serialNumber?.trim()
   if (!serial) throw new Error('Geen serienummer')
@@ -135,5 +168,6 @@ export function mapManagedDeviceToCmdb(d: GraphManagedDevice): {
     intune: formatIntuneSummary(d),
     user_name,
     device_type: formatDeviceType(d),
+    intune_snapshot: buildIntuneSnapshot(d),
   }
 }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
+import { IntuneOverview } from '@/components/it-cmdb/IntuneOverview'
 import type { ItCmdbHardware, ItCmdbHardwareListItem } from '@/lib/it-cmdb-types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -24,7 +25,7 @@ function useDebouncedValue<T>(value: T, ms: number): T {
   return debounced
 }
 
-function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'assigned_user_id'> & {
+function emptyForm(): Omit<ItCmdbHardware, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'assigned_user_id' | 'intune_snapshot'> & {
   assigned_user_id: string
 } {
   return {
@@ -460,6 +461,8 @@ export default function ItCmdbPage() {
             Per kolom filter je in de tabel hieronder; kolomfilters worden gecombineerd met dit zoekveld.
           </p>
         </div>
+
+        {!isLoading && items.length > 0 && <IntuneOverview items={items} filteredCount={items.length} />}
 
         {error && (
           <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
