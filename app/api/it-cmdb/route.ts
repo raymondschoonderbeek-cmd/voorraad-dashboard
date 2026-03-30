@@ -4,7 +4,12 @@ import { withRateLimit } from '@/lib/api-middleware'
 import { assertPortalUser, enrichAssignedEmails, parseAssignedUserId } from '@/lib/it-cmdb-assigned-user'
 import { freshdeskTicketUrl, isFreshdeskConfigured } from '@/lib/freshdesk'
 import { isCmdbSortKey, sortCmdbHardwareList, type CmdbSortKey } from '@/lib/it-cmdb-list-sort'
-import type { ItCmdbHardwareListItem } from '@/lib/it-cmdb-types'
+import { cmdbRowMatchesNameTokens } from '@/lib/it-cmdb-user-search'
+import type { IntuneSnapshot, ItCmdbHardwareListItem } from '@/lib/it-cmdb-types'
+
+function isIntuneSnapshot(v: unknown): v is IntuneSnapshot {
+  return v != null && typeof v === 'object' && !Array.isArray(v) && typeof (v as IntuneSnapshot).graphDeviceId === 'string'
+}
 
 function parseFdId(raw: unknown): number | null {
   if (raw == null) return null
@@ -68,6 +73,8 @@ export async function GET(request: NextRequest) {
   const needsMemorySort = MEMORY_SORT_KEYS.has(sortKey)
 
   let query = auth.supabase.from('it_cmdb_hardware').select('*')
+  /** Na enrich: alleen rijen waar tokens in gebruikers-zichtbare segmenten zitten (kolom Gebruiker). */
+  let postNameFilterTokens: string[] = []
 
   if (qRaw) {
     const tokens = qRaw
@@ -79,6 +86,10 @@ export async function GET(request: NextRequest) {
     if (tokens.length > 0) {
       const nameOnly =
         scopeParam === 'full' ? false : scopeParam === 'name' ? true : tokens.length > 0 && tokens.every(isNameLikeToken)
+
+      if (nameOnly) {
+        postNameFilterTokens = tokens
+      }
 
       const { data: searchIds, error: searchErr } = await auth.supabase.rpc('it_cmdb_hardware_search_ids', {
         p_tokens: tokens,
@@ -129,6 +140,16 @@ export async function GET(request: NextRequest) {
     auth.supabase,
     (data ?? []) as { assigned_user_id: string | null }[]
   )) as ItCmdbHardwareListItem[]
+
+  if (postNameFilterTokens.length > 0) {
+    enriched = enriched.filter(row =>
+      cmdbRowMatchesNameTokens(
+        row,
+        isIntuneSnapshot(row.intune_snapshot) ? row.intune_snapshot : null,
+        postNameFilterTokens
+      )
+    )
+  }
 
   if (needsMemorySort) {
     enriched = sortCmdbHardwareList(enriched, sortKey, ascending)
