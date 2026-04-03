@@ -1,8 +1,9 @@
-/** Eigen HTML: minstens één link-placeholder (portal-login om magic link aan te vragen, of directe magic link uit de mail). */
-export function reminderHtmlContainsMagicLinkPlaceholder(html: string): boolean {
+/** Eigen HTML: minstens één link-placeholder ({{loginUrl}} of legacy {{loginMagicUrl}} / {{actionLink}} / {{magicLink}} — allemaal zelfde inlog-URL). */
+export function reminderHtmlContainsLoginPlaceholder(html: string): boolean {
   const h = html.trim()
   if (!h) return false
   return (
+    h.includes('{{loginUrl}}') ||
     h.includes('{{loginMagicUrl}}') ||
     h.includes('{{actionLink}}') ||
     h.includes('{{magicLink}}')

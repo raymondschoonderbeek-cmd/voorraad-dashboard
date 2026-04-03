@@ -55,7 +55,7 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
   }
 
   if (!hasAdminKey()) {
-    push('service_role', false, 'SUPABASE_SERVICE_ROLE_KEY', 'Ontbreekt — nodig voor magic links en cron')
+    push('service_role', false, 'SUPABASE_SERVICE_ROLE_KEY', 'Ontbreekt — nodig voor lunch-herinneringsmail en cron')
     return {
       checks,
       wouldRunSendLoop: false,

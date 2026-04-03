@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateMagicLinkWithRetry } from '@/lib/auth-magic-link-server'
 import { getSiteUrl } from '@/lib/site-url'
 import { sendMailgunHtmlEmail } from '@/lib/send-welcome-email'
 import { formatOrderEndTimeNl, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
@@ -17,44 +16,33 @@ export function voornaamUitVolledigeNaam(naam: string | null | undefined): strin
   return t.split(/\s+/)[0] ?? ''
 }
 
-/** Placeholders: {{loginMagicUrl}} = portal-login om zelf inloglink aan te vragen; {{actionLink}}/{{magicLink}} = directe magic link (alleen als beheer die gebruikt). */
+/** {{loginUrl}} = inlogpagina (e-mail vooringevuld, na login lunch voor die dag). {{loginMagicUrl}}/{{actionLink}}/{{magicLink}} = zelfde link (legacy alias). */
 export const LUNCH_REMINDER_PLACEHOLDER_HELP =
-  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{voornaam}}, {{firstName}}, {{loginMagicUrl}}, {{actionLink}}, {{magicLink}}, {{siteUrl}}, {{settingsUrl}}'
+  '{{prettyDate}}, {{orderDateYmd}}, {{orderEndTime}}, {{orderEndTimePretty}}, {{eindTijd}}, {{eindTijdUur}}, {{voornaam}}, {{firstName}}, {{loginUrl}}, {{loginMagicUrl}}, {{siteUrl}}, {{settingsUrl}}'
 
 export function defaultReminderSubjectTemplate(): string {
   return 'Lunch: bestel je broodje voor {{prettyDate}} (uiterlijk {{eindTijd}} op die dag)'
 }
 
-/** Link naar /login (magic link-modus, next=lunch, e-mail ingevuld) — gebruiker klikt “Stuur inloglink” en ontvangt daarna de echte magic link per mail. */
-export function buildLunchLoginMagicRequestUrl(site: string, orderDateYmd: string, email: string): string {
+/** Link naar /login met next=lunch en e-mail vooringevuld — inloggen met wachtwoord (geen magic link). */
+export function buildLunchLoginUrl(site: string, orderDateYmd: string, email: string): string {
   const base = site.replace(/\/$/, '')
   const next = `/dashboard/lunch?orderDate=${encodeURIComponent(orderDateYmd)}`
   const q = new URLSearchParams()
-  q.set('magic', '1')
   q.set('next', next)
   q.set('email', email.trim().toLowerCase())
   return `${base}/login?${q.toString()}`
-}
-
-function templateUsesServerGeneratedMagicLink(
-  subjectTpl: string | null | undefined,
-  htmlTpl: string | null | undefined
-): boolean {
-  const sub = subjectTpl?.trim() ?? ''
-  const html = htmlTpl?.trim() ?? ''
-  const s = `${sub}\n${html}`
-  return s.includes('{{actionLink}}') || s.includes('{{magicLink}}')
 }
 
 export function buildLunchReminderHtml(opts: {
   prettyDate: string
   orderEndTimePretty: string
   settingsUrl: string
-  loginMagicUrl: string
+  loginUrl: string
   /** Eerste woord van gebruiker_rollen.naam; leeg = “Beste collega,” */
   firstName?: string
 }) {
-  const { prettyDate, orderEndTimePretty, settingsUrl, loginMagicUrl, firstName } = opts
+  const { prettyDate, orderEndTimePretty, settingsUrl, loginUrl, firstName } = opts
   const greeting =
     firstName?.trim() ? `Beste ${escapeHtml(firstName.trim())},` : 'Beste collega,'
   return `<!DOCTYPE html>
@@ -64,11 +52,11 @@ export function buildLunchReminderHtml(opts: {
   <p>Vergeet niet je broodje voor de lunch te bestellen voor <strong>${escapeHtml(prettyDate)}</strong>.</p>
   <p style="font-size: 14px; color: #334155;">Je kunt nog bestellen tot <strong>${escapeHtml(orderEndTimePretty)}</strong> op die dag (Europe/Amsterdam).</p>
   <p>
-    <a href="${escapeHtml(loginMagicUrl)}" style="display:inline-block; padding: 12px 20px; background: #2D457C; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600;">
-      Naar inloggen — vraag inloglink aan
+    <a href="${escapeHtml(loginUrl)}" style="display:inline-block; padding: 12px 20px; background: #2D457C; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600;">
+      Inloggen op DRG Portal
     </a>
   </p>
-  <p style="font-size: 13px; color: #64748b;">Je gaat naar de inlogpagina (je e-mail staat al ingevuld). Klik op <strong>Stuur inloglink</strong>; je ontvangt daarna een tweede e-mail met de echte inloglink — geen wachtwoord nodig. Na inloggen kom je op de lunchpagina voor deze besteldag.</p>
+  <p style="font-size: 13px; color: #64748b;">Log in met je <strong>e-mailadres en wachtwoord</strong>. Je e-mail staat al ingevuld; na inloggen ga je direct naar de lunchpagina voor deze besteldag.</p>
   <p style="font-size: 12px; color: #64748b; margin-top: 1.25em;">
     <a href="${escapeHtml(settingsUrl)}" style="color: #475569; text-decoration: underline;">Afmelden voor lunch-herinneringsmails</a>
     <span style="color: #94a3b8;"> — na inloggen kun je dit onder Mijn instellingen uitzetten.</span>
@@ -92,16 +80,14 @@ type ReminderVars = {
   orderEndTimePretty: string
   /** Eerste woord van gebruiker_rollen.naam; leeg als onbekend. */
   firstName: string
-  /** Portal-login om OTP/magic link aan te vragen (standaard in de mail). */
-  loginMagicUrl: string
-  /** Alleen ingevuld als template {{actionLink}}/{{magicLink}} gebruikt; anders leeg. */
-  actionLink: string
+  /** Portal-login (wachtwoord); {{loginMagicUrl}}/{{actionLink}}/{{magicLink}} = dezelfde URL (legacy). */
+  loginUrl: string
   siteUrl: string
   /** Volledige URL naar portalinstellingen (herinneringen uit) */
   settingsUrl: string
 }
 
-/** Vervangt placeholders; URL-placeholders (magic link) worden niet ge-escaped. */
+/** Vervangt placeholders; URL-placeholders worden niet ge-escaped. */
 function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: boolean): string {
   const {
     prettyDate,
@@ -109,8 +95,7 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     orderEndTime,
     orderEndTimePretty,
     firstName,
-    loginMagicUrl,
-    actionLink,
+    loginUrl,
     siteUrl,
     settingsUrl,
   } = vars
@@ -124,9 +109,10 @@ function applyPlaceholders(template: string, vars: ReminderVars, escapeValues: b
     '{{eindTijdUur}}': escapeValues ? escapeHtml(orderEndTime) : orderEndTime,
     '{{voornaam}}': escapeValues ? escapeHtml(firstName) : firstName,
     '{{firstName}}': escapeValues ? escapeHtml(firstName) : firstName,
-    '{{loginMagicUrl}}': escapeValues ? escapeHtml(loginMagicUrl) : loginMagicUrl,
-    '{{actionLink}}': actionLink,
-    '{{magicLink}}': actionLink,
+    '{{loginUrl}}': escapeValues ? escapeHtml(loginUrl) : loginUrl,
+    '{{loginMagicUrl}}': escapeValues ? escapeHtml(loginUrl) : loginUrl,
+    '{{actionLink}}': loginUrl,
+    '{{magicLink}}': loginUrl,
     '{{siteUrl}}': escapeValues ? escapeHtml(siteUrl) : siteUrl,
     '{{settingsUrl}}': escapeValues ? escapeHtml(settingsUrl) : settingsUrl,
   }
@@ -157,7 +143,7 @@ export function buildLunchReminderFromTemplates(
         prettyDate: vars.prettyDate,
         orderEndTimePretty: vars.orderEndTimePretty,
         settingsUrl: vars.settingsUrl,
-        loginMagicUrl: vars.loginMagicUrl,
+        loginUrl: vars.loginUrl,
         firstName: vars.firstName,
       })
 
@@ -165,7 +151,7 @@ export function buildLunchReminderFromTemplates(
 }
 
 /**
- * Genereert magic link en verstuurt herinneringsmail (template uit lunch_config indien gezet).
+ * Verstuurt herinneringsmail (template uit lunch_config indien gezet); link naar login met wachtwoord.
  */
 export async function sendLunchReminderToEmail(
   email: string,
@@ -174,8 +160,6 @@ export async function sendLunchReminderToEmail(
 ): Promise<void> {
   const admin = createAdminClient()
   const site = getSiteUrl()
-  const nextPath = `/dashboard/lunch?orderDate=${encodeURIComponent(orderDateYmd)}`
-  const redirectTo = `${site}/auth/callback?next=${encodeURIComponent(nextPath)}`
 
   const { data: cfg } = await admin
     .from('lunch_config')
@@ -189,13 +173,7 @@ export async function sendLunchReminderToEmail(
   )
   const orderEndTimePretty = formatOrderEndTimeNl(orderEndTime)
   const settingsUrl = `${site.replace(/\/$/, '')}/dashboard/instellingen`
-  const loginMagicUrl = buildLunchLoginMagicRequestUrl(site, orderDateYmd, email)
-
-  const needServerLink = templateUsesServerGeneratedMagicLink(
-    cfg?.reminder_mail_subject ?? null,
-    cfg?.reminder_mail_html ?? null
-  )
-  const actionLink = needServerLink ? await generateMagicLinkWithRetry(admin, email, redirectTo) : ''
+  const loginUrl = buildLunchLoginUrl(site, orderDateYmd, email)
 
   const fn = firstName?.trim() ?? ''
   const vars: ReminderVars = {
@@ -204,8 +182,7 @@ export async function sendLunchReminderToEmail(
     orderEndTime,
     orderEndTimePretty,
     firstName: fn,
-    loginMagicUrl,
-    actionLink,
+    loginUrl,
     siteUrl: site,
     settingsUrl,
   }

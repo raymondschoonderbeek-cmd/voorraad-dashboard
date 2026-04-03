@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
-import { reminderHtmlContainsMagicLinkPlaceholder } from '@/lib/lunch-reminder-placeholders'
+import { reminderHtmlContainsLoginPlaceholder } from '@/lib/lunch-reminder-placeholders'
 import { WEEKDAYS_NL } from '@/lib/lunch-schedule'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -483,8 +483,8 @@ function InstellingenBeheer() {
   }
 
   async function saveMailTemplate() {
-    if (reminderMailHtml.trim() && !reminderHtmlContainsMagicLinkPlaceholder(reminderMailHtml)) {
-      setError('HTML moet minimaal {{loginMagicUrl}} en/of {{actionLink}} of {{magicLink}} bevatten.')
+    if (reminderMailHtml.trim() && !reminderHtmlContainsLoginPlaceholder(reminderMailHtml)) {
+      setError('HTML moet minimaal {{loginUrl}} (of {{loginMagicUrl}} / {{actionLink}} / {{magicLink}}) bevatten.')
       return
     }
     setSavingTemplate(true)
@@ -620,7 +620,7 @@ function InstellingenBeheer() {
   async function sendBroadcastToAll() {
     if (!broadcastPreview || broadcastPreview.wouldSend <= 0) return
     const ok = window.confirm(
-      `Weet je het zeker? Er worden ${broadcastPreview.wouldSend} e-mail(s) verstuurd naar lunch-gebruikers. De inloglink gebruikt de besteldag ${broadcastPreview.orderDatePretty}.`
+      `Weet je het zeker? Er worden ${broadcastPreview.wouldSend} e-mail(s) verstuurd naar lunch-gebruikers. De mail verwijst naar inloggen voor de besteldag ${broadcastPreview.orderDatePretty}.`
     )
     if (!ok) return
     setBroadcastError('')
@@ -877,7 +877,7 @@ function InstellingenBeheer() {
       <div className="rounded-xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
         <h2 className="font-bold mb-3" style={{ color: DYNAMO_BLUE }}>Herinneringsmail (Mailgun)</h2>
         <p className="text-sm mb-3" style={{ color: 'rgba(45,69,124,0.6)' }}>
-          Op de gekozen dag en tijd (Europe/Amsterdam) ontvangen lunch-gebruikers een mail met een inloglink om snel te bestellen.
+          Op de gekozen dag en tijd (Europe/Amsterdam) ontvangen lunch-gebruikers een mail met een link naar de inlogpagina (e-mail en wachtwoord) om te bestellen.
           Plan op de gratis Vercel-tier een externe cron (bijv. cron-job.org) elke <strong>5 minuten</strong> op{' '}
           <code className="text-xs bg-gray-100 px-1 rounded">GET /api/lunch/reminder-cron</code> met header{' '}
           <code className="text-xs bg-gray-100 px-1 rounded">Authorization: Bearer CRON_SECRET</code>.
@@ -1146,8 +1146,8 @@ function InstellingenBeheer() {
           <h3 className="font-semibold text-sm mb-2" style={{ color: DYNAMO_BLUE }}>E-mailtemplate</h3>
           <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.55)' }}>
             Leeg laten = ingebouwde standaardtekst. Placeholders:{' '}
-            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{voornaam}} {{firstName}} {{loginMagicUrl}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
-            . Standaard: <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{loginMagicUrl}}'}</code> = inlogpagina om zelf de inloglink aan te vragen. <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code>/<code className="text-[11px] bg-gray-100 px-1 rounded">{'{{magicLink}}'}</code> = directe magic link uit deze mail (alleen als je dat expliciet in de template zet).
+            <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{prettyDate}} {{orderDateYmd}} {{orderEndTime}} {{orderEndTimePretty}} {{eindTijd}} {{eindTijdUur}} {{voornaam}} {{firstName}} {{loginUrl}} {{loginMagicUrl}} {{actionLink}} {{magicLink}} {{siteUrl}} {{settingsUrl}}'}</code>
+            . <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{loginUrl}}'}</code> = inlogpagina (e-mail vooringevuld, inloggen met wachtwoord). <code className="text-[11px] bg-gray-100 px-1 rounded">{'{{loginMagicUrl}}'}</code>/<code className="text-[11px] bg-gray-100 px-1 rounded">{'{{actionLink}}'}</code>/<code className="text-[11px] bg-gray-100 px-1 rounded">{'{{magicLink}}'}</code> = dezelfde URL (legacy namen).
           </p>
           <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
             Onderwerp
@@ -1167,7 +1167,7 @@ function InstellingenBeheer() {
           <textarea
             value={reminderMailHtml}
             onChange={e => setReminderMailHtml(e.target.value)}
-            placeholder="Leeg = standaard. Eigen HTML: min. {{loginMagicUrl}} en/of {{actionLink}} in een &lt;a href=&quot;…&quot;&gt;."
+            placeholder="Leeg = standaard. Eigen HTML: min. {{loginUrl}} (of legacy-placeholder) in een &lt;a href=&quot;…&quot;&gt;."
             rows={12}
             disabled={savingTemplate || savingReminder}
             className="w-full rounded-lg px-3 py-2 text-sm border font-mono mb-3 placeholder:text-gray-400"
