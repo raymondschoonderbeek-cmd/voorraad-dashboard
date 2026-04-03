@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { getAmsterdamYmd } from '@/lib/amsterdam-time'
-import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
-import { normalizeOrderWeekdays } from '@/lib/lunch-schedule'
+import {
+  effectiveOrderDateForReminderAt,
+  normalizeOrderEndTimeLocal,
+  shouldSkipReminderBecauseEarliestOrderSlotClosed,
+} from '@/lib/lunch-order-deadline'
+import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendLunchReminderToEmail, voornaamUitVolledigeNaam } from '@/lib/lunch-reminder-mail'
+import { formatOrderDateNl, sendLunchReminderToEmail, voornaamUitVolledigeNaam } from '@/lib/lunch-reminder-mail'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
 /**
@@ -34,22 +38,42 @@ export async function POST(request: NextRequest) {
   let orderDate = getAmsterdamYmd(new Date())
   try {
     const body = await request.json().catch(() => ({}))
+    const { data: cfg } = await admin.supabase
+      .from('lunch_config')
+      .select('order_weekdays, closed_dates, order_end_time_local')
+      .eq('id', 1)
+      .maybeSingle()
+    const orderWeekdays = normalizeOrderWeekdays(cfg?.order_weekdays) ?? [1, 2, 3, 4, 5]
+    const closedRaw = cfg?.closed_dates
+    const closedDates: string[] = Array.isArray(closedRaw)
+      ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
+      : []
+    const endNorm = normalizeOrderEndTimeLocal(
+      typeof cfg?.order_end_time_local === 'string' ? cfg.order_end_time_local : null
+    )
+
     if (typeof body.orderDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.orderDate)) {
       orderDate = body.orderDate
+      const c = checkOrderDateAllowed(orderDate, orderWeekdays, closedDates)
+      if (!c.ok) {
+        return NextResponse.json(
+          { error: c.description, variant: c.variant, skipped: 'invalid_order_date' },
+          { status: 400 }
+        )
+      }
     } else {
-      const { data: cfg } = await admin.supabase
-        .from('lunch_config')
-        .select('order_weekdays, closed_dates, order_end_time_local')
-        .eq('id', 1)
-        .maybeSingle()
-      const orderWeekdays = normalizeOrderWeekdays(cfg?.order_weekdays) ?? [1, 2, 3, 4, 5]
-      const closedRaw = cfg?.closed_dates
-      const closedDates: string[] = Array.isArray(closedRaw)
-        ? closedRaw.map((x: unknown) => String(x).slice(0, 10))
-        : []
-      const endNorm = normalizeOrderEndTimeLocal(
-        typeof cfg?.order_end_time_local === 'string' ? cfg.order_end_time_local : null
-      )
+      const slotSkip = shouldSkipReminderBecauseEarliestOrderSlotClosed(new Date(), orderWeekdays, closedDates)
+      if (slotSkip.skip) {
+        return NextResponse.json(
+          {
+            error:
+              'Geen testmail: de eerstvolgende besteldag op de kalender staat als gesloten. Kies een vaste datum bij “Besteldag in testmail”, of haal die dag uit Gesloten dagen.',
+            skipped: 'order_slot_closed',
+            next_slot: slotSkip.nextSlotYmd,
+          },
+          { status: 400 }
+        )
+      }
       orderDate =
         effectiveOrderDateForReminderAt(new Date(), orderWeekdays, closedDates, endNorm) ?? orderDate
     }
@@ -77,7 +101,12 @@ export async function POST(request: NextRequest) {
 
   try {
     await sendLunchReminderToEmail(email, orderDate, firstName)
-    return NextResponse.json({ ok: true, to: email, orderDate })
+    return NextResponse.json({
+      ok: true,
+      to: email,
+      orderDate,
+      orderDatePretty: formatOrderDateNl(orderDate),
+    })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Versturen mislukt'
     return NextResponse.json({ error: msg }, { status: 502 })

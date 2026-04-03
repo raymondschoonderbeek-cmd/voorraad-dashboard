@@ -8,7 +8,11 @@ import {
   isWithinReminderWindow,
   parseHHmmToMinutes,
 } from '@/lib/amsterdam-time'
-import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
+import {
+  effectiveOrderDateForReminderAt,
+  normalizeOrderEndTimeLocal,
+  shouldSkipReminderBecauseEarliestOrderSlotClosed,
+} from '@/lib/lunch-order-deadline'
 import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
@@ -75,6 +79,7 @@ export async function GET(request: NextRequest) {
   const endNorm = normalizeOrderEndTimeLocal(
     typeof cfg.order_end_time_local === 'string' ? cfg.order_end_time_local : null
   )
+  const slotSkip = shouldSkipReminderBecauseEarliestOrderSlotClosed(now, orderWeekdays, closedDates)
   const ymd =
     effectiveOrderDateForReminderAt(now, orderWeekdays, closedDates, endNorm) ?? getAmsterdamYmd(now)
 
@@ -115,6 +120,16 @@ export async function GET(request: NextRequest) {
           amsterdam_time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
           window_starts: timeStr,
           hint: 'Of: test_only_email=...&force=1',
+        }, { status: 200 })
+      }
+
+      if (slotSkip.skip) {
+        return NextResponse.json({
+          ok: false,
+          skipped: 'order_slot_closed',
+          next_slot: slotSkip.nextSlotYmd,
+          hint:
+            'Eerstvolgende besteldag op de kalender staat als gesloten — geen herinnering. Of: force=1 om te negeren.',
         }, { status: 200 })
       }
 
@@ -173,6 +188,15 @@ export async function GET(request: NextRequest) {
       skipped: 'outside_time_window',
       amsterdam_time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
       window_starts: timeStr,
+    })
+  }
+
+  if (slotSkip.skip) {
+    return NextResponse.json({
+      ok: true,
+      skipped: 'order_slot_closed',
+      next_slot: slotSkip.nextSlotYmd,
+      hint: 'Eerstvolgende besteldag op de kalender staat als gesloten — er wordt geen herinnering verstuurd.',
     })
   }
 

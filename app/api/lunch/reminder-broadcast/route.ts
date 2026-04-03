@@ -3,19 +3,28 @@ import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAmsterdamYmd } from '@/lib/amsterdam-time'
-import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
-import { normalizeOrderWeekdays } from '@/lib/lunch-schedule'
+import {
+  effectiveOrderDateForReminderAt,
+  normalizeOrderEndTimeLocal,
+  shouldSkipReminderBecauseEarliestOrderSlotClosed,
+} from '@/lib/lunch-order-deadline'
+import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { formatOrderDateNl, sendLunchReminderToEmail } from '@/lib/lunch-reminder-mail'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
 
-async function resolveBroadcastOrderDate(request: NextRequest, body?: unknown): Promise<string> {
-  const fromQuery = new URL(request.url).searchParams.get('orderDate')?.trim()
-  if (fromQuery && /^\d{4}-\d{2}-\d{2}$/.test(fromQuery)) return fromQuery
+type BroadcastDateResult =
+  | { ok: true; orderDate: string }
+  | { ok: false; skipped: 'order_slot_closed'; nextSlotYmd: string | null }
+  | { ok: false; badExplicit: { description: string; variant: string } }
 
-  if (body && typeof body === 'object' && body !== null) {
+async function resolveBroadcastOrderDate(request: NextRequest, body?: unknown): Promise<BroadcastDateResult> {
+  const fromQuery = new URL(request.url).searchParams.get('orderDate')?.trim()
+  let explicit: string | undefined
+  if (fromQuery && /^\d{4}-\d{2}-\d{2}$/.test(fromQuery)) explicit = fromQuery
+  if (!explicit && body && typeof body === 'object' && body !== null) {
     const od = (body as { orderDate?: unknown }).orderDate
-    if (typeof od === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(od.trim())) return od.trim()
+    if (typeof od === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(od.trim())) explicit = od.trim()
   }
 
   const client = createAdminClient()
@@ -32,9 +41,23 @@ async function resolveBroadcastOrderDate(request: NextRequest, body?: unknown): 
   const endNorm = normalizeOrderEndTimeLocal(
     typeof cfg?.order_end_time_local === 'string' ? cfg.order_end_time_local : null
   )
-  return (
+
+  if (explicit) {
+    const c = checkOrderDateAllowed(explicit, orderWeekdays, closedDates)
+    if (!c.ok) {
+      return { ok: false, badExplicit: { description: c.description, variant: c.variant } }
+    }
+    return { ok: true, orderDate: explicit }
+  }
+
+  const slotSkip = shouldSkipReminderBecauseEarliestOrderSlotClosed(new Date(), orderWeekdays, closedDates)
+  if (slotSkip.skip) {
+    return { ok: false, skipped: 'order_slot_closed', nextSlotYmd: slotSkip.nextSlotYmd }
+  }
+
+  const orderDate =
     effectiveOrderDateForReminderAt(new Date(), orderWeekdays, closedDates, endNorm) ?? getAmsterdamYmd(new Date())
-  )
+  return { ok: true, orderDate }
 }
 
 /**
@@ -48,7 +71,29 @@ export async function GET(request: NextRequest) {
   const admin = await requireAdmin()
   if (!admin.ok) return NextResponse.json({ error: 'Forbidden' }, { status: admin.status })
 
-  const orderDate = await resolveBroadcastOrderDate(request)
+  const resolved = await resolveBroadcastOrderDate(request)
+  if (!resolved.ok) {
+    if ('badExplicit' in resolved) {
+      return NextResponse.json({ error: resolved.badExplicit.description, variant: resolved.badExplicit.variant }, { status: 400 })
+    }
+    let recipients: Awaited<ReturnType<typeof fetchLunchReminderRecipients>> = []
+    try {
+      recipients = await fetchLunchReminderRecipients()
+    } catch {
+      /* ignore */
+    }
+    return NextResponse.json({
+      skipped: 'order_slot_closed',
+      next_slot: resolved.nextSlotYmd,
+      orderDate: null,
+      orderDatePretty: null,
+      eligibleRecipients: recipients.length,
+      alreadySentForDate: 0,
+      wouldSend: 0,
+      hint: 'Eerstvolgende besteldag op de kalender staat als gesloten — er wordt geen herinnering verstuurd.',
+    })
+  }
+  const orderDate = resolved.orderDate
 
   let recipients: Awaited<ReturnType<typeof fetchLunchReminderRecipients>>
   try {
@@ -97,7 +142,20 @@ export async function POST(request: NextRequest) {
   } catch {
     /* leeg */
   }
-  const orderDate = await resolveBroadcastOrderDate(request, body)
+  const resolved = await resolveBroadcastOrderDate(request, body)
+  if (!resolved.ok) {
+    if ('badExplicit' in resolved) {
+      return NextResponse.json({ error: resolved.badExplicit.description, variant: resolved.badExplicit.variant }, { status: 400 })
+    }
+    return NextResponse.json({
+      ok: true,
+      skipped: 'order_slot_closed',
+      next_slot: resolved.nextSlotYmd,
+      sent: 0,
+      hint: 'Eerstvolgende besteldag op de kalender staat als gesloten — er wordt geen herinnering verstuurd.',
+    })
+  }
+  const orderDate = resolved.orderDate
 
   let recipients: Awaited<ReturnType<typeof fetchLunchReminderRecipients>>
   try {

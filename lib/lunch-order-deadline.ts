@@ -3,7 +3,12 @@ import {
   amsterdamMinutesSinceMidnight,
   parseHHmmToMinutes,
 } from '@/lib/amsterdam-time'
-import { checkOrderDateAllowed, parseLocalYmd, ymdFromDate } from '@/lib/lunch-schedule'
+import {
+  checkOrderDateAllowed,
+  firstOrderWeekdayOnOrAfter,
+  parseLocalYmd,
+  ymdFromDate,
+} from '@/lib/lunch-schedule'
 
 export function normalizeOrderEndTimeLocal(s: string | null | undefined): string {
   const d = parseHHmmToMinutes(s?.trim() ?? '')
@@ -57,6 +62,24 @@ export function nextAllowedOrderDateOnOrAfter(
 /**
  * Besteldag in de herinneringsmail (magic link): vandaag vóór/eind uiterste tijd, anders eerstvolgende toegestane dag.
  */
+/**
+ * Geen automatische herinnering: de eerstvolgende kalenderdag die een besteldag zou zijn
+ * staat expliciet bij Gesloten dagen (geen doorschuiven naar een latere week in de mail).
+ */
+export function shouldSkipReminderBecauseEarliestOrderSlotClosed(
+  now: Date,
+  orderWeekdays: number[],
+  closedDates: string[]
+): { skip: boolean; nextSlotYmd: string | null } {
+  const todayYmd = getAmsterdamYmd(now)
+  const nextSlot = firstOrderWeekdayOnOrAfter(todayYmd, orderWeekdays)
+  if (!nextSlot) return { skip: true, nextSlotYmd: null }
+  if (closedDates.includes(nextSlot)) {
+    return { skip: true, nextSlotYmd: nextSlot }
+  }
+  return { skip: false, nextSlotYmd: nextSlot }
+}
+
 export function effectiveOrderDateForReminderAt(
   now: Date,
   orderWeekdays: number[],

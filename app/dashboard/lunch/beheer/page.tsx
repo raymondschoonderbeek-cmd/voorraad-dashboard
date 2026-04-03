@@ -376,6 +376,7 @@ function InstellingenBeheer() {
   const [testMsg, setTestMsg] = useState('')
   const [testError, setTestError] = useState('')
   const [testDelayRemaining, setTestDelayRemaining] = useState<number | null>(null)
+  const [testOrderDate, setTestOrderDate] = useState('')
   const testDelayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [reminderMailSubject, setReminderMailSubject] = useState('')
   const [reminderMailHtml, setReminderMailHtml] = useState('')
@@ -519,14 +520,23 @@ function InstellingenBeheer() {
     setTestMsg('')
     setTestLoading(true)
     try {
+      const body: { orderDate?: string } = {}
+      if (testOrderDate.trim() && /^\d{4}-\d{2}-\d{2}$/.test(testOrderDate.trim())) {
+        body.orderDate = testOrderDate.trim()
+      }
       const res = await fetch('/api/lunch/reminder-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(body),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Versturen mislukt')
-      setTestMsg(`Testmail verstuurd naar ${data.to ?? 'je e-mailadres'}.`)
+      const pretty = typeof data.orderDatePretty === 'string' ? data.orderDatePretty : data.orderDate
+      const ymd = typeof data.orderDate === 'string' ? data.orderDate : ''
+      setTestMsg(
+        `Testmail verstuurd naar ${data.to ?? 'je e-mailadres'}.` +
+          (pretty && ymd ? ` Besteldag in deze mail: ${pretty} (${ymd}).` : '')
+      )
     } catch (e) {
       setTestError(e instanceof Error ? e.message : 'Mislukt')
     } finally {
@@ -581,6 +591,15 @@ function InstellingenBeheer() {
       const res = await fetch(`/api/lunch/reminder-broadcast${q}`)
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Ophalen mislukt')
+      if (data.skipped === 'order_slot_closed') {
+        setBroadcastPreview(null)
+        setBroadcastError(
+          typeof data.hint === 'string'
+            ? data.hint
+            : 'Eerstvolgende besteldag staat als gesloten — er wordt geen herinnering verstuurd. Kies een vaste besteldag of open de agenda.'
+        )
+        return
+      }
       setBroadcastPreview({
         orderDate: data.orderDate,
         orderDatePretty: data.orderDatePretty,
@@ -617,6 +636,16 @@ function InstellingenBeheer() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Versturen mislukt')
+      if (data.skipped === 'order_slot_closed') {
+        setBroadcastSuccess('')
+        setBroadcastError(
+          typeof data.hint === 'string'
+            ? data.hint
+            : 'Eerstvolgende besteldag staat als gesloten — er is geen mail verstuurd.'
+        )
+        await loadBroadcastPreview(false, true)
+        return
+      }
       const errPart =
         Array.isArray(data.errors) && data.errors.length > 0
           ? ` Bij ${data.errors.length} adres(sen) ging iets mis.`
@@ -913,6 +942,24 @@ function InstellingenBeheer() {
                 }
               }}
               className="w-full rounded-lg px-3 py-2 text-sm border"
+              style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
+            />
+          </div>
+        </div>
+        <p className="text-xs mb-3 leading-relaxed" style={{ color: 'rgba(45,69,124,0.55)' }}>
+          <strong>Zonder datum hieronder</strong> gebruikt de testmail dezelfde besteldag als de automatische mail: vóór de uiterste tijd op een open besteldag = die dag; anders de eerstvolgende toegestane dag.{' '}
+          Staat een vrijdag (of andere besteldag) bij <em>Gesloten dagen</em>? Dan verschuift de datum — bijv. naar de volgende week. Kies optioneel hieronder een vaste datum voor de preview.
+        </p>
+        <div className="flex flex-wrap items-end gap-3 mb-3">
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'rgba(45,69,124,0.6)' }}>
+              Besteldag in testmail (optioneel)
+            </label>
+            <input
+              type="date"
+              value={testOrderDate}
+              onChange={e => setTestOrderDate(e.target.value)}
+              className="rounded-lg px-3 py-2 text-sm border"
               style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE }}
             />
           </div>

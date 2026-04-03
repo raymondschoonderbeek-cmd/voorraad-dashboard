@@ -6,7 +6,11 @@ import {
   isWithinReminderWindow,
   parseHHmmToMinutes,
 } from '@/lib/amsterdam-time'
-import { effectiveOrderDateForReminderAt, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
+import {
+  effectiveOrderDateForReminderAt,
+  normalizeOrderEndTimeLocal,
+  shouldSkipReminderBecauseEarliestOrderSlotClosed,
+} from '@/lib/lunch-order-deadline'
 import { WEEKDAYS_NL, checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
 import { fetchLunchReminderRecipients } from '@/lib/lunch-reminder-recipients'
 import { isMailgunConfigured } from '@/lib/send-welcome-email'
@@ -129,6 +133,7 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
   const endNorm = normalizeOrderEndTimeLocal(
     typeof cfg.order_end_time_local === 'string' ? cfg.order_end_time_local : null
   )
+  const slotSkip = shouldSkipReminderBecauseEarliestOrderSlotClosed(now, orderWeekdays, closedDates)
   const ymd =
     effectiveOrderDateForReminderAt(now, orderWeekdays, closedDates, endNorm) ?? getAmsterdamYmd(now)
   const isoToday = getAmsterdamIsoWeekday(now)
@@ -174,6 +179,22 @@ export async function getReminderCronReadiness(now = new Date()): Promise<{
     } else {
       push('time_window', true, '5-minuten venster na ingestelde tijd', `Nu binnen venster na ${timeCfg}`)
     }
+  }
+
+  if (slotSkip.skip) {
+    push(
+      'earliest_order_slot',
+      false,
+      'Eerstvolgende besteldag',
+      `Die dag (${slotSkip.nextSlotYmd ?? '—'}) staat bij Gesloten dagen — er wordt geen herinnering verstuurd (ook geen mail voor een latere week).`
+    )
+  } else {
+    push(
+      'earliest_order_slot',
+      true,
+      'Eerstvolgende besteldag',
+      `Eerstvolgende kalender-slot is niet gesloten (${slotSkip.nextSlotYmd}).`
+    )
   }
 
   const dateCheck = checkOrderDateAllowed(ymd, orderWeekdays, closedDates)

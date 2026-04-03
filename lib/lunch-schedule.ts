@@ -71,6 +71,24 @@ export type OrderDateCheck =
       description: string
     }
 
+/**
+ * Eerste kalenderdag op of na fromYmd waarvan de ISO-weekdag in orderWeekdays zit (geen closed_dates-check).
+ * Gebruikt voor: geen herinneringsmail als díe eerstvolgende besteldag expliciet gesloten is.
+ */
+export function firstOrderWeekdayOnOrAfter(fromYmd: string, orderWeekdays: number[]): string | null {
+  const from = parseLocalYmd(fromYmd)
+  if (!from || orderWeekdays.length === 0) return null
+  const set = new Set(orderWeekdays)
+  for (let i = 0; i <= 366; i++) {
+    const d = new Date(from)
+    d.setDate(d.getDate() + i)
+    const ymd = ymdFromDate(d)
+    const iso = isoWeekdayFromDate(d)
+    if (set.has(iso)) return ymd
+  }
+  return null
+}
+
 export function checkOrderDateAllowed(
   orderDateYmd: string,
   orderWeekdays: number[],
