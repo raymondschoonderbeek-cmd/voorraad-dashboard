@@ -35,6 +35,17 @@ function CallbackContent() {
         if (cancelled) return
         if (error) {
           setStatus('Mislukt')
+          const msg = error.message ?? ''
+          const isPkce =
+            /pkce|code verifier/i.test(msg) ||
+            msg.includes('different browser') ||
+            msg.includes('storage was cleared')
+          if (isPkce) {
+            router.replace(
+              `/login?error=auth&reason=pkce&magic=1&next=${encodeURIComponent(safeNext)}`
+            )
+            return
+          }
           router.replace(`/login?error=auth&detail=${encodeURIComponent(error.message)}`)
           return
         }

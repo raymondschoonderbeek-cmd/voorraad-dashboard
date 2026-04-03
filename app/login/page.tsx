@@ -4,9 +4,26 @@ import { Suspense, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+/** Supabase Auth: te veel OTP/magic-link-mails; geen app-rate-limit. */
+function formatSupabaseEmailRateError(raw: string): string {
+  const t = raw.toLowerCase()
+  if (t.includes('rate limit') && (t.includes('email') || t.includes('otp') || t.includes('mail'))) {
+    return (
+      'Te veel inlogmails in korte tijd (limiet van Supabase). Wacht een paar minuten en vraag daarna opnieuw een link aan, ' +
+      'of gebruik inloggen met wachtwoord. Beheer: Supabase-dashboard → Authentication → Rate limits (en bij ingebouwde e-mail: uurlijks plafond per project).'
+    )
+  }
+  return raw
+}
+
+const PKCE_HINT =
+  'De inloglink werkt alleen in dezelfde browser als waar je de mail aanvroeg (PKCE). ' +
+  'Open de link in die browser, of vul hieronder de 6-cijferige code uit de e-mail in bij “Inloggen met code”.'
+
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otpCode, setOtpCode] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [magicLinkMode, setMagicLinkMode] = useState(false)
 
@@ -56,8 +73,17 @@ function LoginForm() {
     const detail = searchParams.get('detail')
     const reason = searchParams.get('reason')
     if (err === 'auth') {
-      if (detail) {
-        setError(`Inloggen mislukt: ${detail}`)
+      if (reason === 'pkce') {
+        setMagicLinkMode(true)
+        setError(PKCE_HINT)
+      } else if (detail) {
+        const d = detail.toLowerCase()
+        if (d.includes('pkce') || d.includes('code verifier') || d.includes('different browser')) {
+          setMagicLinkMode(true)
+          setError(PKCE_HINT)
+        } else {
+          setError(`Inloggen mislukt: ${detail}`)
+        }
       } else if (reason === 'no_code') {
         setError(
           'De inloglink kon niet worden voltooid (geen autorisatiecode). Controleer of de link nog geldig is, of log opnieuw in via Beheer → Inloggen als.'
@@ -97,9 +123,11 @@ function LoginForm() {
         },
       })
       if (otpError) {
-        setError(otpError.message)
+        setError(formatSupabaseEmailRateError(otpError.message))
       } else {
-        setMessage('Check je e-mail voor de inloglink. Klik op de link om in te loggen.')
+        setMessage(
+          'Check je e-mail voor de inloglink. Werkt de link niet (andere app of telefoon)? Vul dan de 6-cijferige code hieronder in.'
+        )
       }
       setLoading(false)
       return
@@ -136,12 +164,47 @@ function LoginForm() {
     })
 
     if (error) {
-      setError(error.message)
+      setError(formatSupabaseEmailRateError(error.message))
     } else {
       setMessage('Reset e-mail verstuurd. Controleer je inbox.')
     }
 
     setLoading(false)
+  }
+
+  async function handleVerifyOtp() {
+    const em = email.trim()
+    const digits = otpCode.replace(/\D/g, '')
+    if (!em) {
+      setError('Vul je e-mailadres in.')
+      return
+    }
+    if (digits.length < 6) {
+      setError('Vul de code uit de e-mail in (meestal 6 cijfers).')
+      return
+    }
+
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    const { error: vErr } = await supabase.auth.verifyOtp({
+      email: em,
+      token: digits,
+      type: 'email',
+    })
+
+    setLoading(false)
+
+    if (vErr) {
+      setError(vErr.message)
+      return
+    }
+
+    const nextParam = searchParams.get('next')?.trim()
+    const nextPath =
+      nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/dashboard'
+    router.push(nextPath)
   }
 
   return (
@@ -178,6 +241,31 @@ function LoginForm() {
             required
             className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-dynamo-blue-light/35 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue/25"
           />
+
+          {magicLinkMode && (
+            <div className="space-y-3 pt-1 border-t border-dynamo-blue-light/25">
+              <p className="text-xs text-dynamo-blue-light leading-relaxed">
+                Andere browser of mail-app? Voer de code uit dezelfde e-mail in (geen nieuwe mail nodig).
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6-cijferige code uit e-mail"
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                className="w-full rounded-xl px-4 py-3 bg-white text-gray-900 placeholder:text-gray-400 border border-dynamo-blue-light/35 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue/25 tracking-widest font-mono text-center text-lg"
+              />
+              <button
+                type="button"
+                onClick={handleVerifyOtp}
+                disabled={loading}
+                className="w-full rounded-xl py-3 font-semibold border-2 border-dynamo-blue text-dynamo-blue hover:bg-dynamo-blue/5 transition disabled:opacity-60"
+              >
+                {loading ? 'Bezig...' : 'Inloggen met code'}
+              </button>
+            </div>
+          )}
 
           {!magicLinkMode && (
             <>
@@ -224,7 +312,12 @@ function LoginForm() {
         <div className="text-center pt-2">
           <button
             type="button"
-            onClick={() => { setMagicLinkMode(v => !v); setError(''); setMessage(''); }}
+            onClick={() => {
+              setMagicLinkMode(v => !v)
+              setError('')
+              setMessage('')
+              setOtpCode('')
+            }}
             className="text-sm text-dynamo-blue/45 hover:text-dynamo-blue/70"
           >
             {magicLinkMode ? '← Inloggen met wachtwoord' : 'Inloggen via e-mail (magic link)'}
