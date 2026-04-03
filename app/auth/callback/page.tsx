@@ -46,6 +46,16 @@ function CallbackContent() {
             )
             return
           }
+          const isTokenExpired =
+            /token has expired|expired or is invalid|invalid otp|otp has expired|email link is invalid|flow state has expired/i.test(
+              msg
+            )
+          if (isTokenExpired) {
+            router.replace(
+              `/login?error=auth&reason=expired&magic=1&next=${encodeURIComponent(safeNext)}`
+            )
+            return
+          }
           router.replace(`/login?error=auth&detail=${encodeURIComponent(error.message)}`)
           return
         }
@@ -66,7 +76,18 @@ function CallbackContent() {
           if (cancelled) return
           if (error) {
             setStatus('Mislukt')
-            router.replace(`/login?error=auth&detail=${encodeURIComponent(error.message)}`)
+            const msg = error.message ?? ''
+            const isTokenExpired =
+              /token has expired|expired or is invalid|invalid otp|otp has expired|email link is invalid|flow state has expired/i.test(
+                msg
+              )
+            if (isTokenExpired) {
+              router.replace(
+                `/login?error=auth&reason=expired&magic=1&next=${encodeURIComponent(safeNext)}`
+              )
+            } else {
+              router.replace(`/login?error=auth&detail=${encodeURIComponent(error.message)}`)
+            }
             return
           }
           router.replace(safeNext)

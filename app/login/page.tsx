@@ -16,9 +16,44 @@ function formatSupabaseEmailRateError(raw: string): string {
   return raw
 }
 
+/** Verlopen link/code, Safe Links, of eenmalig token al verbruikt. */
+function formatSupabaseTokenExpiredError(raw: string): string {
+  const t = raw.toLowerCase()
+  if (
+    t.includes('token has expired') ||
+    (t.includes('expired') && t.includes('invalid')) ||
+    t.includes('invalid otp') ||
+    t.includes('otp has expired') ||
+    t.includes('email link is invalid') ||
+    t.includes('flow state has expired') ||
+    t.includes('flow state expired')
+  ) {
+    return (
+      'De inloglink of code is verlopen, ongeldig of al een keer gebruikt. Vraag een nieuwe inloglink aan. ' +
+      'Tip: bij Microsoft 365 kan Safe Links de link al automatisch “openen” — gebruik dan de 6-cijferige code uit de mail, of vraag opnieuw een mail en vul de nieuwe code in.'
+    )
+  }
+  return raw
+}
+
+/** Rate limits → token/OTP → anders origineel. */
+function formatAuthError(raw: string): string {
+  const rate = formatSupabaseEmailRateError(raw)
+  if (rate !== raw) return rate
+  const tok = formatSupabaseTokenExpiredError(raw)
+  if (tok !== raw) return tok
+  return raw
+}
+
+function formatLoginFailureMessage(detail: string): string {
+  const f = formatAuthError(detail)
+  if (f !== detail) return f
+  return `Inloggen mislukt: ${detail}`
+}
+
 const PKCE_HINT =
-  'De inloglink werkt alleen in dezelfde browser als waar je de mail aanvroeg (PKCE). ' +
-  'Open de link in die browser, of vul hieronder de 6-cijferige code uit de e-mail in bij “Inloggen met code”.'
+  'Open de link in dezelfde browser waarin je op Stuur inloglink hebt geklikt. ' +
+  'Of gebruik de 6-cijferige code uit de mail: vul die hieronder in en klik op Inloggen met code (handig als je de mail op een andere telefoon of app opent).'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -52,7 +87,7 @@ function LoginForm() {
       if (cancelled) return
       window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''))
       if (error) {
-        setError(error.message)
+        setError(formatAuthError(error.message))
         return
       }
       const nextParam = searchParams.get('next')?.trim()
@@ -76,13 +111,24 @@ function LoginForm() {
       if (reason === 'pkce') {
         setMagicLinkMode(true)
         setError(PKCE_HINT)
+      } else if (reason === 'expired') {
+        setMagicLinkMode(true)
+        setError(formatSupabaseTokenExpiredError('Token has expired or is invalid'))
       } else if (detail) {
         const d = detail.toLowerCase()
         if (d.includes('pkce') || d.includes('code verifier') || d.includes('different browser')) {
           setMagicLinkMode(true)
           setError(PKCE_HINT)
         } else {
-          setError(`Inloggen mislukt: ${detail}`)
+          const friendly = formatAuthError(detail)
+          if (friendly !== detail) {
+            if (formatSupabaseTokenExpiredError(detail) !== detail) {
+              setMagicLinkMode(true)
+            }
+            setError(friendly)
+          } else {
+            setError(formatLoginFailureMessage(detail))
+          }
         }
       } else if (reason === 'no_code') {
         setError(
@@ -123,7 +169,7 @@ function LoginForm() {
         },
       })
       if (otpError) {
-        setError(formatSupabaseEmailRateError(otpError.message))
+        setError(formatAuthError(otpError.message))
       } else {
         setMessage(
           'Check je e-mail voor de inloglink. Werkt de link niet (andere app of telefoon)? Vul dan de 6-cijferige code hieronder in.'
@@ -164,7 +210,7 @@ function LoginForm() {
     })
 
     if (error) {
-      setError(formatSupabaseEmailRateError(error.message))
+      setError(formatAuthError(error.message))
     } else {
       setMessage('Reset e-mail verstuurd. Controleer je inbox.')
     }
@@ -197,7 +243,7 @@ function LoginForm() {
     setLoading(false)
 
     if (vErr) {
-      setError(vErr.message)
+      setError(formatAuthError(vErr.message))
       return
     }
 
