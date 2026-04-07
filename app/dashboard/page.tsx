@@ -127,7 +127,10 @@ export default function Dashboard() {
   const [sortKey, setSortKey] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [gebruiker, setGebruiker] = useState('')
-  const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
+  const [foutmelding, setFoutmelding] = useState<null | { message: string; type: 'auth' | 'netwerk' | 'server' }>(null)
+  const [weergave, setWeergave] = useState<'tabel' | 'kaarten'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 640 ? 'kaarten' : 'tabel'
+  )
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
@@ -292,16 +295,25 @@ export default function Dashboard() {
 
   const haalVoorraadOp = useCallback(async (winkelId: number, dealer: string) => {
     setLoading(true)
-    setAuthRequired(null)
+    setFoutmelding(null)
     const params = new URLSearchParams()
     if (winkelId) params.set('winkel', String(winkelId))
     if (dealer) params.set('dealer', dealer)
 
-    const res = await fetch(`/api/voorraad?${params.toString()}`)
+    let res: Response
+    try {
+      res = await fetch(`/api/voorraad?${params.toString()}`)
+    } catch {
+      setProducten([]); setKolommen([])
+      setFoutmelding({ message: 'Verbinding mislukt. Controleer je internetverbinding en probeer opnieuw.', type: 'netwerk' })
+      setLoading(false)
+      return
+    }
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       setProducten([]); setKolommen([])
-      setAuthRequired({ message: data?.message ?? 'Voorraad ophalen mislukt.' })
+      const type = res.status === 401 || res.status === 403 ? 'auth' : 'server'
+      setFoutmelding({ message: data?.message ?? 'Voorraad ophalen mislukt.', type })
       setLoading(false)
       return
     }
@@ -358,7 +370,7 @@ export default function Dashboard() {
     } : null)
     setGeselecteerdeWinkel(winkel)
     setZoekterm(''); setProducten([]); setKolommen([])
-    setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setAuthRequired(null)
+    setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setFoutmelding(null)
     await haalVoorraadOp(winkel.id, winkel.dealer_nummer)
   }
 
@@ -678,7 +690,19 @@ export default function Dashboard() {
                     </p>
                   )}
                 </div>
-                {sessionData !== undefined && orderedModules.length === 0 ? (
+                {sessionData === undefined ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch" aria-busy="true" aria-label="Modules laden">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ minHeight: 170, background: DYNAMO_BLUE, opacity: 0.45 }}>
+                        <div className="p-6">
+                          <div className="w-10 h-10 rounded-xl mb-5" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                          <div className="h-4 rounded mb-2" style={{ background: 'rgba(255,255,255,0.2)', width: '55%' }} />
+                          <div className="h-3 rounded" style={{ background: 'rgba(255,255,255,0.12)', width: '80%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : sessionData !== undefined && orderedModules.length === 0 ? (
                   <div className="rounded-2xl border border-dashed px-5 py-8 text-center" style={{ borderColor: 'rgba(45,69,124,0.22)', background: 'rgba(255,255,255,0.7)' }}>
                     <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen modules ingeschakeld</p>
                     <p className="mt-2 text-sm leading-relaxed" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
@@ -1022,7 +1046,19 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {winkelsGefilterd.length > 0 && (
+                {winkelsLoading ? (
+                  <div className="mt-8" aria-busy="true" aria-label="Winkels laden">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-3 w-24 rounded animate-pulse" style={{ background: 'rgba(45,69,124,0.15)' }} />
+                      <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                        <div key={i} className="rounded-2xl animate-pulse" style={{ height: 112, background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.08)' }} />
+                      ))}
+                    </div>
+                  </div>
+                ) : winkelsGefilterd.length > 0 ? (
                   <div className="mt-8 space-y-6">
                     {favorieten.length > 0 && (
                       <div>
@@ -1051,7 +1087,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
               </section>
               )}
 
@@ -1142,6 +1178,28 @@ export default function Dashboard() {
                       <option value="ALL">Alle kolommen</option>
                       {kolommen.map(k => <option key={k} value={k}>{columnLabel(k)}</option>)}
                     </select>
+                    <div className="flex rounded-xl overflow-hidden shrink-0" style={{ border: '1px solid rgba(45,69,124,0.1)' }} role="group" aria-label="Weergave kiezen">
+                      <button
+                        type="button"
+                        onClick={() => setWeergave('tabel')}
+                        className="px-3 py-2 text-xs font-semibold transition"
+                        style={{ background: weergave === 'tabel' ? DYNAMO_BLUE : 'white', color: weergave === 'tabel' ? 'white' : DYNAMO_BLUE, fontFamily: F }}
+                        aria-pressed={weergave === 'tabel'}
+                        title="Tabelweergave"
+                      >
+                        ☰ Tabel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeergave('kaarten')}
+                        className="px-3 py-2 text-xs font-semibold transition"
+                        style={{ background: weergave === 'kaarten' ? DYNAMO_BLUE : 'white', color: weergave === 'kaarten' ? 'white' : DYNAMO_BLUE, fontFamily: F, borderLeft: '1px solid rgba(45,69,124,0.1)' }}
+                        aria-pressed={weergave === 'kaarten'}
+                        title="Kaartweergave (geschikt voor mobiel)"
+                      >
+                        ⊞ Kaarten
+                      </button>
+                    </div>
                     <div className="relative">
                       <button ref={kolomTriggerRef} onClick={() => setKolomPanelOpen(v => !v)} aria-expanded={kolomPanelOpen} aria-haspopup="dialog" aria-label="Kolommen kiezen" className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80 flex items-center gap-2" style={{ background: 'rgba(45,69,124,0.04)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                         ⚙ Kolommen ({zichtbareKolommen.length})
@@ -1176,15 +1234,105 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {authRequired && (
-                <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.2)' }}>
-                  <p className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Toestemming vereist</p>
-                  <p className="mt-1" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{authRequired.message}</p>
+              {foutmelding && (
+                <div className="rounded-2xl p-4" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)' }} role="alert">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg shrink-0" aria-hidden>
+                      {foutmelding.type === 'netwerk' ? '📡' : foutmelding.type === 'auth' ? '🔒' : '⚠️'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm" style={{ color: '#dc2626', fontFamily: F }}>
+                        {foutmelding.type === 'auth' ? 'Geen toegang' : foutmelding.type === 'netwerk' ? 'Verbindingsfout' : 'Ophalen mislukt'}
+                      </p>
+                      <p className="mt-0.5 text-sm" style={{ color: 'rgba(185,28,28,0.8)', fontFamily: F }}>{foutmelding.message}</p>
+                    </div>
+                    {geselecteerdeWinkel && (
+                      <button
+                        type="button"
+                        onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer)}
+                        className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition hover:opacity-90"
+                        style={{ background: '#dc2626', color: 'white', fontFamily: F }}
+                      >
+                        Opnieuw proberen
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Kaartweergave (mobiel-vriendelijk) */}
+              {weergave === 'kaarten' && (
+                <div>
+                  {loading ? (
+                    <div className="space-y-2" aria-busy="true">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="rounded-xl animate-pulse" style={{ height: 80, background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.06)' }} />
+                      ))}
+                    </div>
+                  ) : gefilterdEnGesorteerd.length === 0 ? (
+                    <div className="rounded-2xl px-6 py-16 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)' }}>
+                      <div className="text-3xl mb-3" aria-hidden>🔍</div>
+                      <div className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                        {zoekterm.trim() !== '' || zoekKolom !== 'ALL'
+                          ? 'Geen resultaten met deze zoekfilters'
+                          : producten.length === 0
+                            ? 'Geen voorraadgegevens voor deze winkel'
+                            : 'Geen producten met voorraad ≥ 1'}
+                      </div>
+                      {(zoekterm.trim() !== '' || zoekKolom !== 'ALL') && (
+                        <button type="button" onClick={() => { setZoekterm(''); setZoekKolom('ALL') }} className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                          Wis zoekfilters
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {gefilterdEnGesorteerd.slice(0, 200).map((p, i) => {
+                          const stockVal = Number(p.STOCK) || 0
+                          const stockKleur = stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a'
+                          return (
+                            <div key={i} className="rounded-xl p-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 1px 4px rgba(45,69,124,0.04)' }}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-sm leading-snug" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{p.PRODUCT_DESCRIPTION || '—'}</div>
+                                  {p.BRAND_NAME && <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>{p.BRAND_NAME}</div>}
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <div className="text-xl font-bold leading-none" style={{ color: stockKleur, fontFamily: F }}>{stockVal}</div>
+                                  <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>stuks</div>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {p.SALES_PRICE_INC != null && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.7)', fontFamily: F }}>{formatValue('SALES_PRICE_INC', p.SALES_PRICE_INC)}</span>
+                                )}
+                                {p.COLOR && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.55)', fontFamily: F }}>{p.COLOR}</span>
+                                )}
+                                {p.FRAME_HEIGHT && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.55)', fontFamily: F }}>{p.FRAME_HEIGHT}</span>
+                                )}
+                                {p.BARCODE && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ background: 'rgba(45,69,124,0.04)', color: 'rgba(45,69,124,0.4)', fontFamily: 'monospace' }}>{p.BARCODE}</span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {gefilterdEnGesorteerd.length > 200 && (
+                        <p className="text-xs text-center mt-3 py-2" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>
+                          Toont 200 van {gefilterdEnGesorteerd.length} resultaten — gebruik zoekfilters om te verfijnen.
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
               {/* Tabel */}
-              <div className="rounded-2xl overflow-hidden -mx-3 sm:mx-0" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              {weergave === 'tabel' && <div className="rounded-2xl overflow-hidden -mx-3 sm:mx-0" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <div
                   ref={tableContainerRef}
                   className="overflow-x-auto overflow-y-auto"
@@ -1280,7 +1428,7 @@ export default function Dashboard() {
                     <span className="text-xs" style={{ color: 'rgba(45,69,124,0.3)', fontFamily: F }}>Klik op kolomheader om te sorteren</span>
                   </div>
                 )}
-              </div>
+              </div>}
             </>
           )}
         </main>
