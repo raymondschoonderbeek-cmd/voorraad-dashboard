@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
@@ -8,22 +8,24 @@ import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
 import type { DrgNewsPost } from '@/lib/news-types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+const LIMIT = 20
 
 export default function NieuwsOverzichtPage() {
   const [category, setCategory] = useState<string>('')
   const [importantOnly, setImportantOnly] = useState(false)
   const [q, setQ] = useState('')
 
-  const query = useMemo(() => {
-    const p = new URLSearchParams()
-    if (category) p.set('category', category)
-    if (importantOnly) p.set('important_only', '1')
-    if (q.trim()) p.set('q', q.trim())
-    const s = p.toString()
-    return s ? `/api/news?${s}` : '/api/news'
-  }, [category, importantOnly, q])
+  const [allPosts, setAllPosts] = useState<DrgNewsPost[]>([])
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const { data, error, isLoading, mutate: refetchNews } = useSWR<{ posts: DrgNewsPost[] }>(query, fetcher)
+  // Track active fetch to prevent race conditions when filters change rapidly
+  const fetchIdRef = useRef(0)
+
   const { data: unreadData } = useSWR<{ count: number }>('/api/news/unread', fetcher)
   const { data: sessionInfo } = useSWR<{ canManageInterneNieuws?: boolean }>('/api/auth/session-info', fetcher)
   const { data: afdelingenData } = useSWR<{ afdelingen: DrgNewsAfdeling[] }>('/api/news/afdelingen', fetcher)
@@ -34,7 +36,48 @@ export default function NieuwsOverzichtPage() {
     return (slug: string) => m.get(slug) ?? slug
   }, [afdelingenData?.afdelingen])
 
-  const posts = data?.posts ?? []
+  const haalPostsOp = useCallback(async (fromOffset: number, cat: string, imp: boolean, search: string) => {
+    const fetchId = ++fetchIdRef.current
+    if (fromOffset === 0) { setIsLoading(true); setError(null) }
+    else setLoadingMore(true)
+
+    try {
+      const params = new URLSearchParams()
+      if (cat) params.set('category', cat)
+      if (imp) params.set('important_only', '1')
+      if (search.trim()) params.set('q', search.trim())
+      params.set('limit', String(LIMIT))
+      params.set('offset', String(fromOffset))
+
+      const res = await fetch(`/api/news?${params}`)
+      if (fetchId !== fetchIdRef.current) return // verouderd verzoek
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Laden mislukt')
+
+      const nieuwePostsArray: DrgNewsPost[] = data.posts ?? []
+      setAllPosts(prev => fromOffset === 0 ? nieuwePostsArray : [...prev, ...nieuwePostsArray])
+      setTotal(data.total ?? 0)
+      setHasMore(data.hasMore ?? false)
+      setOffset(fromOffset + LIMIT)
+    } catch (err) {
+      if (fetchId !== fetchIdRef.current) return
+      setError(err instanceof Error ? err.message : 'Laden mislukt')
+    } finally {
+      if (fetchId === fetchIdRef.current) {
+        setIsLoading(false)
+        setLoadingMore(false)
+      }
+    }
+  }, [])
+
+  // Bij filterwijziging: reset en laad eerste pagina opnieuw
+  useEffect(() => {
+    setAllPosts([])
+    setOffset(0)
+    setHasMore(false)
+    haalPostsOp(0, category, importantOnly, q)
+  }, [category, importantOnly, q, haalPostsOp])
+
   const unread = unreadData?.count ?? 0
 
   return (
@@ -133,13 +176,13 @@ export default function NieuwsOverzichtPage() {
         {error && (
           <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
             Kon nieuws niet laden. Probeer het opnieuw.
-            <button type="button" className="ml-2 underline font-semibold" onClick={() => refetchNews()}>
+            <button type="button" className="ml-2 underline font-semibold" onClick={() => haalPostsOp(0, category, importantOnly, q)}>
               Opnieuw
             </button>
           </div>
         )}
 
-        {!isLoading && !error && posts.length === 0 && (
+        {!isLoading && !error && allPosts.length === 0 && (
           <div
             className="rounded-2xl p-10 text-center border border-dashed"
             style={{ borderColor: 'rgba(45,69,124,0.2)', color: dashboardUi.textMuted }}
@@ -149,7 +192,7 @@ export default function NieuwsOverzichtPage() {
         )}
 
         <ul className="space-y-3 list-none m-0 p-0">
-          {posts.map(p => (
+          {allPosts.map(p => (
             <li key={p.id}>
               <Link
                 href={`/dashboard/nieuws/${p.id}`}
@@ -186,6 +229,26 @@ export default function NieuwsOverzichtPage() {
             </li>
           ))}
         </ul>
+
+        {hasMore && (
+          <div className="flex flex-col items-center gap-2 pt-2 pb-6">
+            <button
+              type="button"
+              onClick={() => haalPostsOp(offset, category, importantOnly, q)}
+              disabled={loadingMore}
+              className="rounded-2xl px-6 py-3 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+              style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: FONT_FAMILY }}
+            >
+              {loadingMore ? 'Laden…' : `Toon meer (${allPosts.length} van ${total})`}
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !hasMore && allPosts.length > 0 && (
+          <p className="text-center text-xs pb-6" style={{ color: dashboardUi.textMuted }}>
+            Alle {total} berichten geladen.
+          </p>
+        )}
       </main>
     </div>
   )

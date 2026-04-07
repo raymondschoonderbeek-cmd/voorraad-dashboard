@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -128,6 +129,7 @@ export default function Dashboard() {
   const [gebruiker, setGebruiker] = useState('')
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
+  const tableContainerRef = useRef<HTMLDivElement>(null)
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
@@ -481,6 +483,17 @@ export default function Dashboard() {
     fietsen: gefilterdEnGesorteerd.filter(p => isFiets(p) && (Number(p.STOCK) || 0) > 0).reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     merken: new Set(gefilterdEnGesorteerd.map(p => p.BRAND_NAME)).size,
   }), [gefilterdEnGesorteerd])
+
+  const rowVirtualizer = useVirtualizer({
+    count: loading ? 0 : gefilterdEnGesorteerd.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 42,
+    overscan: 8,
+  })
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const totalVirtualSize = rowVirtualizer.getTotalSize()
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0
+  const paddingBottom = virtualRows.length > 0 ? totalVirtualSize - virtualRows[virtualRows.length - 1].end : 0
 
   function trendPijl(huidig: number, vorig: number | undefined) {
     if (vorig === undefined || vorig === null) return null
@@ -1172,7 +1185,11 @@ export default function Dashboard() {
 
               {/* Tabel */}
               <div className="rounded-2xl overflow-hidden -mx-3 sm:mx-0" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-                <div className="overflow-x-auto overflow-y-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div
+                  ref={tableContainerRef}
+                  className="overflow-x-auto overflow-y-auto"
+                  style={{ maxHeight: 'calc(100vh - 320px)', minHeight: '240px', WebkitOverflowScrolling: 'touch' }}
+                >
                   <table className="w-full text-sm min-w-[600px] [border-collapse:separate] [border-spacing:0]">
                     <thead className="sticky top-0 z-10" style={{ background: DYNAMO_BLUE }}>
                       <tr>
@@ -1221,22 +1238,38 @@ export default function Dashboard() {
                           </td>
                         </tr>
                       ) : (
-                        gefilterdEnGesorteerd.map((p, i) => (
-                          <tr key={i} className="transition hover:bg-dynamo-blue/5" style={{ borderBottom: '1px solid rgba(45,69,124,0.05)', background: i % 2 === 1 ? 'rgba(45,69,124,0.015)' : 'white' }}>
-                            {zichtbareKolommen.map(k => {
-                              const sticky = stickyEnabled && stickyKey === k
-                              const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
-                              const stockVal = Number(p[k])
-                              return (
-                                <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(45,69,124,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
-                                  <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
-                                    {formatValue(k, p[k])}
-                                  </span>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))
+                        <>
+                          {paddingTop > 0 && (
+                            <tr aria-hidden>
+                              <td style={{ height: `${paddingTop}px`, padding: 0 }} colSpan={zichtbareKolommen.length} />
+                            </tr>
+                          )}
+                          {virtualRows.map(virtualRow => {
+                            const p = gefilterdEnGesorteerd[virtualRow.index]
+                            const i = virtualRow.index
+                            return (
+                              <tr key={virtualRow.key} data-index={virtualRow.index} ref={rowVirtualizer.measureElement} className="transition hover:bg-dynamo-blue/5" style={{ borderBottom: '1px solid rgba(45,69,124,0.05)', background: i % 2 === 1 ? 'rgba(45,69,124,0.015)' : 'white' }}>
+                                {zichtbareKolommen.map(k => {
+                                  const sticky = stickyEnabled && stickyKey === k
+                                  const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
+                                  const stockVal = Number(p[k])
+                                  return (
+                                    <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: i % 2 === 1 ? 'rgba(45,69,124,0.015)' : 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(45,69,124,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
+                                      <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
+                                        {formatValue(k, p[k])}
+                                      </span>
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            )
+                          })}
+                          {paddingBottom > 0 && (
+                            <tr aria-hidden>
+                              <td style={{ height: `${paddingBottom}px`, padding: 0 }} colSpan={zichtbareKolommen.length} />
+                            </tr>
+                          )}
+                        </>
                       )}
                     </tbody>
                   </table>

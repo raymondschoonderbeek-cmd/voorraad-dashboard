@@ -22,12 +22,17 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get('category')?.trim()
   const importantOnly = searchParams.get('important_only') === '1' || searchParams.get('important_only') === 'true'
   const q = searchParams.get('q')?.trim()
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '20', 10) || 20, 1), 100)
+  const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0)
 
   if (beheer && !(await canManageInterneNieuws(supabase, user.id))) {
     return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
   }
 
-  let qy = supabase.from('drg_news_posts').select('*').order('published_at', { ascending: false, nullsFirst: true })
+  let qy = supabase
+    .from('drg_news_posts')
+    .select('*', { count: 'exact' })
+    .order('published_at', { ascending: false, nullsFirst: true })
 
   if (!beheer) {
     const nowIso = new Date().toISOString()
@@ -45,9 +50,10 @@ export async function GET(request: NextRequest) {
     if (safe) qy = qy.or(`title.ilike.%${safe}%,excerpt.ilike.%${safe}%`)
   }
 
-  const { data, error } = await qy
+  const { data, error, count } = await qy.range(offset, offset + limit - 1)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ posts: data ?? [] })
+  const total = count ?? 0
+  return NextResponse.json({ posts: data ?? [], total, hasMore: offset + limit < total })
 }
 
 /**
