@@ -6,6 +6,9 @@ import { useSearchParams } from 'next/navigation'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
 import { CampagneFietsenBeheerTab } from '@/components/campagne-fietsen/CampagneFietsenBeheerTab'
 import { NieuwsBeheerTab } from '@/components/nieuws/NieuwsBeheerTab'
+import { TrustedIpsTab } from '@/components/beheer/TrustedIpsTab'
+import { BekendeMerkenTab } from '@/components/beheer/BekendeMerkenTab'
+import { ImportTab } from '@/components/beheer/ImportTab'
 import { DASHBOARD_MODULE_ORDER, type DashboardModuleId, type LandCode } from '@/lib/dashboard-modules'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
@@ -1894,200 +1897,17 @@ export default function BeheerPage() {
         )}
 
         {/* ── TAB: VERTROUWDE IP'S (alleen admin) ── */}
-        {tab === 'ips' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
-                <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Vertrouwde IP-adressen</div>
-                <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Vanaf deze IP&apos;s is geen MFA nodig bij inloggen. Ondersteunt exacte IP&apos;s (bijv. 192.168.1.100) en CIDR (bijv. 192.168.1.0/24).</div>
-              </div>
-              <div className="p-4 space-y-4">
-                <form onSubmit={voegTrustedIpToe} className="flex gap-2">
-                  <input
-                    value={nieuwIp}
-                    onChange={e => setNieuwIp(e.target.value)}
-                    placeholder="192.168.1.100 of 192.168.1.0/24"
-                    className={inputClass}
-                    style={inputStyle}
-                  />
-                  <button type="submit" disabled={ipLoading || !nieuwIp.trim()} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                    {ipLoading ? 'Bezig...' : 'Toevoegen'}
-                  </button>
-                </form>
-                {ipError && <div className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{ipError}</div>}
-                <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
-                  {trustedIps.length === 0 ? (
-                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Nog geen vertrouwde IP&apos;s. Voeg kantoor-IP&apos;s toe om MFA over te slaan.</div>
-                  ) : (
-                    trustedIps.map(ip => (
-                      <div key={ip.id} className="flex items-center justify-between py-3">
-                        <code className="text-sm font-mono" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{ip.ip_or_cidr}</code>
-                        <button onClick={() => verwijderTrustedIp(ip.id)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {tab === 'ips' && <TrustedIpsTab />}
 
         {/* ── TAB: CAMPAGNEFIETSEN (alleen admin) ── */}
         {tab === 'campagnefietsen' && isAdmin && <CampagneFietsenBeheerTab />}
         {tab === 'nieuws' && (isAdmin || canManageInterneNieuws) && <NieuwsBeheerTab />}
 
         {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
-        {tab === 'merken' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
-                <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Bekende merken</div>
-                <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Lijst voor Vendit merk-extractie uit productomschrijving. Merken worden herkend aan het begin van de omschrijving (bijv. &quot;Batavus Grenoble&quot;).</div>
-              </div>
-              <div className="p-4 space-y-4">
-                <form onSubmit={voegMerkToe} className="flex gap-2">
-                  <input
-                    value={nieuwMerk}
-                    onChange={e => setNieuwMerk(e.target.value)}
-                    placeholder="Bijv. Batavus, Gazelle, Trek"
-                    className={inputClass}
-                    style={inputStyle}
-                  />
-                  <button type="submit" disabled={merkLoading || !nieuwMerk.trim()} className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                    {merkLoading ? 'Bezig...' : 'Toevoegen'}
-                  </button>
-                </form>
-                {merkError && <div className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{merkError}</div>}
-                <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
-                  {bekendeMerken.length === 0 ? (
-                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Nog geen merken. Voeg merken toe voor Vendit merk-extractie.</div>
-                  ) : (
-                    bekendeMerken.map(m => (
-                      <div key={m.id} className="flex items-center justify-between py-3">
-                        <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{m.label}</span>
-                        <button onClick={() => verwijderMerk(m.id)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {tab === 'merken' && <BekendeMerkenTab />}
 
         {/* ── TAB: EXCEL IMPORT ── */}
-        {tab === 'import' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F, borderTop: `3px solid ${DYNAMO_BLUE}`, paddingTop: '12px', marginTop: '-4px' }}>📊 Importeren via Excel</h2>
-                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.15)' }}>
-                  <button type="button" onClick={() => { setImportType('winkels'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'winkels' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels</button>
-                  <button type="button" onClick={() => { setImportType('medewerkers'); setImportData([]); setImportError(''); setImportSuccess('') }} className="px-4 py-2 text-xs font-semibold transition" style={importType === 'medewerkers' ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { background: 'white', color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Medewerkers</button>
-                </div>
-              </div>
-              {importType === 'winkels' ? (
-                <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
-              ) : (
-                <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>email</strong> (verplicht), <strong>naam</strong> (optioneel), <strong>rol</strong> (optioneel: viewer, lunch of admin; standaard viewer). Nieuwe medewerkers krijgen een wachtwoord per e-mail en moeten dit bij eerste inlog wijzigen.</p>
-              )}
-              <div className="rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition hover:opacity-80" style={{ borderColor: 'rgba(45,69,124,0.15)', background: 'rgba(45,69,124,0.02)' }} onClick={() => fileInputRef.current?.click()}>
-                <div className="text-3xl mb-2">📂</div>
-                <div className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Klik om een Excel bestand te kiezen</div>
-                <div className="text-xs mt-1" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Ondersteund: .xlsx, .xls</div>
-                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={verwerkExcel} />
-              </div>
-              {importError && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#fef2f2', color: '#dc2626', fontFamily: F }}>{importError}</div>}
-              {importSuccess && <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#f0fdf4', color: '#16a34a', fontFamily: F }}>✓ {importSuccess}</div>}
-              {importProgress && (
-                <div className="mt-3 rounded-xl p-4 space-y-2" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
-                  <div className="flex justify-between text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
-                    <span>{importProgress.current} van {importProgress.total} verwerkt</span>
-                    <span style={{ color: 'rgba(45,69,124,0.5)' }}>{importProgress.toegevoegd} toegevoegd · {importProgress.bijgewerkt} bijgewerkt</span>
-                  </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(45,69,124,0.06)' }}>
-                    <div className="h-full transition-all duration-300" style={{ width: `${(importProgress.current / importProgress.total) * 100}%`, background: DYNAMO_BLUE }} />
-                  </div>
-                </div>
-              )}
-              {importData.length > 0 && (
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{importData.length} {importType === 'medewerkers' ? 'medewerkers' : 'winkels'} gevonden</span>
-                    <button onClick={() => { setImportData([]); if (fileInputRef.current) fileInputRef.current.value = '' }} className="text-xs hover:opacity-70" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Wissen</button>
-                  </div>
-                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.08)' }}>
-                    <table className="w-full text-xs">
-                      <thead style={{ background: DYNAMO_BLUE }}>
-                        <tr>{(importType === 'medewerkers' ? ['E-mail', 'Naam', 'Rol'] : ['Naam', 'Dealer #', 'Postcode', 'Straat', 'Nr', 'Stad', 'Land', 'API']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.7)', fontFamily: F }}>{h}</th>)}</tr>
-                      </thead>
-                      <tbody>
-                        {importType === 'medewerkers'
-                          ? importData.slice(0, 10).map((r, i) => (
-                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
-                                <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.email}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.naam || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.rol || 'viewer'}</td>
-                              </tr>
-                            ))
-                          : importData.slice(0, 10).map((r, i) => (
-                              <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
-                                <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.naam}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.stad || '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.land ? (r.land === 'Belgium' ? 'België' : 'Nederland') : '—'}</td>
-                                <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.api_type || '—'}</td>
-                              </tr>
-                            ))}
-                      </tbody>
-                    </table>
-                    {importData.length > 10 && <div className="px-3 py-2 text-xs text-center" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>+ {importData.length - 10} meer rijen</div>}
-                  </div>
-                  <button onClick={importType === 'medewerkers' ? importeerMedewerkers : importeerWinkels} disabled={importLoading} className="w-full rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                    {importLoading && importProgress
-                      ? `Importeren... ${importProgress.current} van ${importProgress.total}`
-                      : importLoading
-                        ? 'Importeren...'
-                        : importType === 'medewerkers'
-                          ? `${importData.length} medewerkers importeren`
-                          : `${importData.length} winkels importeren`}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-              <h3 className="text-xs font-bold uppercase mb-3" style={{ color: 'rgba(45,69,124,0.4)', letterSpacing: '0.1em', fontFamily: F }}>Verwacht formaat {importType === 'medewerkers' ? '(medewerkers)' : '(winkels)'}</h3>
-              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.08)' }}>
-                <table className="w-full text-xs">
-                  <thead style={{ background: DYNAMO_BLUE }}>
-                    <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {(importType === 'medewerkers'
-                      ? [
-                          ['jan@bedrijf.nl', 'Jan Jansen', 'viewer'],
-                          ['marie@bedrijf.nl', 'Marie de Vries', 'lunch'],
-                          ['admin@bedrijf.nl', 'Beheerder', 'admin'],
-                        ]
-                      : [
-                          ['Dynamo Amsterdam','10001','1012AB','Damrak','1','Amsterdam','Nederland','cyclesoftware'],
-                          ['Dynamo Rotterdam','10002','3011AD','Coolsingel','42','Rotterdam','Nederland','cyclesoftware'],
-                          ['Dynamo Brussel','10003','1000','Nieuwstraat','1','Brussel','België','wilmar'],
-                        ]
-                    ).map((r, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
-                        {r.map((c, j) => <td key={j} className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.7)', fontFamily: F }}>{c}</td>)}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+        {tab === 'import' && <ImportTab winkels={winkels} onRefreshGebruikers={haalGebruikersOp} />}
 
       </main>
     </div>

@@ -76,6 +76,21 @@ export async function requireItCmdbAccess() {
   return { ok: false as const, status: 403 }
 }
 
+/**
+ * Geeft de winkel-IDs terug waartoe de gebruiker GEEN toegang heeft.
+ * (gebruiker_winkels = uitsluitingen: record aanwezig = geen toegang)
+ */
+export async function getUserUitgeslotenWinkelIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<number[]> {
+  const { data } = await supabase
+    .from('gebruiker_winkels')
+    .select('winkel_id')
+    .eq('user_id', userId)
+  return (data ?? []).map((r: { winkel_id: number }) => r.winkel_id)
+}
+
 /** Admin of expliciete toegang in profiles.campagne_fietsen_toegang */
 export async function canAccessCampagneFietsen(
   supabase: Awaited<ReturnType<typeof createClient>>,

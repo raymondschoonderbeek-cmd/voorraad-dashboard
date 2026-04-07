@@ -43,6 +43,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const items = Array.isArray(body.items) ? body.items : []
     if (items.length === 0) return NextResponse.json({ results: {} })
+    if (items.length > 100) {
+      return NextResponse.json({ error: 'Maximaal 100 winkels per batch toegestaan' }, { status: 400 })
+    }
+    for (const item of items) {
+      if (!item || typeof item !== 'object') {
+        return NextResponse.json({ error: 'Elk item moet een object zijn' }, { status: 400 })
+      }
+      if (typeof item.id !== 'number' || !Number.isFinite(item.id)) {
+        return NextResponse.json({ error: 'Elk item vereist een geldig numeriek id' }, { status: 400 })
+      }
+      if (typeof item.dealer_nummer !== 'string' || item.dealer_nummer.trim().length === 0) {
+        return NextResponse.json({ error: 'Elk item vereist een dealer_nummer (string)' }, { status: 400 })
+      }
+      if (item.dealer_nummer.length > 50) {
+        return NextResponse.json({ error: 'dealer_nummer mag maximaal 50 tekens bevatten' }, { status: 400 })
+      }
+    }
 
     const results: Record<number, { authorized: boolean }> = {}
     const now = new Date().toISOString()

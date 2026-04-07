@@ -104,6 +104,22 @@ async function haalCoordsOp(postcode?: string | null, straat?: string | null, st
   return { lat: null, lng: null }
 }
 
+const GELDIGE_API_TYPES = ['cyclesoftware', 'wilmar', 'vendit', 'vendit_api'] as const
+
+function valideerWinkelVelden(body: Record<string, unknown>): string | null {
+  const { naam, dealer_nummer, postcode, straat, huisnummer, stad, api_type } = body
+  if (!naam || typeof naam !== 'string' || naam.trim().length === 0) return 'Naam is verplicht'
+  if (naam.length > 100) return 'Naam mag maximaal 100 tekens bevatten'
+  if (!dealer_nummer || typeof dealer_nummer !== 'string' || dealer_nummer.trim().length === 0) return 'Dealer nummer is verplicht'
+  if (dealer_nummer.length > 50) return 'Dealer nummer mag maximaal 50 tekens bevatten'
+  if (postcode !== undefined && postcode !== null && typeof postcode === 'string' && postcode.length > 20) return 'Postcode mag maximaal 20 tekens bevatten'
+  if (straat !== undefined && straat !== null && typeof straat === 'string' && straat.length > 200) return 'Straat mag maximaal 200 tekens bevatten'
+  if (huisnummer !== undefined && huisnummer !== null && typeof huisnummer === 'string' && huisnummer.length > 20) return 'Huisnummer mag maximaal 20 tekens bevatten'
+  if (stad !== undefined && stad !== null && typeof stad === 'string' && stad.length > 100) return 'Stad mag maximaal 100 tekens bevatten'
+  if (api_type !== undefined && api_type !== null && !GELDIGE_API_TYPES.includes(api_type as typeof GELDIGE_API_TYPES[number])) return `api_type moet één van de volgende waarden zijn: ${GELDIGE_API_TYPES.join(', ')}`
+  return null
+}
+
 export async function POST(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -111,11 +127,26 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang (admin vereist)' }, { status: auth.status })
   const { supabase } = auth
 
-  const body = await request.json()
-  const { naam, dealer_nummer, postcode, straat, huisnummer, stad, land, api_type, vendit_api_key, vendit_api_username, vendit_api_password } = body
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Ongeldige request body' }, { status: 400 })
+  }
+  const raw = body as Record<string, unknown>
+  const naam = raw.naam as string | undefined
+  const dealer_nummer = raw.dealer_nummer as string | undefined
+  const postcode = raw.postcode as string | null | undefined
+  const straat = raw.straat as string | null | undefined
+  const huisnummer = raw.huisnummer as string | null | undefined
+  const stad = raw.stad as string | null | undefined
+  const land = raw.land as string | null | undefined
+  const api_type = raw.api_type as string | null | undefined
+  const vendit_api_key = typeof raw.vendit_api_key === 'string' ? raw.vendit_api_key : ''
+  const vendit_api_username = typeof raw.vendit_api_username === 'string' ? raw.vendit_api_username : ''
+  const vendit_api_password = typeof raw.vendit_api_password === 'string' ? raw.vendit_api_password : ''
 
-  if (!naam || !dealer_nummer) {
-    return NextResponse.json({ error: 'Naam en dealer nummer zijn verplicht' }, { status: 400 })
+  const validatieFout = valideerWinkelVelden(raw)
+  if (validatieFout) {
+    return NextResponse.json({ error: validatieFout }, { status: 400 })
   }
 
   const landVal = land === 'Belgium' || land === 'Netherlands' ? land : null
@@ -135,9 +166,9 @@ export async function POST(request: NextRequest) {
     api_type: api_type ?? 'cyclesoftware',
   }
   if (api_type === 'vendit_api') {
-    insertData.vendit_api_key = (vendit_api_key ?? '').trim() || null
-    insertData.vendit_api_username = (vendit_api_username ?? '').trim() || null
-    if ((vendit_api_password ?? '').trim()) insertData.vendit_api_password = (vendit_api_password ?? '').trim()
+    insertData.vendit_api_key = vendit_api_key.trim() || null
+    insertData.vendit_api_username = vendit_api_username.trim() || null
+    if (vendit_api_password.trim()) insertData.vendit_api_password = vendit_api_password.trim()
   }
 
   const { data, error } = await supabase
@@ -156,10 +187,33 @@ export async function PUT(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang (admin vereist)' }, { status: auth.status })
   const { supabase } = auth
 
-  const body = await request.json()
-  const { id, naam, dealer_nummer, postcode, straat, huisnummer, stad, land, wilmar_organisation_id, wilmar_branch_id, wilmar_store_naam, api_type, vendit_api_key, vendit_api_username, vendit_api_password } = body
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Ongeldige request body' }, { status: 400 })
+  }
+  const rawPut = body as Record<string, unknown>
+  const id = rawPut.id
+  const naam = rawPut.naam as string | undefined
+  const dealer_nummer = rawPut.dealer_nummer as string | undefined
+  const postcode = rawPut.postcode as string | null | undefined
+  const straat = rawPut.straat as string | null | undefined
+  const huisnummer = rawPut.huisnummer as string | null | undefined
+  const stad = rawPut.stad as string | null | undefined
+  const land = rawPut.land as string | null | undefined
+  const wilmar_organisation_id = rawPut.wilmar_organisation_id
+  const wilmar_branch_id = rawPut.wilmar_branch_id
+  const wilmar_store_naam = rawPut.wilmar_store_naam
+  const api_type = rawPut.api_type as string | null | undefined
+  const vendit_api_key = rawPut.vendit_api_key
+  const vendit_api_username = rawPut.vendit_api_username
+  const vendit_api_password = rawPut.vendit_api_password
 
   if (!id) return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 })
+
+  const validatieFout = valideerWinkelVelden(rawPut)
+  if (validatieFout) {
+    return NextResponse.json({ error: validatieFout }, { status: 400 })
+  }
 
   const landVal = land === 'Belgium' || land === 'Netherlands' ? land : null
   const straatVoorCoords = straat && huisnummer ? `${straat} ${huisnummer}` : straat

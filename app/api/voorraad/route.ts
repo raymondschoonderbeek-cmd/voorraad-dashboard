@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth, getUserUitgeslotenWinkelIds } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
 const WILMAR_BASE = 'https://api.v2.wilmarinfo.nl'
@@ -98,11 +98,7 @@ export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
+    const { user, supabase, isAdmin } = await requireAuth()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
@@ -119,6 +115,14 @@ export async function GET(request: NextRequest) {
       const winkelId = Number(winkelIdParam)
       if (!Number.isFinite(winkelId)) {
         return NextResponse.json({ error: 'Ongeldig winkel ID' }, { status: 400 })
+      }
+
+      // Controleer of de gebruiker toegang heeft tot deze winkel (niet voor admins)
+      if (!isAdmin) {
+        const uitgesloten = await getUserUitgeslotenWinkelIds(supabase, user.id)
+        if (uitgesloten.includes(winkelId)) {
+          return NextResponse.json({ error: 'Geen toegang tot deze winkel' }, { status: 403 })
+        }
       }
 
       const { data: winkel, error: winkelError } = await supabase
