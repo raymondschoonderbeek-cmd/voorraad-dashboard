@@ -97,7 +97,7 @@ export async function PUT(request: NextRequest) {
       .eq('user_id', user_id)
       .maybeSingle()
 
-    const fromBody = normalizeModulesFromBody(modulesRaw, rol)
+    const fromBody = parseModulesFromBody(modulesRaw, rol)
     const modList: DashboardModuleId[] =
       fromBody ??
       parseModulesToegang(ex?.modules_toegang) ??
