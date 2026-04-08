@@ -17,7 +17,7 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
-const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'meer'] as const
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'winkels', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 
