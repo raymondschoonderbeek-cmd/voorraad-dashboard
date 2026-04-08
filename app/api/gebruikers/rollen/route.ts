@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import type { DashboardModuleId, LandCode } from '@/lib/dashboard-modules'
-import { landenToegangForDb, normalizeModulesFromBody, parseModulesToegang, resolveDashboardModules } from '@/lib/dashboard-modules'
+import { DASHBOARD_MODULE_ORDER, landenToegangForDb, parseModulesToegang, resolveDashboardModules } from '@/lib/dashboard-modules'
+
+const ALL_MODULE_IDS = new Set<string>(DASHBOARD_MODULE_ORDER)
+
+/** Filtert de body-array op geldige module-id's; geeft altijd een array terug (ook leeg). */
+function parseModulesFromBody(raw: unknown, rol: string): DashboardModuleId[] | null {
+  if (rol === 'lunch') return ['lunch']
+  if (!Array.isArray(raw)) return null          // niet meegegeven → caller bepaalt fallback
+  return raw.filter((x): x is DashboardModuleId => typeof x === 'string' && ALL_MODULE_IDS.has(x))
+}
 
 async function isAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase

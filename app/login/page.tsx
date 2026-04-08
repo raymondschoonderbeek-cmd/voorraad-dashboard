@@ -214,18 +214,28 @@ function LoginForm() {
         ? nextParam
         : '/dashboard'
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
       options: {
         redirectTo: callbackUrl,
         scopes: 'email openid profile',
+        // Zorg dat PKCE state/verifier zeker is opgeslagen vóór redirect.
+        skipBrowserRedirect: true,
       },
     })
     if (oauthError) {
       setError(oauthError.message)
       setLoading(false)
+      return
     }
-    // Bij succes: browser wordt doorgestuurd naar Microsoft, setLoading hoeft niet gereset
+
+    if (data?.url) {
+      window.location.assign(data.url)
+      return
+    }
+
+    setError('Microsoft-login kon niet worden gestart. Probeer opnieuw.')
+    setLoading(false)
   }
 
   async function handleResetPassword() {
