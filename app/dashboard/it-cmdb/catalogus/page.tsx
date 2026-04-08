@@ -24,6 +24,18 @@ interface CatalogusItem {
   updated_at: string
 }
 
+interface GebruikerKoppeling {
+  koppeling_id: string
+  user_id: string
+  email: string
+  toegewezen_op: string
+}
+
+interface PortalUser {
+  user_id: string
+  email: string
+}
+
 const CATEGORIE_OPTIES = [
   'Productiviteit', 'Beveiliging', 'Documentbeheer', 'Laptop', 'Desktop',
   'Monitor', 'Accessoire', 'Printer', 'Netwerk', 'Server', 'Telefoon', 'Overig',
@@ -45,7 +57,12 @@ const CATEGORIE_KLEUREN: Record<string, { bg: string; fg: string }> = {
 }
 
 const LEEG: Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at'> = {
-  naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: '', aantallen: null, notities: '',
+  naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: null, aantallen: null, notities: null,
+}
+
+function prettyEmail(email: string) {
+  const local = email.split('@')[0] ?? email
+  return local.split(/[._-]+/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
 }
 
 function CategorieBadge({ cat }: { cat: string }) {
@@ -68,6 +85,25 @@ function TypeBadge({ type }: { type: CatalogusType }) {
   )
 }
 
+const inputStyle = {
+  background: 'white',
+  border: '1px solid rgba(45,69,124,0.2)',
+  borderRadius: '10px',
+  padding: '8px 12px',
+  fontSize: '14px',
+  color: '#1e293b',
+  fontFamily: F,
+  width: '100%',
+  outline: 'none',
+} as const
+
+const labelStyle = {
+  fontSize: '12px', fontWeight: 600, color: 'rgba(45,69,124,0.6)',
+  fontFamily: F, display: 'block', marginBottom: '4px',
+} as const
+
+// ── Item formulier modal ──────────────────────────────────────────────────────
+
 function FormModal({
   initial,
   onClose,
@@ -80,43 +116,22 @@ function FormModal({
   saving: boolean
 }) {
   const [form, setForm] = useState(initial)
-
   function set(field: string, value: unknown) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const inputStyle = {
-    background: 'white',
-    border: '1px solid rgba(45,69,124,0.2)',
-    borderRadius: '10px',
-    padding: '8px 12px',
-    fontSize: '14px',
-    color: '#1e293b',
-    fontFamily: F,
-    width: '100%',
-    outline: 'none',
-  }
-
-  const labelStyle = { fontSize: '12px', fontWeight: 600, color: 'rgba(45,69,124,0.6)', fontFamily: F, display: 'block', marginBottom: '4px' }
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-    >
+    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} onClick={onClose} aria-hidden />
       <div style={{ position: 'relative', background: 'white', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', fontFamily: F }}>
         <h2 style={{ fontSize: '18px', fontWeight: 700, color: DYNAMO_BLUE, margin: '0 0 20px' }}>
           {initial.naam ? 'Item bewerken' : 'Nieuw item toevoegen'}
         </h2>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <label style={labelStyle}>Naam *</label>
             <input style={inputStyle} value={form.naam} onChange={e => set('naam', e.target.value)} placeholder="bijv. Microsoft 365 Business Premium" />
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={labelStyle}>Type *</label>
@@ -132,51 +147,30 @@ function FormModal({
               </select>
             </div>
           </div>
-
           <div>
             <label style={labelStyle}>Leverancier *</label>
             <input style={inputStyle} value={form.leverancier} onChange={e => set('leverancier', e.target.value)} placeholder="bijv. Microsoft, Dell, Adobe" />
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={labelStyle}>Versie</label>
-              <input style={inputStyle} value={form.versie ?? ''} onChange={e => set('versie', e.target.value || null)} placeholder="bijv. 2024, v3.1" />
+              <input style={inputStyle} value={form.versie ?? ''} onChange={e => set('versie', e.target.value || null)} placeholder="bijv. 2024" />
             </div>
             <div>
               <label style={labelStyle}>Aantal licenties / stuks</label>
-              <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                value={form.aantallen ?? ''}
-                onChange={e => set('aantallen', e.target.value === '' ? null : parseInt(e.target.value, 10))}
-                placeholder="bijv. 48"
-              />
+              <input style={inputStyle} type="number" min="0" value={form.aantallen ?? ''} onChange={e => set('aantallen', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="bijv. 48" />
             </div>
           </div>
-
           <div>
             <label style={labelStyle}>Notities</label>
-            <textarea
-              style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }}
-              value={form.notities ?? ''}
-              onChange={e => set('notities', e.target.value || null)}
-              placeholder="Optionele opmerkingen…"
-            />
+            <textarea style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }} value={form.notities ?? ''} onChange={e => set('notities', e.target.value || null)} placeholder="Optionele opmerkingen…" />
           </div>
         </div>
-
         <div style={{ display: 'flex', gap: '10px', marginTop: '24px', justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} disabled={saving} style={{ borderRadius: '10px', padding: '8px 16px', fontSize: '14px', border: '1px solid rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE, fontFamily: F, cursor: 'pointer' }}>
             Annuleren
           </button>
-          <button
-            type="button"
-            disabled={saving || !form.naam.trim() || !form.leverancier.trim()}
-            onClick={() => void onSave(form)}
-            style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '14px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
-          >
+          <button type="button" disabled={saving || !form.naam.trim() || !form.leverancier.trim()} onClick={() => void onSave(form)} style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '14px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Opslaan…' : 'Opslaan'}
           </button>
         </div>
@@ -185,6 +179,149 @@ function FormModal({
   )
 }
 
+// ── Gebruikers-koppeling modal ────────────────────────────────────────────────
+
+function GebruikersModal({
+  item,
+  onClose,
+}: {
+  item: CatalogusItem
+  onClose: () => void
+}) {
+  const toast = useToast()
+  const { data: gekoppeldData, mutate } = useSWR<{ gebruikers: GebruikerKoppeling[] }>(
+    `/api/it-cmdb/catalogus/${item.id}/gebruikers`, fetcher
+  )
+  const { data: portalData } = useSWR<{ users: PortalUser[] }>('/api/it-cmdb/portal-users', fetcher)
+
+  const gekoppeld = gekoppeldData?.gebruikers ?? []
+  const gekoppeldeIds = new Set(gekoppeld.map(g => g.user_id))
+  const beschikbaar = (portalData?.users ?? []).filter(u => !gekoppeldeIds.has(u.user_id))
+
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+
+  async function koppel() {
+    if (!selectedUserId) return
+    setAdding(true)
+    try {
+      const res = await fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: selectedUserId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Koppelen mislukt')
+      await mutate()
+      setSelectedUserId('')
+      toast('Gebruiker gekoppeld.', 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Koppelen mislukt', 'error')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function ontkoppel(g: GebruikerKoppeling) {
+    setRemovingId(g.user_id)
+    try {
+      const res = await fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers?user_id=${g.user_id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Ontkoppelen mislukt')
+      }
+      await mutate()
+      toast('Gebruiker ontkoppeld.', 'info')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Ontkoppelen mislukt', 'error')
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
+  return (
+    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} onClick={onClose} aria-hidden />
+      <div style={{ position: 'relative', background: 'white', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', fontFamily: F }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: '4px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: DYNAMO_BLUE, margin: '0 0 4px' }}>Gebruikers koppelen</h2>
+          <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>{item.naam}</p>
+        </div>
+
+        {/* Toevoegen */}
+        <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)' }}>
+          <label style={labelStyle}>Gebruiker toevoegen</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <select
+              style={{ ...inputStyle, flex: 1 }}
+              value={selectedUserId}
+              onChange={e => setSelectedUserId(e.target.value)}
+              disabled={beschikbaar.length === 0}
+            >
+              <option value="">{beschikbaar.length === 0 ? 'Alle gebruikers al gekoppeld' : '— Kies een gebruiker —'}</option>
+              {beschikbaar.map(u => (
+                <option key={u.user_id} value={u.user_id}>{u.email}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!selectedUserId || adding}
+              onClick={() => void koppel()}
+              style={{ borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (!selectedUserId || adding) ? 'not-allowed' : 'pointer', opacity: (!selectedUserId || adding) ? 0.5 : 1, whiteSpace: 'nowrap' }}
+            >
+              {adding ? '…' : 'Koppelen'}
+            </button>
+          </div>
+        </div>
+
+        {/* Gekoppelde gebruikers */}
+        <div style={{ marginTop: '16px' }}>
+          <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 600, color: 'rgba(45,69,124,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Gekoppeld ({gekoppeld.length})
+          </p>
+          {!gekoppeldData ? (
+            <p style={{ fontSize: '13px', color: dashboardUi.textMuted }}>Laden…</p>
+          ) : gekoppeld.length === 0 ? (
+            <p style={{ fontSize: '13px', color: dashboardUi.textMuted }}>Nog geen gebruikers gekoppeld.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {gekoppeld.map(g => (
+                <div key={g.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(45,69,124,0.1)', background: 'white' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: DYNAMO_BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.email}>
+                      {prettyEmail(g.email)}
+                    </div>
+                    <div style={{ fontSize: '11px', color: dashboardUi.textMuted }}>{g.email}</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={removingId === g.user_id}
+                    onClick={() => void ontkoppel(g)}
+                    style={{ borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F, cursor: removingId === g.user_id ? 'not-allowed' : 'pointer', opacity: removingId === g.user_id ? 0.5 : 1, flexShrink: 0 }}
+                  >
+                    {removingId === g.user_id ? '…' : 'Ontkoppelen'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '14px', border: '1px solid rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE, fontFamily: F, cursor: 'pointer' }}>
+            Sluiten
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Hoofdpagina ───────────────────────────────────────────────────────────────
+
 export default function CatalogusPage() {
   const toast = useToast()
   const { data, error, isLoading, mutate } = useSWR<{ items: CatalogusItem[] }>('/api/it-cmdb/catalogus', fetcher)
@@ -192,7 +329,8 @@ export default function CatalogusPage() {
 
   const [filter, setFilter] = useState<'alle' | CatalogusType>('alle')
   const [zoek, setZoek] = useState('')
-  const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; item: CatalogusItem }>(null)
+  const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; item: CatalogusItem }>( null)
+  const [gebruikersItem, setGebruikersItem] = useState<CatalogusItem | null>(null)
   const [saving, setSaving] = useState(false)
 
   const gefilterd = items.filter(item => {
@@ -278,7 +416,7 @@ export default function CatalogusPage() {
               Product &amp; licentie catalogus
             </h1>
             <p className="m-0 mt-1 text-sm" style={{ color: dashboardUi.textMuted }}>
-              Overzicht van software-licenties en IT-producten in gebruik binnen Dynamo Retail Group.
+              Overzicht van software-licenties en IT-producten. Koppel items aan portalgebruikers.
             </p>
           </div>
           <button
@@ -351,10 +489,10 @@ export default function CatalogusPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
+              <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}>
-                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'Aantal', 'Notities', ''].map(h => (
+                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'Aantal', 'Notities', 'Gebruikers', ''].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase whitespace-nowrap" style={{ color: DYNAMO_BLUE, letterSpacing: '0.06em', fontFamily: F }}>
                         {h}
                       </th>
@@ -363,35 +501,37 @@ export default function CatalogusPage() {
                 </thead>
                 <tbody>
                   {gefilterd.map((item, i) => (
-                    <tr
-                      key={item.id}
-                      style={{ borderBottom: i < gefilterd.length - 1 ? '1px solid rgba(45,69,124,0.06)' : 'none' }}
-                    >
-                      <td className="px-4 py-3 font-semibold max-w-[200px] truncate" style={{ color: DYNAMO_BLUE, fontFamily: F }} title={item.naam}>{item.naam}</td>
+                    <tr key={item.id} style={{ borderBottom: i < gefilterd.length - 1 ? '1px solid rgba(45,69,124,0.06)' : 'none' }}>
+                      <td className="px-4 py-3 font-semibold max-w-[180px] truncate" style={{ color: DYNAMO_BLUE }} title={item.naam}>{item.naam}</td>
                       <td className="px-4 py-3 whitespace-nowrap"><TypeBadge type={item.type} /></td>
                       <td className="px-4 py-3 whitespace-nowrap"><CategorieBadge cat={item.categorie} /></td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: '#334155' }}>{item.leverancier}</td>
-                      <td className="px-4 py-3 text-sm" style={{ color: '#64748b' }}>{item.versie ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm font-semibold" style={{ color: item.aantallen != null ? DYNAMO_BLUE : '#94a3b8' }}>
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: '#334155' }}>{item.leverancier}</td>
+                      <td className="px-4 py-3" style={{ color: '#64748b' }}>{item.versie ?? '—'}</td>
+                      <td className="px-4 py-3 font-semibold" style={{ color: item.aantallen != null ? DYNAMO_BLUE : '#94a3b8' }}>
                         {item.aantallen != null ? `${item.aantallen}×` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-sm max-w-[180px] truncate" style={{ color: '#94a3b8' }} title={item.notities ?? ''}>{item.notities || '—'}</td>
+                      <td className="px-4 py-3 max-w-[160px] truncate" style={{ color: '#94a3b8' }} title={item.notities ?? ''}>{item.notities || '—'}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setGebruikersItem(item)}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80"
+                          style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)', fontFamily: F }}
+                          title="Gebruikers koppelen / beheren"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                          </svg>
+                          Gebruikers
+                        </button>
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setModal({ mode: 'edit', item })}
-                            className="rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80"
-                            style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'transparent', fontFamily: F }}
-                          >
+                          <button type="button" onClick={() => setModal({ mode: 'edit', item })} className="rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80" style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'transparent', fontFamily: F }}>
                             Bewerk
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(item)}
-                            className="rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80"
-                            style={{ border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F }}
-                          >
+                          <button type="button" onClick={() => void handleDelete(item)} className="rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80" style={{ border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F }}>
                             Verwijder
                           </button>
                         </div>
@@ -403,7 +543,6 @@ export default function CatalogusPage() {
             </div>
           )}
         </div>
-
       </main>
 
       {modal && (
@@ -412,6 +551,13 @@ export default function CatalogusPage() {
           onClose={() => setModal(null)}
           onSave={handleSave}
           saving={saving}
+        />
+      )}
+
+      {gebruikersItem && (
+        <GebruikersModal
+          item={gebruikersItem}
+          onClose={() => setGebruikersItem(null)}
         />
       )}
     </div>
