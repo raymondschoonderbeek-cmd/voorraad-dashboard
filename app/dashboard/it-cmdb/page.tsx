@@ -691,6 +691,41 @@ export default function ItCmdbPage() {
           </div>
         </div>
 
+        {/* Snelkoppelingen */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link
+            href="/dashboard/it-cmdb"
+            className="flex items-center gap-4 rounded-2xl p-4 transition hover:opacity-90 group"
+            style={{ background: DYNAMO_BLUE, border: '1px solid rgba(255,255,255,0.1)', textDecoration: 'none' }}
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="4" width="18" height="12" rx="2" /><path d="M2 18h20" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-bold" style={{ color: 'white', fontFamily: F }}>Interne voorraad</div>
+              <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.65)', fontFamily: F }}>Hardware, serienummers, Intune &amp; locaties</div>
+            </div>
+          </Link>
+          <Link
+            href="/dashboard/it-cmdb/catalogus"
+            className="flex items-center gap-4 rounded-2xl p-4 transition hover:opacity-90 group"
+            style={{ background: 'white', border: `1px solid rgba(45,69,124,0.12)`, boxShadow: '0 2px 8px rgba(45,69,124,0.05)', textDecoration: 'none' }}
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(45,69,124,0.08)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={DYNAMO_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <line x1="12" y1="7" x2="16" y2="7" /><line x1="12" y1="11" x2="16" y2="11" /><line x1="9" y1="7" x2="9.01" y2="7" /><line x1="9" y1="11" x2="9.01" y2="11" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Product &amp; licentie catalogus</div>
+              <div className="text-xs mt-0.5" style={{ color: dashboardUi.textMuted, fontFamily: F }}>Software, licenties en IT-producten</div>
+            </div>
+          </Link>
+        </div>
+
         {importMsg && (
           <div
             className="rounded-2xl p-4 text-sm whitespace-pre-wrap"
