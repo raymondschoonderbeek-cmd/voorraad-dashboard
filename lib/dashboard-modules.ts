@@ -7,6 +7,7 @@ export const DASHBOARD_MODULE_ORDER = [
   'branche-nieuws',
   'interne-nieuws',
   'it-cmdb',
+  'winkels',
   'meer',
 ] as const
 

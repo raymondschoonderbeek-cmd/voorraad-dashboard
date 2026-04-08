@@ -10,7 +10,6 @@ import useSWR from 'swr'
 import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO, dashboardModuleTile, dashboardUi } from '@/lib/theme'
 import { IconBox, IconChart, IconMap, IconGrip, IconLunch, IconBike, IconNewspaper, IconLaptop, IconArrowLeft, IconPin } from '@/components/DashboardIcons'
-import { WinkelKaart, WinkelKaartItem } from '@/components/WinkelKaart'
 import type { Winkel } from '@/lib/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -21,12 +20,6 @@ const F = "'Outfit', sans-serif"
 const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
-const WINKEL_KLEUREN = [
-  '#2D457C', '#16a34a', '#dc2626', '#9333ea',
-  '#ea580c', '#0891b2', '#65a30d', '#db2777',
-] as const
-const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
-function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
 const COLUMN_CONFIG: Record<string, { label?: string; hidden?: boolean; order?: number; sticky?: boolean; format?: 'money' | 'int' | 'text'; minWidth?: number }> = {
   _type: { label: 'Type', order: 5, format: 'text' },
@@ -133,7 +126,7 @@ export default function Dashboard() {
   )
   const [vorigeStats, setVorigeStats] = useState<{ producten: number; voorraad: number } | null>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
-  const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
+  const { data: favorietenData } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
   const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
   const [winkelModalOpen, setWinkelModalOpen] = useState(false)
   const { data: sessionData } = useSWR<{
@@ -168,57 +161,12 @@ export default function Dashboard() {
     const next = valid.length ? [...valid, ...missing] : [...DEFAULT_MODULE_ORDER]
     setModuleOrder(prev => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
   }, [savedOrder])
-  const [geocodeLoading, setGeocodeLoading] = useState(false)
-  const [geocodeResult, setGeocodeResult] = useState<{ bijgewerkt: number; totaal: number; mislukt: { id: number; naam: string; postcode?: string; straat?: string; stad?: string }[]; zonderAdres: { id: number; naam: string }[] } | null>(null)
-  const [kaartFilterLand, setKaartFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
-  const [kaartFilterKassaPakket, setKaartFilterKassaPakket] = useState<'alle' | 'cyclesoftware' | 'wilmar' | 'vendit'>('alle')
-  const [kaartFilterBikeTotaal, setKaartFilterBikeTotaal] = useState<'alle' | 'ja' | 'nee'>('alle')
-  const [winkelQuickZoek, setWinkelQuickZoek] = useState('')
   const [temperatuur, setTemperatuur] = useState<number | null>(null)
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  const winkelsGefilterd = useMemo(() => {
-    return winkelsVoorGebruiker.filter(w => {
-      if (kaartFilterLand !== 'alle') {
-        if (w.land !== kaartFilterLand) return false
-      }
-      if (kaartFilterKassaPakket !== 'alle') {
-        const at = w.api_type ?? (w.wilmar_organisation_id && w.wilmar_branch_id ? 'wilmar' : 'cyclesoftware')
-        if (kaartFilterKassaPakket === 'vendit') {
-          if (at !== 'vendit' && at !== 'vendit_api') return false
-        } else if (at !== kaartFilterKassaPakket) {
-          return false
-        }
-      }
-      if (kaartFilterBikeTotaal !== 'alle') {
-        const bt = isBikeTotaal(w.naam)
-        if (kaartFilterBikeTotaal === 'ja' && !bt) return false
-        if (kaartFilterBikeTotaal === 'nee' && bt) return false
-      }
-      return true
-    })
-  }, [winkelsVoorGebruiker, kaartFilterLand, kaartFilterKassaPakket, kaartFilterBikeTotaal])
-
-  const winkelsQuickPick = useMemo(() => {
-    const q = winkelQuickZoek.trim().toLowerCase()
-    if (!q) return [] as Winkel[]
-    return winkelsVoorGebruiker.filter(w => {
-      const blob = [w.naam, w.stad, w.postcode, w.straat].map(s => String(s ?? '').toLowerCase()).join(' ')
-      return blob.includes(q)
-    }).slice(0, 8)
-  }, [winkelQuickZoek, winkelsVoorGebruiker])
-
-  const kaartFiltersActief = kaartFilterLand !== 'alle' || kaartFilterKassaPakket !== 'alle' || kaartFilterBikeTotaal !== 'alle'
-  const showKaartFilterEmpty = !winkelsLoading && winkelsVoorGebruiker.length > 0 && winkelsGefilterd.length === 0
-
-  function resetKaartFilters() {
-    setKaartFilterLand('alle')
-    setKaartFilterKassaPakket('alle')
-    setKaartFilterBikeTotaal('alle')
-  }
 
   // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
   useEffect(() => {
@@ -273,7 +221,6 @@ export default function Dashboard() {
     try { localStorage.setItem(KOLOMMEN_STORAGE_KEY, JSON.stringify(zichtbareKolommen)) } catch {}
   }, [zichtbareKolommen, kolommenGeladen])
 
-  const haalWinkelsOp = useCallback(() => mutateWinkels(), [mutateWinkels])
   const kolomPanelRef = useRef<HTMLDivElement>(null)
   const kolomTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -390,44 +337,6 @@ export default function Dashboard() {
     })
   }
 
-  async function haalLocatiesOp() {
-    setGeocodeLoading(true)
-    setGeocodeResult(null)
-    try {
-      const res = await fetch('/api/winkels/geocode', { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        if (data.bijgewerkt != null) await mutateWinkels()
-        setGeocodeResult({ bijgewerkt: data.bijgewerkt ?? 0, totaal: data.totaal ?? 0, mislukt: data.mislukt ?? [], zonderAdres: data.zonderAdres ?? [] })
-      }
-    } finally {
-      setGeocodeLoading(false)
-    }
-  }
-
-  async function haalBelgieLocatiesOp() {
-    setGeocodeLoading(true)
-    setGeocodeResult(null)
-    try {
-      const res = await fetch('/api/winkels/geocode?force_belgium=1', { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        if (data.bijgewerkt != null) await mutateWinkels()
-        setGeocodeResult({ bijgewerkt: data.bijgewerkt ?? 0, totaal: data.totaal ?? 0, mislukt: data.mislukt ?? [], zonderAdres: data.zonderAdres ?? [] })
-      }
-    } finally {
-      setGeocodeLoading(false)
-    }
-  }
-
-  async function toggleFavoriet(id: number) {
-    const res = await fetch('/api/favorieten', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ winkel_id: id }),
-    })
-    if (res.ok) await mutateFavorieten()
-  }
 
   const orderedModules = useMemo(() => {
     if (sessionData === undefined) {
@@ -515,7 +424,6 @@ export default function Dashboard() {
   }
 
   const inputStyle = { background: 'rgba(45,69,124,0.05)', border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
-  const inputClass = "rounded-xl px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none"
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
@@ -905,6 +813,28 @@ export default function Dashboard() {
                         </div>
                       )
                     }
+                    if (id === 'winkels') {
+                      return (
+                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/winkels" aria-label="Winkels & vestigingen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
+                            {dragHandle}
+                            <div className="p-6 flex-1">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }} aria-hidden><IconMap /></div>
+                              </div>
+                              <div style={modTitleStyle}>Winkels</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>
+                                Vestigingen, kaart & favorieten
+                              </div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Open overzicht →</span>
+                              <div style={{ color: 'rgba(255,255,255,0.45)' }} aria-hidden><IconMap /></div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
                     if (id === 'meer') {
                       return (
                         <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
@@ -930,166 +860,6 @@ export default function Dashboard() {
                 )}
               </section>
 
-              {/* LOCATIES — vestigingscontext (o.a. voorraad); ondersteunt module-keuze */}
-              {!lunchOnly && (
-              <section className="s3" aria-labelledby="dashboard-heading-locaties">
-                <div className="flex flex-col gap-2 sm:gap-3 mb-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 id="dashboard-heading-locaties" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: dashboardUi.textSubtle, fontFamily: F }}>Locaties & vestiging</h2>
-                    <div className="flex-1 min-w-[2rem] h-px" style={{ background: dashboardUi.sectionDivider }} aria-hidden />
-                  </div>
-                  <p className="m-0 text-sm max-w-3xl text-pretty" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
-                    Voor modules die per winkel werken: kies je vestiging op de kaart of via de zoekbalk. Filters gelden voor de kaart en de winkelkaarten hieronder.
-                  </p>
-                </div>
-
-                {winkelsVoorGebruiker.length > 0 && (
-                  <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-start">
-                    <div className="relative flex-1 min-w-0 max-w-md">
-                      <label htmlFor="dashboard-winkel-quick" className="sr-only">Zoek winkel op naam, plaats of postcode</label>
-                      <input
-                        id="dashboard-winkel-quick"
-                        type="search"
-                        autoComplete="off"
-                        value={winkelQuickZoek}
-                        onChange={e => setWinkelQuickZoek(e.target.value)}
-                        placeholder="Zoek op naam, plaats of postcode…"
-                        className="w-full rounded-xl px-3 py-2.5 text-sm"
-                        style={{ background: 'white', border: `1px solid ${dashboardUi.borderSoft}`, color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
-                      />
-                      {winkelsQuickPick.length > 0 && (
-                        <ul
-                          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-xl border bg-white py-1 shadow-lg"
-                          style={{ borderColor: 'rgba(45,69,124,0.12)' }}
-                          role="listbox"
-                          aria-label="Zoekresultaten winkels"
-                        >
-                          {winkelsQuickPick.map(w => (
-                            <li key={w.id} role="option">
-                              <button
-                                type="button"
-                                className="w-full px-3 py-2.5 text-left text-sm transition hover:bg-dynamo-blue/5"
-                                style={{ fontFamily: F, color: DYNAMO_BLUE }}
-                                onClick={() => { void selecteerWinkel(w); setWinkelQuickZoek('') }}
-                              >
-                                <span className="font-semibold">{w.naam}</span>
-                                {(w.stad || w.postcode) && (
-                                  <span className="block text-xs mt-0.5" style={{ color: dashboardUi.textMuted }}>
-                                    {[w.stad, w.postcode].filter(Boolean).join(' · ')}
-                                  </span>
-                                )}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select value={kaartFilterLand} onChange={e => setKaartFilterLand(e.target.value as 'alle' | 'Netherlands' | 'Belgium')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op land">
-                      <option value="alle">Alle landen</option>
-                      <option value="Netherlands">Nederland</option>
-                      <option value="Belgium">België</option>
-                    </select>
-                    <select value={kaartFilterKassaPakket} onChange={e => setKaartFilterKassaPakket(e.target.value as 'alle' | 'cyclesoftware' | 'wilmar' | 'vendit')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op kassapakket">
-                      <option value="alle">Kassa pakket: alle</option>
-                      <option value="cyclesoftware">CycleSoftware</option>
-                      <option value="wilmar">Wilmar</option>
-                      <option value="vendit">Vendit</option>
-                    </select>
-                    <select value={kaartFilterBikeTotaal} onChange={e => setKaartFilterBikeTotaal(e.target.value as 'alle' | 'ja' | 'nee')} className="rounded-lg px-2.5 py-1.5 text-xs font-medium border" style={{ background: 'white', borderColor: 'rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.8)', fontFamily: F }} aria-label="Filter kaart op Bike Totaal">
-                      <option value="alle">Bike Totaal: alle</option>
-                      <option value="ja">Bike Totaal: ja</option>
-                      <option value="nee">Bike Totaal: nee</option>
-                    </select>
-                  </div>
-                  {kaartFiltersActief && (
-                    <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold border transition hover:opacity-90" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
-                      Alles tonen
-                    </button>
-                  )}
-                  <span style={{ fontSize: '11px', color: dashboardUi.textSubtle, fontFamily: F }} aria-live="polite">
-                    {winkelsLoading ? 'Kaart laden…' : `${winkelsGefilterd.filter(w => w.lat && w.lng).length} van ${winkelsGefilterd.length} op kaart`}
-                  </span>
-                </div>
-                <p className="text-xs mb-4 m-0 max-w-3xl" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
-                  Tip: staan alle filters op “alle”, dan zie je alle locaties die aan je account zijn gekoppeld.
-                </p>
-
-                <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
-                  {showKaartFilterEmpty && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.1)' }}>
-                      <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen locaties met deze filters</p>
-                      <button type="button" onClick={resetKaartFilters} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
-                        Alle filters resetten
-                      </button>
-                    </div>
-                  )}
-                  {winkelsLoading ? (
-                    <div className="flex items-center justify-center gap-3 px-4 py-16" style={{ background: 'rgba(45,69,124,0.06)', fontFamily: F }} role="status" aria-live="polite">
-                      <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: DYNAMO_BLUE }} />
-                      <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Winkels en kaart laden…</span>
-                    </div>
-                  ) : winkelsGefilterd.length === 0 ? (
-                    <div className="px-6 py-10 text-center text-sm" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
-                      {winkelsVoorGebruiker.length === 0
-                        ? 'Geen locaties gekoppeld aan dit account.'
-                        : showKaartFilterEmpty
-                          ? 'Geen locaties binnen deze filters — gebruik de balk hierboven om te resetten.'
-                          : 'Geen locaties om te tonen.'}
-                    </div>
-                  ) : (
-                    <WinkelKaart winkels={winkelsGefilterd} onSelecteer={selecteerWinkel} onGeocode={haalLocatiesOp} onGeocodeBelgium={haalBelgieLocatiesOp} isAdmin={isAdmin} geocodeLoading={geocodeLoading} geocodeResult={geocodeResult} onDismissGeocodeResult={() => setGeocodeResult(null)} />
-                  )}
-                </div>
-
-                {winkelsLoading ? (
-                  <div className="mt-8" aria-busy="true" aria-label="Winkels laden">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="h-3 w-24 rounded animate-pulse" style={{ background: 'rgba(45,69,124,0.15)' }} />
-                      <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                        <div key={i} className="rounded-2xl animate-pulse" style={{ height: 112, background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.08)' }} />
-                      ))}
-                    </div>
-                  </div>
-                ) : winkelsGefilterd.length > 0 ? (
-                  <div className="mt-8 space-y-6">
-                    {favorieten.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: DYNAMO_BLUE, fontFamily: F }}>★ Mijn winkels</span>
-                          <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.2)' }} />
-                          <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length} favoriet{winkelsGefilterd.filter(w => favorieten.includes(w.id)).length !== 1 ? 'en' : ''}</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {winkelsGefilterd.filter(w => favorieten.includes(w.id)).map(w => (
-                            <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[winkelsGefilterd.indexOf(w) % WINKEL_KLEUREN.length]} favoriet={true} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Alle winkels</span>
-                        <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.08)' }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.3)', fontFamily: F }}>{winkelsGefilterd.length} locaties</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {winkelsGefilterd.map((w, i) => (
-                          <WinkelKaartItem key={w.id} w={w} kleur={WINKEL_KLEUREN[i % WINKEL_KLEUREN.length]} favoriet={favorieten.includes(w.id)} onSelecteer={selecteerWinkel} onToggleFavoriet={toggleFavoriet} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </section>
-              )}
 
             </div>
 
