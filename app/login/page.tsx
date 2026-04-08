@@ -51,6 +51,15 @@ function formatLoginFailureMessage(detail: string): string {
   return `Inloggen mislukt: ${detail}`
 }
 
+const MicrosoftIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+    <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+    <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+    <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+    <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+  </svg>
+)
+
 const PKCE_HINT =
   'Open de link in dezelfde browser waarin je op Stuur inloglink hebt geklikt. ' +
   'Of gebruik de 6-cijferige code uit de mail: vul die hieronder in en klik op Inloggen met code (handig als je de mail op een andere telefoon of app opent).'
@@ -195,6 +204,30 @@ function LoginForm() {
     }
   }
 
+  async function handleMicrosoftLogin() {
+    setError('')
+    setMessage('')
+    setLoading(true)
+    const nextParam = searchParams.get('next')?.trim()
+    const nextPath =
+      nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+        ? nextParam
+        : '/dashboard'
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        redirectTo: callbackUrl,
+        scopes: 'email openid profile',
+      },
+    })
+    if (oauthError) {
+      setError(oauthError.message)
+      setLoading(false)
+    }
+    // Bij succes: browser wordt doorgestuurd naar Microsoft, setLoading hoeft niet gereset
+  }
+
   async function handleResetPassword() {
     if (!email) {
       setError('Vul eerst je e-mailadres in.')
@@ -277,6 +310,24 @@ function LoginForm() {
             {message}
           </div>
         )}
+
+        {/* Microsoft SSO */}
+        <button
+          type="button"
+          onClick={handleMicrosoftLogin}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 rounded-xl py-3 font-semibold border transition hover:bg-dynamo-blue/5 disabled:opacity-60"
+          style={{ borderColor: 'rgba(45,69,124,0.25)', color: '#2D457C', fontFamily: "'Outfit', sans-serif" }}
+        >
+          <MicrosoftIcon />
+          Inloggen met Microsoft
+        </button>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.12)' }} />
+          <span className="text-xs font-medium" style={{ color: 'rgba(45,69,124,0.4)' }}>of met e-mail</span>
+          <div className="flex-1 h-px" style={{ background: 'rgba(45,69,124,0.12)' }} />
+        </div>
 
         <div className="space-y-4">
           <input

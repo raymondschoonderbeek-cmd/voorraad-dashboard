@@ -87,6 +87,12 @@ export default function BeheerPage() {
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
 
+  // Azure sync
+  const [azureSyncLoading, setAzureSyncLoading] = useState(false)
+  const [azureSyncResultaat, setAzureSyncResultaat] = useState<{
+    totaal_azure: number; aangemaakt: number; profiel_gezet: number; overgeslagen: number; fouten: string[]
+  } | null>(null)
+
   // Nieuw winkel form
   const [nieuwWinkelNaam, setNieuwWinkelNaam] = useState('')
   const [nieuwWinkelDealer, setNieuwWinkelDealer] = useState('')
@@ -489,6 +495,20 @@ export default function BeheerPage() {
     setBewerkHuisnummer(w.huisnummer ?? '')
     setFormError('')
     setFormSuccess('')
+  }
+
+  async function syncAzureGebruikers() {
+    setAzureSyncLoading(true)
+    setAzureSyncResultaat(null)
+    const res = await fetch('/api/admin/azure-sync', { method: 'POST' })
+    const data = await res.json()
+    setAzureSyncLoading(false)
+    if (!res.ok) {
+      setFormError(data.error ?? 'Azure sync mislukt')
+    } else {
+      setAzureSyncResultaat(data)
+      await haalGebruikersOp(true)
+    }
   }
 
   async function voegGebruikerToe(e: React.FormEvent) {
@@ -1111,10 +1131,52 @@ export default function BeheerPage() {
                   <button type="button" onClick={() => setGebruikerZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Wis zoekterm">✕</button>
                 )}
               </div>
-              <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
-                + Gebruiker uitnodigen
-              </button>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={syncAzureGebruikers}
+                  disabled={azureSyncLoading}
+                  title="Synchroniseer gebruikers vanuit Microsoft Entra (Azure AD)"
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+                  style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
+                >
+                  {azureSyncLoading ? (
+                    <span className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                    </svg>
+                  )}
+                  {azureSyncLoading ? 'Synchroniseren…' : 'Sync Azure'}
+                </button>
+                <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+                  + Gebruiker uitnodigen
+                </button>
+              </div>
             </div>
+
+            {azureSyncResultaat && (
+              <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.12)', fontFamily: F }}>
+                <div className="font-semibold mb-2" style={{ color: DYNAMO_BLUE }}>Azure sync voltooid</div>
+                <div style={{ color: 'rgba(45,69,124,0.7)' }}>
+                  {azureSyncResultaat.totaal_azure} gebruikers in Azure &nbsp;·&nbsp;
+                  <span style={{ color: '#16a34a', fontWeight: 600 }}>{azureSyncResultaat.aangemaakt} nieuw aangemaakt</span> &nbsp;·&nbsp;
+                  {azureSyncResultaat.profiel_gezet} profiel gezet &nbsp;·&nbsp;
+                  {azureSyncResultaat.overgeslagen} overgeslagen
+                </div>
+                {azureSyncResultaat.fouten.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs" style={{ color: '#dc2626' }}>{azureSyncResultaat.fouten.length} fout(en)</summary>
+                    <ul className="mt-1 space-y-0.5 text-xs" style={{ color: '#dc2626' }}>
+                      {azureSyncResultaat.fouten.map((f, i) => <li key={i}>{f}</li>)}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
 
             {toonForm && (
               <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
