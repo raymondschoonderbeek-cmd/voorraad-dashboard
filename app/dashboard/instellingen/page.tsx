@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import useSWR from 'swr'
+import { useToast } from '@/components/Toast'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -35,9 +36,8 @@ export default function InstellingenPage() {
   const [mfaQr, setMfaQr] = useState('')
   const [mfaFactorId, setMfaFactorId] = useState('')
   const [mfaVerifyCode, setMfaVerifyCode] = useState('')
-  const [mfaError, setMfaError] = useState('')
-  const [mfaSuccess, setMfaSuccess] = useState('')
   const [lunchSaving, setLunchSaving] = useState(false)
+  const toast = useToast()
   const supabase = createClient()
 
   const { data: profileData, mutate: mutateProfile } = useSWR<{
@@ -70,8 +70,9 @@ export default function InstellingenPage() {
       })
       if (!res.ok) throw new Error('Opslaan mislukt')
       mutateProfile({ ...profileData, lunch_module_enabled: enabled })
+      toast(enabled ? 'Lunch-module ingeschakeld.' : 'Lunch-module uitgeschakeld.', 'success')
     } catch {
-      setMfaError('Lunch-module voorkeur kon niet worden opgeslagen.')
+      toast('Lunch-module voorkeur kon niet worden opgeslagen.', 'error')
     }
     setLunchSaving(false)
   }
@@ -86,8 +87,9 @@ export default function InstellingenPage() {
       })
       if (!res.ok) throw new Error('Opslaan mislukt')
       mutateNewsPref({ weekly_digest_enabled: enabled })
+      toast(enabled ? 'Wekelijkse e-mail ingeschakeld.' : 'Wekelijkse e-mail uitgeschakeld.', 'success')
     } catch {
-      setMfaError('Voorkeur voor nieuwsbrief kon niet worden opgeslagen.')
+      toast('Voorkeur voor nieuwsbrief kon niet worden opgeslagen.', 'error')
     }
     setNewsPrefSaving(false)
   }
@@ -102,8 +104,9 @@ export default function InstellingenPage() {
       })
       if (!res.ok) throw new Error('Opslaan mislukt')
       mutateProfile({ ...profileData, lunch_reminder_opt_out: optOut })
+      toast(!optOut ? 'Lunchherinnering ingeschakeld.' : 'Lunchherinnering uitgeschakeld.', 'success')
     } catch {
-      setMfaError('Voorkeur voor herinneringsmail kon niet worden opgeslagen.')
+      toast('Voorkeur voor herinneringsmail kon niet worden opgeslagen.', 'error')
     }
     setLunchSaving(false)
   }
@@ -118,8 +121,6 @@ export default function InstellingenPage() {
   }, [])
 
   async function startMfaEnroll() {
-    setMfaError('')
-    setMfaSuccess('')
     setMfaEnrolling(true)
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
@@ -130,14 +131,13 @@ export default function InstellingenPage() {
       setMfaQr(data.totp.qr_code)
       setMfaFactorId(data.id)
     } catch (e: unknown) {
-      setMfaError(e instanceof Error ? e.message : 'Starten mislukt')
+      toast(e instanceof Error ? e.message : 'Starten mislukt', 'error')
     }
     setMfaEnrolling(false)
   }
 
   async function confirmMfaEnroll() {
     if (!mfaFactorId || mfaVerifyCode.length !== 6) return
-    setMfaError('')
     try {
       const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId })
       if (chErr) throw chErr
@@ -147,26 +147,25 @@ export default function InstellingenPage() {
         code: mfaVerifyCode,
       })
       if (verifyErr) throw verifyErr
-      setMfaSuccess('MFA ingeschakeld.')
+      toast('MFA ingeschakeld.', 'success')
       setMfaQr('')
       setMfaFactorId('')
       setMfaVerifyCode('')
       loadMfaFactors()
     } catch (e: unknown) {
-      setMfaError(e instanceof Error ? e.message : 'Verificatie mislukt')
+      toast(e instanceof Error ? e.message : 'Verificatie mislukt', 'error')
     }
   }
 
   async function unenrollMfa(factorId: string) {
     if (!confirm('MFA uitschakelen? Je moet dan opnieuw een code invoeren bij inloggen vanaf een niet-vertrouwd IP.')) return
-    setMfaError('')
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId })
       if (error) throw error
-      setMfaSuccess('MFA uitgeschakeld.')
+      toast('MFA uitgeschakeld.', 'info')
       loadMfaFactors()
     } catch (e: unknown) {
-      setMfaError(e instanceof Error ? e.message : 'Uitschakelen mislukt')
+      toast(e instanceof Error ? e.message : 'Uitschakelen mislukt', 'error')
     }
   }
 
@@ -174,7 +173,6 @@ export default function InstellingenPage() {
     setMfaQr('')
     setMfaFactorId('')
     setMfaVerifyCode('')
-    setMfaError('')
   }
 
   return (
@@ -261,7 +259,6 @@ export default function InstellingenPage() {
               />
             </button>
           </div>
-          {lunchSaving && <p className="mt-2 text-xs text-gray-500">Opslaan...</p>}
           {lunchModuleEnabled && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between gap-3">
@@ -327,7 +324,6 @@ export default function InstellingenPage() {
               />
             </button>
           </div>
-          {newsPrefSaving && <p className="mt-2 text-xs text-gray-500">Opslaan...</p>}
         </div>
 
         {/* MFA */}
@@ -346,9 +342,6 @@ export default function InstellingenPage() {
               MFA is verplicht voor jouw account. Schakel het hieronder in om verder te gaan.
             </div>
           )}
-          {mfaError && <div className="rounded-lg p-2 text-sm text-red-600 bg-red-50">{mfaError}</div>}
-          {mfaSuccess && <div className="rounded-lg p-2 text-sm text-green-700 bg-green-50">{mfaSuccess}</div>}
-
           {mfaFactors.length > 0 && !mfaQr && (
             <div className="space-y-2">
               <p className="text-sm text-gray-700">MFA is ingeschakeld.</p>

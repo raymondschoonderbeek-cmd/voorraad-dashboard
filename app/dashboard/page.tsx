@@ -542,12 +542,11 @@ export default function Dashboard() {
             <span className="text-xs hidden md:block px-2 truncate max-w-[120px]" style={{ color: 'white', fontFamily: F }}>{gebruiker}</span>
             <Link
               href="/dashboard/nieuws"
-              className="rounded-lg p-2 sm:px-3 sm:py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5 relative"
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5 relative"
               style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}
               title="Intern nieuws"
             >
-              <span className="hidden sm:inline">Nieuws</span>
-              <span className="sm:hidden">📰</span>
+              Nieuws
               {(newsUnreadData?.count ?? 0) > 0 && (
                 <span
                   className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold px-1"
@@ -558,18 +557,19 @@ export default function Dashboard() {
                 </span>
               )}
             </Link>
-            <Link href="/dashboard/beheer" className="rounded-lg p-2 sm:px-3 sm:py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Beheer">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href="/dashboard/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Beheer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <span className="hidden sm:inline">Beheer</span>
+              Beheer
             </Link>
-            <Link href="/dashboard/instellingen" className="rounded-lg p-2 sm:px-3 sm:py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Mijn instellingen">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href="/dashboard/instellingen" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Mijn instellingen">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
-              <span className="hidden sm:inline">Mijn instellingen</span>
+              <span className="hidden sm:inline">Instellingen</span>
+              <span className="sm:hidden">Inst.</span>
             </Link>
             <button onClick={uitloggen} aria-label="Uitloggen" className="rounded-lg px-3 sm:px-4 py-1.5 text-xs font-bold transition hover:opacity-90 shrink-0" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', fontFamily: F }}>
               Uitloggen
