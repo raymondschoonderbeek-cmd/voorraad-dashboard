@@ -18,7 +18,8 @@ interface CatalogusItem {
   categorie: string
   leverancier: string
   versie: string | null
-  aantallen: number | null
+  aantallen: number | null   // totaal beschikbaar / gekocht
+  in_gebruik: number         // aantal gekoppelde gebruikers
   notities: string | null
   created_at: string
   updated_at: string
@@ -29,6 +30,8 @@ interface GebruikerKoppeling {
   user_id: string
   email: string
   toegewezen_op: string
+  serienummer: string | null
+  datum_ingebruik: string | null  // YYYY-MM-DD
 }
 
 interface PortalUser {
@@ -56,7 +59,9 @@ const CATEGORIE_KLEUREN: Record<string, { bg: string; fg: string }> = {
   Overig:        { bg: 'rgba(45,69,124,0.08)', fg: DYNAMO_BLUE },
 }
 
-const LEEG: Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at'> = {
+type CatalogusForm = Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at' | 'in_gebruik'>
+
+const LEEG: CatalogusForm = {
   naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: null, aantallen: null, notities: null,
 }
 
@@ -110,9 +115,9 @@ function FormModal({
   onSave,
   saving,
 }: {
-  initial: Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at'>
+  initial: CatalogusForm
   onClose: () => void
-  onSave: (values: Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
+  onSave: (values: CatalogusForm) => Promise<void>
   saving: boolean
 }) {
   const [form, setForm] = useState(initial)
@@ -157,7 +162,7 @@ function FormModal({
               <input style={inputStyle} value={form.versie ?? ''} onChange={e => set('versie', e.target.value || null)} placeholder="bijv. 2024" />
             </div>
             <div>
-              <label style={labelStyle}>Aantal licenties / stuks</label>
+              <label style={labelStyle}>Totaal beschikbaar (gekocht)</label>
               <input style={inputStyle} type="number" min="0" value={form.aantallen ?? ''} onChange={e => set('aantallen', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="bijv. 48" />
             </div>
           </div>
@@ -175,6 +180,160 @@ function FormModal({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Gekoppelde gebruiker rij (met inline bewerken) ───────────────────────────
+
+function GebruikerRij({
+  g,
+  catalogusId,
+  isProduct,
+  onMutate,
+  ontkoppelDisabled,
+}: {
+  g: GebruikerKoppeling
+  catalogusId: string
+  isProduct: boolean
+  onMutate: () => Promise<void>
+  ontkoppelDisabled: boolean
+}) {
+  const toast = useToast()
+  const [editing, setEditing] = useState(false)
+  const [serienummer, setSerienummer] = useState(g.serienummer ?? '')
+  const [datum, setDatum] = useState(g.datum_ingebruik ?? '')
+  const [saving, setSaving] = useState(false)
+  const [removing, setRemoving] = useState(false)
+
+  async function opslaan() {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/it-cmdb/catalogus/${catalogusId}/gebruikers?user_id=${g.user_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serienummer: serienummer.trim() || null,
+          datum_ingebruik: datum || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Opslaan mislukt')
+      await onMutate()
+      setEditing(false)
+      toast('Gegevens opgeslagen.', 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Opslaan mislukt', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function ontkoppel() {
+    setRemoving(true)
+    try {
+      const res = await fetch(`/api/it-cmdb/catalogus/${catalogusId}/gebruikers?user_id=${g.user_id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? 'Ontkoppelen mislukt')
+      }
+      await onMutate()
+      toast('Gebruiker ontkoppeld.', 'info')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Ontkoppelen mislukt', 'error')
+      setRemoving(false)
+    }
+  }
+
+  const smallInput: React.CSSProperties = {
+    ...inputStyle,
+    padding: '5px 8px',
+    fontSize: '12px',
+    borderRadius: '8px',
+  }
+
+  return (
+    <div style={{ borderRadius: '10px', border: '1px solid rgba(45,69,124,0.1)', background: 'white', overflow: 'hidden' }}>
+      {/* Gebruiker header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: DYNAMO_BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.email}>
+            {prettyEmail(g.email)}
+          </div>
+          <div style={{ fontSize: '11px', color: dashboardUi.textMuted }}>{g.email}</div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+          {isProduct && (
+            <button
+              type="button"
+              onClick={() => { setEditing(e => !e); setSerienummer(g.serienummer ?? ''); setDatum(g.datum_ingebruik ?? '') }}
+              style={{ borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: `1px solid rgba(45,69,124,0.2)`, color: DYNAMO_BLUE, background: editing ? 'rgba(45,69,124,0.08)' : 'transparent', fontFamily: F, cursor: 'pointer' }}
+            >
+              {editing ? 'Sluiten' : 'Bewerk'}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={ontkoppelDisabled || removing}
+            onClick={() => void ontkoppel()}
+            style={{ borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F, cursor: (ontkoppelDisabled || removing) ? 'not-allowed' : 'pointer', opacity: (ontkoppelDisabled || removing) ? 0.5 : 1 }}
+          >
+            {removing ? '…' : 'Ontkoppelen'}
+          </button>
+        </div>
+      </div>
+
+      {/* Huidige waarden (altijd zichtbaar als gevuld) */}
+      {!editing && (g.serienummer || g.datum_ingebruik) && (
+        <div style={{ padding: '6px 12px 10px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+          {g.serienummer && (
+            <span style={{ fontSize: '11px', color: '#475569' }}>
+              <span style={{ color: 'rgba(45,69,124,0.4)', fontWeight: 600 }}>Serie: </span>
+              <span className="font-mono">{g.serienummer}</span>
+            </span>
+          )}
+          {g.datum_ingebruik && (
+            <span style={{ fontSize: '11px', color: '#475569' }}>
+              <span style={{ color: 'rgba(45,69,124,0.4)', fontWeight: 600 }}>In gebruik: </span>
+              {new Date(g.datum_ingebruik).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Bewerkformulier */}
+      {editing && (
+        <div style={{ padding: '10px 12px 12px', borderTop: '1px solid rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '3px' }}>Serienummer</label>
+              <input
+                style={smallInput}
+                value={serienummer}
+                onChange={e => setSerienummer(e.target.value)}
+                placeholder="bijv. SN-ABC12345"
+              />
+            </div>
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '3px' }}>Datum in gebruik</label>
+              <input
+                style={smallInput}
+                type="date"
+                value={datum}
+                onChange={e => setDatum(e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={() => setEditing(false)} style={{ borderRadius: '8px', padding: '5px 12px', fontSize: '12px', border: '1px solid rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE, fontFamily: F, cursor: 'pointer' }}>
+              Annuleren
+            </button>
+            <button type="button" disabled={saving} onClick={() => void opslaan()} style={{ borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Opslaan…' : 'Opslaan'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -200,7 +359,7 @@ function GebruikersModal({
 
   const [selectedUserId, setSelectedUserId] = useState('')
   const [adding, setAdding] = useState(false)
-  const [removingId, setRemovingId] = useState<string | null>(null)
+  const isProduct = item.type === 'product'
 
   async function koppel() {
     if (!selectedUserId) return
@@ -223,27 +382,10 @@ function GebruikersModal({
     }
   }
 
-  async function ontkoppel(g: GebruikerKoppeling) {
-    setRemovingId(g.user_id)
-    try {
-      const res = await fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers?user_id=${g.user_id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error(json.error ?? 'Ontkoppelen mislukt')
-      }
-      await mutate()
-      toast('Gebruiker ontkoppeld.', 'info')
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'Ontkoppelen mislukt', 'error')
-    } finally {
-      setRemovingId(null)
-    }
-  }
-
   return (
     <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} onClick={onClose} aria-hidden />
-      <div style={{ position: 'relative', background: 'white', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', fontFamily: F }}>
+      <div style={{ position: 'relative', background: 'white', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', fontFamily: F }}>
 
         {/* Header */}
         <div style={{ marginBottom: '4px' }}>
@@ -275,6 +417,11 @@ function GebruikersModal({
               {adding ? '…' : 'Koppelen'}
             </button>
           </div>
+          {isProduct && (
+            <p style={{ margin: '8px 0 0', fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>
+              Na het koppelen kun je per gebruiker serienummer en datum in gebruik invoeren.
+            </p>
+          )}
         </div>
 
         {/* Gekoppelde gebruikers */}
@@ -289,22 +436,14 @@ function GebruikersModal({
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {gekoppeld.map(g => (
-                <div key={g.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(45,69,124,0.1)', background: 'white' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: DYNAMO_BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.email}>
-                      {prettyEmail(g.email)}
-                    </div>
-                    <div style={{ fontSize: '11px', color: dashboardUi.textMuted }}>{g.email}</div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={removingId === g.user_id}
-                    onClick={() => void ontkoppel(g)}
-                    style={{ borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F, cursor: removingId === g.user_id ? 'not-allowed' : 'pointer', opacity: removingId === g.user_id ? 0.5 : 1, flexShrink: 0 }}
-                  >
-                    {removingId === g.user_id ? '…' : 'Ontkoppelen'}
-                  </button>
-                </div>
+                <GebruikerRij
+                  key={g.user_id}
+                  g={g}
+                  catalogusId={item.id}
+                  isProduct={isProduct}
+                  onMutate={() => mutate().then(() => undefined)}
+                  ontkoppelDisabled={false}
+                />
               ))}
             </div>
           )}
@@ -347,7 +486,7 @@ export default function CatalogusPage() {
     return true
   })
 
-  async function handleSave(values: Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at'>) {
+  async function handleSave(values: CatalogusForm) {
     setSaving(true)
     try {
       if (modal?.mode === 'edit') {
@@ -492,7 +631,7 @@ export default function CatalogusPage() {
               <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}>
-                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'Aantal', 'Notities', 'Gebruikers', ''].map(h => (
+                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'In gebruik', 'Totaal', 'Notities', 'Gebruikers', ''].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase whitespace-nowrap" style={{ color: DYNAMO_BLUE, letterSpacing: '0.06em', fontFamily: F }}>
                         {h}
                       </th>
@@ -507,8 +646,24 @@ export default function CatalogusPage() {
                       <td className="px-4 py-3 whitespace-nowrap"><CategorieBadge cat={item.categorie} /></td>
                       <td className="px-4 py-3 whitespace-nowrap" style={{ color: '#334155' }}>{item.leverancier}</td>
                       <td className="px-4 py-3" style={{ color: '#64748b' }}>{item.versie ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        {/* In gebruik: aantal gekoppelde gebruikers, met kleur als het dicht bij het totaal zit */}
+                        {(() => {
+                          const n = item.in_gebruik
+                          const max = item.aantallen
+                          const overschreden = max != null && n > max
+                          const bijna = max != null && n >= max * 0.9 && n <= max
+                          const kleur = overschreden ? '#b91c1c' : bijna ? '#d97706' : n > 0 ? '#15803d' : '#94a3b8'
+                          return (
+                            <span className="font-semibold" style={{ color: kleur }} title={overschreden ? 'Meer in gebruik dan beschikbaar!' : undefined}>
+                              {n}
+                              {overschreden && <span className="ml-1 text-xs">⚠</span>}
+                            </span>
+                          )
+                        })()}
+                      </td>
                       <td className="px-4 py-3 font-semibold" style={{ color: item.aantallen != null ? DYNAMO_BLUE : '#94a3b8' }}>
-                        {item.aantallen != null ? `${item.aantallen}×` : '—'}
+                        {item.aantallen != null ? item.aantallen : '—'}
                       </td>
                       <td className="px-4 py-3 max-w-[160px] truncate" style={{ color: '#94a3b8' }} title={item.notities ?? ''}>{item.notities || '—'}</td>
                       <td className="px-4 py-3">

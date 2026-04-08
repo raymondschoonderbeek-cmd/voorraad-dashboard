@@ -28,6 +28,18 @@ type MijnHardwareRow = {
   updated_at: string
 }
 
+type MijnCatalogusRow = {
+  catalogus_id: string
+  naam: string
+  type: 'product' | 'licentie'
+  categorie: string
+  leverancier: string
+  versie: string | null
+  toegewezen_op: string
+  serienummer: string | null
+  datum_ingebruik: string | null
+}
+
 export default function InstellingenPage() {
   const searchParams = useSearchParams()
   const mfaVerplicht = searchParams.get('mfa') === 'verplicht'
@@ -54,7 +66,13 @@ export default function InstellingenPage() {
     fetcherJson,
     { shouldRetryOnError: false }
   )
+  const { data: mijnCatalogusData, error: mijnCatalogusError } = useSWR<{ items: MijnCatalogusRow[] }>(
+    '/api/it-cmdb/mijn-catalogus',
+    fetcherJson,
+    { shouldRetryOnError: false }
+  )
   const mijnHardware = mijnHardwareData?.items ?? []
+  const mijnCatalogus = mijnCatalogusData?.items ?? []
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
   const weeklyDigestEnabled = newsPrefData?.weekly_digest_enabled !== false
@@ -223,6 +241,75 @@ export default function InstellingenPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        {/* Producten & licenties */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">📦 Mijn producten &amp; licenties</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Software-licenties en IT-producten die door IT aan jouw account zijn toegewezen.
+              </p>
+            </div>
+          </div>
+          {mijnCatalogusError ? (
+            <p className="mt-4 text-sm text-amber-800">
+              Overzicht kon niet worden geladen. Probeer het later opnieuw.
+            </p>
+          ) : !mijnCatalogusData ? (
+            <p className="mt-4 text-sm text-gray-400">Laden…</p>
+          ) : mijnCatalogus.length === 0 ? (
+            <p className="mt-4 text-sm text-gray-600">
+              Er zijn nog geen producten of licenties aan jouw account gekoppeld.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {(['licentie', 'product'] as const).map(type => {
+                const rijen = mijnCatalogus.filter(r => r.type === type)
+                if (rijen.length === 0) return null
+                return (
+                  <div key={type}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+                      {type === 'licentie' ? 'Licenties' : 'Producten'}
+                    </p>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                      <table className="w-full text-sm text-left min-w-[520px]">
+                        <thead>
+                          <tr className="border-b border-gray-200 bg-gray-50">
+                            <th className="px-3 py-2 font-semibold text-gray-700">Naam</th>
+                            <th className="px-3 py-2 font-semibold text-gray-700">Leverancier</th>
+                            <th className="px-3 py-2 font-semibold text-gray-700">Versie</th>
+                            {type === 'product' && <th className="px-3 py-2 font-semibold text-gray-700">Serienummer</th>}
+                            {type === 'product' && <th className="px-3 py-2 font-semibold text-gray-700">In gebruik sinds</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rijen.map(row => (
+                            <tr key={row.catalogus_id} className="border-b border-gray-100 last:border-0">
+                              <td className="px-3 py-2 font-medium text-gray-900">{row.naam}</td>
+                              <td className="px-3 py-2 text-gray-600">{row.leverancier}</td>
+                              <td className="px-3 py-2 text-gray-500">{row.versie ?? '—'}</td>
+                              {type === 'product' && (
+                                <td className="px-3 py-2 font-mono text-xs text-gray-700">{row.serienummer ?? '—'}</td>
+                              )}
+                              {type === 'product' && (
+                                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                                  {row.datum_ingebruik
+                                    ? new Date(row.datum_ingebruik).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+                                    : '—'}
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

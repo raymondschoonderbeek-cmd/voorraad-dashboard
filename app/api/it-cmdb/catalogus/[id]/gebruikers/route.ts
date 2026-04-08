@@ -61,6 +61,56 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   return NextResponse.json({ ok: true })
 }
 
+/** PATCH: update serienummer / datum_ingebruik voor een koppeling via ?user_id=... */
+export async function PATCH(request: NextRequest, ctx: Ctx) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
+
+  const auth = await requireItCmdbAccess()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+
+  const { id } = await ctx.params
+  const user_id = new URL(request.url).searchParams.get('user_id')?.trim() ?? ''
+  if (!user_id || !IT_CMDB_UUID_RE.test(user_id)) {
+    return NextResponse.json({ error: 'user_id queryparameter is verplicht' }, { status: 400 })
+  }
+
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Ongeldige JSON' }, { status: 400 })
+  }
+
+  const update: Record<string, unknown> = {}
+  if ('serienummer' in body) {
+    update.serienummer = typeof body.serienummer === 'string' ? body.serienummer.trim() || null : null
+  }
+  if ('datum_ingebruik' in body) {
+    // Verwacht ISO-datumstring (YYYY-MM-DD) of null
+    if (body.datum_ingebruik === null || body.datum_ingebruik === '') {
+      update.datum_ingebruik = null
+    } else if (typeof body.datum_ingebruik === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.datum_ingebruik)) {
+      update.datum_ingebruik = body.datum_ingebruik
+    } else {
+      return NextResponse.json({ error: 'datum_ingebruik moet YYYY-MM-DD zijn of null' }, { status: 400 })
+    }
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'Geen velden om bij te werken' }, { status: 400 })
+  }
+
+  const { error } = await auth.supabase
+    .from('it_catalogus_gebruikers')
+    .update(update)
+    .eq('catalogus_id', id)
+    .eq('user_id', user_id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 /** DELETE: ontkoppel een gebruiker van dit catalogus-item via ?user_id=... */
 export async function DELETE(request: NextRequest, ctx: Ctx) {
   const rl = withRateLimit(request)

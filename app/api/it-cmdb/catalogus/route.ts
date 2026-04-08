@@ -18,11 +18,22 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await auth.supabase
     .from('it_catalogus')
-    .select('*')
+    .select('*, it_catalogus_gebruikers(count)')
     .order('naam', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ items: data ?? [] })
+
+  // Supabase geeft it_catalogus_gebruikers terug als [{ count: N }]; we maken er een plat getal van
+  const items = (data ?? []).map((row: Record<string, unknown>) => {
+    const countArr = row.it_catalogus_gebruikers
+    const in_gebruik = Array.isArray(countArr) && countArr.length > 0
+      ? Number((countArr[0] as { count: unknown }).count ?? 0)
+      : 0
+    const { it_catalogus_gebruikers: _, ...rest } = row
+    return { ...rest, in_gebruik }
+  })
+
+  return NextResponse.json({ items })
 }
 
 export async function POST(request: NextRequest) {
