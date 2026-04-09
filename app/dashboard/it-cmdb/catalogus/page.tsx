@@ -685,7 +685,6 @@ function AanvraagModal({
     try {
       const mot = motivatie.trim() || undefined
       if (selectedIds.size === 0) {
-        // voor jezelf
         const res = await fetch('/api/it-cmdb/aanvragen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

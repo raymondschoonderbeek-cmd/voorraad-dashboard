@@ -71,10 +71,8 @@ export async function POST(request: NextRequest) {
 
   if (!body.catalogus_id) return NextResponse.json({ error: 'catalogus_id is verplicht' }, { status: 400 })
 
-  // Controleer of ingelogde gebruiker it-cmdb module toegang heeft (vereist voor namens_user_id)
   const heeftItCmdbToegang = await canAccessItCmdb(supabase, user.id)
-
-  // Bepaal voor wie de aanvraag is — iedereen met it-cmdb toegang mag namens iemand indienen
+  // IT-CMDB-module: namens collega indienen; anders alleen voor jezelf
   const doelUserId = (body.namens_user_id && heeftItCmdbToegang) ? body.namens_user_id : user.id
 
   // Catalogus-item ophalen
@@ -89,7 +87,6 @@ export async function POST(request: NextRequest) {
     .select('naam, manager_naam, manager_email')
     .eq('user_id', doelUserId).single()
 
-  // E-mail van doelgebruiker ophalen
   let aanvragerEmail = user.email ?? ''
   if (doelUserId !== user.id && hasAdminKey()) {
     const { data: { user: doelUser } } = await adminClient.auth.admin.getUserById(doelUserId)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -60,13 +60,6 @@ type CatalogusItem = {
   kosten_per_eenheid: number | null
 }
 
-type PortalUser = {
-  user_id: string
-  naam: string
-  email: string
-  manager_naam: string | null
-}
-
 export default function InstellingenPage() {
   const searchParams = useSearchParams()
   const mfaVerplicht = searchParams.get('mfa') === 'verplicht'
@@ -115,28 +108,6 @@ export default function InstellingenPage() {
   const [aanvraagModalItem, setAanvraagModalItem] = useState<{ id: string; naam: string } | null>(null)
   const [aanvraagMotivatie, setAanvraagMotivatie] = useState('')
   const [aanvraagLoading, setAanvraagLoading] = useState(false)
-  const [aanvraagNamensUser, setAanvraagNamensUser] = useState<PortalUser | null>(null)
-  const [aanvraagNamensZoek, setAanvraagNamensZoek] = useState('')
-  const [aanvraagNamensOpen, setAanvraagNamensOpen] = useState(false)
-
-  const { data: portalUsersData } = useSWR<{ users: PortalUser[] }>(
-    '/api/it-cmdb/portal-users',
-    async (url: string) => {
-      const res = await fetch(url)
-      if (!res.ok) return { users: [] }
-      return res.json()
-    },
-    { shouldRetryOnError: false, revalidateOnFocus: false }
-  )
-  const allePortalUsers = useMemo(
-    () => (portalUsersData?.users ?? []).filter(u => u.email).sort((a, b) => a.naam.localeCompare(b.naam, 'nl')),
-    [portalUsersData]
-  )
-  const gefilterdePortalUsers = useMemo(() => {
-    if (!aanvraagNamensZoek.trim()) return allePortalUsers
-    const q = aanvraagNamensZoek.toLowerCase()
-    return allePortalUsers.filter(g => g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q))
-  }, [allePortalUsers, aanvraagNamensZoek])
 
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
@@ -163,28 +134,22 @@ export default function InstellingenPage() {
   function sluitAanvraagModal() {
     setAanvraagModalItem(null)
     setAanvraagMotivatie('')
-    setAanvraagNamensUser(null)
-    setAanvraagNamensZoek('')
-    setAanvraagNamensOpen(false)
   }
 
   async function dientAanvraagIn(catalogusId: string, productNaam: string) {
     setAanvraagLoading(true)
     try {
-      const body: Record<string, unknown> = {
-        catalogus_id: catalogusId,
-        motivatie: aanvraagMotivatie.trim() || undefined,
-      }
-      if (aanvraagNamensUser) body.namens_user_id = aanvraagNamensUser.user_id
       const res = await fetch('/api/it-cmdb/aanvragen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          catalogus_id: catalogusId,
+          motivatie: aanvraagMotivatie.trim() || undefined,
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
-      const voorNaam = aanvraagNamensUser ? ` voor ${aanvraagNamensUser.naam}` : ''
-      toast(`Aanvraag voor "${productNaam}"${voorNaam} ingediend.`, 'success')
+      toast(`Aanvraag voor "${productNaam}" ingediend.`, 'success')
       sluitAanvraagModal()
       void mutateMijnAanvragen()
     } catch (e) {
@@ -416,7 +381,9 @@ export default function InstellingenPage() {
         {/* Mijn aanvragen */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
           <h2 className="text-lg font-bold mb-1">📋 Mijn software-aanvragen</h2>
-          <p className="text-sm text-gray-500 mb-4">Overzicht van jouw ingediende licentie-aanvragen.</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Overzicht van jouw ingediende licentie-aanvragen. Je kunt alleen voor jezelf een aanvraag indienen.
+          </p>
 
           {mijnAanvragen.length === 0 ? (
             <p className="text-sm text-gray-400">Nog geen aanvragen ingediend.</p>
@@ -531,59 +498,13 @@ export default function InstellingenPage() {
                 <h3 className="text-lg font-bold" style={{ color: '#2D457C' }}>Licentie aanvragen</h3>
                 <button type="button" onClick={sluitAanvraagModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1">✕</button>
               </div>
-              <p className="text-sm text-gray-500 mb-5">Dien een aanvraag in voor jezelf of een medewerker.</p>
+              <p className="text-sm text-gray-500 mb-5">Je dient alleen een aanvraag in voor jezelf.</p>
 
               {/* Product */}
               <div className="rounded-xl p-3 mb-4" style={{ background: 'rgba(45,69,124,0.04)' }}>
                 <div className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: 'rgba(45,69,124,0.5)' }}>Product</div>
                 <div className="font-bold" style={{ color: '#2D457C' }}>{aanvraagModalItem.naam}</div>
               </div>
-
-              {/* Medewerker — alleen zichtbaar als portal-users geladen zijn */}
-              {allePortalUsers.length > 0 && (
-                <div className="mb-4">
-                  <label className="text-xs font-bold uppercase tracking-wide block mb-1.5" style={{ color: 'rgba(45,69,124,0.6)' }}>
-                    Voor medewerker
-                  </label>
-                  {aanvraagNamensUser ? (
-                    <div className="flex items-center justify-between rounded-xl border p-3" style={{ background: 'rgba(45,69,124,0.04)', borderColor: 'rgba(45,69,124,0.15)' }}>
-                      <div>
-                        <div className="font-semibold text-sm" style={{ color: '#2D457C' }}>{aanvraagNamensUser.naam}</div>
-                        <div className="text-xs text-gray-500">{aanvraagNamensUser.email}</div>
-                        {aanvraagNamensUser.manager_naam && (
-                          <div className="text-xs text-gray-400 mt-0.5">Manager: {aanvraagNamensUser.manager_naam}</div>
-                        )}
-                      </div>
-                      <button type="button" onClick={() => { setAanvraagNamensUser(null); setAanvraagNamensZoek('') }}
-                        className="text-gray-400 hover:text-gray-600 text-base leading-none px-1 ml-2">✕</button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Zoek naam of e-mail…"
-                        value={aanvraagNamensZoek}
-                        onChange={e => { setAanvraagNamensZoek(e.target.value); setAanvraagNamensOpen(true) }}
-                        onFocus={() => setAanvraagNamensOpen(true)}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300"
-                      />
-                      {aanvraagNamensOpen && gefilterdePortalUsers.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto max-h-56">
-                          {gefilterdePortalUsers.map(g => (
-                            <button key={g.user_id} type="button"
-                              onClick={() => { setAanvraagNamensUser(g); setAanvraagNamensOpen(false); setAanvraagNamensZoek('') }}
-                              className="block w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                              <div className="font-semibold text-sm text-gray-900">{g.naam}</div>
-                              <div className="text-xs text-gray-500">{g.email}</div>
-                              {g.manager_naam && <div className="text-xs text-gray-400">Manager: {g.manager_naam}</div>}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Motivatie */}
               <label className="text-sm font-medium text-gray-700 block mb-1">
