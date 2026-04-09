@@ -635,49 +635,83 @@ function AanvraagModal({
   const toast = useToast()
   const [motivatie, setMotivatie] = useState('')
   const [loading, setLoading] = useState(false)
-  const [namensZoek, setNamensZoek] = useState('')
-  const [gekozenGebruiker, setGekozenGebruiker] = useState<GebruikerKeuze | null>(null)
-  const [zoekOpen, setZoekOpen] = useState(false)
+  const [zoek, setZoek] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // Alle gebruikers ophalen via it-cmdb endpoint (geen admin vereist)
   const { data: gebruikersData } = useSWR<{ users: GebruikerKeuze[] }>(
-    '/api/it-cmdb/portal-users',
-    fetcher,
-    { revalidateOnFocus: false }
+    '/api/it-cmdb/portal-users', fetcher, { revalidateOnFocus: false }
   )
 
   const alleGebruikers: GebruikerKeuze[] = useMemo(() => {
     return (gebruikersData?.users ?? [])
       .filter(u => u.email)
-      .sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))
+      .sort((a, b) => (a.naam || a.email).localeCompare(b.naam || b.email, 'nl'))
   }, [gebruikersData])
 
   const gefilterdeGebruikers = useMemo(() => {
-    if (!namensZoek.trim()) return alleGebruikers
-    const q = namensZoek.toLowerCase()
+    const q = zoek.trim().toLowerCase()
+    if (!q) return alleGebruikers
     return alleGebruikers.filter(g =>
-      g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q)
+      (g.naam || '').toLowerCase().includes(q) || g.email.toLowerCase().includes(q)
     )
-  }, [alleGebruikers, namensZoek])
+  }, [alleGebruikers, zoek])
+
+  function toggleUser(userId: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(userId) ? next.delete(userId) : next.add(userId)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (gefilterdeGebruikers.every(u => selectedIds.has(u.user_id))) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        gefilterdeGebruikers.forEach(u => next.delete(u.user_id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        gefilterdeGebruikers.forEach(u => next.add(u.user_id))
+        return next
+      })
+    }
+  }
 
   async function indienen() {
     setLoading(true)
     try {
-      const body: Record<string, unknown> = {
-        catalogus_id: item.id,
-        motivatie: motivatie.trim() || undefined,
+      const mot = motivatie.trim() || undefined
+      if (selectedIds.size === 0) {
+        // voor jezelf
+        const res = await fetch('/api/it-cmdb/aanvragen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ catalogus_id: item.id, motivatie: mot }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
+        toast('Aanvraag ingediend. De manager ontvangt een e-mail.', 'success')
+      } else {
+        const ids = [...selectedIds]
+        const results = await Promise.allSettled(
+          ids.map(uid =>
+            fetch('/api/it-cmdb/aanvragen', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ catalogus_id: item.id, motivatie: mot, namens_user_id: uid }),
+            }).then(r => r.ok ? r.json() : r.json().then((j: { error?: string }) => Promise.reject(new Error(j.error ?? 'Indienen mislukt'))))
+          )
+        )
+        const fouten = results.filter(r => r.status === 'rejected').length
+        if (fouten === 0) {
+          toast(`${ids.length} aanvragen ingediend.`, 'success')
+        } else {
+          toast(`${ids.length - fouten} ingediend, ${fouten} mislukt.`, 'error')
+        }
       }
-      if (gekozenGebruiker) body.namens_user_id = gekozenGebruiker.user_id
-
-      const res = await fetch('/api/it-cmdb/aanvragen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
-      const naam = gekozenGebruiker ? `voor ${gekozenGebruiker.naam}` : ''
-      toast(`Aanvraag ${naam} ingediend. De manager ontvangt een e-mail.`, 'success')
       onSuccess()
       onClose()
     } catch (e) {
@@ -716,53 +750,59 @@ function AanvraagModal({
 
           {/* Medewerker kiezen */}
           <div>
-            <label style={lbl}>Voor medewerker</label>
-            {gekozenGebruiker ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 10, padding: '10px 14px' }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: DYNAMO_BLUE, fontSize: 14 }}>{gekozenGebruiker.naam}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(45,69,124,0.5)' }}>{gekozenGebruiker.email}</div>
-                  {gekozenGebruiker.manager_naam && (
-                    <div style={{ fontSize: 11, color: 'rgba(45,69,124,0.4)', marginTop: 2 }}>Manager: {gekozenGebruiker.manager_naam}</div>
-                  )}
+            <label style={lbl}>Voor medewerker <span style={{ fontWeight: 400, opacity: 0.6 }}>(optioneel — leeg = voor jezelf)</span></label>
+            {!gebruikersData ? (
+              <p style={{ margin: 0, fontSize: 13, color: 'rgba(45,69,124,0.5)' }}>Laden…</p>
+            ) : alleGebruikers.length === 0 ? null : (
+              <>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <input
+                    type="search"
+                    value={zoek}
+                    onChange={e => setZoek(e.target.value)}
+                    placeholder="Zoek op naam of e-mail…"
+                    style={{ flex: 1, borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '9px 12px', fontSize: 13, fontFamily: F, color: '#1e293b', outline: 'none', boxSizing: 'border-box' as const }}
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    style={{ fontSize: 12, fontWeight: 600, color: DYNAMO_BLUE, background: 'none', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontFamily: F }}
+                  >
+                    {gefilterdeGebruikers.every(u => selectedIds.has(u.user_id)) ? 'Geen' : 'Alles'}
+                  </button>
                 </div>
-                <button type="button" onClick={() => { setGekozenGebruiker(null); setNamensZoek('') }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(45,69,124,0.4)', fontSize: 16 }}>✕</button>
-              </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  placeholder="Zoek naam of e-mail…"
-                  value={namensZoek}
-                  onChange={e => { setNamensZoek(e.target.value); setZoekOpen(true) }}
-                  onFocus={() => setZoekOpen(true)}
-                  style={{ width: '100%', borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '10px 12px', fontSize: 14, fontFamily: F, color: '#1e293b', outline: 'none', boxSizing: 'border-box' }}
-                />
-                {zoekOpen && gefilterdeGebruikers.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 10, boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: 4, overflowY: 'auto', maxHeight: 224 }}>
-                    {gefilterdeGebruikers.map(g => (
+                <div style={{ border: '1px solid rgba(45,69,124,0.12)', borderRadius: 10, overflowY: 'auto', maxHeight: 200, background: 'white' }}>
+                  {gefilterdeGebruikers.length === 0 ? (
+                    <p style={{ margin: 0, padding: '10px 14px', fontSize: 13, color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</p>
+                  ) : gefilterdeGebruikers.map(g => {
+                    const selected = selectedIds.has(g.user_id)
+                    return (
                       <button
                         key={g.user_id}
                         type="button"
-                        onClick={() => { setGekozenGebruiker(g); setZoekOpen(false); setNamensZoek('') }}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: 'white', cursor: 'pointer', borderBottom: '1px solid rgba(45,69,124,0.06)', fontFamily: F }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(45,69,124,0.04)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'white')}
+                        onClick={() => toggleUser(g.user_id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 14px', background: selected ? 'rgba(45,69,124,0.07)' : 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
                       >
-                        <div style={{ fontWeight: 600, color: DYNAMO_BLUE, fontSize: 14 }}>{g.naam}</div>
-                        <div style={{ fontSize: 12, color: 'rgba(45,69,124,0.5)' }}>{g.email}</div>
-                        {g.manager_naam && <div style={{ fontSize: 11, color: 'rgba(45,69,124,0.35)' }}>Manager: {g.manager_naam}</div>}
+                        <span style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${selected ? DYNAMO_BLUE : 'rgba(45,69,124,0.25)'}`, background: selected ? DYNAMO_BLUE : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {selected && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden>
+                              <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </span>
+                        <span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', display: 'block' }}>{g.naam || prettyEmail(g.email)}</span>
+                          <span style={{ fontSize: 11, color: 'rgba(45,69,124,0.5)' }}>{g.email}</span>
+                          {g.manager_naam && <span style={{ fontSize: 11, color: 'rgba(45,69,124,0.4)', display: 'block' }}>Manager: {g.manager_naam}</span>}
+                        </span>
                       </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {!gekozenGebruiker && (
-              <p style={{ fontSize: 11, color: 'rgba(45,69,124,0.4)', margin: '4px 0 0' }}>
-                Laat leeg om de aanvraag voor jezelf in te dienen.
-              </p>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 11, color: 'rgba(45,69,124,0.4)', margin: '4px 0 0' }}>
+                  {selectedIds.size > 0 ? `${selectedIds.size} medewerker${selectedIds.size !== 1 ? 's' : ''} geselecteerd` : 'Niets geselecteerd — aanvraag wordt voor jezelf ingediend'}
+                </p>
+              </>
             )}
           </div>
 
@@ -773,7 +813,7 @@ function AanvraagModal({
               value={motivatie}
               onChange={e => setMotivatie(e.target.value)}
               rows={3}
-              placeholder={gekozenGebruiker ? `Waarom heeft ${gekozenGebruiker.naam} deze licentie nodig?` : 'Waarom heb je deze licentie nodig?'}
+              placeholder={selectedIds.size > 0 ? 'Waarom hebben deze medewerkers deze licentie nodig?' : 'Waarom heb je deze licentie nodig?'}
               style={{ width: '100%', borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '10px 12px', fontSize: 14, fontFamily: F, color: '#1e293b', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -786,7 +826,7 @@ function AanvraagModal({
           </button>
           <button type="button" onClick={() => void indienen()} disabled={loading}
             style={{ borderRadius: 10, padding: '9px 22px', fontSize: 14, fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-            {loading ? 'Bezig...' : gekozenGebruiker ? `Indienen voor ${gekozenGebruiker.naam.split(' ')[0]}` : 'Aanvraag indienen'}
+            {loading ? 'Bezig…' : selectedIds.size > 1 ? `${selectedIds.size} aanvragen indienen` : selectedIds.size === 1 ? 'Indienen voor medewerker' : 'Aanvraag indienen'}
           </button>
         </div>
       </div>
