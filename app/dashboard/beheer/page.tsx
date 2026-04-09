@@ -93,11 +93,6 @@ export default function BeheerPage() {
     totaal_azure: number; gefilterd: number; verwerkt: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; manager_gevonden: number; manager_geen: number; overgeslagen: number; fouten: string[]; filter_debug?: { gefilterd_domein: number; gefilterd_e3_licentie: number; gefilterd_geen_afdeling: number; e3_sku_ids_gevonden: number }
   } | null>(null)
 
-  // Cleanup niet-DRG gebruikers
-  const [cleanupLoading, setCleanupLoading] = useState(false)
-  const [cleanupPreview, setCleanupPreview] = useState<{ id: string; email: string }[] | null>(null)
-  const [cleanupResultaat, setCleanupResultaat] = useState<{ verwijderd: number; fouten: string[] } | null>(null)
-
   // Nieuw winkel form
   const [nieuwWinkelNaam, setNieuwWinkelNaam] = useState('')
   const [nieuwWinkelDealer, setNieuwWinkelDealer] = useState('')
@@ -512,29 +507,6 @@ export default function BeheerPage() {
     setFormSuccess('')
   }
 
-  async function haalCleanupPreviewOp() {
-    setCleanupLoading(true)
-    setCleanupPreview(null)
-    setCleanupResultaat(null)
-    const res = await fetch('/api/admin/cleanup-users')
-    const data = await res.json()
-    setCleanupLoading(false)
-    if (!res.ok) setFormError(data.error ?? 'Preview ophalen mislukt')
-    else setCleanupPreview(data.teVerwijderen)
-  }
-
-  async function voerCleanupUit() {
-    setCleanupLoading(true)
-    setCleanupPreview(null)
-    const res = await fetch('/api/admin/cleanup-users', { method: 'DELETE' })
-    const data = await res.json()
-    setCleanupLoading(false)
-    if (!res.ok) setFormError(data.error ?? 'Cleanup mislukt')
-    else {
-      setCleanupResultaat(data)
-      await haalGebruikersOp(true)
-    }
-  }
 
   async function syncAzureGebruikers() {
     setAzureSyncLoading(true)
@@ -1272,17 +1244,6 @@ export default function BeheerPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={haalCleanupPreviewOp}
-                  disabled={cleanupLoading}
-                  title="Verwijder alle gebruikers zonder @dynamoretailgroup.com"
-                  className="rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
-                  style={{ borderColor: 'rgba(220,38,38,0.3)', color: '#dc2626', fontFamily: F, background: 'white' }}
-                >
-                  {cleanupLoading ? <span className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#dc2626' }} /> : '🗑'}
-                  {cleanupLoading ? 'Laden…' : 'Niet-DRG opruimen'}
-                </button>
-                <button
-                  type="button"
                   onClick={() => { setBulkModulePanel(v => !v); setBulkSelectie({}); setBulkSuccess(''); setBulkError('') }}
                   className="rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 flex items-center gap-2 shrink-0"
                   style={bulkModulePanel ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F, borderColor: DYNAMO_BLUE } : { borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
@@ -1295,53 +1256,6 @@ export default function BeheerPage() {
               </div>
               </div>
             </div>
-
-            {/* Cleanup niet-DRG gebruikers */}
-            {(cleanupPreview || cleanupResultaat) && (
-              <div className="rounded-xl p-4 text-sm space-y-3" style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.2)', fontFamily: F }}>
-                {cleanupPreview && !cleanupResultaat && (
-                  <>
-                    <div className="font-semibold" style={{ color: '#dc2626' }}>
-                      {cleanupPreview.length === 0
-                        ? 'Geen gebruikers gevonden buiten @dynamoretailgroup.com'
-                        : `${cleanupPreview.length} gebruiker${cleanupPreview.length !== 1 ? 's' : ''} worden verwijderd`}
-                    </div>
-                    {cleanupPreview.length > 0 && (
-                      <>
-                        <ul className="space-y-0.5 max-h-48 overflow-auto text-xs" style={{ color: 'rgba(220,38,38,0.8)' }}>
-                          {cleanupPreview.map(u => <li key={u.id}>{u.email}</li>)}
-                        </ul>
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={voerCleanupUit}
-                            disabled={cleanupLoading}
-                            className="rounded-lg px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
-                            style={{ background: '#dc2626', fontFamily: F }}
-                          >
-                            {cleanupLoading ? 'Bezig…' : `Verwijder ${cleanupPreview.length} gebruiker${cleanupPreview.length !== 1 ? 's' : ''}`}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCleanupPreview(null)}
-                            className="rounded-lg px-4 py-2 text-sm font-semibold border transition hover:opacity-80"
-                            style={{ borderColor: 'rgba(220,38,38,0.3)', color: '#dc2626', fontFamily: F }}
-                          >
-                            Annuleren
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-                {cleanupResultaat && (
-                  <div className="font-semibold" style={{ color: cleanupResultaat.fouten.length > 0 ? '#dc2626' : '#16a34a' }}>
-                    {cleanupResultaat.verwijderd} gebruiker{cleanupResultaat.verwijderd !== 1 ? 's' : ''} verwijderd
-                    {cleanupResultaat.fouten.length > 0 && ` · ${cleanupResultaat.fouten.length} fout(en)`}
-                  </div>
-                )}
-              </div>
-            )}
 
             {azureSyncResultaat && (
               <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.12)', fontFamily: F }}>
