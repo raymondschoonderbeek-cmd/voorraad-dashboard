@@ -404,7 +404,7 @@ function GebruikersModal({
       .sort((a, b) => (a.naam || a.email).localeCompare(b.naam || b.email, 'nl'))
   }, [portalData, gekoppeld])
 
-  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [zoek, setZoek] = useState('')
   const [adding, setAdding] = useState(false)
   const isProduct = item.type === 'product'
@@ -417,21 +417,53 @@ function GebruikersModal({
     )
   }, [beschikbaar, zoek])
 
+  function toggleUser(userId: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(userId) ? next.delete(userId) : next.add(userId)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (zoekResultaten.every(u => selectedIds.has(u.user_id))) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        zoekResultaten.forEach(u => next.delete(u.user_id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        zoekResultaten.forEach(u => next.add(u.user_id))
+        return next
+      })
+    }
+  }
+
   async function koppel() {
-    if (!selectedUserId) return
+    if (selectedIds.size === 0) return
     setAdding(true)
     try {
-      const res = await fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUserId }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Koppelen mislukt')
+      const ids = [...selectedIds]
+      const results = await Promise.allSettled(
+        ids.map(uid =>
+          fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: uid }),
+          }).then(r => r.ok ? r.json() : r.json().then((j: { error?: string }) => Promise.reject(new Error(j.error ?? 'Koppelen mislukt'))))
+        )
+      )
+      const fouten = results.filter(r => r.status === 'rejected').length
       await mutate()
-      setSelectedUserId('')
+      setSelectedIds(new Set())
       setZoek('')
-      toast('Gebruiker gekoppeld.', 'success')
+      if (fouten === 0) {
+        toast(`${ids.length} gebruiker${ids.length !== 1 ? 's' : ''} gekoppeld.`, 'success')
+      } else {
+        toast(`${ids.length - fouten} gekoppeld, ${fouten} mislukt.`, 'error')
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Koppelen mislukt', 'error')
     } finally {
@@ -459,29 +491,43 @@ function GebruikersModal({
             <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>Alle gebruikers zijn al gekoppeld.</p>
           ) : (
             <>
-              {/* Search */}
-              <input
-                type="search"
-                value={zoek}
-                onChange={e => { setZoek(e.target.value); setSelectedUserId('') }}
-                placeholder="Zoek op naam of e-mail…"
-                style={{ ...inputStyle, marginBottom: '8px' }}
-              />
+              {/* Search + selecteer alles */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                <input
+                  type="search"
+                  value={zoek}
+                  onChange={e => setZoek(e.target.value)}
+                  placeholder="Zoek op naam of e-mail…"
+                  style={{ ...inputStyle, margin: 0, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  style={{ fontSize: '12px', fontWeight: 600, color: DYNAMO_BLUE, background: 'none', border: '1px solid rgba(45,69,124,0.2)', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: F }}
+                >
+                  {zoekResultaten.every(u => selectedIds.has(u.user_id)) ? 'Geen' : 'Alles'}
+                </button>
+              </div>
               {/* Scrollable pick list */}
-              <div style={{ border: '1px solid rgba(45,69,124,0.12)', borderRadius: '10px', overflowY: 'auto', maxHeight: '220px', background: 'white' }}>
+              <div style={{ border: '1px solid rgba(45,69,124,0.12)', borderRadius: '10px', overflowY: 'auto', maxHeight: '240px', background: 'white' }}>
                 {zoekResultaten.length === 0 ? (
                   <p style={{ margin: 0, padding: '10px 14px', fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</p>
                 ) : zoekResultaten.map(u => {
-                  const selected = u.user_id === selectedUserId
+                  const selected = selectedIds.has(u.user_id)
                   return (
                     <button
                       key={u.user_id}
                       type="button"
-                      onClick={() => setSelectedUserId(selected ? '' : u.user_id)}
+                      onClick={() => toggleUser(u.user_id)}
                       style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', padding: '9px 14px', background: selected ? 'rgba(45,69,124,0.07)' : 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
                     >
-                      <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${selected ? DYNAMO_BLUE : 'rgba(45,69,124,0.25)'}`, background: selected ? DYNAMO_BLUE : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {selected && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white', display: 'block' }} />}
+                      {/* Checkbox */}
+                      <span style={{ width: '16px', height: '16px', borderRadius: '4px', border: `2px solid ${selected ? DYNAMO_BLUE : 'rgba(45,69,124,0.25)'}`, background: selected ? DYNAMO_BLUE : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {selected && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden>
+                            <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
                       </span>
                       <span>
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
@@ -493,15 +539,15 @@ function GebruikersModal({
               </div>
               <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: 'rgba(45,69,124,0.5)' }}>
-                  {zoekResultaten.length} van {beschikbaar.length} beschikbaar
+                  {selectedIds.size > 0 ? `${selectedIds.size} geselecteerd` : `${zoekResultaten.length} van ${beschikbaar.length} beschikbaar`}
                 </span>
                 <button
                   type="button"
-                  disabled={!selectedUserId || adding}
+                  disabled={selectedIds.size === 0 || adding}
                   onClick={() => void koppel()}
-                  style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (!selectedUserId || adding) ? 'not-allowed' : 'pointer', opacity: (!selectedUserId || adding) ? 0.5 : 1 }}
+                  style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (selectedIds.size === 0 || adding) ? 'not-allowed' : 'pointer', opacity: (selectedIds.size === 0 || adding) ? 0.5 : 1 }}
                 >
-                  {adding ? 'Koppelen…' : 'Koppelen'}
+                  {adding ? 'Koppelen…' : selectedIds.size > 1 ? `${selectedIds.size} koppelen` : 'Koppelen'}
                 </button>
               </div>
               {isProduct && (
