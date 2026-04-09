@@ -167,10 +167,11 @@ function voldoetAanSyncCriteria(user: GraphUser, e3SkuIds: Set<string>): boolean
   // 2. accountEnabled = true (al gefilterd in query)
   if (!user.accountEnabled) return false
 
-  // 3. mail of userPrincipalName eindigt op @dynamoretailgroup.com
+  // 3. mail of userPrincipalName eindigt op een toegestaan domein
   const mail = (user.mail ?? '').toLowerCase()
   const upn = (user.userPrincipalName ?? '').toLowerCase()
-  if (!mail.endsWith('@dynamoretailgroup.com') && !upn.endsWith('@dynamoretailgroup.com')) return false
+  const toegestaaneDomeinen = ['@dynamoretailgroup.com', '@biketotaallease.com', '@dynamolease.com']
+  if (!toegestaaneDomeinen.some(d => mail.endsWith(d) || upn.endsWith(d))) return false
 
   // 4. Heeft een E3-licentie
   const heeftE3 = (user.assignedLicenses ?? []).some(l => e3SkuIds.has(l.skuId))
@@ -228,7 +229,9 @@ export async function POST(request: NextRequest) {
     if (u.userType !== 'Member' || !u.accountEnabled) continue
     const mail = (u.mail ?? '').toLowerCase()
     const upn = (u.userPrincipalName ?? '').toLowerCase()
-    if (!mail.endsWith('@dynamoretailgroup.com') && !upn.endsWith('@dynamoretailgroup.com')) { filteredDomain++; continue }
+    const toegestaaneDomeinen = ['@dynamoretailgroup.com', '@biketotaallease.com', '@dynamolease.com']
+    const domeinOk = toegestaaneDomeinen.some(d => mail.endsWith(d) || upn.endsWith(d))
+    if (!domeinOk) { filteredDomain++; continue }
     const heeftE3 = (u.assignedLicenses ?? []).some(l => e3SkuIds.has(l.skuId))
     if (!heeftE3) { filteredE3++; continue }
     if (!u.department?.trim()) { filteredDept++; continue }
