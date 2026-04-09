@@ -21,18 +21,28 @@ export async function GET(request: NextRequest) {
     (rpcData ?? []).map((r: { user_id: string; email: string }) => [r.user_id, r.email ?? ''])
   )
 
-  // Naam + manager uit gebruiker_rollen
+  // Naam + manager uit gebruiker_rollen (aanvullend, geen filter)
   const { data: rollen } = await auth.supabase
     .from('gebruiker_rollen')
     .select('user_id, naam, manager_naam, manager_email')
 
-  const users = (rollen ?? []).map((r: { user_id: string; naam: string; manager_naam: string | null; manager_email: string | null }) => ({
-    user_id: r.user_id,
-    naam: r.naam ?? '',
-    email: emailMap.get(r.user_id) ?? '',
-    manager_naam: r.manager_naam ?? null,
-    manager_email: r.manager_email ?? null,
-  })).filter(u => u.email)
+  const rollenMap = new Map(
+    (rollen ?? []).map((r: { user_id: string; naam: string; manager_naam: string | null; manager_email: string | null }) => [r.user_id, r])
+  )
+
+  // Basis is auth.users — alle gebruikers, niet alleen degenen in gebruiker_rollen
+  const users = (rpcData ?? [])
+    .map((r: { user_id: string; email: string }) => {
+      const rol = rollenMap.get(r.user_id)
+      return {
+        user_id: r.user_id,
+        naam: rol?.naam ?? '',
+        email: r.email ?? '',
+        manager_naam: rol?.manager_naam ?? null,
+        manager_email: rol?.manager_email ?? null,
+      }
+    })
+    .filter(u => u.email)
 
   return NextResponse.json({ users })
 }
