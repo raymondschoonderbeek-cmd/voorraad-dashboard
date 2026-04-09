@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -60,6 +60,13 @@ type CatalogusItem = {
   kosten_per_eenheid: number | null
 }
 
+type PortalUser = {
+  user_id: string
+  naam: string
+  email: string
+  manager_naam: string | null
+}
+
 export default function InstellingenPage() {
   const searchParams = useSearchParams()
   const mfaVerplicht = searchParams.get('mfa') === 'verplicht'
@@ -108,6 +115,29 @@ export default function InstellingenPage() {
   const [aanvraagModalItem, setAanvraagModalItem] = useState<{ id: string; naam: string } | null>(null)
   const [aanvraagMotivatie, setAanvraagMotivatie] = useState('')
   const [aanvraagLoading, setAanvraagLoading] = useState(false)
+  const [aanvraagNamensUser, setAanvraagNamensUser] = useState<PortalUser | null>(null)
+  const [aanvraagNamensZoek, setAanvraagNamensZoek] = useState('')
+  const [aanvraagNamensOpen, setAanvraagNamensOpen] = useState(false)
+
+  const { data: portalUsersData } = useSWR<{ users: PortalUser[] }>(
+    '/api/it-cmdb/portal-users',
+    async (url: string) => {
+      const res = await fetch(url)
+      if (!res.ok) return { users: [] }
+      return res.json()
+    },
+    { shouldRetryOnError: false, revalidateOnFocus: false }
+  )
+  const allePortalUsers = useMemo(
+    () => (portalUsersData?.users ?? []).filter(u => u.email).sort((a, b) => a.naam.localeCompare(b.naam, 'nl')),
+    [portalUsersData]
+  )
+  const gefilterdePortalUsers = useMemo(() => {
+    if (!aanvraagNamensZoek.trim()) return allePortalUsers.slice(0, 8)
+    const q = aanvraagNamensZoek.toLowerCase()
+    return allePortalUsers.filter(g => g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q)).slice(0, 8)
+  }, [allePortalUsers, aanvraagNamensZoek])
+
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
   const weeklyDigestEnabled = newsPrefData?.weekly_digest_enabled !== false
@@ -130,19 +160,32 @@ export default function InstellingenPage() {
     setLunchSaving(false)
   }
 
+  function sluitAanvraagModal() {
+    setAanvraagModalItem(null)
+    setAanvraagMotivatie('')
+    setAanvraagNamensUser(null)
+    setAanvraagNamensZoek('')
+    setAanvraagNamensOpen(false)
+  }
+
   async function dientAanvraagIn(catalogusId: string, productNaam: string) {
     setAanvraagLoading(true)
     try {
+      const body: Record<string, unknown> = {
+        catalogus_id: catalogusId,
+        motivatie: aanvraagMotivatie.trim() || undefined,
+      }
+      if (aanvraagNamensUser) body.namens_user_id = aanvraagNamensUser.user_id
       const res = await fetch('/api/it-cmdb/aanvragen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ catalogus_id: catalogusId, motivatie: aanvraagMotivatie.trim() || undefined }),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
-      toast(`Aanvraag voor "${productNaam}" ingediend.`, 'success')
-      setAanvraagModalItem(null)
-      setAanvraagMotivatie('')
+      const voorNaam = aanvraagNamensUser ? ` voor ${aanvraagNamensUser.naam}` : ''
+      toast(`Aanvraag voor "${productNaam}"${voorNaam} ingediend.`, 'success')
+      sluitAanvraagModal()
       void mutateMijnAanvragen()
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Indienen mislukt', 'error')
