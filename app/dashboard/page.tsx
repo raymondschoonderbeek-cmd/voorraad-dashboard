@@ -316,6 +316,7 @@ export default function Dashboard() {
       voorraad: producten.reduce((s, p) => s + (Number(p.STOCK) || 0), 0),
     } : null)
     setGeselecteerdeWinkel(winkel)
+    router.replace(`/dashboard?winkel=${winkel.id}`)
     setZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setFoutmelding(null)
     await haalVoorraadOp(winkel.id, winkel.dealer_nummer)
