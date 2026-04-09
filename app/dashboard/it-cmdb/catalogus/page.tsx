@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
@@ -395,6 +395,8 @@ function GebruikersModal({
     `/api/it-cmdb/catalogus/${item.id}/gebruikers`, fetcher
   )
   const { data: portalData } = useSWR<{ users: PortalUser[] }>('/api/it-cmdb/portal-users', fetcher)
+  const zoekInputRef = useRef<HTMLInputElement>(null)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   const gekoppeld = gekoppeldData?.gebruikers ?? []
   const beschikbaar = useMemo(() => {
@@ -463,38 +465,23 @@ function GebruikersModal({
         <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)' }}>
           <label style={labelStyle}>Gebruiker toevoegen</label>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            {/* Searchable dropdown */}
+            {/* Searchable dropdown — uses fixed positioning to escape modal overflow clipping */}
             <div style={{ position: 'relative', flex: 1 }}>
               <input
+                ref={zoekInputRef}
                 type="text"
                 value={zoek}
                 onChange={e => { setZoek(e.target.value); setSelectedUserId(''); setZoekOpen(true) }}
-                onFocus={() => setZoekOpen(true)}
-                onBlur={() => setTimeout(() => setZoekOpen(false), 150)}
+                onFocus={() => {
+                  const rect = zoekInputRef.current?.getBoundingClientRect()
+                  if (rect) setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+                  setZoekOpen(true)
+                }}
+                onBlur={() => setTimeout(() => { setZoekOpen(false); setDropdownPos(null) }, 160)}
                 placeholder={beschikbaar.length === 0 ? 'Alle gebruikers al gekoppeld' : 'Zoek op naam of e-mail…'}
                 disabled={beschikbaar.length === 0}
                 style={{ ...inputStyle, margin: 0 }}
               />
-              {zoekOpen && zoekResultaten.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: '4px', overflowY: 'auto', maxHeight: '220px' }}>
-                  {zoekResultaten.map(u => (
-                    <button
-                      key={u.user_id}
-                      type="button"
-                      onMouseDown={() => kiesGebruiker(u)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: F }}
-                    >
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
-                      <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>{u.email}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {zoekOpen && zoek.trim() && zoekResultaten.length === 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: '4px', padding: '10px 14px' }}>
-                  <span style={{ fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</span>
-                </div>
-              )}
             </div>
             <button
               type="button"
@@ -548,6 +535,30 @@ function GebruikersModal({
           </button>
         </div>
       </div>
+
+      {/* Fixed-position dropdown — escapes modal overflow clipping */}
+      {zoekOpen && dropdownPos && zoekResultaten.length > 0 && (
+        <div
+          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.14)', overflowY: 'auto', maxHeight: '260px', fontFamily: F }}
+        >
+          {zoekResultaten.map(u => (
+            <button
+              key={u.user_id}
+              type="button"
+              onMouseDown={() => kiesGebruiker(u)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
+            >
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
+              <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>{u.email}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {zoekOpen && dropdownPos && zoek.trim() && zoekResultaten.length === 0 && (
+        <div style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.14)', padding: '10px 14px', fontFamily: F }}>
+          <span style={{ fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</span>
+        </div>
+      )}
     </div>
   )
 }
