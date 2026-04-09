@@ -419,16 +419,29 @@ export default function ItCmdbPage() {
 
       {/* ── Header ── */}
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-3 min-h-[52px]">
+        {/* Top bar */}
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
           <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
             ← Portal
           </Link>
-          <span className="text-white text-sm font-semibold truncate">IT Hardware</span>
-          <div className="ml-auto">
-            <Link href="/dashboard/it-cmdb/catalogus" className="text-white/70 hover:text-white text-xs font-medium">
-              Catalogus →
-            </Link>
-          </div>
+          <span className="text-white/50 text-xs select-none">IT CMDB</span>
+        </div>
+        {/* Tab navigation */}
+        <div className="px-4 sm:px-6 flex gap-0 overflow-x-auto scrollbar-none">
+          <Link
+            href="/dashboard/it-cmdb"
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 border-white text-white"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Interne Hardware
+          </Link>
+          <Link
+            href="/dashboard/it-cmdb/catalogus"
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-white/55 hover:text-white/85 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Catalogus
+          </Link>
         </div>
       </header>
 
