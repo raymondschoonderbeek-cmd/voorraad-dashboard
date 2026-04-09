@@ -145,6 +145,14 @@ export default function BeheerPage() {
   const [bewerkModules, setBewerkModules] = useState<DashboardModuleId[]>([])
   const [bewerkLandFilter, setBewerkLandFilter] = useState<LandFilter>('alle')
 
+  // Bulk module toewijzen
+  const [bulkModulePanel, setBulkModulePanel] = useState(false)
+  const [bulkModuleId, setBulkModuleId] = useState<DashboardModuleId>('voorraad')
+  const [bulkSelectie, setBulkSelectie] = useState<Record<string, boolean>>({})
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkSuccess, setBulkSuccess] = useState('')
+  const [bulkError, setBulkError] = useState('')
+
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
   const [nieuwIp, setNieuwIp] = useState('')
@@ -788,6 +796,50 @@ export default function BeheerPage() {
     setToonForm(false)
   }
 
+  async function slaaBulkModulesOp() {
+    setBulkLoading(true)
+    setBulkError('')
+    setBulkSuccess('')
+
+    // Alleen gebruikers waarvan de selectie VERANDERD is t.o.v. de huidige toestand
+    const updates: { user_id: string; modules_toegang: DashboardModuleId[] }[] = []
+    for (const rol of rollen) {
+      if (rol.rol === 'admin') continue
+      const uid = rol.user_id
+      const hadModule = (profileModulesResolved[uid] ?? []).includes(bulkModuleId)
+      const heeftModule = bulkSelectie[uid] ?? hadModule
+      if (heeftModule === hadModule) continue
+
+      const huidig = profileModulesResolved[uid] ?? []
+      const nieuw: DashboardModuleId[] = heeftModule
+        ? [...new Set([...huidig, bulkModuleId])]
+        : huidig.filter(m => m !== bulkModuleId)
+      updates.push({ user_id: uid, modules_toegang: nieuw })
+    }
+
+    if (updates.length === 0) {
+      setBulkSuccess('Geen wijzigingen.')
+      setBulkLoading(false)
+      return
+    }
+
+    const res = await fetch('/api/gebruikers/modules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBulkLoading(false)
+
+    if (res.ok) {
+      setBulkSuccess(`${data.succeeded ?? updates.length} gebruiker${(data.succeeded ?? updates.length) !== 1 ? 's' : ''} bijgewerkt.`)
+      await haalGebruikersOp(true)
+      setBulkSelectie({})
+    } else {
+      setBulkError(data.error ?? data.message ?? 'Opslaan mislukt.')
+    }
+  }
+
   const gefilterdeGebruikers = useMemo(() => {
     const q = gebruikerZoekterm.trim().toLowerCase()
     if (!q) return rollen
@@ -1192,6 +1244,14 @@ export default function BeheerPage() {
                   {cleanupLoading ? <span className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#dc2626' }} /> : '🗑'}
                   {cleanupLoading ? 'Laden…' : 'Niet-DRG opruimen'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { setBulkModulePanel(v => !v); setBulkSelectie({}); setBulkSuccess(''); setBulkError('') }}
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 flex items-center gap-2 shrink-0"
+                  style={bulkModulePanel ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F, borderColor: DYNAMO_BLUE } : { borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
+                >
+                  Modules toewijzen
+                </button>
                 <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
                   + Gebruiker uitnodigen
                 </button>
@@ -1262,6 +1322,103 @@ export default function BeheerPage() {
                     </ul>
                   </details>
                 )}
+              </div>
+            )}
+
+            {/* Bulk module toewijzen */}
+            {bulkModulePanel && (
+              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Modules bulk toewijzen / ontkoppelen</h2>
+                  <button type="button" onClick={() => setBulkModulePanel(false)} className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>✕ Sluiten</button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="text-xs font-semibold" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Module:</label>
+                  <select
+                    value={bulkModuleId}
+                    onChange={e => { setBulkModuleId(e.target.value as DashboardModuleId); setBulkSelectie({}) }}
+                    className="rounded-xl px-3 py-2 text-sm"
+                    style={{ background: 'white', border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                  >
+                    {DASHBOARD_MODULE_ORDER.map(id => (
+                      <option key={id} value={id}>{MODULE_LABELS[id]}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allesAan = rollen.filter(r => r.rol !== 'admin').every(r => {
+                        const huidig = (profileModulesResolved[r.user_id] ?? []).includes(bulkModuleId)
+                        return bulkSelectie[r.user_id] !== undefined ? bulkSelectie[r.user_id] : huidig
+                      })
+                      const nieuw: Record<string, boolean> = {}
+                      for (const r of rollen) {
+                        if (r.rol !== 'admin') nieuw[r.user_id] = !allesAan
+                      }
+                      setBulkSelectie(nieuw)
+                    }}
+                    className="text-xs rounded-lg px-3 py-1.5 border transition"
+                    style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}
+                  >
+                    Alles aan/uit
+                  </button>
+                </div>
+
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.1)' }}>
+                  <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 px-3 py-2 text-xs font-semibold" style={{ background: 'rgba(45,69,124,0.04)', color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
+                    <span>Toegang</span><span>Gebruiker</span><span>Rol</span>
+                  </div>
+                  <div className="divide-y divide-dynamo-blue-light/10" style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {rollen.filter(r => r.rol !== 'admin').map(rol => {
+                      const uid = rol.user_id
+                      const hadModule = (profileModulesResolved[uid] ?? []).includes(bulkModuleId)
+                      const heeftModule = bulkSelectie[uid] !== undefined ? bulkSelectie[uid] : hadModule
+                      const gewijzigd = heeftModule !== hadModule
+                      return (
+                        <label key={uid} className="grid grid-cols-[auto_1fr_auto] gap-x-3 items-center px-3 py-2.5 cursor-pointer transition" style={{ background: gewijzigd ? 'rgba(45,69,124,0.04)' : 'white', fontFamily: F }}>
+                          <input
+                            type="checkbox"
+                            checked={heeftModule}
+                            onChange={e => setBulkSelectie(prev => ({ ...prev, [uid]: e.target.checked }))}
+                            className="accent-[#2D457C] w-4 h-4"
+                          />
+                          <div>
+                            <div className="text-sm font-medium" style={{ color: DYNAMO_BLUE }}>{rol.naam || userEmails[uid] || uid}</div>
+                            <div className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>{userEmails[uid]}</div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {gewijzigd && <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{ background: heeftModule ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.08)', color: heeftModule ? '#16a34a' : '#dc2626' }}>{heeftModule ? '+ Toevoegen' : '− Verwijderen'}</span>}
+                            <span className="text-xs rounded-full px-2 py-0.5" style={{ background: 'rgba(45,69,124,0.07)', color: 'rgba(45,69,124,0.5)' }}>{rol.rol}</span>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {bulkError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{bulkError}</p>}
+                {bulkSuccess && <p className="text-sm" style={{ color: '#16a34a', fontFamily: F }}>✓ {bulkSuccess}</p>}
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={slaaBulkModulesOp}
+                    disabled={bulkLoading}
+                    className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                    style={{ background: DYNAMO_BLUE, fontFamily: F }}
+                  >
+                    {bulkLoading ? 'Bezig...' : 'Wijzigingen opslaan'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setBulkSelectie({}); setBulkSuccess(''); setBulkError('') }}
+                    className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition"
+                    style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}
+                  >
+                    Reset selectie
+                  </button>
+                </div>
               </div>
             )}
 

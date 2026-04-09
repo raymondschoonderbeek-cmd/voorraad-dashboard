@@ -21,7 +21,8 @@ function isModuleId(x: unknown): x is DashboardModuleId {
   return typeof x === 'string' && (ALL_MODULES as readonly string[]).includes(x)
 }
 
-/** Expliciete JSON-array uit DB, of null = legacy */
+/** Expliciete JSON-array uit DB, of null = niet ingesteld (gebruik rol-defaults).
+ *  Lege array [] = expliciet leeg (geen modules), onderscheid van null = niet ingesteld. */
 export function parseModulesToegang(raw: unknown): DashboardModuleId[] | null {
   if (raw == null) return null
   if (!Array.isArray(raw)) return null
@@ -29,7 +30,7 @@ export function parseModulesToegang(raw: unknown): DashboardModuleId[] | null {
   for (const x of raw) {
     if (isModuleId(x) && !out.includes(x)) out.push(x)
   }
-  return out.length > 0 ? out : null
+  return out
 }
 
 export type ProfileModuleInput = {
@@ -48,7 +49,7 @@ export function resolveDashboardModules(
   isAdmin: boolean
 ): DashboardModuleId[] {
   const explicit = parseModulesToegang(profile?.modules_toegang)
-  if (explicit) return explicit
+  if (explicit !== null) return explicit
 
   if (isAdmin || rol === 'admin') return [...ALL_MODULES]
   if (rol === 'lunch') return ['lunch']
@@ -91,4 +92,9 @@ export function normalizeModulesFromBody(raw: unknown, rol: string): DashboardMo
     }
   }
   return out.length > 0 ? out : null
+}
+
+/** Intern: onderscheid null (niet ingesteld) van [] (expliciet leeg) voor weergave in beheer-UI */
+export function hasExplicitModules(raw: unknown): boolean {
+  return Array.isArray(raw)
 }

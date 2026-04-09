@@ -110,7 +110,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const defaultOrder = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'meer']
-    await adminClient.from('profiles').upsert(
+    const { error: profileErr } = await adminClient.from('profiles').upsert(
       {
         user_id,
         modules_toegang: modList,
@@ -122,8 +122,12 @@ export async function PUT(request: NextRequest) {
       },
       { onConflict: 'user_id' }
     )
-  } catch {
-    // profiles niet beschikbaar
+    if (profileErr) {
+      return NextResponse.json({ error: `Modules opslaan mislukt: ${profileErr.message}` }, { status: 500 })
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Onbekende fout'
+    return NextResponse.json({ error: `Profiel opslaan mislukt: ${msg}` }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })
