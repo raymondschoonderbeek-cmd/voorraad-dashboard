@@ -661,15 +661,25 @@ export default function ItCmdbPage() {
               type="button"
               disabled={intuneSyncing || intuneConfigData?.configured === false}
               onClick={() => void onIntuneSync()}
-              className="rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ border: `2px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }}
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              style={{ border: `1px solid rgba(45,69,124,0.25)`, color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
               title={
                 intuneConfigData?.configured === false
                   ? 'Stel AZURE_TENANT_ID, AZURE_CLIENT_ID en AZURE_CLIENT_SECRET in (server) en verleen Graph DeviceManagementManagedDevices.Read.All'
                   : 'Synchroniseer met Microsoft Intune (Graph API)'
               }
             >
-              {intuneSyncing ? 'Intune-sync…' : 'Sync Intune'}
+              {intuneSyncing ? (
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                </svg>
+              )}
+              {intuneSyncing ? 'Synchroniseren…' : 'Sync Microsoft'}
             </button>
             <button
               type="button"

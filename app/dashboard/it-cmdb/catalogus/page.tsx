@@ -559,11 +559,11 @@ function AanvraagModal({
   }, [gebruikersData])
 
   const gefilterdeGebruikers = useMemo(() => {
-    if (!namensZoek.trim()) return alleGebruikers.slice(0, 8)
+    if (!namensZoek.trim()) return alleGebruikers
     const q = namensZoek.toLowerCase()
     return alleGebruikers.filter(g =>
       g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q)
-    ).slice(0, 8)
+    )
   }, [alleGebruikers, namensZoek])
 
   async function indienen() {
@@ -646,7 +646,7 @@ function AanvraagModal({
                   style={{ width: '100%', borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '10px 12px', fontSize: 14, fontFamily: F, color: '#1e293b', outline: 'none', boxSizing: 'border-box' }}
                 />
                 {zoekOpen && gefilterdeGebruikers.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 10, boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: 4, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 10, boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: 4, overflowY: 'auto', maxHeight: 224 }}>
                     {gefilterdeGebruikers.map(g => (
                       <button
                         key={g.user_id}

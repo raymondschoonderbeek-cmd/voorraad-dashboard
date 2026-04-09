@@ -133,9 +133,9 @@ export default function InstellingenPage() {
     [portalUsersData]
   )
   const gefilterdePortalUsers = useMemo(() => {
-    if (!aanvraagNamensZoek.trim()) return allePortalUsers.slice(0, 8)
+    if (!aanvraagNamensZoek.trim()) return allePortalUsers
     const q = aanvraagNamensZoek.toLowerCase()
-    return allePortalUsers.filter(g => g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q)).slice(0, 8)
+    return allePortalUsers.filter(g => g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q))
   }, [allePortalUsers, aanvraagNamensZoek])
 
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
@@ -568,7 +568,7 @@ export default function InstellingenPage() {
                         className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300"
                       />
                       {aanvraagNamensOpen && gefilterdePortalUsers.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto max-h-56">
                           {gefilterdePortalUsers.map(g => (
                             <button key={g.user_id} type="button"
                               onClick={() => { setAanvraagNamensUser(g); setAanvraagNamensOpen(false); setAanvraagNamensZoek('') }}
