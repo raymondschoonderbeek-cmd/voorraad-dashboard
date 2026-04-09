@@ -90,7 +90,7 @@ export default function BeheerPage() {
   // Azure sync
   const [azureSyncLoading, setAzureSyncLoading] = useState(false)
   const [azureSyncResultaat, setAzureSyncResultaat] = useState<{
-    totaal_azure: number; gefilterd: number; verwerkt: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; overgeslagen: number; fouten: string[]
+    totaal_azure: number; gefilterd: number; verwerkt: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; manager_gevonden: number; manager_geen: number; overgeslagen: number; fouten: string[]
   } | null>(null)
 
   // Cleanup niet-DRG gebruikers
@@ -1352,7 +1352,11 @@ export default function BeheerPage() {
                   <span style={{ fontWeight: 600 }}>{azureSyncResultaat.verwerkt ?? 0} verwerkt</span> &nbsp;·&nbsp;
                   <span style={{ color: '#16a34a', fontWeight: 600 }}>{azureSyncResultaat.aangemaakt} nieuw</span> &nbsp;·&nbsp;
                   {azureSyncResultaat.profiel_gezet} profiel gezet &nbsp;·&nbsp;
-                  {azureSyncResultaat.manager_bijgewerkt ?? 0} managers bijgewerkt
+                  {azureSyncResultaat.manager_bijgewerkt ?? 0} bijgewerkt &nbsp;·&nbsp;
+                  <span style={{ color: azureSyncResultaat.manager_gevonden > 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                    {azureSyncResultaat.manager_gevonden ?? 0} managers gevonden
+                  </span>
+                  {(azureSyncResultaat.manager_geen ?? 0) > 0 && <>&nbsp;·&nbsp;{azureSyncResultaat.manager_geen} zonder manager</>}
                 </div>
                 {azureSyncResultaat.fouten.length > 0 && (
                   <details className="mt-2">

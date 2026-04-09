@@ -111,28 +111,47 @@ async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
 }
 
 // Fetch managers for a list of users in parallel batches of 20
-async function fetchManagersForUsers(token: string, users: GraphUser[]): Promise<void> {
+// Returns { gevonden, geenManager, fouten }
+async function fetchManagersForUsers(
+  token: string,
+  users: GraphUser[]
+): Promise<{ gevonden: number; geenManager: number; fouten: string[] }> {
   const BATCH = 20
+  let gevonden = 0
+  let geenManager = 0
+  const fouten: string[] = []
+
   for (let i = 0; i < users.length; i += BATCH) {
     const batch = users.slice(i, i + BATCH)
     await Promise.all(batch.map(async user => {
       try {
         const res = await fetch(
-          `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user.id)}/manager?$select=displayName,mail,userPrincipalName`,
+          `https://graph.microsoft.com/v1.0/users/${user.id}/manager?$select=displayName,mail,userPrincipalName`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        if (!res.ok) return // geen manager of geen toegang — overslaan
+        if (res.status === 404) {
+          geenManager++
+          return
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: { message?: string; code?: string } }
+          fouten.push(`Manager ${user.userPrincipalName}: ${res.status} ${body.error?.code ?? ''} ${body.error?.message ?? ''}`.trim())
+          return
+        }
         const mgr = await res.json() as { displayName?: string; mail?: string; userPrincipalName?: string }
         user.manager = {
           displayName: mgr.displayName ?? null,
           mail: mgr.mail ?? null,
           userPrincipalName: mgr.userPrincipalName ?? null,
         }
-      } catch {
-        // overslaan bij fout
+        gevonden++
+      } catch (e) {
+        fouten.push(`Manager ${user.userPrincipalName}: ${e instanceof Error ? e.message : String(e)}`)
       }
     }))
   }
+
+  return { gevonden, geenManager, fouten }
 }
 
 function voldoetAanSyncCriteria(user: GraphUser, e3SkuIds: Set<string>): boolean {
@@ -200,7 +219,7 @@ export async function POST(request: NextRequest) {
   const gefilterd = azureUsers.length - teVerwerken.length
 
   // Managers ophalen voor gekwalificeerde gebruikers (apart, want $expand+$filter werkt niet samen)
-  await fetchManagersForUsers(token, teVerwerken)
+  const managerStats = await fetchManagersForUsers(token, teVerwerken)
 
   // Haal alle bestaande Supabase-gebruikers op
   const supabaseUsers: { id: string; email: string }[] = []
@@ -291,14 +310,24 @@ export async function POST(request: NextRequest) {
         }
       }
     } else {
-      // Bestaande gebruiker: manager bijwerken als die veranderd is
+      // Bestaande gebruiker: naam + manager bijwerken
+      // Alleen manager overschrijven als we hem daadwerkelijk hebben opgehaald
+      const updatePayload: Record<string, unknown> = {
+        naam: azUser.displayName ?? email,
+      }
+      if (azUser.manager !== undefined) {
+        // manager property is gezet door fetchManagersForUsers (ook als null = geen manager)
+        updatePayload.manager_naam = managerNaam
+        updatePayload.manager_email = managerEmail
+      }
+
       const { error: updateErr } = await adminClient
         .from('gebruiker_rollen')
-        .update({ manager_naam: managerNaam, manager_email: managerEmail })
+        .update(updatePayload)
         .eq('user_id', userId)
 
       if (updateErr) {
-        fouten.push(`Manager update ${email}: ${updateErr.message}`)
+        fouten.push(`Update ${email}: ${updateErr.message}`)
       } else {
         managerBijgewerkt++
       }
@@ -313,7 +342,9 @@ export async function POST(request: NextRequest) {
     aangemaakt,
     profiel_gezet: profielGezet,
     manager_bijgewerkt: managerBijgewerkt,
+    manager_gevonden: managerStats.gevonden,
+    manager_geen: managerStats.geenManager,
     overgeslagen,
-    fouten,
+    fouten: [...fouten, ...managerStats.fouten],
   })
 }
