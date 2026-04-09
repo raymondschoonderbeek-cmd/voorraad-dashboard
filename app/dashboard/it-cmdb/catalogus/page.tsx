@@ -739,11 +739,11 @@ export default function CatalogusPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[700px]">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}>
-                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'In gebruik', 'Totaal', 'Kosten/mnd', 'Maandtotaal', 'Notities', 'Gebruikers', ''].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase whitespace-nowrap" style={{ color: DYNAMO_BLUE, letterSpacing: '0.06em', fontFamily: F }}>
+                    {['Product', 'Gebruik', 'Kosten / mnd', 'Maandtotaal', ''].map(h => (
+                      <th key={h} className={`text-left px-4 py-3 text-xs font-bold uppercase whitespace-nowrap ${h === 'Maandtotaal' || h === 'Kosten / mnd' ? 'text-right' : ''}`} style={{ color: DYNAMO_BLUE, letterSpacing: '0.06em', fontFamily: F }}>
                         {h}
                       </th>
                     ))}
@@ -751,70 +751,93 @@ export default function CatalogusPage() {
                 </thead>
                 <tbody>
                   {gefilterd.map((item, i) => (
-                    <tr key={item.id} style={{ borderBottom: i < gefilterd.length - 1 ? '1px solid rgba(45,69,124,0.06)' : 'none' }}>
-                      <td className="px-4 py-3 font-semibold max-w-[180px] truncate" style={{ color: DYNAMO_BLUE }} title={item.naam}>{item.naam}</td>
-                      <td className="px-4 py-3 whitespace-nowrap"><TypeBadge type={item.type} /></td>
-                      <td className="px-4 py-3 whitespace-nowrap"><CategorieBadge cat={item.categorie} /></td>
-                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: '#334155' }}>{item.leverancier}</td>
-                      <td className="px-4 py-3" style={{ color: '#64748b' }}>{item.versie ?? '—'}</td>
-                      <td className="px-4 py-3">
-                        {/* In gebruik: aantal gekoppelde gebruikers, met kleur als het dicht bij het totaal zit */}
+                    <tr key={item.id} className="group transition hover:bg-gray-50/60" style={{ borderBottom: i < gefilterd.length - 1 ? '1px solid rgba(45,69,124,0.06)' : 'none' }}>
+
+                      {/* ── Product ── */}
+                      <td className="px-4 py-3" style={{ minWidth: 260 }}>
+                        <div className="font-semibold text-sm leading-snug" style={{ color: DYNAMO_BLUE }}>{item.naam}</div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <TypeBadge type={item.type} />
+                          <CategorieBadge cat={item.categorie} />
+                          <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>{item.leverancier}{item.versie ? ` · ${item.versie}` : ''}</span>
+                        </div>
+                        {item.notities && (
+                          <div className="text-xs mt-1 truncate max-w-xs" style={{ color: '#94a3b8' }} title={item.notities}>{item.notities}</div>
+                        )}
+                      </td>
+
+                      {/* ── Gebruik ── */}
+                      <td className="px-4 py-3" style={{ minWidth: 110 }}>
                         {(() => {
                           const n = item.in_gebruik
                           const max = item.aantallen
                           const overschreden = max != null && n > max
                           const bijna = max != null && n >= max * 0.9 && n <= max
                           const kleur = overschreden ? '#b91c1c' : bijna ? '#d97706' : n > 0 ? '#15803d' : '#94a3b8'
+                          const pct = max != null && max > 0 ? Math.min(n / max, 1) : null
                           return (
-                            <span className="font-semibold" style={{ color: kleur }} title={overschreden ? 'Meer in gebruik dan beschikbaar!' : undefined}>
-                              {n}
-                              {overschreden && <span className="ml-1 text-xs">⚠</span>}
-                            </span>
+                            <div>
+                              <div className="flex items-baseline gap-1">
+                                <span className="font-bold text-base" style={{ color: kleur }}>{n}</span>
+                                {max != null && <span className="text-xs" style={{ color: 'rgba(45,69,124,0.4)' }}>/ {max}</span>}
+                                {overschreden && <span className="text-xs text-red-600" title="Meer in gebruik dan beschikbaar">⚠</span>}
+                              </div>
+                              {pct != null && (
+                                <div className="mt-1 rounded-full overflow-hidden" style={{ height: 4, width: 72, background: 'rgba(45,69,124,0.08)' }}>
+                                  <div style={{ height: '100%', width: `${pct * 100}%`, background: kleur, borderRadius: 9999, transition: 'width 0.3s' }} />
+                                </div>
+                              )}
+                            </div>
                           )
                         })()}
                       </td>
-                      <td className="px-4 py-3 font-semibold" style={{ color: item.aantallen != null ? DYNAMO_BLUE : '#94a3b8' }}>
-                        {item.aantallen != null ? item.aantallen : '—'}
+
+                      {/* ── Kosten per stuk ── */}
+                      <td className="px-4 py-3 text-right whitespace-nowrap" style={{ minWidth: 110 }}>
+                        {item.kosten_per_eenheid != null ? (
+                          <span className="font-medium" style={{ color: '#334155' }}>{formatEuro(item.kosten_per_eenheid)}</span>
+                        ) : (
+                          <span style={{ color: '#cbd5e1' }}>—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: item.kosten_per_eenheid != null ? '#334155' : '#94a3b8' }}>
-                        {item.kosten_per_eenheid != null ? formatEuro(item.kosten_per_eenheid) : '—'}
+
+                      {/* ── Maandtotaal ── */}
+                      <td className="px-4 py-3 text-right whitespace-nowrap" style={{ minWidth: 130 }}>
+                        {item.kosten_per_eenheid != null ? (() => {
+                          const basis = item.aantallen ?? item.in_gebruik
+                          const totaal = item.kosten_per_eenheid * basis
+                          return (
+                            <div title={`${basis} × ${formatEuro(item.kosten_per_eenheid)}`}>
+                              <div className="font-bold" style={{ color: DYNAMO_BLUE }}>{formatEuro(totaal)}</div>
+                              <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)' }}>{formatEuro(totaal * 12)} / jr</div>
+                            </div>
+                          )
+                        })() : (
+                          <span style={{ color: '#cbd5e1' }}>—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap font-semibold" style={{ color: item.kosten_per_eenheid != null ? DYNAMO_BLUE : '#94a3b8' }}>
-                        {item.kosten_per_eenheid != null
-                          ? (() => {
-                              const basis = item.aantallen ?? item.in_gebruik
-                              const totaal = item.kosten_per_eenheid * basis
-                              return (
-                                <span title={`${basis} × ${formatEuro(item.kosten_per_eenheid)}`}>
-                                  {formatEuro(totaal)}
-                                </span>
-                              )
-                            })()
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 max-w-[160px] truncate" style={{ color: '#94a3b8' }} title={item.notities ?? ''}>{item.notities || '—'}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => setGebruikersItem(item)}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80"
-                          style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)', fontFamily: F }}
-                          title="Gebruikers koppelen / beheren"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                          </svg>
-                          Gebruikers
-                        </button>
-                      </td>
+
+                      {/* ── Acties ── */}
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => setModal({ mode: 'edit', item })} className="rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80" style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'transparent', fontFamily: F }}>
-                            Bewerk
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setGebruikersItem(item)}
+                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                            style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)', fontFamily: F }}
+                            title="Gebruikers koppelen / beheren"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                            {item.in_gebruik > 0 ? item.in_gebruik : ''}
                           </button>
-                          <button type="button" onClick={() => void handleDelete(item)} className="rounded-lg px-2.5 py-1 text-xs font-semibold transition hover:opacity-80" style={{ border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F }}>
-                            Verwijder
+                          <button type="button" onClick={() => setModal({ mode: 'edit', item })} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition hover:opacity-80" style={{ border: `1px solid rgba(45,69,124,0.15)`, color: DYNAMO_BLUE, background: 'transparent', fontFamily: F }} title="Bewerken">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" /></svg>
+                          </button>
+                          <button type="button" onClick={() => void handleDelete(item)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition hover:opacity-80" style={{ border: '1px solid rgba(220,38,38,0.15)', color: '#b91c1c', background: 'transparent', fontFamily: F }} title="Verwijderen">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
                           </button>
                         </div>
                       </td>
