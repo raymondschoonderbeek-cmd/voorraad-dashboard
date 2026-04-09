@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
@@ -395,8 +395,6 @@ function GebruikersModal({
     `/api/it-cmdb/catalogus/${item.id}/gebruikers`, fetcher
   )
   const { data: portalData } = useSWR<{ users: PortalUser[] }>('/api/it-cmdb/portal-users', fetcher)
-  const zoekInputRef = useRef<HTMLInputElement>(null)
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   const gekoppeld = gekoppeldData?.gebruikers ?? []
   const beschikbaar = useMemo(() => {
@@ -408,11 +406,8 @@ function GebruikersModal({
 
   const [selectedUserId, setSelectedUserId] = useState('')
   const [zoek, setZoek] = useState('')
-  const [zoekOpen, setZoekOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const isProduct = item.type === 'product'
-
-  const geselecteerd = beschikbaar.find(u => u.user_id === selectedUserId) ?? null
 
   const zoekResultaten = useMemo(() => {
     const q = zoek.trim().toLowerCase()
@@ -421,12 +416,6 @@ function GebruikersModal({
       (u.naam || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     )
   }, [beschikbaar, zoek])
-
-  function kiesGebruiker(u: PortalUser) {
-    setSelectedUserId(u.user_id)
-    setZoek(u.naam || u.email)
-    setZoekOpen(false)
-  }
 
   async function koppel() {
     if (!selectedUserId) return
@@ -464,43 +453,63 @@ function GebruikersModal({
         {/* Toevoegen */}
         <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)' }}>
           <label style={labelStyle}>Gebruiker toevoegen</label>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            {/* Searchable dropdown — uses fixed positioning to escape modal overflow clipping */}
-            <div style={{ position: 'relative', flex: 1 }}>
+          {!portalData ? (
+            <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>Laden…</p>
+          ) : beschikbaar.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>Alle gebruikers zijn al gekoppeld.</p>
+          ) : (
+            <>
+              {/* Search */}
               <input
-                ref={zoekInputRef}
-                type="text"
+                type="search"
                 value={zoek}
-                onChange={e => { setZoek(e.target.value); setSelectedUserId(''); setZoekOpen(true) }}
-                onFocus={() => {
-                  const rect = zoekInputRef.current?.getBoundingClientRect()
-                  if (rect) setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-                  setZoekOpen(true)
-                }}
-                onBlur={() => setTimeout(() => { setZoekOpen(false); setDropdownPos(null) }, 160)}
-                placeholder={beschikbaar.length === 0 ? 'Alle gebruikers al gekoppeld' : 'Zoek op naam of e-mail…'}
-                disabled={beschikbaar.length === 0}
-                style={{ ...inputStyle, margin: 0 }}
+                onChange={e => { setZoek(e.target.value); setSelectedUserId('') }}
+                placeholder="Zoek op naam of e-mail…"
+                style={{ ...inputStyle, marginBottom: '8px' }}
               />
-            </div>
-            <button
-              type="button"
-              disabled={!selectedUserId || adding}
-              onClick={() => void koppel()}
-              style={{ borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (!selectedUserId || adding) ? 'not-allowed' : 'pointer', opacity: (!selectedUserId || adding) ? 0.5 : 1, whiteSpace: 'nowrap' }}
-            >
-              {adding ? '…' : 'Koppelen'}
-            </button>
-          </div>
-          {geselecteerd && (
-            <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#15803d' }}>
-              ✓ {geselecteerd.naam || prettyEmail(geselecteerd.email)} geselecteerd
-            </p>
-          )}
-          {isProduct && (
-            <p style={{ margin: '8px 0 0', fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>
-              Na het koppelen kun je per gebruiker serienummer en datum in gebruik invoeren.
-            </p>
+              {/* Scrollable pick list */}
+              <div style={{ border: '1px solid rgba(45,69,124,0.12)', borderRadius: '10px', overflowY: 'auto', maxHeight: '220px', background: 'white' }}>
+                {zoekResultaten.length === 0 ? (
+                  <p style={{ margin: 0, padding: '10px 14px', fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</p>
+                ) : zoekResultaten.map(u => {
+                  const selected = u.user_id === selectedUserId
+                  return (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onClick={() => setSelectedUserId(selected ? '' : u.user_id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', padding: '9px 14px', background: selected ? 'rgba(45,69,124,0.07)' : 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
+                    >
+                      <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${selected ? DYNAMO_BLUE : 'rgba(45,69,124,0.25)'}`, background: selected ? DYNAMO_BLUE : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {selected && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white', display: 'block' }} />}
+                      </span>
+                      <span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
+                        <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>{u.email}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: 'rgba(45,69,124,0.5)' }}>
+                  {zoekResultaten.length} van {beschikbaar.length} beschikbaar
+                </span>
+                <button
+                  type="button"
+                  disabled={!selectedUserId || adding}
+                  onClick={() => void koppel()}
+                  style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (!selectedUserId || adding) ? 'not-allowed' : 'pointer', opacity: (!selectedUserId || adding) ? 0.5 : 1 }}
+                >
+                  {adding ? 'Koppelen…' : 'Koppelen'}
+                </button>
+              </div>
+              {isProduct && (
+                <p style={{ margin: '8px 0 0', fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>
+                  Na het koppelen kun je per gebruiker serienummer en datum in gebruik invoeren.
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -536,29 +545,6 @@ function GebruikersModal({
         </div>
       </div>
 
-      {/* Fixed-position dropdown — escapes modal overflow clipping */}
-      {zoekOpen && dropdownPos && zoekResultaten.length > 0 && (
-        <div
-          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.14)', overflowY: 'auto', maxHeight: '260px', fontFamily: F }}
-        >
-          {zoekResultaten.map(u => (
-            <button
-              key={u.user_id}
-              type="button"
-              onMouseDown={() => kiesGebruiker(u)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
-            >
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
-              <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>{u.email}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {zoekOpen && dropdownPos && zoek.trim() && zoekResultaten.length === 0 && (
-        <div style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.14)', padding: '10px 14px', fontFamily: F }}>
-          <span style={{ fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</span>
-        </div>
-      )}
     </div>
   )
 }
