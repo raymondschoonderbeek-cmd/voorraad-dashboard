@@ -249,6 +249,7 @@ export async function POST(request: NextRequest) {
           leverancier: 'Microsoft',
           microsoft_sku_id: sku.skuId,
           aantallen,
+          aanvraagbaar: false,
           updated_at: now,
         })
         .select('id')

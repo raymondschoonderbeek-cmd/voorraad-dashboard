@@ -40,6 +40,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     const k = typeof body.kosten_per_eenheid === 'number' ? body.kosten_per_eenheid : parseFloat(String(body.kosten_per_eenheid))
     if (!Number.isNaN(k)) update.kosten_per_eenheid = k
   }
+  if (typeof body.aanvraagbaar === 'boolean') update.aanvraagbaar = body.aanvraagbaar
 
   if (Object.keys(update).length <= 1) {
     return NextResponse.json({ error: 'Geen velden om bij te werken' }, { status: 400 })

@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { withRateLimit } from '@/lib/api-middleware'
 
 /**
- * GET: beschikbare licenties om een aanvraag voor in te dienen.
- * Toegankelijk voor elke ingelogde gebruiker (niet alleen IT-CMDB module).
- * Geeft alleen type=licentie terug, minimale velden.
+ * GET: beschikbare licenties voor zelfaanvraag (Instellingen).
+ * Toegankelijk voor elke ingelogde gebruiker.
+ * Alleen type=licentie én aanvraagbaar=true (IT beheert dit in IT CMDB → Catalogus).
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     .from('it_catalogus')
     .select('id, naam, categorie, leverancier, versie, kosten_per_eenheid')
     .eq('type', 'licentie')
+    .eq('aanvraagbaar', true)
     .order('naam', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

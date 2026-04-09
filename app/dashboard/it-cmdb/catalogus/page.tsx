@@ -22,6 +22,8 @@ interface CatalogusItem {
   in_gebruik: number              // aantal gekoppelde gebruikers
   kosten_per_eenheid: number | null  // kosten per licentie/product per maand
   notities: string | null
+  /** Zichtbaar voor zelfaanvraag onder Instellingen; IT kan altijd via deze pagina aanvragen. */
+  aanvraagbaar: boolean
   created_at: string
   updated_at: string
 }
@@ -81,7 +83,7 @@ const CATEGORIE_KLEUREN: Record<string, { bg: string; fg: string }> = {
 type CatalogusForm = Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at' | 'in_gebruik'>
 
 const LEEG: CatalogusForm = {
-  naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: null, aantallen: null, kosten_per_eenheid: null, notities: null,
+  naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: null, aantallen: null, kosten_per_eenheid: null, notities: null, aanvraagbaar: false,
 }
 
 function formatEuro(bedrag: number): string {
@@ -213,6 +215,21 @@ function FormModal({
             <label style={labelStyle}>Notities</label>
             <textarea style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }} value={form.notities ?? ''} onChange={e => set('notities', e.target.value || null)} placeholder="Optionele opmerkingen…" />
           </div>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', fontFamily: F }}>
+            <input
+              type="checkbox"
+              checked={form.aanvraagbaar}
+              onChange={e => set('aanvraagbaar', e.target.checked)}
+              style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0, accentColor: DYNAMO_BLUE }}
+            />
+            <span>
+              <span style={{ fontWeight: 700, color: DYNAMO_BLUE, display: 'block', fontSize: 14 }}>Aanvraagbaar voor medewerkers</span>
+              <span style={{ fontSize: 12, color: 'rgba(45,69,124,0.55)', lineHeight: 1.45, display: 'block', marginTop: 4 }}>
+                Als aangevinkt: licentie verschijnt bij <strong>Instellingen → Mijn software-aanvragen</strong> zodat iedereen zelf kan aanvragen.
+                Uitgeschakeld: alleen via <strong>IT CMDB → Catalogus</strong> (inclusief namens collega&apos;s).
+              </span>
+            </span>
+          </label>
         </div>
         <div style={{ display: 'flex', gap: '10px', marginTop: '24px', justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} disabled={saving} style={{ borderRadius: '10px', padding: '8px 16px', fontSize: '14px', border: '1px solid rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE, fontFamily: F, cursor: 'pointer' }}>
@@ -1325,6 +1342,11 @@ export default function CatalogusPage() {
                         <div className="flex flex-wrap items-center gap-1.5 mt-1">
                           <TypeBadge type={item.type} />
                           <CategorieBadge cat={item.categorie} />
+                          {item.aanvraagbaar ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5" style={{ background: '#dcfce7', color: '#15803d' }} title="Zichtbaar bij zelfaanvraag in Instellingen">Zelf aanvraag</span>
+                          ) : (
+                            <span className="text-[10px] font-semibold rounded-full px-2 py-0.5" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.45)' }} title="Alleen aan te vragen via IT CMDB → Catalogus">Alleen IT</span>
+                          )}
                           <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>{item.leverancier}{item.versie ? ` · ${item.versie}` : ''}</span>
                         </div>
                         {item.notities && (
@@ -1420,7 +1442,17 @@ export default function CatalogusPage() {
 
       {modal && (
         <FormModal
-          initial={modal.mode === 'edit' ? { naam: modal.item.naam, type: modal.item.type, categorie: modal.item.categorie, leverancier: modal.item.leverancier, versie: modal.item.versie, aantallen: modal.item.aantallen, kosten_per_eenheid: modal.item.kosten_per_eenheid, notities: modal.item.notities } : LEEG}
+          initial={modal.mode === 'edit' ? {
+            naam: modal.item.naam,
+            type: modal.item.type,
+            categorie: modal.item.categorie,
+            leverancier: modal.item.leverancier,
+            versie: modal.item.versie,
+            aantallen: modal.item.aantallen,
+            kosten_per_eenheid: modal.item.kosten_per_eenheid,
+            notities: modal.item.notities,
+            aanvraagbaar: modal.item.aanvraagbaar ?? true,
+          } : LEEG}
           onClose={() => setModal(null)}
           onSave={handleSave}
           saving={saving}

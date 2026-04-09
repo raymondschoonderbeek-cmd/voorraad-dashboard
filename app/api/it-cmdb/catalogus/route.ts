@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     aantallen: aantallen != null && !Number.isNaN(aantallen) ? aantallen : null,
     kosten_per_eenheid: kostenRaw != null && !Number.isNaN(kostenRaw) ? kostenRaw : null,
     notities: typeof body.notities === 'string' ? body.notities.trim() || null : null,
+    aanvraagbaar: body.aanvraagbaar === true,
     created_by: auth.user.id,
     updated_at: new Date().toISOString(),
   }

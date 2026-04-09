@@ -435,7 +435,8 @@ export default function InstellingenPage() {
 
           {/* Nieuwe aanvraag indienen — inline catalogus */}
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-3">Nieuwe aanvraag indienen</p>
+            <p className="text-sm font-medium text-gray-700 mb-1">Nieuwe aanvraag indienen</p>
+            <p className="text-xs text-gray-400 mb-3">Alleen licenties die door IT als &ldquo;aanvraagbaar&rdquo; zijn gemarkeerd, staan hier. Andere producten vraag je aan via IT.</p>
             {!catalogusData ? (
               <p className="text-sm text-gray-400">Catalogus laden…</p>
             ) : (() => {

@@ -77,8 +77,19 @@ export async function POST(request: NextRequest) {
 
   // Catalogus-item ophalen
   const { data: item } = await supabase
-    .from('it_catalogus').select('id, naam').eq('id', body.catalogus_id).single()
+    .from('it_catalogus')
+    .select('id, naam, aanvraagbaar')
+    .eq('id', body.catalogus_id)
+    .single()
   if (!item) return NextResponse.json({ error: 'Product niet gevonden' }, { status: 404 })
+
+  // Zelfaanvraag (geen IT-rechten): alleen als catalogus-item "aanvraagbaar" is
+  if (!heeftItCmdbToegang && doelUserId === user.id && item.aanvraagbaar !== true) {
+    return NextResponse.json(
+      { error: 'Dit product is niet beschikbaar voor zelfaanvraag. Neem contact op met IT.' },
+      { status: 403 }
+    )
+  }
 
   // Aanvrager-info ophalen (van de doelgebruiker)
   const adminClient = hasAdminKey() ? createAdminClient() : supabase
