@@ -42,7 +42,7 @@ function CallbackContent() {
             msg.includes('storage was cleared')
           if (isPkce) {
             router.replace(
-              `/login?error=auth&reason=pkce&magic=1&next=${encodeURIComponent(safeNext)}`
+              `/login?error=auth&reason=pkce&detail=${encodeURIComponent(msg)}&magic=1&next=${encodeURIComponent(safeNext)}`
             )
             return
           }
