@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
@@ -38,6 +38,23 @@ interface GebruikerKoppeling {
 interface PortalUser {
   user_id: string
   email: string
+}
+
+type AanvraagStatus = 'ingediend' | 'wacht_op_manager' | 'goedgekeurd' | 'afgekeurd'
+
+interface Aanvraag {
+  id: string
+  catalogus_id: string
+  catalogus_naam: string
+  aanvrager_naam: string
+  aanvrager_email: string
+  manager_naam: string | null
+  manager_email: string | null
+  motivatie: string | null
+  status: AanvraagStatus
+  manager_beslissing_op: string | null
+  manager_notitie: string | null
+  created_at: string
 }
 
 const CATEGORIE_OPTIES = [
@@ -484,6 +501,274 @@ function GebruikersModal({
   )
 }
 
+// ── Status badge ─────────────────────────────────────────────────────────────
+
+const STATUS_META: Record<AanvraagStatus, { label: string; bg: string; fg: string }> = {
+  ingediend:         { label: 'Ingediend',        bg: '#f1f5f9', fg: '#475569' },
+  wacht_op_manager:  { label: 'Wacht op manager', bg: '#fef9c3', fg: '#854d0e' },
+  goedgekeurd:       { label: 'Goedgekeurd',      bg: '#dcfce7', fg: '#15803d' },
+  afgekeurd:         { label: 'Afgekeurd',        bg: '#fee2e2', fg: '#b91c1c' },
+}
+
+function StatusBadge({ status }: { status: AanvraagStatus }) {
+  const m = STATUS_META[status] ?? STATUS_META.ingediend
+  return (
+    <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap"
+      style={{ background: m.bg, color: m.fg }}>
+      {m.label}
+    </span>
+  )
+}
+
+// ── Aanvraag formulier modal ──────────────────────────────────────────────────
+
+function AanvraagModal({
+  item,
+  onClose,
+  onSuccess,
+}: {
+  item: CatalogusItem
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const toast = useToast()
+  const [motivatie, setMotivatie] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function indienen() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/it-cmdb/aanvragen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ catalogus_id: item.id, motivatie: motivatie.trim() || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
+      toast('Aanvraag ingediend. Je manager ontvangt een e-mail.', 'success')
+      onSuccess()
+      onClose()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Indienen mislukt', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} onClick={onClose} aria-hidden />
+      <div style={{ position: 'relative', background: 'white', borderRadius: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: 480, padding: 28, fontFamily: F }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: DYNAMO_BLUE, margin: '0 0 4px' }}>Licentie aanvragen</h2>
+        <p style={{ fontSize: 13, color: 'rgba(45,69,124,0.5)', margin: '0 0 20px' }}>
+          Je manager ontvangt een e-mail om de aanvraag goed te keuren.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: 'rgba(45,69,124,0.04)', borderRadius: 12, padding: '12px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(45,69,124,0.45)', marginBottom: 2 }}>Product</div>
+            <div style={{ fontWeight: 700, color: DYNAMO_BLUE, fontSize: 16 }}>{item.naam}</div>
+            <div style={{ fontSize: 12, color: 'rgba(45,69,124,0.5)', marginTop: 2 }}>{item.leverancier} · {item.categorie}</div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(45,69,124,0.6)', display: 'block', marginBottom: 6 }}>
+              Motivatie <span style={{ fontWeight: 400, opacity: 0.6 }}>(optioneel)</span>
+            </label>
+            <textarea
+              value={motivatie}
+              onChange={e => setMotivatie(e.target.value)}
+              rows={4}
+              placeholder="Waarom heb je deze licentie nodig?"
+              style={{ width: '100%', borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '10px 12px', fontSize: 14, fontFamily: F, color: '#1e293b', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} disabled={loading}
+            style={{ borderRadius: 10, padding: '9px 18px', fontSize: 14, border: '1px solid rgba(45,69,124,0.2)', background: 'white', color: DYNAMO_BLUE, fontFamily: F, cursor: 'pointer' }}>
+            Annuleren
+          </button>
+          <button type="button" onClick={() => void indienen()} disabled={loading}
+            style={{ borderRadius: 10, padding: '9px 22px', fontSize: 14, fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
+            {loading ? 'Bezig...' : 'Aanvraag indienen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Aanvragen tab ─────────────────────────────────────────────────────────────
+
+function AanvragenTab({ items }: { items: CatalogusItem[] }) {
+  const toast = useToast()
+  const { data, isLoading, mutate } = useSWR<{ aanvragen: Aanvraag[] }>('/api/it-cmdb/aanvragen', fetcher)
+  const aanvragen = data?.aanvragen ?? []
+
+  const [statusFilter, setStatusFilter] = useState<AanvraagStatus | 'alle'>('alle')
+  const [zoek, setZoek] = useState('')
+  const [aanvraagItem, setAanvraagItem] = useState<CatalogusItem | null>(null)
+
+  const itemMap = useMemo(() => new Map(items.map(i => [i.id, i])), [items])
+
+  const gefilterd = useMemo(() => {
+    return aanvragen.filter(a => {
+      if (statusFilter !== 'alle' && a.status !== statusFilter) return false
+      if (zoek.trim()) {
+        const q = zoek.toLowerCase()
+        return (
+          a.catalogus_naam.toLowerCase().includes(q) ||
+          a.aanvrager_naam.toLowerCase().includes(q) ||
+          a.aanvrager_email.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+  }, [aanvragen, statusFilter, zoek])
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { alle: aanvragen.length }
+    for (const a of aanvragen) c[a.status] = (c[a.status] ?? 0) + 1
+    return c
+  }, [aanvragen])
+
+  return (
+    <div className="space-y-4">
+      {/* Filter bar */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {(['alle', 'ingediend', 'wacht_op_manager', 'goedgekeurd', 'afgekeurd'] as const).map(s => {
+            const meta = s === 'alle' ? null : STATUS_META[s]
+            const active = statusFilter === s
+            return (
+              <button key={s} type="button" onClick={() => setStatusFilter(s)}
+                className="rounded-xl px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5"
+                style={{
+                  background: active ? (meta?.bg ?? DYNAMO_BLUE) : 'white',
+                  color: active ? (meta?.fg ?? 'white') : 'rgba(45,69,124,0.55)',
+                  border: `1px solid ${active ? (meta?.bg ?? DYNAMO_BLUE) : 'rgba(45,69,124,0.12)'}`,
+                  fontFamily: F,
+                }}>
+                {s === 'alle' ? 'Alle' : STATUS_META[s].label}
+                {counts[s] != null && (
+                  <span className="rounded-full px-1.5 text-xs font-bold"
+                    style={{ background: active ? 'rgba(0,0,0,0.12)' : 'rgba(45,69,124,0.08)', color: 'inherit' }}>
+                    {counts[s]}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <input type="search" placeholder="Zoek medewerker of product…" value={zoek} onChange={e => setZoek(e.target.value)}
+          className="rounded-xl px-3 py-2 text-sm w-60"
+          style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }} />
+      </div>
+
+      {/* Tabel */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+        {isLoading ? (
+          <div className="p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</div>
+        ) : gefilterd.length === 0 ? (
+          <div className="p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
+            {aanvragen.length === 0 ? 'Nog geen aanvragen.' : 'Geen aanvragen voor dit filter.'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}>
+                  {['Medewerker', 'Product', 'Manager', 'Status', 'Ingediend', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase whitespace-nowrap"
+                      style={{ color: DYNAMO_BLUE, letterSpacing: '0.06em', fontFamily: F }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gefilterd.map((a, i) => (
+                  <tr key={a.id} style={{ borderBottom: i < gefilterd.length - 1 ? '1px solid rgba(45,69,124,0.06)' : 'none' }}>
+                    <td className="px-4 py-3">
+                      <div className="font-semibold" style={{ color: DYNAMO_BLUE }}>{a.aanvrager_naam}</div>
+                      <div className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>{a.aanvrager_email}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium" style={{ color: '#334155' }}>{a.catalogus_naam}</div>
+                      {a.motivatie && (
+                        <div className="text-xs mt-0.5 max-w-[200px] truncate" style={{ color: '#94a3b8' }} title={a.motivatie}>
+                          {a.motivatie}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {a.manager_naam ? (
+                        <div>
+                          <div className="text-sm" style={{ color: '#334155' }}>{a.manager_naam}</div>
+                          {a.manager_notitie && (
+                            <div className="text-xs mt-0.5 max-w-[180px] truncate" style={{ color: '#94a3b8' }} title={a.manager_notitie}>
+                              &ldquo;{a.manager_notitie}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      ) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StatusBadge status={a.status} />
+                      {a.manager_beslissing_op && (
+                        <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)' }}>
+                          {new Date(a.manager_beslissing_op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>
+                      {new Date(a.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {/* Knop om snel nieuwe aanvraag te doen voor dit product */}
+                      {a.status === 'goedgekeurd' && itemMap.has(a.catalogus_id) && (
+                        <span className="text-xs rounded-lg px-2 py-1 font-semibold"
+                          style={{ background: '#dcfce7', color: '#15803d' }}>
+                          Klaar voor koppelen
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Aanvraag knop per product */}
+      <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+        <div className="text-sm font-bold mb-3" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe aanvraag indienen</div>
+        <div className="flex flex-wrap gap-2">
+          {items.filter(i => i.type === 'licentie').map(item => (
+            <button key={item.id} type="button" onClick={() => setAanvraagItem(item)}
+              className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+              style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.12)', fontFamily: F }}>
+              + {item.naam}
+            </button>
+          ))}
+        </div>
+        {items.filter(i => i.type === 'licentie').length === 0 && (
+          <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Nog geen licenties in de catalogus.</p>
+        )}
+      </div>
+
+      {aanvraagItem && (
+        <AanvraagModal
+          item={aanvraagItem}
+          onClose={() => setAanvraagItem(null)}
+          onSuccess={() => void mutate()}
+        />
+      )}
+    </div>
+  )
+}
+
 // ── Hoofdpagina ───────────────────────────────────────────────────────────────
 
 export default function CatalogusPage() {
@@ -491,6 +776,7 @@ export default function CatalogusPage() {
   const { data, error, isLoading, mutate } = useSWR<{ items: CatalogusItem[] }>('/api/it-cmdb/catalogus', fetcher)
   const items = data?.items ?? []
 
+  const [actieveTab, setActieveTab] = useState<'catalogus' | 'aanvragen'>('catalogus')
   const [filter, setFilter] = useState<'alle' | CatalogusType>('alle')
   const [zoek, setZoek] = useState('')
   const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; item: CatalogusItem }>( null)
@@ -672,6 +958,28 @@ export default function CatalogusPage() {
           )
         })()}
 
+        {/* Tab balk */}
+        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', display: 'inline-flex' }}>
+          {([
+            { key: 'catalogus', label: '📦 Catalogus' },
+            { key: 'aanvragen', label: '📋 Aanvragen' },
+          ] as const).map(t => (
+            <button key={t.key} type="button" onClick={() => setActieveTab(t.key)}
+              className="rounded-xl px-5 py-2 text-sm font-semibold transition"
+              style={{
+                background: actieveTab === t.key ? DYNAMO_BLUE : 'transparent',
+                color: actieveTab === t.key ? 'white' : 'rgba(45,69,124,0.5)',
+                fontFamily: F,
+              }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {actieveTab === 'aanvragen' && <AanvragenTab items={items} />}
+
+        {actieveTab === 'catalogus' && <>
+
         {/* Sync resultaat / fout */}
         {syncError && (
           <div className="rounded-2xl px-4 py-3 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>
@@ -848,6 +1156,8 @@ export default function CatalogusPage() {
             </div>
           )}
         </div>
+
+        </>}
       </main>
 
       {modal && (

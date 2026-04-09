@@ -28,6 +28,17 @@ type MijnHardwareRow = {
   updated_at: string
 }
 
+type MijnAanvraagRow = {
+  id: string
+  catalogus_naam: string
+  status: 'ingediend' | 'wacht_op_manager' | 'goedgekeurd' | 'afgekeurd'
+  motivatie: string | null
+  manager_naam: string | null
+  manager_notitie: string | null
+  manager_beslissing_op: string | null
+  created_at: string
+}
+
 type MijnCatalogusRow = {
   catalogus_id: string
   naam: string
@@ -71,8 +82,17 @@ export default function InstellingenPage() {
     fetcherJson,
     { shouldRetryOnError: false }
   )
+  const { data: mijnAanvragenData, mutate: mutateMijnAanvragen } = useSWR<{ aanvragen: MijnAanvraagRow[] }>(
+    '/api/it-cmdb/aanvragen',
+    fetcherJson,
+    { shouldRetryOnError: false }
+  )
   const mijnHardware = mijnHardwareData?.items ?? []
   const mijnCatalogus = mijnCatalogusData?.items ?? []
+  const mijnAanvragen = mijnAanvragenData?.aanvragen ?? []
+  const [aanvraagModalItem, setAanvraagModalItem] = useState<{ id: string; naam: string } | null>(null)
+  const [aanvraagMotivatie, setAanvraagMotivatie] = useState('')
+  const [aanvraagLoading, setAanvraagLoading] = useState(false)
   const lunchModuleEnabled = profileData?.lunch_module_enabled === true
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
   const weeklyDigestEnabled = newsPrefData?.weekly_digest_enabled !== false
@@ -93,6 +113,27 @@ export default function InstellingenPage() {
       toast('Lunch-module voorkeur kon niet worden opgeslagen.', 'error')
     }
     setLunchSaving(false)
+  }
+
+  async function dientAanvraagIn(catalogusId: string, productNaam: string) {
+    setAanvraagLoading(true)
+    try {
+      const res = await fetch('/api/it-cmdb/aanvragen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ catalogus_id: catalogusId, motivatie: aanvraagMotivatie.trim() || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
+      toast(`Aanvraag voor "${productNaam}" ingediend.`, 'success')
+      setAanvraagModalItem(null)
+      setAanvraagMotivatie('')
+      void mutateMijnAanvragen()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Indienen mislukt', 'error')
+    } finally {
+      setAanvraagLoading(false)
+    }
   }
 
   async function toggleWeeklyDigest(enabled: boolean) {
@@ -313,6 +354,112 @@ export default function InstellingenPage() {
             </div>
           )}
         </div>
+
+        {/* Mijn aanvragen */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+          <h2 className="text-lg font-bold mb-1">📋 Mijn software-aanvragen</h2>
+          <p className="text-sm text-gray-500 mb-4">Overzicht van jouw ingediende licentie-aanvragen.</p>
+
+          {mijnAanvragen.length === 0 ? (
+            <p className="text-sm text-gray-400">Nog geen aanvragen ingediend.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm min-w-[480px]">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    {['Product', 'Status', 'Manager', 'Ingediend'].map(h => (
+                      <th key={h} className="text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {mijnAanvragen.map(a => {
+                    const statusMeta = {
+                      ingediend: { label: 'Ingediend', bg: '#f1f5f9', fg: '#475569' },
+                      wacht_op_manager: { label: 'Wacht op manager', bg: '#fef9c3', fg: '#854d0e' },
+                      goedgekeurd: { label: 'Goedgekeurd', bg: '#dcfce7', fg: '#15803d' },
+                      afgekeurd: { label: 'Afgekeurd', bg: '#fee2e2', fg: '#b91c1c' },
+                    }[a.status] ?? { label: a.status, bg: '#f1f5f9', fg: '#475569' }
+                    return (
+                      <tr key={a.id} className="border-b border-gray-100 last:border-0">
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium text-gray-900">{a.catalogus_naam}</div>
+                          {a.motivatie && <div className="text-xs text-gray-400 truncate max-w-[200px]" title={a.motivatie}>{a.motivatie}</div>}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold" style={{ background: statusMeta.bg, color: statusMeta.fg }}>
+                            {statusMeta.label}
+                          </span>
+                          {a.manager_notitie && (
+                            <div className="text-xs text-gray-400 mt-0.5 max-w-[160px] truncate" title={a.manager_notitie}>
+                              &ldquo;{a.manager_notitie}&rdquo;
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-600">{a.manager_naam ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-gray-400 whitespace-nowrap text-xs">
+                          {new Date(a.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Nieuwe aanvraag indienen via dropdown op licenties uit catalogus */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 mb-2">Nieuwe aanvraag indienen</p>
+            {mijnCatalogus.length > 0 && (
+              <p className="text-xs text-gray-400 mb-2">Je hebt al toegang tot sommige licenties. Hieronder kun je een aanvraag doen voor een licentie die je nog niet hebt.</p>
+            )}
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  // Navigeer naar catalogus-aanvragen tab
+                  window.location.href = '/dashboard/it-cmdb/catalogus'
+                }}
+                className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+                style={{ background: '#2D457C', color: 'white' }}
+              >
+                Ga naar catalogus →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Aanvraag modal (voor inline aanvraag vanuit instellingen) */}
+        {aanvraagModalItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+            onClick={e => { if (e.target === e.currentTarget) { setAanvraagModalItem(null); setAanvraagMotivatie('') } }}>
+            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-7">
+              <h3 className="text-lg font-bold mb-1" style={{ color: '#2D457C' }}>Licentie aanvragen</h3>
+              <p className="text-sm text-gray-500 mb-5">Je manager ontvangt een e-mail ter goedkeuring.</p>
+              <div className="bg-gray-50 rounded-xl p-3 mb-4">
+                <div className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-0.5">Product</div>
+                <div className="font-bold text-gray-900">{aanvraagModalItem.naam}</div>
+              </div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Motivatie <span className="text-gray-400 font-normal">(optioneel)</span></label>
+              <textarea value={aanvraagMotivatie} onChange={e => setAanvraagMotivatie(e.target.value)} rows={3}
+                placeholder="Waarom heb je deze licentie nodig?"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm resize-none outline-none focus:border-blue-400 mb-5" />
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => { setAanvraagModalItem(null); setAanvraagMotivatie('') }}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition">
+                  Annuleren
+                </button>
+                <button type="button" disabled={aanvraagLoading}
+                  onClick={() => void dientAanvraagIn(aanvraagModalItem.id, aanvraagModalItem.naam)}
+                  className="rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-50 transition"
+                  style={{ background: '#2D457C' }}>
+                  {aanvraagLoading ? 'Bezig...' : 'Aanvraag indienen'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Lunch module */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
