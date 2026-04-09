@@ -84,10 +84,11 @@ async function fetchE3SkuIds(token: string): Promise<Set<string>> {
 
 async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
   const users: GraphUser[] = []
+  // $expand=manager cannot be combined with $filter on the /users collection endpoint
+  // Managers are fetched separately after filtering (see fetchManagersForUsers)
   let url: string | null =
     'https://graph.microsoft.com/v1.0/users' +
     '?$select=id,displayName,mail,userPrincipalName,givenName,surname,jobTitle,department,accountEnabled,userType,assignedLicenses' +
-    '&$expand=manager($select=displayName,mail,userPrincipalName)' +
     '&$filter=accountEnabled eq true and userType eq \'Member\'' +
     '&$top=999'
 
@@ -107,6 +108,31 @@ async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
   }
 
   return users
+}
+
+// Fetch managers for a list of users in parallel batches of 20
+async function fetchManagersForUsers(token: string, users: GraphUser[]): Promise<void> {
+  const BATCH = 20
+  for (let i = 0; i < users.length; i += BATCH) {
+    const batch = users.slice(i, i + BATCH)
+    await Promise.all(batch.map(async user => {
+      try {
+        const res = await fetch(
+          `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user.id)}/manager?$select=displayName,mail,userPrincipalName`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (!res.ok) return // geen manager of geen toegang — overslaan
+        const mgr = await res.json() as { displayName?: string; mail?: string; userPrincipalName?: string }
+        user.manager = {
+          displayName: mgr.displayName ?? null,
+          mail: mgr.mail ?? null,
+          userPrincipalName: mgr.userPrincipalName ?? null,
+        }
+      } catch {
+        // overslaan bij fout
+      }
+    }))
+  }
 }
 
 function voldoetAanSyncCriteria(user: GraphUser, e3SkuIds: Set<string>): boolean {
@@ -172,6 +198,9 @@ export async function POST(request: NextRequest) {
 
   const teVerwerken = azureUsers.filter(u => voldoetAanSyncCriteria(u, e3SkuIds))
   const gefilterd = azureUsers.length - teVerwerken.length
+
+  // Managers ophalen voor gekwalificeerde gebruikers (apart, want $expand+$filter werkt niet samen)
+  await fetchManagersForUsers(token, teVerwerken)
 
   // Haal alle bestaande Supabase-gebruikers op
   const supabaseUsers: { id: string; email: string }[] = []
