@@ -47,6 +47,7 @@ const SKU_NAMEN: Record<string, string> = {
 interface SubscribedSku {
   skuId: string
   skuPartNumber: string
+  displayName?: string | null
   capabilityStatus: string
   prepaidUnits: { enabled: number; suspended: number; warning: number }
   consumedUnits: number
@@ -60,7 +61,7 @@ interface GraphUserLicenses {
 }
 
 async function fetchSubscribedSkus(token: string): Promise<SubscribedSku[]> {
-  const res = await fetch('https://graph.microsoft.com/v1.0/subscribedSkus', {
+  const res = await fetch('https://graph.microsoft.com/v1.0/subscribedSkus?$select=skuId,skuPartNumber,displayName,capabilityStatus,prepaidUnits,consumedUnits', {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) {
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
     // Sla gratis / proef-SKUs over die 0 betaalde units hebben
     if (sku.prepaidUnits.enabled === 0 && sku.consumedUnits === 0) continue
 
-    const naam = SKU_NAMEN[sku.skuPartNumber] ?? sku.skuPartNumber
+    const naam = SKU_NAMEN[sku.skuPartNumber] ?? sku.displayName ?? sku.skuPartNumber
     const aantallen = sku.prepaidUnits.enabled > 0 ? sku.prepaidUnits.enabled : null
 
     // Zoek bestaand catalogus-item op microsoft_sku_id
