@@ -90,7 +90,7 @@ export default function BeheerPage() {
   // Azure sync
   const [azureSyncLoading, setAzureSyncLoading] = useState(false)
   const [azureSyncResultaat, setAzureSyncResultaat] = useState<{
-    totaal_azure: number; gefilterd: number; verwerkt: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; manager_gevonden: number; manager_geen: number; overgeslagen: number; fouten: string[]
+    totaal_azure: number; gefilterd: number; verwerkt: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; manager_gevonden: number; manager_geen: number; overgeslagen: number; fouten: string[]; filter_debug?: { gefilterd_domein: number; gefilterd_e3_licentie: number; gefilterd_geen_afdeling: number; e3_sku_ids_gevonden: number }
   } | null>(null)
 
   // Cleanup niet-DRG gebruikers
@@ -1358,6 +1358,20 @@ export default function BeheerPage() {
                   </span>
                   {(azureSyncResultaat.manager_geen ?? 0) > 0 && <>&nbsp;·&nbsp;{azureSyncResultaat.manager_geen} zonder manager</>}
                 </div>
+                {azureSyncResultaat.filter_debug && azureSyncResultaat.gefilterd > 0 && (
+                  <div className="mt-2 text-xs rounded-lg p-2" style={{ background: 'rgba(220,38,38,0.06)', color: '#b91c1c', fontFamily: F }}>
+                    <span className="font-bold">Filteranalyse:</span>{' '}
+                    {azureSyncResultaat.filter_debug.e3_sku_ids_gevonden === 0
+                      ? '⚠ Geen E3-SKU\'s gevonden in tenant (controleer licenties of SKU-patterns)'
+                      : <>
+                          {azureSyncResultaat.filter_debug.gefilterd_domein > 0 && <span>{azureSyncResultaat.filter_debug.gefilterd_domein} verkeerd domein · </span>}
+                          {azureSyncResultaat.filter_debug.gefilterd_e3_licentie > 0 && <span>{azureSyncResultaat.filter_debug.gefilterd_e3_licentie} geen E3-licentie · </span>}
+                          {azureSyncResultaat.filter_debug.gefilterd_geen_afdeling > 0 && <span>{azureSyncResultaat.filter_debug.gefilterd_geen_afdeling} geen afdeling</span>}
+                          {' '}(E3 SKU-IDs: {azureSyncResultaat.filter_debug.e3_sku_ids_gevonden})
+                        </>
+                    }
+                  </div>
+                )}
                 {azureSyncResultaat.fouten.length > 0 && (
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs" style={{ color: '#dc2626' }}>{azureSyncResultaat.fouten.length} fout(en)</summary>

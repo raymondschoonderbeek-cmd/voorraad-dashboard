@@ -215,7 +215,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
 
-  const teVerwerken = azureUsers.filter(u => voldoetAanSyncCriteria(u, e3SkuIds))
+  // Filteranalyse: tel per criterium hoeveel afvallen
+  let filteredDomain = 0, filteredE3 = 0, filteredDept = 0
+  const teVerwerken: GraphUser[] = []
+  for (const u of azureUsers) {
+    if (u.userType !== 'Member' || !u.accountEnabled) continue
+    const mail = (u.mail ?? '').toLowerCase()
+    const upn = (u.userPrincipalName ?? '').toLowerCase()
+    if (!mail.endsWith('@dynamoretailgroup.com') && !upn.endsWith('@dynamoretailgroup.com')) { filteredDomain++; continue }
+    const heeftE3 = (u.assignedLicenses ?? []).some(l => e3SkuIds.has(l.skuId))
+    if (!heeftE3) { filteredE3++; continue }
+    if (!u.department?.trim()) { filteredDept++; continue }
+    teVerwerken.push(u)
+  }
   const gefilterd = azureUsers.length - teVerwerken.length
 
   // Managers ophalen voor gekwalificeerde gebruikers (apart, want $expand+$filter werkt niet samen)
@@ -338,6 +350,12 @@ export async function POST(request: NextRequest) {
     success: true,
     totaal_azure: azureUsers.length,
     gefilterd,
+    filter_debug: {
+      gefilterd_domein: filteredDomain,
+      gefilterd_e3_licentie: filteredE3,
+      gefilterd_geen_afdeling: filteredDept,
+      e3_sku_ids_gevonden: e3SkuIds.size,
+    },
     verwerkt: teVerwerken.length,
     aangemaakt,
     profiel_gezet: profielGezet,
