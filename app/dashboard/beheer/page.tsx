@@ -15,7 +15,7 @@ const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 const WINKEL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
 function isBikeTotaal(naam: string) { return /bike\s*totaal/i.test(naam) }
 
-type Rol = { id: number; user_id: string; rol: string; naam: string; mfa_verplicht?: boolean; created_at: string }
+type Rol = { id: number; user_id: string; rol: string; naam: string; mfa_verplicht?: boolean; created_at: string; manager_naam?: string | null; manager_email?: string | null }
 
 const MODULE_LABELS: Record<DashboardModuleId, string> = {
   voorraad: 'Voorraad',
@@ -90,7 +90,7 @@ export default function BeheerPage() {
   // Azure sync
   const [azureSyncLoading, setAzureSyncLoading] = useState(false)
   const [azureSyncResultaat, setAzureSyncResultaat] = useState<{
-    totaal_azure: number; aangemaakt: number; profiel_gezet: number; overgeslagen: number; fouten: string[]
+    totaal_azure: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; overgeslagen: number; fouten: string[]
   } | null>(null)
 
   // Cleanup niet-DRG gebruikers
@@ -1350,6 +1350,7 @@ export default function BeheerPage() {
                   {azureSyncResultaat.totaal_azure} gebruikers in Azure &nbsp;·&nbsp;
                   <span style={{ color: '#16a34a', fontWeight: 600 }}>{azureSyncResultaat.aangemaakt} nieuw aangemaakt</span> &nbsp;·&nbsp;
                   {azureSyncResultaat.profiel_gezet} profiel gezet &nbsp;·&nbsp;
+                  {azureSyncResultaat.manager_bijgewerkt ?? 0} managers bijgewerkt &nbsp;·&nbsp;
                   {azureSyncResultaat.overgeslagen} overgeslagen
                 </div>
                 {azureSyncResultaat.fouten.length > 0 && (
@@ -1581,6 +1582,15 @@ export default function BeheerPage() {
                     <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-lg w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition" style={{ color: 'rgba(45,69,124,0.4)' }}>✕</button>
                   </div>
                   <form onSubmit={updateGebruiker} className="p-6 space-y-5">
+                    {(bewerkGebruiker.manager_naam || bewerkGebruiker.manager_email) && (
+                      <div className="rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
+                        <span className="font-semibold" style={{ color: 'rgba(45,69,124,0.6)' }}>Manager (Azure AD): </span>
+                        <span style={{ color: DYNAMO_BLUE }}>{bewerkGebruiker.manager_naam ?? '—'}</span>
+                        {bewerkGebruiker.manager_email && (
+                          <span style={{ color: 'rgba(45,69,124,0.45)' }}> · {bewerkGebruiker.manager_email}</span>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam</label>
@@ -1696,6 +1706,11 @@ export default function BeheerPage() {
                             ? `Laatste inlog: ${new Date(userLastSignIns[rol.user_id]!).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`
                             : 'Nog nooit ingelogd'}
                         </div>
+                        {rol.manager_naam && (
+                          <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.32)', fontFamily: F }} title={rol.manager_email ?? rol.manager_naam}>
+                            Manager: {rol.manager_naam}
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2 shrink-0 flex-wrap">
                         <button onClick={() => stuurUitnodigingOpnieuw(rol.user_id)} disabled={resendInviteLoading === rol.user_id} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }} title="Stuur inloggegevens opnieuw per e-mail">{resendInviteLoading === rol.user_id ? '...' : 'Opnieuw uitnodigen'}</button>

@@ -472,6 +472,36 @@ export default function CatalogusPage() {
   const [gebruikersItem, setGebruikersItem] = useState<CatalogusItem | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Microsoft licentie-sync
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncResultaat, setSyncResultaat] = useState<{
+    skus_verwerkt: number
+    catalogus_aangemaakt: number
+    catalogus_bijgewerkt: number
+    koppelingen_toegevoegd: number
+    koppelingen_verwijderd: number
+    fouten: string[]
+  } | null>(null)
+  const [syncError, setSyncError] = useState('')
+
+  async function syncMicrosoft() {
+    setSyncLoading(true)
+    setSyncResultaat(null)
+    setSyncError('')
+    try {
+      const res = await fetch('/api/it-cmdb/catalogus/sync-microsoft', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Sync mislukt')
+      setSyncResultaat(json)
+      await mutate()
+      toast('Microsoft licenties gesynchroniseerd.', 'success')
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : 'Sync mislukt')
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
   const gefilterd = items.filter(item => {
     if (filter !== 'alle' && item.type !== filter) return false
     if (zoek.trim()) {
@@ -558,14 +588,29 @@ export default function CatalogusPage() {
               Overzicht van software-licenties en IT-producten. Koppel items aan portalgebruikers.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setModal({ mode: 'create' })}
-            className="rounded-xl px-5 py-2.5 text-sm font-bold text-white shrink-0 transition hover:opacity-90"
-            style={{ background: DYNAMO_BLUE, fontFamily: F }}
-          >
-            + Toevoegen
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => void syncMicrosoft()}
+              disabled={syncLoading}
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+              style={{ background: 'white', color: DYNAMO_BLUE, border: `1px solid rgba(45,69,124,0.2)`, fontFamily: F }}
+              title="Synchroniseer Microsoft 365 licenties en koppel ze aan portalgebruikers"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={syncLoading ? 'animate-spin' : ''}>
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" />
+              </svg>
+              {syncLoading ? 'Bezig...' : 'Sync Microsoft'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setModal({ mode: 'create' })}
+              className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
+              style={{ background: DYNAMO_BLUE, fontFamily: F }}
+            >
+              + Toevoegen
+            </button>
+          </div>
         </div>
 
         {/* Statistieken */}
@@ -583,6 +628,29 @@ export default function CatalogusPage() {
             </div>
           ))}
         </div>
+
+        {/* Sync resultaat / fout */}
+        {syncError && (
+          <div className="rounded-2xl px-4 py-3 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>
+            {syncError}
+          </div>
+        )}
+        {syncResultaat && (
+          <div className="rounded-2xl px-4 py-3 text-sm space-y-1" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', fontFamily: F }}>
+            <div className="font-semibold" style={{ color: '#15803d' }}>
+              Microsoft sync geslaagd — {syncResultaat.skus_verwerkt} SKU&apos;s verwerkt
+            </div>
+            <div style={{ color: '#166534' }}>
+              Catalogus: {syncResultaat.catalogus_aangemaakt} aangemaakt, {syncResultaat.catalogus_bijgewerkt} bijgewerkt &nbsp;·&nbsp;
+              Koppelingen: +{syncResultaat.koppelingen_toegevoegd} / −{syncResultaat.koppelingen_verwijderd}
+            </div>
+            {syncResultaat.fouten.length > 0 && (
+              <div style={{ color: '#dc2626' }}>
+                Fouten: {syncResultaat.fouten.join(', ')}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filter + zoek */}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">

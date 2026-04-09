@@ -3,6 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
 
+interface GraphManager {
+  displayName: string | null
+  mail: string | null
+  userPrincipalName: string | null
+}
+
 interface GraphUser {
   id: string
   displayName: string | null
@@ -13,9 +19,10 @@ interface GraphUser {
   jobTitle: string | null
   department: string | null
   accountEnabled: boolean
+  manager?: GraphManager | null
 }
 
-async function getAzureToken(): Promise<string> {
+export async function getAzureToken(): Promise<string> {
   const tenantId = process.env.AZURE_TENANT_ID
   const clientId = process.env.AZURE_CLIENT_ID
   const clientSecret = process.env.AZURE_CLIENT_SECRET
@@ -54,6 +61,7 @@ async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
   let url: string | null =
     'https://graph.microsoft.com/v1.0/users' +
     '?$select=id,displayName,mail,userPrincipalName,givenName,surname,jobTitle,department,accountEnabled' +
+    '&$expand=manager($select=displayName,mail,userPrincipalName)' +
     '&$filter=accountEnabled eq true' +
     '&$top=999'
 
@@ -96,7 +104,6 @@ export async function POST(request: NextRequest) {
 
   const adminClient = createAdminClient()
 
-  // Azure token + gebruikerslijst ophalen
   let token: string
   try {
     token = await getAzureToken()
@@ -130,21 +137,24 @@ export async function POST(request: NextRequest) {
 
   let aangemaakt = 0
   let profielGezet = 0
+  let managerBijgewerkt = 0
   let overgeslagen = 0
   const fouten: string[] = []
 
   for (const azUser of azureUsers) {
-    // Externe gastaccounts (#EXT#) en accounts zonder e-mail overslaan
     const email = (azUser.mail ?? azUser.userPrincipalName ?? '').toLowerCase().trim()
     if (!email || email.includes('#ext#')) {
       overgeslagen++
       continue
     }
 
+    // Manager info extraheren
+    const managerNaam = azUser.manager?.displayName ?? null
+    const managerEmail = (azUser.manager?.mail ?? azUser.manager?.userPrincipalName ?? null)?.toLowerCase() ?? null
+
     let userId = emailToUserId.get(email)
 
     if (!userId) {
-      // Nieuwe gebruiker aanmaken — geen wachtwoord, moet via Azure SSO inloggen
       const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
         email,
         email_confirm: true,
@@ -156,7 +166,6 @@ export async function POST(request: NextRequest) {
       })
 
       if (createErr) {
-        // Bestaat al (race condition of listUsers miste hem)
         if (createErr.message?.toLowerCase().includes('already')) {
           overgeslagen++
           continue
@@ -176,13 +185,14 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         rol: 'viewer',
         naam,
+        manager_naam: managerNaam,
+        manager_email: managerEmail,
       })
 
       if (rolErr) {
         fouten.push(`Profiel ${email}: ${rolErr.message}`)
       } else {
         profielGezet++
-        // Standaard module-toegang
         try {
           await adminClient.from('profiles').upsert(
             {
@@ -197,7 +207,17 @@ export async function POST(request: NextRequest) {
         }
       }
     } else {
-      overgeslagen++
+      // Bestaande gebruiker: manager bijwerken als die veranderd is
+      const { error: updateErr } = await adminClient
+        .from('gebruiker_rollen')
+        .update({ manager_naam: managerNaam, manager_email: managerEmail })
+        .eq('user_id', userId)
+
+      if (updateErr) {
+        fouten.push(`Manager update ${email}: ${updateErr.message}`)
+      } else {
+        managerBijgewerkt++
+      }
     }
   }
 
@@ -206,6 +226,7 @@ export async function POST(request: NextRequest) {
     totaal_azure: azureUsers.length,
     aangemaakt,
     profiel_gezet: profielGezet,
+    manager_bijgewerkt: managerBijgewerkt,
     overgeslagen,
     fouten,
   })
