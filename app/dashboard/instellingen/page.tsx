@@ -51,6 +51,15 @@ type MijnCatalogusRow = {
   datum_ingebruik: string | null
 }
 
+type CatalogusItem = {
+  id: string
+  naam: string
+  categorie: string
+  leverancier: string
+  versie: string | null
+  kosten_per_eenheid: number | null
+}
+
 export default function InstellingenPage() {
   const searchParams = useSearchParams()
   const mfaVerplicht = searchParams.get('mfa') === 'verplicht'
@@ -87,9 +96,15 @@ export default function InstellingenPage() {
     fetcherJson,
     { shouldRetryOnError: false }
   )
+  const { data: catalogusData } = useSWR<{ items: CatalogusItem[] }>(
+    '/api/it-cmdb/aanvraag-catalogus',
+    fetcherJson,
+    { shouldRetryOnError: false }
+  )
   const mijnHardware = mijnHardwareData?.items ?? []
   const mijnCatalogus = mijnCatalogusData?.items ?? []
   const mijnAanvragen = mijnAanvragenData?.aanvragen ?? []
+  const alleCatalogus = catalogusData?.items ?? []
   const [aanvraagModalItem, setAanvraagModalItem] = useState<{ id: string; naam: string } | null>(null)
   const [aanvraagMotivatie, setAanvraagMotivatie] = useState('')
   const [aanvraagLoading, setAanvraagLoading] = useState(false)
@@ -408,25 +423,59 @@ export default function InstellingenPage() {
             </div>
           )}
 
-          {/* Nieuwe aanvraag indienen via dropdown op licenties uit catalogus */}
+          {/* Nieuwe aanvraag indienen — inline catalogus */}
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-2">Nieuwe aanvraag indienen</p>
-            {mijnCatalogus.length > 0 && (
-              <p className="text-xs text-gray-400 mb-2">Je hebt al toegang tot sommige licenties. Hieronder kun je een aanvraag doen voor een licentie die je nog niet hebt.</p>
-            )}
-            <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  // Navigeer naar catalogus-aanvragen tab
-                  window.location.href = '/dashboard/it-cmdb/catalogus'
-                }}
-                className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80"
-                style={{ background: '#2D457C', color: 'white' }}
-              >
-                Ga naar catalogus →
-              </button>
-            </div>
+            <p className="text-sm font-medium text-gray-700 mb-3">Nieuwe aanvraag indienen</p>
+            {!catalogusData ? (
+              <p className="text-sm text-gray-400">Catalogus laden…</p>
+            ) : (() => {
+              const heeftIds = new Set(mijnCatalogus.map(r => r.catalogus_id))
+              const openstaandeIds = new Set(
+                mijnAanvragen
+                  .filter(a => a.status === 'ingediend' || a.status === 'wacht_op_manager')
+                  .map(a => a.catalogus_naam)
+              )
+              const beschikbaar = alleCatalogus.filter(item => !heeftIds.has(item.id))
+              if (beschikbaar.length === 0) {
+                return <p className="text-sm text-gray-400">Je hebt al toegang tot alle beschikbare licenties.</p>
+              }
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {beschikbaar.map(item => {
+                    const heeftOpenstaand = openstaandeIds.has(item.naam)
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        disabled={heeftOpenstaand}
+                        onClick={() => { setAanvraagModalItem({ id: item.id, naam: item.naam }); setAanvraagMotivatie('') }}
+                        className="flex items-start gap-3 text-left rounded-xl border p-3 transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          borderColor: heeftOpenstaand ? 'rgba(45,69,124,0.1)' : 'rgba(45,69,124,0.18)',
+                          background: heeftOpenstaand ? '#f8fafc' : 'white',
+                        }}
+                        onMouseEnter={e => { if (!heeftOpenstaand) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(45,69,124,0.04)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = heeftOpenstaand ? '#f8fafc' : 'white' }}
+                      >
+                        <span className="mt-0.5 text-lg">📦</span>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">{item.naam}</div>
+                          <div className="text-xs text-gray-400 truncate">{item.leverancier}{item.categorie ? ` · ${item.categorie}` : ''}</div>
+                          {heeftOpenstaand && (
+                            <div className="text-xs text-amber-600 font-medium mt-0.5">Aanvraag loopt</div>
+                          )}
+                        </div>
+                        {!heeftOpenstaand && (
+                          <span className="ml-auto shrink-0 text-xs font-bold rounded-full px-2.5 py-0.5 self-center" style={{ background: 'rgba(45,69,124,0.08)', color: '#2D457C' }}>
+                            Aanvragen
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         </div>
 

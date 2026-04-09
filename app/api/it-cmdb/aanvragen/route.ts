@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
+import { canAccessItCmdb } from '@/lib/auth'
 import { getSiteUrl } from '@/lib/site-url'
 import {
   stuurManagerApprovalMail,
@@ -63,34 +64,47 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { catalogus_id?: string; motivatie?: string }
+  let body: { catalogus_id?: string; motivatie?: string; namens_user_id?: string }
   try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Ongeldige JSON' }, { status: 400 })
   }
 
   if (!body.catalogus_id) return NextResponse.json({ error: 'catalogus_id is verplicht' }, { status: 400 })
 
+  // Controleer of ingelogde gebruiker it-cmdb module toegang heeft (vereist voor namens_user_id)
+  const heeftItCmdbToegang = await canAccessItCmdb(supabase, user.id)
+
+  // Bepaal voor wie de aanvraag is — iedereen met it-cmdb toegang mag namens iemand indienen
+  const doelUserId = (body.namens_user_id && heeftItCmdbToegang) ? body.namens_user_id : user.id
+
   // Catalogus-item ophalen
   const { data: item } = await supabase
     .from('it_catalogus').select('id, naam').eq('id', body.catalogus_id).single()
   if (!item) return NextResponse.json({ error: 'Product niet gevonden' }, { status: 404 })
 
-  // Aanvrager-info ophalen
-  const { data: rolData } = await supabase
+  // Aanvrager-info ophalen (van de doelgebruiker)
+  const adminClient = hasAdminKey() ? createAdminClient() : supabase
+  const { data: rolData } = await adminClient
     .from('gebruiker_rollen')
     .select('naam, manager_naam, manager_email')
-    .eq('user_id', user.id).single()
+    .eq('user_id', doelUserId).single()
 
-  const aanvragerEmail = user.email ?? ''
+  // E-mail van doelgebruiker ophalen
+  let aanvragerEmail = user.email ?? ''
+  if (doelUserId !== user.id && hasAdminKey()) {
+    const { data: { user: doelUser } } = await adminClient.auth.admin.getUserById(doelUserId)
+    aanvragerEmail = doelUser?.email ?? ''
+  }
+
   const aanvragerNaam = rolData?.naam?.trim() || aanvragerEmail
   const managerNaam = rolData?.manager_naam ?? null
   const managerEmail = rolData?.manager_email ?? null
 
   // Controleer dubbele openstaande aanvraag
-  const { data: bestaand } = await supabase
+  const { data: bestaand } = await adminClient
     .from('product_licentie_aanvragen')
     .select('id, status')
-    .eq('aanvrager_id', user.id)
+    .eq('aanvrager_id', doelUserId)
     .eq('catalogus_id', body.catalogus_id)
     .in('status', ['ingediend', 'wacht_op_manager'])
     .maybeSingle()
@@ -105,12 +119,12 @@ export async function POST(request: NextRequest) {
     ? new Date(Date.now() + TOKEN_GELDIG_DAGEN * 24 * 60 * 60 * 1000)
     : null
 
-  const { data: aanvraag, error: insertErr } = await supabase
+  const { data: aanvraag, error: insertErr } = await adminClient
     .from('product_licentie_aanvragen')
     .insert({
       catalogus_id: body.catalogus_id,
       catalogus_naam: item.naam,
-      aanvrager_id: user.id,
+      aanvrager_id: doelUserId,
       aanvrager_naam: aanvragerNaam,
       aanvrager_email: aanvragerEmail,
       manager_naam: managerNaam,

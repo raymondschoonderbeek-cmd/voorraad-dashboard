@@ -522,6 +522,13 @@ function StatusBadge({ status }: { status: AanvraagStatus }) {
 
 // ── Aanvraag formulier modal ──────────────────────────────────────────────────
 
+interface GebruikerKeuze {
+  user_id: string
+  naam: string
+  email: string
+  manager_naam: string | null
+}
+
 function AanvraagModal({
   item,
   onClose,
@@ -534,18 +541,49 @@ function AanvraagModal({
   const toast = useToast()
   const [motivatie, setMotivatie] = useState('')
   const [loading, setLoading] = useState(false)
+  const [namensZoek, setNamensZoek] = useState('')
+  const [gekozenGebruiker, setGekozenGebruiker] = useState<GebruikerKeuze | null>(null)
+  const [zoekOpen, setZoekOpen] = useState(false)
+
+  // Alle gebruikers ophalen via it-cmdb endpoint (geen admin vereist)
+  const { data: gebruikersData } = useSWR<{ users: GebruikerKeuze[] }>(
+    '/api/it-cmdb/portal-users',
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+
+  const alleGebruikers: GebruikerKeuze[] = useMemo(() => {
+    return (gebruikersData?.users ?? [])
+      .filter(u => u.email)
+      .sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))
+  }, [gebruikersData])
+
+  const gefilterdeGebruikers = useMemo(() => {
+    if (!namensZoek.trim()) return alleGebruikers.slice(0, 8)
+    const q = namensZoek.toLowerCase()
+    return alleGebruikers.filter(g =>
+      g.naam.toLowerCase().includes(q) || g.email.toLowerCase().includes(q)
+    ).slice(0, 8)
+  }, [alleGebruikers, namensZoek])
 
   async function indienen() {
     setLoading(true)
     try {
+      const body: Record<string, unknown> = {
+        catalogus_id: item.id,
+        motivatie: motivatie.trim() || undefined,
+      }
+      if (gekozenGebruiker) body.namens_user_id = gekozenGebruiker.user_id
+
       const res = await fetch('/api/it-cmdb/aanvragen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ catalogus_id: item.id, motivatie: motivatie.trim() || undefined }),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Indienen mislukt')
-      toast('Aanvraag ingediend. Je manager ontvangt een e-mail.', 'success')
+      const naam = gekozenGebruiker ? `voor ${gekozenGebruiker.naam}` : ''
+      toast(`Aanvraag ${naam} ingediend. De manager ontvangt een e-mail.`, 'success')
       onSuccess()
       onClose()
     } catch (e) {
@@ -555,31 +593,93 @@ function AanvraagModal({
     }
   }
 
+  const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'rgba(45,69,124,0.6)', display: 'block', marginBottom: 6 }
+
   return (
     <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} onClick={onClose} aria-hidden />
-      <div style={{ position: 'relative', background: 'white', borderRadius: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: 480, padding: 28, fontFamily: F }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: DYNAMO_BLUE, margin: '0 0 4px' }}>Licentie aanvragen</h2>
-        <p style={{ fontSize: 13, color: 'rgba(45,69,124,0.5)', margin: '0 0 20px' }}>
-          Je manager ontvangt een e-mail om de aanvraag goed te keuren.
-        </p>
+      <div style={{ position: 'relative', background: 'white', borderRadius: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', padding: 28, fontFamily: F }}>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Sticky header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: DYNAMO_BLUE, margin: '0 0 2px' }}>Licentie aanvragen</h2>
+            <p style={{ fontSize: 13, color: 'rgba(45,69,124,0.5)', margin: 0 }}>
+              Dien een aanvraag in voor jezelf of een medewerker.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'rgba(45,69,124,0.35)', lineHeight: 1, padding: '2px 4px' }}>✕</button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Product */}
           <div style={{ background: 'rgba(45,69,124,0.04)', borderRadius: 12, padding: '12px 16px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(45,69,124,0.45)', marginBottom: 2 }}>Product</div>
             <div style={{ fontWeight: 700, color: DYNAMO_BLUE, fontSize: 16 }}>{item.naam}</div>
             <div style={{ fontSize: 12, color: 'rgba(45,69,124,0.5)', marginTop: 2 }}>{item.leverancier} · {item.categorie}</div>
           </div>
 
+          {/* Medewerker kiezen */}
           <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(45,69,124,0.6)', display: 'block', marginBottom: 6 }}>
-              Motivatie <span style={{ fontWeight: 400, opacity: 0.6 }}>(optioneel)</span>
-            </label>
+            <label style={lbl}>Voor medewerker</label>
+            {gekozenGebruiker ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 10, padding: '10px 14px' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: DYNAMO_BLUE, fontSize: 14 }}>{gekozenGebruiker.naam}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(45,69,124,0.5)' }}>{gekozenGebruiker.email}</div>
+                  {gekozenGebruiker.manager_naam && (
+                    <div style={{ fontSize: 11, color: 'rgba(45,69,124,0.4)', marginTop: 2 }}>Manager: {gekozenGebruiker.manager_naam}</div>
+                  )}
+                </div>
+                <button type="button" onClick={() => { setGekozenGebruiker(null); setNamensZoek('') }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(45,69,124,0.4)', fontSize: 16 }}>✕</button>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Zoek naam of e-mail…"
+                  value={namensZoek}
+                  onChange={e => { setNamensZoek(e.target.value); setZoekOpen(true) }}
+                  onFocus={() => setZoekOpen(true)}
+                  style={{ width: '100%', borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '10px 12px', fontSize: 14, fontFamily: F, color: '#1e293b', outline: 'none', boxSizing: 'border-box' }}
+                />
+                {zoekOpen && gefilterdeGebruikers.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 10, boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: 4, overflow: 'hidden' }}>
+                    {gefilterdeGebruikers.map(g => (
+                      <button
+                        key={g.user_id}
+                        type="button"
+                        onClick={() => { setGekozenGebruiker(g); setZoekOpen(false); setNamensZoek('') }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: 'white', cursor: 'pointer', borderBottom: '1px solid rgba(45,69,124,0.06)', fontFamily: F }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(45,69,124,0.04)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'white')}
+                      >
+                        <div style={{ fontWeight: 600, color: DYNAMO_BLUE, fontSize: 14 }}>{g.naam}</div>
+                        <div style={{ fontSize: 12, color: 'rgba(45,69,124,0.5)' }}>{g.email}</div>
+                        {g.manager_naam && <div style={{ fontSize: 11, color: 'rgba(45,69,124,0.35)' }}>Manager: {g.manager_naam}</div>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {!gekozenGebruiker && (
+              <p style={{ fontSize: 11, color: 'rgba(45,69,124,0.4)', margin: '4px 0 0' }}>
+                Laat leeg om de aanvraag voor jezelf in te dienen.
+              </p>
+            )}
+          </div>
+
+          {/* Motivatie */}
+          <div>
+            <label style={lbl}>Motivatie <span style={{ fontWeight: 400, opacity: 0.6 }}>(optioneel)</span></label>
             <textarea
               value={motivatie}
               onChange={e => setMotivatie(e.target.value)}
-              rows={4}
-              placeholder="Waarom heb je deze licentie nodig?"
+              rows={3}
+              placeholder={gekozenGebruiker ? `Waarom heeft ${gekozenGebruiker.naam} deze licentie nodig?` : 'Waarom heb je deze licentie nodig?'}
               style={{ width: '100%', borderRadius: 10, border: '1px solid rgba(45,69,124,0.2)', padding: '10px 12px', fontSize: 14, fontFamily: F, color: '#1e293b', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -592,7 +692,7 @@ function AanvraagModal({
           </button>
           <button type="button" onClick={() => void indienen()} disabled={loading}
             style={{ borderRadius: 10, padding: '9px 22px', fontSize: 14, fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-            {loading ? 'Bezig...' : 'Aanvraag indienen'}
+            {loading ? 'Bezig...' : gekozenGebruiker ? `Indienen voor ${gekozenGebruiker.naam.split(' ')[0]}` : 'Aanvraag indienen'}
           </button>
         </div>
       </div>
