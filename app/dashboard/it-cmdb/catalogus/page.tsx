@@ -1008,10 +1008,17 @@ export default function CatalogusPage() {
               style={{ background: 'white', color: DYNAMO_BLUE, border: `1px solid rgba(45,69,124,0.2)`, fontFamily: F }}
               title="Synchroniseer Microsoft 365 licenties en koppel ze aan portalgebruikers"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={syncLoading ? 'animate-spin' : ''}>
-                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" />
-              </svg>
-              {syncLoading ? 'Bezig...' : 'Sync Microsoft'}
+              {syncLoading ? (
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                </svg>
+              )}
+              {syncLoading ? 'Synchroniseren…' : 'Sync Microsoft'}
             </button>
             <button
               type="button"

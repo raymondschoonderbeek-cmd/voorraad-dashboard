@@ -482,20 +482,76 @@ export default function InstellingenPage() {
         {/* Aanvraag modal (voor inline aanvraag vanuit instellingen) */}
         {aanvraagModalItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
-            onClick={e => { if (e.target === e.currentTarget) { setAanvraagModalItem(null); setAanvraagMotivatie('') } }}>
-            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-7">
-              <h3 className="text-lg font-bold mb-1" style={{ color: '#2D457C' }}>Licentie aanvragen</h3>
-              <p className="text-sm text-gray-500 mb-5">Je manager ontvangt een e-mail ter goedkeuring.</p>
-              <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                <div className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-0.5">Product</div>
-                <div className="font-bold text-gray-900">{aanvraagModalItem.naam}</div>
+            onClick={e => { if (e.target === e.currentTarget) sluitAanvraagModal() }}>
+            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-7 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-start justify-between mb-1">
+                <h3 className="text-lg font-bold" style={{ color: '#2D457C' }}>Licentie aanvragen</h3>
+                <button type="button" onClick={sluitAanvraagModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1">✕</button>
               </div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Motivatie <span className="text-gray-400 font-normal">(optioneel)</span></label>
+              <p className="text-sm text-gray-500 mb-5">Dien een aanvraag in voor jezelf of een medewerker.</p>
+
+              {/* Product */}
+              <div className="rounded-xl p-3 mb-4" style={{ background: 'rgba(45,69,124,0.04)' }}>
+                <div className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: 'rgba(45,69,124,0.5)' }}>Product</div>
+                <div className="font-bold" style={{ color: '#2D457C' }}>{aanvraagModalItem.naam}</div>
+              </div>
+
+              {/* Medewerker — alleen zichtbaar als portal-users geladen zijn */}
+              {allePortalUsers.length > 0 && (
+                <div className="mb-4">
+                  <label className="text-xs font-bold uppercase tracking-wide block mb-1.5" style={{ color: 'rgba(45,69,124,0.6)' }}>
+                    Voor medewerker
+                  </label>
+                  {aanvraagNamensUser ? (
+                    <div className="flex items-center justify-between rounded-xl border p-3" style={{ background: 'rgba(45,69,124,0.04)', borderColor: 'rgba(45,69,124,0.15)' }}>
+                      <div>
+                        <div className="font-semibold text-sm" style={{ color: '#2D457C' }}>{aanvraagNamensUser.naam}</div>
+                        <div className="text-xs text-gray-500">{aanvraagNamensUser.email}</div>
+                        {aanvraagNamensUser.manager_naam && (
+                          <div className="text-xs text-gray-400 mt-0.5">Manager: {aanvraagNamensUser.manager_naam}</div>
+                        )}
+                      </div>
+                      <button type="button" onClick={() => { setAanvraagNamensUser(null); setAanvraagNamensZoek('') }}
+                        className="text-gray-400 hover:text-gray-600 text-base leading-none px-1 ml-2">✕</button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Zoek naam of e-mail…"
+                        value={aanvraagNamensZoek}
+                        onChange={e => { setAanvraagNamensZoek(e.target.value); setAanvraagNamensOpen(true) }}
+                        onFocus={() => setAanvraagNamensOpen(true)}
+                        className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-300"
+                      />
+                      {aanvraagNamensOpen && gefilterdePortalUsers.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                          {gefilterdePortalUsers.map(g => (
+                            <button key={g.user_id} type="button"
+                              onClick={() => { setAanvraagNamensUser(g); setAanvraagNamensOpen(false); setAanvraagNamensZoek('') }}
+                              className="block w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                              <div className="font-semibold text-sm text-gray-900">{g.naam}</div>
+                              <div className="text-xs text-gray-500">{g.email}</div>
+                              {g.manager_naam && <div className="text-xs text-gray-400">Manager: {g.manager_naam}</div>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Motivatie */}
+              <label className="text-sm font-medium text-gray-700 block mb-1">
+                Motivatie <span className="text-gray-400 font-normal">(optioneel)</span>
+              </label>
               <textarea value={aanvraagMotivatie} onChange={e => setAanvraagMotivatie(e.target.value)} rows={3}
-                placeholder="Waarom heb je deze licentie nodig?"
+                placeholder="Waarom is deze licentie nodig?"
                 className="w-full rounded-xl border border-gray-200 p-3 text-sm resize-none outline-none focus:border-blue-400 mb-5" />
+
               <div className="flex gap-3 justify-end">
-                <button type="button" onClick={() => { setAanvraagModalItem(null); setAanvraagMotivatie('') }}
+                <button type="button" onClick={sluitAanvraagModal}
                   className="rounded-xl px-4 py-2 text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition">
                   Annuleren
                 </button>

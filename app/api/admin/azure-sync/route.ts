@@ -19,7 +19,14 @@ interface GraphUser {
   jobTitle: string | null
   department: string | null
   accountEnabled: boolean
+  userType: string | null
+  assignedLicenses: { skuId: string }[]
   manager?: GraphManager | null
+}
+
+interface SubscribedSku {
+  skuId: string
+  skuPartNumber: string
 }
 
 export async function getAzureToken(): Promise<string> {
@@ -56,13 +63,32 @@ export async function getAzureToken(): Promise<string> {
   return data.access_token
 }
 
+// E3-gerelateerde SKU part numbers (Microsoft 365 E3 en Office 365 E3)
+const E3_SKU_PATTERNS = ['SPE_E3', 'ENTERPRISEPACK', 'ENTERPRISEPREMIUM']
+
+async function fetchE3SkuIds(token: string): Promise<Set<string>> {
+  const res = await fetch(
+    'https://graph.microsoft.com/v1.0/subscribedSkus?$select=skuId,skuPartNumber',
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (!res.ok) return new Set()
+  const data = await res.json() as { value?: SubscribedSku[] }
+  const e3Ids = new Set<string>()
+  for (const sku of data.value ?? []) {
+    if (E3_SKU_PATTERNS.some(p => sku.skuPartNumber?.toUpperCase().includes(p))) {
+      e3Ids.add(sku.skuId)
+    }
+  }
+  return e3Ids
+}
+
 async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
   const users: GraphUser[] = []
   let url: string | null =
     'https://graph.microsoft.com/v1.0/users' +
-    '?$select=id,displayName,mail,userPrincipalName,givenName,surname,jobTitle,department,accountEnabled' +
+    '?$select=id,displayName,mail,userPrincipalName,givenName,surname,jobTitle,department,accountEnabled,userType,assignedLicenses' +
     '&$expand=manager($select=displayName,mail,userPrincipalName)' +
-    '&$filter=accountEnabled eq true' +
+    '&$filter=accountEnabled eq true and userType eq \'Member\'' +
     '&$top=999'
 
   while (url) {
@@ -81,6 +107,28 @@ async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
   }
 
   return users
+}
+
+function voldoetAanSyncCriteria(user: GraphUser, e3SkuIds: Set<string>): boolean {
+  // 1. userType = Member (al gefilterd in query, maar als extra check)
+  if (user.userType !== 'Member') return false
+
+  // 2. accountEnabled = true (al gefilterd in query)
+  if (!user.accountEnabled) return false
+
+  // 3. mail of userPrincipalName eindigt op @dynamoretailgroup.com
+  const mail = (user.mail ?? '').toLowerCase()
+  const upn = (user.userPrincipalName ?? '').toLowerCase()
+  if (!mail.endsWith('@dynamoretailgroup.com') && !upn.endsWith('@dynamoretailgroup.com')) return false
+
+  // 4. Heeft een E3-licentie
+  const heeftE3 = (user.assignedLicenses ?? []).some(l => e3SkuIds.has(l.skuId))
+  if (!heeftE3) return false
+
+  // 5. department is gevuld
+  if (!user.department?.trim()) return false
+
+  return true
 }
 
 export async function POST(request: NextRequest) {
@@ -112,11 +160,18 @@ export async function POST(request: NextRequest) {
   }
 
   let azureUsers: GraphUser[]
+  let e3SkuIds: Set<string>
   try {
-    azureUsers = await fetchAllAzureUsers(token)
+    [azureUsers, e3SkuIds] = await Promise.all([
+      fetchAllAzureUsers(token),
+      fetchE3SkuIds(token),
+    ])
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
+
+  const teVerwerken = azureUsers.filter(u => voldoetAanSyncCriteria(u, e3SkuIds))
+  const gefilterd = azureUsers.length - teVerwerken.length
 
   // Haal alle bestaande Supabase-gebruikers op
   const supabaseUsers: { id: string; email: string }[] = []
@@ -141,7 +196,7 @@ export async function POST(request: NextRequest) {
   let overgeslagen = 0
   const fouten: string[] = []
 
-  for (const azUser of azureUsers) {
+  for (const azUser of teVerwerken) {
     const email = (azUser.mail ?? azUser.userPrincipalName ?? '').toLowerCase().trim()
     if (!email || email.includes('#ext#')) {
       overgeslagen++
@@ -224,6 +279,8 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     totaal_azure: azureUsers.length,
+    gefilterd,
+    verwerkt: teVerwerken.length,
     aangemaakt,
     profiel_gezet: profielGezet,
     manager_bijgewerkt: managerBijgewerkt,

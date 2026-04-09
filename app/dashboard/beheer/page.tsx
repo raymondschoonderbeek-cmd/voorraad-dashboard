@@ -90,7 +90,7 @@ export default function BeheerPage() {
   // Azure sync
   const [azureSyncLoading, setAzureSyncLoading] = useState(false)
   const [azureSyncResultaat, setAzureSyncResultaat] = useState<{
-    totaal_azure: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; overgeslagen: number; fouten: string[]
+    totaal_azure: number; gefilterd: number; verwerkt: number; aangemaakt: number; profiel_gezet: number; manager_bijgewerkt: number; overgeslagen: number; fouten: string[]
   } | null>(null)
 
   // Cleanup niet-DRG gebruikers
@@ -1268,7 +1268,7 @@ export default function BeheerPage() {
                       <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
                     </svg>
                   )}
-                  {azureSyncLoading ? 'Synchroniseren…' : 'Sync Azure'}
+                  {azureSyncLoading ? 'Synchroniseren…' : 'Sync Microsoft'}
                 </button>
                 <button
                   type="button"
@@ -1347,11 +1347,12 @@ export default function BeheerPage() {
               <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.12)', fontFamily: F }}>
                 <div className="font-semibold mb-2" style={{ color: DYNAMO_BLUE }}>Azure sync voltooid</div>
                 <div style={{ color: 'rgba(45,69,124,0.7)' }}>
-                  {azureSyncResultaat.totaal_azure} gebruikers in Azure &nbsp;·&nbsp;
-                  <span style={{ color: '#16a34a', fontWeight: 600 }}>{azureSyncResultaat.aangemaakt} nieuw aangemaakt</span> &nbsp;·&nbsp;
+                  {azureSyncResultaat.totaal_azure} in Azure &nbsp;·&nbsp;
+                  <span style={{ color: '#dc2626' }}>{azureSyncResultaat.gefilterd ?? 0} gefilterd</span> &nbsp;·&nbsp;
+                  <span style={{ fontWeight: 600 }}>{azureSyncResultaat.verwerkt ?? 0} verwerkt</span> &nbsp;·&nbsp;
+                  <span style={{ color: '#16a34a', fontWeight: 600 }}>{azureSyncResultaat.aangemaakt} nieuw</span> &nbsp;·&nbsp;
                   {azureSyncResultaat.profiel_gezet} profiel gezet &nbsp;·&nbsp;
-                  {azureSyncResultaat.manager_bijgewerkt ?? 0} managers bijgewerkt &nbsp;·&nbsp;
-                  {azureSyncResultaat.overgeslagen} overgeslagen
+                  {azureSyncResultaat.manager_bijgewerkt ?? 0} managers bijgewerkt
                 </div>
                 {azureSyncResultaat.fouten.length > 0 && (
                   <details className="mt-2">
