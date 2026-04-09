@@ -38,6 +38,7 @@ interface GebruikerKoppeling {
 interface PortalUser {
   user_id: string
   email: string
+  naam: string
 }
 
 type AanvraagStatus = 'ingediend' | 'wacht_op_manager' | 'goedgekeurd' | 'afgekeurd'
@@ -396,12 +397,34 @@ function GebruikersModal({
   const { data: portalData } = useSWR<{ users: PortalUser[] }>('/api/it-cmdb/portal-users', fetcher)
 
   const gekoppeld = gekoppeldData?.gebruikers ?? []
-  const gekoppeldeIds = new Set(gekoppeld.map(g => g.user_id))
-  const beschikbaar = (portalData?.users ?? []).filter(u => !gekoppeldeIds.has(u.user_id))
+  const beschikbaar = useMemo(() => {
+    const ids = new Set(gekoppeld.map(g => g.user_id))
+    return (portalData?.users ?? [])
+      .filter(u => !ids.has(u.user_id) && u.email)
+      .sort((a, b) => (a.naam || a.email).localeCompare(b.naam || b.email, 'nl'))
+  }, [portalData, gekoppeld])
 
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [zoek, setZoek] = useState('')
+  const [zoekOpen, setZoekOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const isProduct = item.type === 'product'
+
+  const geselecteerd = beschikbaar.find(u => u.user_id === selectedUserId) ?? null
+
+  const zoekResultaten = useMemo(() => {
+    const q = zoek.trim().toLowerCase()
+    if (!q) return beschikbaar
+    return beschikbaar.filter(u =>
+      (u.naam || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+    )
+  }, [beschikbaar, zoek])
+
+  function kiesGebruiker(u: PortalUser) {
+    setSelectedUserId(u.user_id)
+    setZoek(u.naam || u.email)
+    setZoekOpen(false)
+  }
 
   async function koppel() {
     if (!selectedUserId) return
@@ -416,6 +439,7 @@ function GebruikersModal({
       if (!res.ok) throw new Error(json.error ?? 'Koppelen mislukt')
       await mutate()
       setSelectedUserId('')
+      setZoek('')
       toast('Gebruiker gekoppeld.', 'success')
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Koppelen mislukt', 'error')
@@ -438,18 +462,40 @@ function GebruikersModal({
         {/* Toevoegen */}
         <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)' }}>
           <label style={labelStyle}>Gebruiker toevoegen</label>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <select
-              style={{ ...inputStyle, flex: 1 }}
-              value={selectedUserId}
-              onChange={e => setSelectedUserId(e.target.value)}
-              disabled={beschikbaar.length === 0}
-            >
-              <option value="">{beschikbaar.length === 0 ? 'Alle gebruikers al gekoppeld' : '— Kies een gebruiker —'}</option>
-              {beschikbaar.map(u => (
-                <option key={u.user_id} value={u.user_id}>{u.email}</option>
-              ))}
-            </select>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            {/* Searchable dropdown */}
+            <div style={{ position: 'relative', flex: 1 }}>
+              <input
+                type="text"
+                value={zoek}
+                onChange={e => { setZoek(e.target.value); setSelectedUserId(''); setZoekOpen(true) }}
+                onFocus={() => setZoekOpen(true)}
+                onBlur={() => setTimeout(() => setZoekOpen(false), 150)}
+                placeholder={beschikbaar.length === 0 ? 'Alle gebruikers al gekoppeld' : 'Zoek op naam of e-mail…'}
+                disabled={beschikbaar.length === 0}
+                style={{ ...inputStyle, margin: 0 }}
+              />
+              {zoekOpen && zoekResultaten.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: '4px', overflowY: 'auto', maxHeight: '220px' }}>
+                  {zoekResultaten.map(u => (
+                    <button
+                      key={u.user_id}
+                      type="button"
+                      onMouseDown={() => kiesGebruiker(u)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: F }}
+                    >
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
+                      <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>{u.email}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {zoekOpen && zoek.trim() && zoekResultaten.length === 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'white', border: '1px solid rgba(45,69,124,0.15)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(45,69,124,0.12)', marginTop: '4px', padding: '10px 14px' }}>
+                  <span style={{ fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</span>
+                </div>
+              )}
+            </div>
             <button
               type="button"
               disabled={!selectedUserId || adding}
@@ -459,6 +505,11 @@ function GebruikersModal({
               {adding ? '…' : 'Koppelen'}
             </button>
           </div>
+          {geselecteerd && (
+            <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#15803d' }}>
+              ✓ {geselecteerd.naam || prettyEmail(geselecteerd.email)} geselecteerd
+            </p>
+          )}
           {isProduct && (
             <p style={{ margin: '8px 0 0', fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>
               Na het koppelen kun je per gebruiker serienummer en datum in gebruik invoeren.
