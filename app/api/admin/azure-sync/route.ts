@@ -66,14 +66,20 @@ export async function getAzureToken(): Promise<string> {
 // E3-gerelateerde SKU part numbers (Microsoft 365 E3 en Office 365 E3)
 const E3_SKU_PATTERNS = ['SPE_E3', 'ENTERPRISEPACK', 'ENTERPRISEPREMIUM']
 
+// Bekende SKU IDs die altijd als geldig worden beschouwd (ongeacht skuPartNumber)
+const BEKENDE_SKU_IDS = new Set([
+  'c2fe850d-fbbb-4858-b67d-bd0c6e746da3', // Dynamo Retail Group tenant licentie
+])
+
 async function fetchE3SkuIds(token: string): Promise<Set<string>> {
   const res = await fetch(
     'https://graph.microsoft.com/v1.0/subscribedSkus?$select=skuId,skuPartNumber',
     { headers: { Authorization: `Bearer ${token}` } }
   )
-  if (!res.ok) return new Set()
+  // Start met de bekende vaste SKU IDs
+  const e3Ids = new Set<string>(BEKENDE_SKU_IDS)
+  if (!res.ok) return e3Ids
   const data = await res.json() as { value?: SubscribedSku[] }
-  const e3Ids = new Set<string>()
   for (const sku of data.value ?? []) {
     if (E3_SKU_PATTERNS.some(p => sku.skuPartNumber?.toUpperCase().includes(p))) {
       e3Ids.add(sku.skuId)
