@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
   if (!leverancier) return NextResponse.json({ error: 'leverancier is verplicht' }, { status: 400 })
 
   const aantallen = typeof body.aantallen === 'number' ? body.aantallen : (body.aantallen != null ? parseInt(String(body.aantallen), 10) : null)
+  const kostenRaw = typeof body.kosten_per_eenheid === 'number' ? body.kosten_per_eenheid : (body.kosten_per_eenheid != null ? parseFloat(String(body.kosten_per_eenheid)) : null)
 
   const row = {
     naam,
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
     leverancier,
     versie: typeof body.versie === 'string' ? body.versie.trim() || null : null,
     aantallen: aantallen != null && !Number.isNaN(aantallen) ? aantallen : null,
+    kosten_per_eenheid: kostenRaw != null && !Number.isNaN(kostenRaw) ? kostenRaw : null,
     notities: typeof body.notities === 'string' ? body.notities.trim() || null : null,
     created_by: auth.user.id,
     updated_at: new Date().toISOString(),

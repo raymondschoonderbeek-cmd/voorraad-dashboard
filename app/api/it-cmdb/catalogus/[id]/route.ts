@@ -34,6 +34,12 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     if (!Number.isNaN(n)) update.aantallen = n
   }
   if (body.notities === null || typeof body.notities === 'string') update.notities = body.notities === null ? null : String(body.notities).trim() || null
+  if (body.kosten_per_eenheid === null) {
+    update.kosten_per_eenheid = null
+  } else if (body.kosten_per_eenheid != null) {
+    const k = typeof body.kosten_per_eenheid === 'number' ? body.kosten_per_eenheid : parseFloat(String(body.kosten_per_eenheid))
+    if (!Number.isNaN(k)) update.kosten_per_eenheid = k
+  }
 
   if (Object.keys(update).length <= 1) {
     return NextResponse.json({ error: 'Geen velden om bij te werken' }, { status: 400 })

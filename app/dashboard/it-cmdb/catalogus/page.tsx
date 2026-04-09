@@ -18,8 +18,9 @@ interface CatalogusItem {
   categorie: string
   leverancier: string
   versie: string | null
-  aantallen: number | null   // totaal beschikbaar / gekocht
-  in_gebruik: number         // aantal gekoppelde gebruikers
+  aantallen: number | null        // totaal beschikbaar / gekocht
+  in_gebruik: number              // aantal gekoppelde gebruikers
+  kosten_per_eenheid: number | null  // kosten per licentie/product per maand
   notities: string | null
   created_at: string
   updated_at: string
@@ -62,7 +63,11 @@ const CATEGORIE_KLEUREN: Record<string, { bg: string; fg: string }> = {
 type CatalogusForm = Omit<CatalogusItem, 'id' | 'created_at' | 'updated_at' | 'in_gebruik'>
 
 const LEEG: CatalogusForm = {
-  naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: null, aantallen: null, notities: null,
+  naam: '', type: 'licentie', categorie: 'Productiviteit', leverancier: '', versie: null, aantallen: null, kosten_per_eenheid: null, notities: null,
+}
+
+function formatEuro(bedrag: number): string {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(bedrag)
 }
 
 function prettyEmail(email: string) {
@@ -165,6 +170,26 @@ function FormModal({
               <label style={labelStyle}>Totaal beschikbaar (gekocht)</label>
               <input style={inputStyle} type="number" min="0" value={form.aantallen ?? ''} onChange={e => set('aantallen', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="bijv. 48" />
             </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Kosten per licentie / product (€/maand)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(45,69,124,0.4)', fontSize: '14px', pointerEvents: 'none' }}>€</span>
+              <input
+                style={{ ...inputStyle, paddingLeft: '28px' }}
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.kosten_per_eenheid ?? ''}
+                onChange={e => set('kosten_per_eenheid', e.target.value === '' ? null : parseFloat(e.target.value))}
+                placeholder="0,00"
+              />
+            </div>
+            {form.kosten_per_eenheid != null && form.aantallen != null && (
+              <div style={{ marginTop: '4px', fontSize: '12px', color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
+                Totaal: {formatEuro(form.kosten_per_eenheid * form.aantallen)} / maand
+              </div>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Notities</label>
@@ -614,20 +639,38 @@ export default function CatalogusPage() {
         </div>
 
         {/* Statistieken */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[
-            { label: 'Totaal items', value: items.length },
-            { label: 'Licenties', value: items.filter(i => i.type === 'licentie').length },
-            { label: 'Producten', value: items.filter(i => i.type === 'product').length },
-          ].map(s => (
-            <div key={s.label} className="rounded-2xl px-4 py-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-              <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(45,69,124,0.4)', letterSpacing: '0.08em' }}>{s.label}</div>
-              <div className="text-2xl font-bold" style={{ color: DYNAMO_BLUE, letterSpacing: '-0.03em' }}>
-                {isLoading ? '…' : s.value}
-              </div>
+        {(() => {
+          const totaalMaand = items.reduce((sum, i) => {
+            if (i.kosten_per_eenheid == null) return sum
+            return sum + i.kosten_per_eenheid * (i.aantallen ?? i.in_gebruik)
+          }, 0)
+          const heeftKosten = items.some(i => i.kosten_per_eenheid != null)
+          const stats = [
+            { label: 'Totaal items', value: String(items.length), sub: null },
+            { label: 'Licenties', value: String(items.filter(i => i.type === 'licentie').length), sub: null },
+            { label: 'Producten', value: String(items.filter(i => i.type === 'product').length), sub: null },
+            ...(heeftKosten ? [{
+              label: 'Maandkosten (totaal)',
+              value: formatEuro(totaalMaand),
+              sub: `${formatEuro(totaalMaand * 12)} / jaar`,
+            }] : []),
+          ]
+          return (
+            <div className={`grid gap-3 ${heeftKosten ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+              {stats.map(s => (
+                <div key={s.label} className="rounded-2xl px-4 py-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+                  <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(45,69,124,0.4)', letterSpacing: '0.08em' }}>{s.label}</div>
+                  <div className="text-xl font-bold leading-tight" style={{ color: DYNAMO_BLUE, letterSpacing: '-0.02em' }}>
+                    {isLoading ? '…' : s.value}
+                  </div>
+                  {s.sub && !isLoading && (
+                    <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)' }}>{s.sub}</div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )
+        })()}
 
         {/* Sync resultaat / fout */}
         {syncError && (
@@ -699,7 +742,7 @@ export default function CatalogusPage() {
               <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}>
-                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'In gebruik', 'Totaal', 'Notities', 'Gebruikers', ''].map(h => (
+                    {['Naam', 'Type', 'Categorie', 'Leverancier', 'Versie', 'In gebruik', 'Totaal', 'Kosten/mnd', 'Maandtotaal', 'Notities', 'Gebruikers', ''].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase whitespace-nowrap" style={{ color: DYNAMO_BLUE, letterSpacing: '0.06em', fontFamily: F }}>
                         {h}
                       </th>
@@ -732,6 +775,22 @@ export default function CatalogusPage() {
                       </td>
                       <td className="px-4 py-3 font-semibold" style={{ color: item.aantallen != null ? DYNAMO_BLUE : '#94a3b8' }}>
                         {item.aantallen != null ? item.aantallen : '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: item.kosten_per_eenheid != null ? '#334155' : '#94a3b8' }}>
+                        {item.kosten_per_eenheid != null ? formatEuro(item.kosten_per_eenheid) : '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap font-semibold" style={{ color: item.kosten_per_eenheid != null ? DYNAMO_BLUE : '#94a3b8' }}>
+                        {item.kosten_per_eenheid != null
+                          ? (() => {
+                              const basis = item.aantallen ?? item.in_gebruik
+                              const totaal = item.kosten_per_eenheid * basis
+                              return (
+                                <span title={`${basis} × ${formatEuro(item.kosten_per_eenheid)}`}>
+                                  {formatEuro(totaal)}
+                                </span>
+                              )
+                            })()
+                          : '—'}
                       </td>
                       <td className="px-4 py-3 max-w-[160px] truncate" style={{ color: '#94a3b8' }} title={item.notities ?? ''}>{item.notities || '—'}</td>
                       <td className="px-4 py-3">
@@ -770,7 +829,7 @@ export default function CatalogusPage() {
 
       {modal && (
         <FormModal
-          initial={modal.mode === 'edit' ? { naam: modal.item.naam, type: modal.item.type, categorie: modal.item.categorie, leverancier: modal.item.leverancier, versie: modal.item.versie, aantallen: modal.item.aantallen, notities: modal.item.notities } : LEEG}
+          initial={modal.mode === 'edit' ? { naam: modal.item.naam, type: modal.item.type, categorie: modal.item.categorie, leverancier: modal.item.leverancier, versie: modal.item.versie, aantallen: modal.item.aantallen, kosten_per_eenheid: modal.item.kosten_per_eenheid, notities: modal.item.notities } : LEEG}
           onClose={() => setModal(null)}
           onSave={handleSave}
           saving={saving}
