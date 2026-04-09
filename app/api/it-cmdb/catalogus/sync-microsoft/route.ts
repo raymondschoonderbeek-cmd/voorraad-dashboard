@@ -174,11 +174,33 @@ export async function POST(request: NextRequest) {
     const naam = SKU_NAMEN[sku.skuPartNumber] ?? sku.skuPartNumber
     const aantallen = sku.prepaidUnits.enabled > 0 ? sku.prepaidUnits.enabled : null
 
-    // Upsert catalogus-item op basis van microsoft_sku_id
-    const { data: catalogusRij, error: upsertErr } = await adminClient
+    // Zoek bestaand catalogus-item op microsoft_sku_id
+    const { data: bestaand } = await adminClient
       .from('it_catalogus')
-      .upsert(
-        {
+      .select('id')
+      .eq('microsoft_sku_id', sku.skuId)
+      .maybeSingle()
+
+    let catalogusId: string
+
+    if (bestaand) {
+      // Bestaand item bijwerken
+      const { error: updateErr } = await adminClient
+        .from('it_catalogus')
+        .update({ naam, aantallen, updated_at: now })
+        .eq('id', bestaand.id)
+
+      if (updateErr) {
+        fouten.push(`SKU ${sku.skuPartNumber}: ${updateErr.message}`)
+        continue
+      }
+      catalogusId = bestaand.id
+      catalogusBijgewerkt++
+    } else {
+      // Nieuw item aanmaken
+      const { data: nieuw, error: insertErr } = await adminClient
+        .from('it_catalogus')
+        .insert({
           naam,
           type: 'licentie',
           categorie: 'Productiviteit',
@@ -186,21 +208,17 @@ export async function POST(request: NextRequest) {
           microsoft_sku_id: sku.skuId,
           aantallen,
           updated_at: now,
-        },
-        { onConflict: 'microsoft_sku_id', ignoreDuplicates: false }
-      )
-      .select('id, naam')
-      .single()
+        })
+        .select('id')
+        .single()
 
-    if (upsertErr || !catalogusRij) {
-      fouten.push(`SKU ${sku.skuPartNumber}: ${upsertErr?.message ?? 'Upsert mislukt'}`)
-      continue
+      if (insertErr || !nieuw) {
+        fouten.push(`SKU ${sku.skuPartNumber}: ${insertErr?.message ?? 'Aanmaken mislukt'}`)
+        continue
+      }
+      catalogusId = nieuw.id
+      catalogusAangemaakt++
     }
-
-    const catalogusId = catalogusRij.id
-    const isNieuw = catalogusRij.naam === naam && !upsertErr
-    if (isNieuw) catalogusAangemaakt++
-    else catalogusBijgewerkt++
 
     // Huidige microsoft-gesyncte koppelingen voor dit item
     const { data: huidigeKoppelingen } = await adminClient
@@ -235,10 +253,15 @@ export async function POST(request: NextRequest) {
     if (teToevoegen.length > 0) {
       const { error: insertErr } = await adminClient
         .from('it_catalogus_gebruikers')
-        .upsert(teToevoegen, { onConflict: 'catalogus_id,user_id', ignoreDuplicates: true })
+        .insert(teToevoegen)
 
       if (insertErr) {
-        fouten.push(`Koppelingen ${naam}: ${insertErr.message}`)
+        // Negeer duplicate-key fouten (gebruiker al gekoppeld via handmatige sync)
+        if (!insertErr.message.toLowerCase().includes('duplicate') && !insertErr.code?.includes('23505')) {
+          fouten.push(`Koppelingen ${naam}: ${insertErr.message}`)
+        } else {
+          koppelingenToegevoegd += teToevoegen.length
+        }
       } else {
         koppelingenToegevoegd += teToevoegen.length
       }
