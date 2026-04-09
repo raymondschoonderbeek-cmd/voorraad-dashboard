@@ -136,6 +136,7 @@ export default function BeheerPage() {
   const [resendInviteLoading, setResendInviteLoading] = useState<string | null>(null)
   const [impersonateLoadingUserId, setImpersonateLoadingUserId] = useState<string | null>(null)
   const [gebruikerZoekterm, setGebruikerZoekterm] = useState('')
+  const [rolFilter, setRolFilter] = useState<'alle' | 'admin' | 'viewer' | 'lunch'>('alle')
   const [mfaStatus, setMfaStatus] = useState<Record<string, boolean>>({})
   const [userEmails, setUserEmails] = useState<Record<string, string>>({})
   const [userLastSignIns, setUserLastSignIns] = useState<Record<string, string | null>>({})
@@ -152,6 +153,7 @@ export default function BeheerPage() {
   const [bulkLoading, setBulkLoading] = useState(false)
   const [bulkSuccess, setBulkSuccess] = useState('')
   const [bulkError, setBulkError] = useState('')
+  const [bulkZoekterm, setBulkZoekterm] = useState('')
 
   // Vertrouwde IP's (alleen admin)
   const [trustedIps, setTrustedIps] = useState<{ id: number; ip_or_cidr: string; created_at: string }[]>([])
@@ -842,8 +844,9 @@ export default function BeheerPage() {
 
   const gefilterdeGebruikers = useMemo(() => {
     const q = gebruikerZoekterm.trim().toLowerCase()
-    if (!q) return rollen
     return rollen.filter(rol => {
+      if (rolFilter !== 'alle' && rol.rol !== rolFilter) return false
+      if (!q) return true
       const naam = (rol.naam ?? '').toLowerCase()
       const email = (userEmails[rol.user_id] ?? '').toLowerCase()
       const rolNaam = (rol.rol ?? '').toLowerCase()
@@ -851,7 +854,7 @@ export default function BeheerPage() {
       const land = landLabelForUser(rol.user_id).toLowerCase()
       return naam.includes(q) || email.includes(q) || rolNaam.includes(q) || mod.includes(q) || land.includes(q)
     })
-  }, [rollen, gebruikerZoekterm, userEmails, profileModulesResolved, profileLandenRaw])
+  }, [rollen, gebruikerZoekterm, rolFilter, userEmails, profileModulesResolved, profileLandenRaw])
 
   async function verwerkExcel(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -1197,22 +1200,56 @@ export default function BeheerPage() {
         {/* ── TAB: GEBRUIKERS ── */}
         {tab === 'gebruikers' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-              <div className="relative flex-1 max-w-sm">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(45,69,124,0.3)' }}>⌕</span>
-                <input
-                  type="text"
-                  placeholder="Zoek op naam, e-mail, rol, modules of land..."
-                  value={gebruikerZoekterm}
-                  onChange={e => setGebruikerZoekterm(e.target.value)}
-                  className="w-full rounded-xl px-3 py-2 pl-9 text-sm"
-                  style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
-                />
-                {gebruikerZoekterm && (
-                  <button type="button" onClick={() => setGebruikerZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Wis zoekterm">✕</button>
-                )}
-              </div>
-              <div className="flex gap-2 shrink-0">
+            <div className="space-y-2">
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+                <div className="flex gap-1.5 items-center flex-wrap">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm select-none" style={{ color: 'rgba(45,69,124,0.3)' }}>⌕</span>
+                    <input
+                      type="text"
+                      placeholder="Zoek naam, e-mail, module..."
+                      value={gebruikerZoekterm}
+                      onChange={e => setGebruikerZoekterm(e.target.value)}
+                      className="rounded-xl px-3 py-2 pl-8 text-sm w-60"
+                      style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                    />
+                    {gebruikerZoekterm && (
+                      <button type="button" onClick={() => setGebruikerZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs" aria-label="Wis zoekterm">✕</button>
+                    )}
+                  </div>
+                  {(['alle', 'admin', 'viewer', 'lunch'] as const).map(r => {
+                    const counts: Record<string, number> = {
+                      alle: rollen.length,
+                      admin: rollen.filter(u => u.rol === 'admin').length,
+                      viewer: rollen.filter(u => u.rol === 'viewer').length,
+                      lunch: rollen.filter(u => u.rol === 'lunch').length,
+                    }
+                    const labels = { alle: 'Alle', admin: 'Admin', viewer: 'Viewer', lunch: 'Lunch' }
+                    const active = rolFilter === r
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRolFilter(r)}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5"
+                        style={active
+                          ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F }
+                          : { background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.6)', fontFamily: F }}
+                      >
+                        {labels[r]}
+                        <span className="rounded-full px-1.5 text-xs font-bold" style={active ? { background: 'rgba(255,255,255,0.2)' } : { background: 'rgba(45,69,124,0.07)' }}>
+                          {counts[r]}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {(gebruikerZoekterm || rolFilter !== 'alle') && (
+                    <button type="button" onClick={() => { setGebruikerZoekterm(''); setRolFilter('alle') }} className="text-xs rounded-lg px-2.5 py-1.5" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
+                      Wis filters
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={syncAzureGebruikers}
@@ -1255,6 +1292,7 @@ export default function BeheerPage() {
                 <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
                   + Gebruiker uitnodigen
                 </button>
+              </div>
               </div>
             </div>
 
@@ -1345,20 +1383,36 @@ export default function BeheerPage() {
                       <option key={id} value={id}>{MODULE_LABELS[id]}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex-1 max-w-xs">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm select-none" style={{ color: 'rgba(45,69,124,0.3)' }}>⌕</span>
+                    <input
+                      type="text"
+                      placeholder="Zoek gebruiker..."
+                      value={bulkZoekterm}
+                      onChange={e => setBulkZoekterm(e.target.value)}
+                      className="w-full rounded-xl px-3 py-2 pl-8 text-sm"
+                      style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                    />
+                    {bulkZoekterm && (
+                      <button type="button" onClick={() => setBulkZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">✕</button>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
-                      const allesAan = rollen.filter(r => r.rol !== 'admin').every(r => {
+                      const zichtbaar = rollen.filter(r => r.rol !== 'admin' && (!bulkZoekterm.trim() || (r.naam ?? '').toLowerCase().includes(bulkZoekterm.toLowerCase()) || (userEmails[r.user_id] ?? '').toLowerCase().includes(bulkZoekterm.toLowerCase())))
+                      const allesAan = zichtbaar.every(r => {
                         const huidig = (profileModulesResolved[r.user_id] ?? []).includes(bulkModuleId)
                         return bulkSelectie[r.user_id] !== undefined ? bulkSelectie[r.user_id] : huidig
                       })
-                      const nieuw: Record<string, boolean> = {}
-                      for (const r of rollen) {
-                        if (r.rol !== 'admin') nieuw[r.user_id] = !allesAan
-                      }
+                      const nieuw: Record<string, boolean> = { ...bulkSelectie }
+                      for (const r of zichtbaar) nieuw[r.user_id] = !allesAan
                       setBulkSelectie(nieuw)
                     }}
-                    className="text-xs rounded-lg px-3 py-1.5 border transition"
+                    className="text-xs rounded-lg px-3 py-2 border transition shrink-0"
                     style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}
                   >
                     Alles aan/uit
@@ -1367,29 +1421,36 @@ export default function BeheerPage() {
 
                 <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.1)' }}>
                   <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 px-3 py-2 text-xs font-semibold" style={{ background: 'rgba(45,69,124,0.04)', color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
-                    <span>Toegang</span><span>Gebruiker</span><span>Rol</span>
+                    <span>Toegang</span><span>Gebruiker</span><span>Status</span>
                   </div>
-                  <div className="divide-y divide-dynamo-blue-light/10" style={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {rollen.filter(r => r.rol !== 'admin').map(rol => {
+                  <div className="divide-y divide-dynamo-blue-light/10" style={{ maxHeight: 360, overflowY: 'auto' }}>
+                    {rollen.filter(r => {
+                      if (r.rol === 'admin') return false
+                      if (!bulkZoekterm.trim()) return true
+                      const q = bulkZoekterm.toLowerCase()
+                      return (r.naam ?? '').toLowerCase().includes(q) || (userEmails[r.user_id] ?? '').toLowerCase().includes(q)
+                    }).map(rol => {
                       const uid = rol.user_id
                       const hadModule = (profileModulesResolved[uid] ?? []).includes(bulkModuleId)
                       const heeftModule = bulkSelectie[uid] !== undefined ? bulkSelectie[uid] : hadModule
                       const gewijzigd = heeftModule !== hadModule
                       return (
-                        <label key={uid} className="grid grid-cols-[auto_1fr_auto] gap-x-3 items-center px-3 py-2.5 cursor-pointer transition" style={{ background: gewijzigd ? 'rgba(45,69,124,0.04)' : 'white', fontFamily: F }}>
+                        <label key={uid} className="grid grid-cols-[auto_1fr_auto] gap-x-3 items-center px-3 py-2.5 cursor-pointer transition hover:bg-gray-50/60" style={{ background: gewijzigd ? 'rgba(45,69,124,0.03)' : 'white', fontFamily: F }}>
                           <input
                             type="checkbox"
                             checked={heeftModule}
                             onChange={e => setBulkSelectie(prev => ({ ...prev, [uid]: e.target.checked }))}
                             className="accent-[#2D457C] w-4 h-4"
                           />
-                          <div>
-                            <div className="text-sm font-medium" style={{ color: DYNAMO_BLUE }}>{rol.naam || userEmails[uid] || uid}</div>
-                            <div className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>{userEmails[uid]}</div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate" style={{ color: DYNAMO_BLUE }}>{rol.naam || userEmails[uid] || uid}</div>
+                            <div className="text-xs truncate" style={{ color: 'rgba(45,69,124,0.45)' }}>{userEmails[uid]}</div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            {gewijzigd && <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{ background: heeftModule ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.08)', color: heeftModule ? '#16a34a' : '#dc2626' }}>{heeftModule ? '+ Toevoegen' : '− Verwijderen'}</span>}
-                            <span className="text-xs rounded-full px-2 py-0.5" style={{ background: 'rgba(45,69,124,0.07)', color: 'rgba(45,69,124,0.5)' }}>{rol.rol}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {gewijzigd
+                              ? <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{ background: heeftModule ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.08)', color: heeftModule ? '#16a34a' : '#dc2626' }}>{heeftModule ? '+ Toevoegen' : '− Verwijderen'}</span>
+                              : <span className="text-xs rounded-full px-2 py-0.5" style={{ background: hadModule ? 'rgba(45,69,124,0.08)' : 'rgba(45,69,124,0.04)', color: hadModule ? DYNAMO_BLUE : 'rgba(45,69,124,0.35)' }}>{hadModule ? 'Heeft toegang' : 'Geen toegang'}</span>
+                            }
                           </div>
                         </label>
                       )
@@ -1507,84 +1568,86 @@ export default function BeheerPage() {
               </div>
             )}
 
+            {/* Bewerk-modal — fixed overlay zodat de positie in de lijst niet uitmaakt */}
             {bewerkGebruiker && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkGebruiker.naam} bewerken</h2>
-                <form onSubmit={updateGebruiker} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam</label>
-                      <input type="text" value={bewerkGebruiker.naam} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, naam: e.target.value })} className={inputClass} style={inputStyle} placeholder="Volledige naam" />
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ background: 'rgba(0,0,0,0.45)' }}
+                onClick={e => { if (e.target === e.currentTarget) { setBewerkGebruiker(null); setBewerkEmail('') } }}
+              >
+                <div className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-y-auto" style={{ background: 'white', maxHeight: 'calc(100dvh - 2rem)' }}>
+                  <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.1)', background: 'white', zIndex: 1 }}>
+                    <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkGebruiker.naam} bewerken</h2>
+                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-lg w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition" style={{ color: 'rgba(45,69,124,0.4)' }}>✕</button>
+                  </div>
+                  <form onSubmit={updateGebruiker} className="p-6 space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Naam</label>
+                        <input type="text" value={bewerkGebruiker.naam} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, naam: e.target.value })} className={inputClass} style={inputStyle} placeholder="Volledige naam" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>E-mailadres</label>
+                        <input type="email" value={bewerkEmail} onChange={e => setBewerkEmail(e.target.value)} className={inputClass} style={inputStyle} placeholder="naam@bedrijf.nl" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Rol</label>
+                        <select value={bewerkGebruiker.rol} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, rol: e.target.value })} className={inputClass} style={inputStyle}>
+                          <option value="viewer">Viewer</option>
+                          <option value="lunch">Lunch</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2 self-end pb-2">
+                        <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-[#2D457C]" />
+                        <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht</label>
+                      </div>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>E-mailadres</label>
-                      <input type="email" value={bewerkEmail} onChange={e => setBewerkEmail(e.target.value)} className={inputClass} style={inputStyle} placeholder="naam@bedrijf.nl" />
+                      <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dashboard-modules</label>
+                      {bewerkGebruiker.rol === 'lunch' ? (
+                        <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>Lunch-gebruikers zien alleen de lunch-pagina.</p>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {DASHBOARD_MODULE_ORDER.map(id => (
+                            <label key={id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={bewerkModules.includes(id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
+                              <input
+                                type="checkbox"
+                                checked={bewerkModules.includes(id)}
+                                onChange={() => setBewerkModules(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                                className="accent-[#2D457C]"
+                              />
+                              <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{MODULE_LABELS[id]}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Rol</label>
-                      <select value={bewerkGebruiker.rol} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, rol: e.target.value })} className={inputClass} style={inputStyle}>
-                        <option value="viewer">Viewer</option>
-                        <option value="lunch">Lunch</option>
-                        <option value="admin">Admin</option>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels tonen (land)</label>
+                      <select value={bewerkLandFilter} onChange={e => setBewerkLandFilter(e.target.value as LandFilter)} className={inputClass} style={inputStyle}>
+                        <option value="alle">Alle landen</option>
+                        <option value="Netherlands">Alleen Nederland</option>
+                        <option value="Belgium">Alleen België</option>
                       </select>
                     </div>
-                    <div className="sm:col-span-2 flex items-center gap-2">
-                      <input type="checkbox" id="mfa_verplicht" checked={bewerkGebruiker.mfa_verplicht ?? false} onChange={e => setBewerkGebruiker({ ...bewerkGebruiker, mfa_verplicht: e.target.checked })} className="accent-[#2D457C]" />
-                      <label htmlFor="mfa_verplicht" className="text-xs font-semibold cursor-pointer" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>MFA verplicht voor deze gebruiker</label>
+                    {formError && <p className="text-sm" style={{ color: '#dc2626', fontFamily: F }}>{formError}</p>}
+                    <div className="flex flex-wrap gap-3 pt-1 border-t" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
+                      <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
+                      <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
+                      <button
+                        type="button"
+                        onClick={() => loginAlsGebruiker(bewerkGebruiker.user_id, bewerkGebruiker.naam)}
+                        disabled={impersonateLoadingUserId === bewerkGebruiker.user_id}
+                        className="rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ml-auto"
+                        style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}
+                        title="Admin-sessie beëindigen; je logt in als deze gebruiker"
+                      >
+                        {impersonateLoadingUserId === bewerkGebruiker.user_id ? 'Bezig…' : '🔑 Inloggen als'}
+                      </button>
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dashboard-modules</label>
-                    {bewerkGebruiker.rol === 'lunch' ? (
-                      <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>Lunch-gebruikers zien alleen de lunch-pagina.</p>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {DASHBOARD_MODULE_ORDER.map(id => (
-                          <label key={id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={bewerkModules.includes(id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
-                            <input
-                              type="checkbox"
-                              checked={bewerkModules.includes(id)}
-                              onChange={() => {
-                                setBewerkModules(prev =>
-                                  prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-                                )
-                              }}
-                              className="accent-[#2D457C]"
-                            />
-                            <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{MODULE_LABELS[id]}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Winkels tonen (land)</label>
-                    <select
-                      value={bewerkLandFilter}
-                      onChange={e => setBewerkLandFilter(e.target.value as LandFilter)}
-                      className={inputClass}
-                      style={inputStyle}
-                    >
-                      <option value="alle">Alle landen</option>
-                      <option value="Netherlands">Alleen Nederland</option>
-                      <option value="Belgium">Alleen België</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <button type="submit" disabled={formLoading} className="rounded-xl px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50" style={{ background: DYNAMO_BLUE, fontFamily: F }}>{formLoading ? 'Opslaan...' : 'Opslaan'}</button>
-                    <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:opacity-70 transition" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Annuleren</button>
-                    <button
-                      type="button"
-                      onClick={() => loginAlsGebruiker(bewerkGebruiker.user_id, bewerkGebruiker.naam)}
-                      disabled={impersonateLoadingUserId === bewerkGebruiker.user_id}
-                      className="rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50"
-                      style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}
-                      title="Admin-sessie beëindigen; je logt in als deze gebruiker (magic link)"
-                    >
-                      {impersonateLoadingUserId === bewerkGebruiker.user_id ? 'Bezig…' : '🔑 Inloggen als deze gebruiker'}
-                    </button>
-                  </div>
-                </form>
+                  </form>
+                </div>
               </div>
             )}
 
