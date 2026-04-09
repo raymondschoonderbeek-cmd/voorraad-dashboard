@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
   )
 
   // Basis is auth.users — alle gebruikers, niet alleen degenen in gebruiker_rollen
-  const users = (rpcData ?? [])
+  type UserRow = { user_id: string; naam: string; email: string; manager_naam: string | null; manager_email: string | null }
+  const users: UserRow[] = (rpcData ?? [])
     .map((r: { user_id: string; email: string }) => {
       const rol = rollenMap.get(r.user_id)
       return {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
         manager_email: rol?.manager_email ?? null,
       }
     })
-    .filter(u => u.email)
+    .filter((u: UserRow) => u.email)
 
   return NextResponse.json({ users })
 }
