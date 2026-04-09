@@ -6,48 +6,89 @@ import { getAzureToken } from '@/app/api/admin/azure-sync/route'
 
 // Mapping van Microsoft SKU part numbers naar leesbare namen
 const SKU_NAMEN: Record<string, string> = {
+  // Microsoft 365
   SPE_E3: 'Microsoft 365 E3',
   SPE_E5: 'Microsoft 365 E5',
   SPE_F1: 'Microsoft 365 F1',
   O365_BUSINESS_PREMIUM: 'Microsoft 365 Business Premium',
+  SPB: 'Microsoft 365 Business Premium',
   O365_BUSINESS_ESSENTIALS: 'Microsoft 365 Business Basic',
   O365_BUSINESS: 'Microsoft 365 Apps for Business',
+  OFFICESUBSCRIPTION: 'Microsoft 365 Apps for Enterprise',
+  Microsoft_365_Copilot: 'Microsoft 365 Copilot',
+  // Office 365
   ENTERPRISEPACK: 'Office 365 E3',
   ENTERPRISEPREMIUM: 'Office 365 E5',
   STANDARDPACK: 'Office 365 E1',
   DESKLESSPACK: 'Office 365 F3',
+  EXCHANGESTANDARD: 'Exchange Online Plan 1',
+  EXCHANGEENTERPRISE: 'Exchange Online Plan 2',
+  'O365_w/o Teams Bundle_M3': 'Office 365 E3 zonder Teams',
+  // Power BI
   POWER_BI_PRO: 'Power BI Pro',
   POWER_BI_PREMIUM_PER_USER: 'Power BI Premium Per User',
+  POWER_BI_STANDARD: 'Power BI (gratis)',
+  // Project
   PROJECTPREMIUM: 'Project Plan 5',
   PROJECTPROFESSIONAL: 'Project Plan 3',
+  PROJECT_P1: 'Project Plan 1',
+  // Visio
   VISIOCLIENT: 'Visio Plan 2',
   VISIO_PLAN1_NAT: 'Visio Plan 1',
+  // Teams
   MCOEV: 'Microsoft Teams Phone Standard',
   MCOPSTN1: 'Microsoft 365 Domestic Calling Plan',
+  Microsoft_Teams_Rooms_Basic: 'Microsoft Teams Rooms Basic',
+  Microsoft_Teams_EEA_New: 'Microsoft Teams EEA',
+  // Intune & Entra
   INTUNE_A: 'Microsoft Intune Plan 1',
   AAD_PREMIUM: 'Microsoft Entra ID P1',
   AAD_PREMIUM_P2: 'Microsoft Entra ID P2',
+  // EMS
   EMS: 'Enterprise Mobility + Security E3',
   EMSPREMIUM: 'Enterprise Mobility + Security E5',
+  // Windows
   WIN10_PRO_ENT_SUB: 'Windows 10/11 Enterprise E3',
   WIN_ENT_E5: 'Windows 10/11 Enterprise E5',
+  WINDOWS_STORE: 'Microsoft Store voor bedrijven',
+  // Defender & beveiliging
   DEFENDER_ENDPOINT_P1: 'Microsoft Defender for Endpoint P1',
   THREAT_INTELLIGENCE: 'Microsoft Defender for Office 365 P2',
   RIGHTSMANAGEMENT: 'Azure Information Protection P1',
   RIGHTSMANAGEMENT_ADHOC: 'Rights Management Adhoc',
-  STREAM: 'Microsoft Stream',
+  // Power Platform
   FLOW_FREE: 'Power Automate Free',
-  FLOW_P1: 'Power Automate per user plan',
+  FLOW_P1: 'Power Automate per gebruiker',
+  POWERAUTOMATE_ATTENDED_RPA: 'Power Automate per gebruiker met RPA',
   POWERAPPS_DEV: 'Power Apps Developer Plan',
+  POWERAPPS_VIRAL: 'Power Apps Trial',
+  // SharePoint
+  SHAREPOINTSTORAGE: 'SharePoint Extra Opslag',
+  SHAREPOINTSTANDARD: 'SharePoint Online Plan 1',
+  SHAREPOINTENTERPRISE: 'SharePoint Online Plan 2',
+  // Overig
+  STREAM: 'Microsoft Stream',
   FORMS_PRO: 'Dynamics 365 Customer Voice',
   DYN365_ENTERPRISE_PLAN1: 'Dynamics 365 Customer Engagement Plan',
   CRMPLAN2: 'Dynamics 365 for Sales',
+  CCIBOTS_PRIVPREV_VIRAL: 'Copilot Studio Trial',
+}
+
+// Zet een onbekend SKU part number om naar een leesbare naam
+// bijv. "Microsoft_365_Copilot" → "Microsoft 365 Copilot"
+function prettifySkuPartNumber(partNumber: string): string {
+  return partNumber
+    .replace(/[_]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+    .trim()
 }
 
 interface SubscribedSku {
   skuId: string
   skuPartNumber: string
-  displayName?: string | null
   capabilityStatus: string
   prepaidUnits: { enabled: number; suspended: number; warning: number }
   consumedUnits: number
@@ -61,7 +102,7 @@ interface GraphUserLicenses {
 }
 
 async function fetchSubscribedSkus(token: string): Promise<SubscribedSku[]> {
-  const res = await fetch('https://graph.microsoft.com/v1.0/subscribedSkus?$select=skuId,skuPartNumber,displayName,capabilityStatus,prepaidUnits,consumedUnits', {
+  const res = await fetch('https://graph.microsoft.com/v1.0/subscribedSkus', {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) {
@@ -172,7 +213,7 @@ export async function POST(request: NextRequest) {
     // Sla gratis / proef-SKUs over die 0 betaalde units hebben
     if (sku.prepaidUnits.enabled === 0 && sku.consumedUnits === 0) continue
 
-    const naam = SKU_NAMEN[sku.skuPartNumber] ?? sku.displayName ?? sku.skuPartNumber
+    const naam = SKU_NAMEN[sku.skuPartNumber] ?? prettifySkuPartNumber(sku.skuPartNumber)
     const aantallen = sku.prepaidUnits.enabled > 0 ? sku.prepaidUnits.enabled : null
 
     // Zoek bestaand catalogus-item op microsoft_sku_id
