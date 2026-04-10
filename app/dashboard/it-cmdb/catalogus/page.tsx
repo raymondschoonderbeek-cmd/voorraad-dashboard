@@ -884,38 +884,32 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
     return c
   }, [aanvragen])
 
-  function exporteerNaarExcel() {
+  async function exporteerNaarExcel() {
+    const XLSX = await import('xlsx')
     const statusLabel: Record<AanvraagStatus, string> = {
       ingediend: 'Ingediend',
       wacht_op_manager: 'Wacht op manager',
       goedgekeurd: 'Goedgekeurd',
       afgekeurd: 'Afgekeurd',
     }
-    const escape = (v: string | null | undefined) => {
-      const s = v ?? ''
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
-    }
-    const header = ['Medewerker', 'E-mail medewerker', 'Product', 'Motivatie', 'Manager', 'Manager e-mail', 'Status', 'Manager beslissing op', 'Manager notitie', 'Ingediend op']
-    const rows = gefilterd.map(a => [
-      escape(a.aanvrager_naam),
-      escape(a.aanvrager_email),
-      escape(a.catalogus_naam),
-      escape(a.motivatie),
-      escape(a.manager_naam),
-      escape(a.manager_email),
-      escape(statusLabel[a.status] ?? a.status),
-      escape(a.manager_beslissing_op ? new Date(a.manager_beslissing_op).toLocaleDateString('nl-NL') : ''),
-      escape(a.manager_notitie),
-      escape(new Date(a.created_at).toLocaleDateString('nl-NL')),
-    ])
-    const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `aanvragen-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const rows = gefilterd.map(a => ({
+      'Medewerker': a.aanvrager_naam,
+      'E-mail medewerker': a.aanvrager_email,
+      'Product': a.catalogus_naam,
+      'Motivatie': a.motivatie ?? '',
+      'Manager': a.manager_naam ?? '',
+      'Manager e-mail': a.manager_email ?? '',
+      'Status': statusLabel[a.status] ?? a.status,
+      'Manager beslissing op': a.manager_beslissing_op ? new Date(a.manager_beslissing_op).toLocaleDateString('nl-NL') : '',
+      'Manager notitie': a.manager_notitie ?? '',
+      'Ingediend op': new Date(a.created_at).toLocaleDateString('nl-NL'),
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    // Kolombreedtes
+    ws['!cols'] = [22, 30, 24, 30, 22, 30, 18, 20, 30, 16].map(wch => ({ wch }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Aanvragen')
+    XLSX.writeFile(wb, `aanvragen-${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   return (
@@ -950,7 +944,7 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
           <input type="search" placeholder="Zoek medewerker of product…" value={zoek} onChange={e => setZoek(e.target.value)}
             className="rounded-xl px-3 py-2 text-sm w-60"
             style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }} />
-          <button type="button" onClick={exporteerNaarExcel} disabled={gefilterd.length === 0}
+          <button type="button" onClick={() => void exporteerNaarExcel()} disabled={gefilterd.length === 0}
             className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:opacity-80 disabled:opacity-40 whitespace-nowrap flex items-center gap-1.5"
             style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2" strokeLinecap="round" strokeLinejoin="round"/></svg>
