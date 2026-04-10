@@ -28,12 +28,9 @@ function verifySecret(request: NextRequest, secret: string): boolean {
   return querySecret === secret
 }
 
-async function haalFreshdeskBijlageOp(url: string, apiKey: string): Promise<Buffer> {
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`,
-    },
-  })
+async function haalFreshdeskBijlageOp(url: string): Promise<Buffer> {
+  // attachment_url is een pre-signed S3 URL — geen Authorization header meesturen
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`Bijlage downloaden mislukt: ${res.status} ${res.statusText}`)
   const arrayBuffer = await res.arrayBuffer()
   return Buffer.from(arrayBuffer)
@@ -145,7 +142,7 @@ export async function POST(request: NextRequest) {
 
       for (const bijlage of ticket.attachments) {
         try {
-          const buffer = await haalFreshdeskBijlageOp(bijlage.attachment_url, freshdeskApiKey)
+          const buffer = await haalFreshdeskBijlageOp(bijlage.attachment_url)
           const stream = Readable.from(buffer)
           const remotePath = `${doelpad.replace(/\/$/, '')}/${bijlage.name}`
           await client.uploadFrom(stream, remotePath)
