@@ -39,9 +39,13 @@ async function haalFreshdeskBijlageOp(url: string, apiKey: string): Promise<Buff
   return Buffer.from(arrayBuffer)
 }
 
+function normalizeDomain(raw: string): string {
+  return raw.replace(/^https?:\/\//, '').replace(/\/$/, '').trim()
+}
+
 async function haalFreshdeskTicketOp(ticketId: string, apiKey: string, domain: string): Promise<FreshdeskTicket> {
   const res = await fetch(
-    `https://${domain}.freshdesk.com/api/v2/tickets/${ticketId}?include=attachments`,
+    `https://${normalizeDomain(domain)}/api/v2/tickets/${ticketId}?include=attachments`,
     {
       headers: {
         Authorization: `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`,
