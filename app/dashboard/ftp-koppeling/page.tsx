@@ -1,11 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 
 const F = FONT_FAMILY
+
+interface LogEntry {
+  id: number
+  created_at: string
+  ticket_id: string | null
+  status: string
+  bericht: string
+  geupload: string[]
+  fouten: string[]
+}
 
 interface Instellingen {
   ftp_host: string | null
@@ -37,6 +47,8 @@ export default function FtpKoppelingPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [instellingen, setInstellingen] = useState<Instellingen | null>(null)
   const [laden, setLaden] = useState(true)
+  const [log, setLog] = useState<LogEntry[]>([])
+  const [logLaden, setLogLaden] = useState(false)
 
   // Form state
   const [host, setHost] = useState('')
@@ -53,6 +65,14 @@ export default function FtpKoppelingPage() {
   const [testMsg, setTestMsg] = useState<{ ok: boolean; tekst: string } | null>(null)
   const [geheimTonen, setGeheimTonen] = useState(false)
 
+  const laadLog = useCallback(async () => {
+    setLogLaden(true)
+    const res = await fetch('/api/admin/ftp-koppeling/log')
+    const data = await res.json() as { log?: LogEntry[] }
+    setLog(data.log ?? [])
+    setLogLaden(false)
+  }, [])
+
   useEffect(() => {
     async function check() {
       const res = await fetch('/api/auth/session-info')
@@ -60,9 +80,10 @@ export default function FtpKoppelingPage() {
       if (!info.isAdmin) { setAllowed(false); return }
       setAllowed(true)
       laadInstellingen()
+      void laadLog()
     }
     void check()
-  }, [])
+  }, [laadLog])
 
   useEffect(() => {
     if (allowed === false) router.replace('/dashboard')
@@ -287,20 +308,52 @@ export default function FtpKoppelingPage() {
               )}
             </form>
 
-            {/* Env vars instructie */}
-            <div className="rounded-2xl p-5 space-y-2" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
-              <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Omgevingsvariabelen</h2>
-              <p className="text-xs m-0" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
-                Zorg dat deze variabelen in <code style={{ fontFamily: 'monospace' }}>.env.local</code> staan:
-              </p>
-              <code className="block rounded-xl p-3 text-xs whitespace-pre" style={{ background: 'rgba(45,69,124,0.04)', fontFamily: 'monospace', color: '#1e293b' }}>
-{`FRESHDESK_API_KEY=jouw_api_sleutel
-FRESHDESK_DOMAIN=jouwbedrijf`}
-              </code>
-              <p className="text-xs m-0" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
-                FRESHDESK_DOMAIN is het subdomein: bijv. <code style={{ fontFamily: 'monospace' }}>dynamo</code> voor dynamo.freshdesk.com
-              </p>
+            {/* Activiteitenlog */}
+            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Recente activiteit</h2>
+                <button type="button" onClick={() => void laadLog()} disabled={logLaden} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>
+                  {logLaden ? 'Laden…' : '↻ Vernieuwen'}
+                </button>
+              </div>
+
+              {logLaden && log.length === 0 ? (
+                <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</p>
+              ) : log.length === 0 ? (
+                <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Nog geen activiteit geregistreerd.</p>
+              ) : (
+                <div className="space-y-2">
+                  {log.map(entry => {
+                    const statusKleur: Record<string, { bg: string; text: string }> = {
+                      ok: { bg: '#f0fdf4', text: '#15803d' },
+                      deels_ok: { bg: '#fffbeb', text: '#b45309' },
+                      fout: { bg: '#fef2f2', text: '#b91c1c' },
+                      auth_fout: { bg: '#fef2f2', text: '#b91c1c' },
+                      geen_bijlagen: { bg: 'rgba(45,69,124,0.05)', text: 'rgba(45,69,124,0.6)' },
+                    }
+                    const kleur = statusKleur[entry.status] ?? { bg: 'rgba(45,69,124,0.05)', text: 'rgba(45,69,124,0.6)' }
+                    const datum = new Date(entry.created_at).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    return (
+                      <div key={entry.id} className="rounded-xl p-3 text-xs space-y-1" style={{ background: kleur.bg, border: `1px solid ${kleur.text}22` }}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold" style={{ color: kleur.text }}>{entry.status.replace('_', ' ')}</span>
+                          {entry.ticket_id && <span style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Ticket #{entry.ticket_id}</span>}
+                          <span className="ml-auto" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{datum}</span>
+                        </div>
+                        <p className="m-0" style={{ color: kleur.text, fontFamily: F }}>{entry.bericht}</p>
+                        {entry.geupload && entry.geupload.length > 0 && (
+                          <p className="m-0" style={{ color: '#15803d', fontFamily: F }}>Geüpload: {entry.geupload.join(', ')}</p>
+                        )}
+                        {entry.fouten && entry.fouten.length > 0 && (
+                          <p className="m-0" style={{ color: '#b91c1c', fontFamily: F }}>Fouten: {entry.fouten.join(', ')}</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
+
           </>
         )}
       </main>

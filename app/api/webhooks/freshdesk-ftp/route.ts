@@ -56,10 +56,24 @@ async function haalFreshdeskTicketOp(ticketId: string, apiKey: string, domain: s
   return res.json() as Promise<FreshdeskTicket>
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const adminClient = createAdminClient()
+async function logEntry(
+  adminClient: ReturnType<typeof createAdminClient>,
+  entry: { ticket_id?: string; status: string; bericht: string; geupload?: string[]; fouten?: string[] }
+) {
+  await adminClient.from('ftp_webhook_log').insert({
+    ticket_id: entry.ticket_id ?? null,
+    status: entry.status,
+    bericht: entry.bericht,
+    geupload: entry.geupload ?? [],
+    fouten: entry.fouten ?? [],
+  }).catch(() => {}) // log nooit blokkeren
+}
 
+export async function POST(request: NextRequest) {
+  const adminClient = createAdminClient()
+  let ticketId = ''
+
+  try {
     // Instellingen ophalen
     const { data: instellingen } = await adminClient
       .from('ftp_koppeling_instellingen')
@@ -68,15 +82,18 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (!instellingen?.actief) {
+      await logEntry(adminClient, { status: 'fout', bericht: 'FTP-koppeling is niet actief.' })
       return NextResponse.json({ error: 'FTP-koppeling is niet actief' }, { status: 503 })
     }
 
     // Webhook secret verifiëren
     if (instellingen.webhook_secret && !verifySecret(request, instellingen.webhook_secret)) {
+      await logEntry(adminClient, { status: 'auth_fout', bericht: 'Webhook secret klopt niet — verzoek geweigerd.' })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     if (!instellingen.ftp_host || !instellingen.ftp_user || !instellingen.ftp_password) {
+      await logEntry(adminClient, { status: 'fout', bericht: 'FTP-instellingen onvolledig (host, gebruiker of wachtwoord ontbreekt).' })
       return NextResponse.json({ error: 'FTP-instellingen onvolledig' }, { status: 500 })
     }
 
@@ -84,13 +101,15 @@ export async function POST(request: NextRequest) {
     const freshdeskApiKey = process.env.FRESHDESK_API_KEY
     const freshdeskDomain = process.env.FRESHDESK_DOMAIN
     if (!freshdeskApiKey || !freshdeskDomain) {
+      await logEntry(adminClient, { status: 'fout', bericht: 'FRESHDESK_API_KEY of FRESHDESK_DOMAIN ontbreekt in omgeving.' })
       return NextResponse.json({ error: 'FRESHDESK_API_KEY of FRESHDESK_DOMAIN ontbreekt in omgeving' }, { status: 500 })
     }
 
     // Ticket ID uit webhook body
     const body = await request.json() as { ticket_id?: string | number }
-    const ticketId = String(body.ticket_id ?? '')
+    ticketId = String(body.ticket_id ?? '')
     if (!ticketId) {
+      await logEntry(adminClient, { status: 'fout', bericht: 'ticket_id ontbreekt in webhook body.' })
       return NextResponse.json({ error: 'ticket_id ontbreekt in webhook body' }, { status: 400 })
     }
 
@@ -98,6 +117,7 @@ export async function POST(request: NextRequest) {
     const ticket = await haalFreshdeskTicketOp(ticketId, freshdeskApiKey, freshdeskDomain)
 
     if (!ticket.attachments || ticket.attachments.length === 0) {
+      await logEntry(adminClient, { ticket_id: ticketId, status: 'geen_bijlagen', bericht: `Ticket #${ticketId} heeft geen bijlagen.` })
       return NextResponse.json({ ok: true, bericht: `Ticket #${ticketId} heeft geen bijlagen. Niets geüpload.` })
     }
 
@@ -116,11 +136,9 @@ export async function POST(request: NextRequest) {
         secure: false,
       })
 
-      // Doelmap aanmaken als die niet bestaat
       const doelpad = instellingen.ftp_pad ?? '/'
       await client.ensureDir(doelpad)
 
-      // Elke bijlage downloaden en uploaden
       for (const bijlage of ticket.attachments) {
         try {
           const buffer = await haalFreshdeskBijlageOp(bijlage.attachment_url, freshdeskApiKey)
@@ -136,15 +154,15 @@ export async function POST(request: NextRequest) {
       client.close()
     }
 
-    return NextResponse.json({
-      ok: fouten.length === 0,
-      ticket_id: ticketId,
-      geupload,
-      fouten,
-      bericht: `${geupload.length} bestand(en) geüpload${fouten.length > 0 ? `, ${fouten.length} mislukt` : ''}.`,
-    })
+    const status = fouten.length === 0 ? 'ok' : geupload.length > 0 ? 'deels_ok' : 'fout'
+    const bericht = `${geupload.length} bestand(en) geüpload${fouten.length > 0 ? `, ${fouten.length} mislukt` : ''}.`
+    await logEntry(adminClient, { ticket_id: ticketId, status, bericht, geupload, fouten })
+
+    return NextResponse.json({ ok: fouten.length === 0, ticket_id: ticketId, geupload, fouten, bericht })
   } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Onbekende fout'
     console.error('[freshdesk-ftp webhook]', e)
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Onbekende fout' }, { status: 500 })
+    await logEntry(adminClient, { ticket_id: ticketId || undefined, status: 'fout', bericht: msg })
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
