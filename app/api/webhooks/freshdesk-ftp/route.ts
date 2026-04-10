@@ -66,7 +66,7 @@ async function logEntry(
     bericht: entry.bericht,
     geupload: entry.geupload ?? [],
     fouten: entry.fouten ?? [],
-  }).catch(() => {}) // log nooit blokkeren
+  }).then(() => {}, () => {}) // log nooit blokkeren
 }
 
 export async function POST(request: NextRequest) {
