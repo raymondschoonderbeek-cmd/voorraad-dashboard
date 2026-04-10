@@ -225,29 +225,26 @@ export async function GET(request: NextRequest) {
 
   const sentSet = new Set((already ?? []).map((r: { user_id: string }) => r.user_id))
 
-  let sent = 0
-  const errors: string[] = []
+  const toSend = recipients.filter(r => !sentSet.has(r.userId))
 
-  for (const { userId, email, firstName } of recipients) {
-    if (sentSet.has(userId)) continue
-    try {
+  const results = await Promise.allSettled(
+    toSend.map(async ({ userId, email, firstName }) => {
       await sendLunchReminderToEmail(email, ymd, firstName)
       const { error: insErr } = await admin.from('lunch_reminder_sent').insert({
         user_id: userId,
         reminder_date: ymd,
       })
-      if (insErr) {
-        if (!insErr.message.includes('duplicate') && !insErr.code?.includes('23')) {
-          errors.push(`${email}: ${insErr.message}`)
-        }
-      } else {
-        sent++
-        sentSet.add(userId)
+      if (insErr && !insErr.message.includes('duplicate') && !insErr.code?.includes('23')) {
+        throw new Error(`DB insert mislukt: ${insErr.message}`)
       }
-    } catch (e) {
-      errors.push(`${email}: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
+      return email
+    })
+  )
+
+  const sent = results.filter(r => r.status === 'fulfilled').length
+  const errors = results
+    .map((r, i) => r.status === 'rejected' ? `${toSend[i].email}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}` : null)
+    .filter((x): x is string => x !== null)
 
   return NextResponse.json({
     ok: true,
