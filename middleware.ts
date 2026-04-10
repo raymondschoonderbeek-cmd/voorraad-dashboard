@@ -53,6 +53,7 @@ export async function middleware(request: NextRequest) {
     '/api/lunch/reminder-cron',
     '/api/campagne-fietsen/voorraad/sync',
     '/api/news/digest-cron',
+    '/api/webhooks/',
   ]
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {
