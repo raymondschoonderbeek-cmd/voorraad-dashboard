@@ -56,8 +56,8 @@ export default function FtpKoppelingPage() {
   useEffect(() => {
     async function check() {
       const res = await fetch('/api/auth/session-info')
-      const info = await res.json().catch(() => ({})) as { rol?: string }
-      if (info.rol !== 'admin') { setAllowed(false); return }
+      const info = await res.json().catch(() => ({})) as { isAdmin?: boolean }
+      if (!info.isAdmin) { setAllowed(false); return }
       setAllowed(true)
       laadInstellingen()
     }
