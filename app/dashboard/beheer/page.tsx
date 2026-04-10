@@ -1096,6 +1096,11 @@ export default function BeheerPage() {
                 Vendit API
               </Link>
             )}
+            {isAdmin && (
+              <Link href="/dashboard/ftp-koppeling" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Freshdesk → FTP koppeling">
+                FTP-koppeling
+              </Link>
+            )}
             <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
               <IconArrowLeft /> DRG Portal
             </Link>
