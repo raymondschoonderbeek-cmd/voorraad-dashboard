@@ -45,7 +45,7 @@ function normalizeDomain(raw: string): string {
 
 async function haalFreshdeskTicketOp(ticketId: string, apiKey: string, domain: string): Promise<FreshdeskTicket> {
   const res = await fetch(
-    `https://${normalizeDomain(domain)}/api/v2/tickets/${ticketId}?include=attachments`,
+    `https://${normalizeDomain(domain)}/api/v2/tickets/${ticketId}`,
     {
       headers: {
         Authorization: `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`,
