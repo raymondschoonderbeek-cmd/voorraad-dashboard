@@ -884,6 +884,40 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
     return c
   }, [aanvragen])
 
+  function exporteerNaarExcel() {
+    const statusLabel: Record<AanvraagStatus, string> = {
+      ingediend: 'Ingediend',
+      wacht_op_manager: 'Wacht op manager',
+      goedgekeurd: 'Goedgekeurd',
+      afgekeurd: 'Afgekeurd',
+    }
+    const escape = (v: string | null | undefined) => {
+      const s = v ?? ''
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const header = ['Medewerker', 'E-mail medewerker', 'Product', 'Motivatie', 'Manager', 'Manager e-mail', 'Status', 'Manager beslissing op', 'Manager notitie', 'Ingediend op']
+    const rows = gefilterd.map(a => [
+      escape(a.aanvrager_naam),
+      escape(a.aanvrager_email),
+      escape(a.catalogus_naam),
+      escape(a.motivatie),
+      escape(a.manager_naam),
+      escape(a.manager_email),
+      escape(statusLabel[a.status] ?? a.status),
+      escape(a.manager_beslissing_op ? new Date(a.manager_beslissing_op).toLocaleDateString('nl-NL') : ''),
+      escape(a.manager_notitie),
+      escape(new Date(a.created_at).toLocaleDateString('nl-NL')),
+    ])
+    const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\r\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `aanvragen-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-4">
       {/* Filter bar */}
@@ -912,9 +946,17 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
             )
           })}
         </div>
-        <input type="search" placeholder="Zoek medewerker of product…" value={zoek} onChange={e => setZoek(e.target.value)}
-          className="rounded-xl px-3 py-2 text-sm w-60"
-          style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }} />
+        <div className="flex gap-2 items-center">
+          <input type="search" placeholder="Zoek medewerker of product…" value={zoek} onChange={e => setZoek(e.target.value)}
+            className="rounded-xl px-3 py-2 text-sm w-60"
+            style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }} />
+          <button type="button" onClick={exporteerNaarExcel} disabled={gefilterd.length === 0}
+            className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:opacity-80 disabled:opacity-40 whitespace-nowrap flex items-center gap-1.5"
+            style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Exporteer
+          </button>
+        </div>
       </div>
 
       {/* Tabel */}
