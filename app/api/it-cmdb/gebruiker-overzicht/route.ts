@@ -77,6 +77,14 @@ export async function GET(request: NextRequest) {
   }
 
   const gebruikers = new Map<string, Gebruiker>()
+  type CatalogusItem = {
+    id: string
+    naam: string
+    type: string
+    categorie: string
+    leverancier: string
+    versie: string | null
+  }
 
   function getOfMaak(key: string, userId: string | null, email: string, naam: string | null): Gebruiker {
     if (!gebruikers.has(key)) {
@@ -101,7 +109,8 @@ export async function GET(request: NextRequest) {
 
   // Voeg catalogus koppelingen toe
   for (const k of koppelingen ?? []) {
-    const cat = k.it_catalogus as { id: string; naam: string; type: string; categorie: string; leverancier: string; versie: string | null } | null
+    const rawCat = k.it_catalogus as CatalogusItem | CatalogusItem[] | null
+    const cat = Array.isArray(rawCat) ? (rawCat[0] ?? null) : rawCat
     if (!cat) continue
 
     let key: string
