@@ -30,8 +30,10 @@ interface CatalogusItem {
 
 interface GebruikerKoppeling {
   koppeling_id: string
-  user_id: string
+  user_id: string | null
   email: string
+  naam: string | null
+  microsoft_synced: boolean
   toegewezen_op: string
   serienummer: string | null
   datum_ingebruik: string | null  // YYYY-MM-DD
@@ -312,18 +314,28 @@ function GebruikerRij({
     borderRadius: '8px',
   }
 
+  const isExtern = !g.user_id
+  const displayNaam = g.naam ? g.naam : prettyEmail(g.email)
+
   return (
-    <div style={{ borderRadius: '10px', border: '1px solid rgba(45,69,124,0.1)', background: 'white', overflow: 'hidden' }}>
+    <div style={{ borderRadius: '10px', border: `1px solid ${isExtern ? 'rgba(45,69,124,0.07)' : 'rgba(45,69,124,0.1)'}`, background: isExtern ? 'rgba(45,69,124,0.02)' : 'white', overflow: 'hidden' }}>
       {/* Gebruiker header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: DYNAMO_BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.email}>
-            {prettyEmail(g.email)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: isExtern ? '#64748b' : DYNAMO_BLUE, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.email}>
+              {displayNaam}
+            </div>
+            {isExtern && (
+              <span style={{ fontSize: '10px', fontWeight: 600, background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.5)', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>
+                Geen portal
+              </span>
+            )}
           </div>
           <div style={{ fontSize: '11px', color: dashboardUi.textMuted }}>{g.email}</div>
         </div>
         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-          {isProduct && (
+          {isProduct && !isExtern && (
             <button
               type="button"
               onClick={() => { setEditing(e => !e); setSerienummer(g.serienummer ?? ''); setDatum(g.datum_ingebruik ?? '') }}
@@ -332,14 +344,16 @@ function GebruikerRij({
               {editing ? 'Sluiten' : 'Bewerk'}
             </button>
           )}
-          <button
-            type="button"
-            disabled={ontkoppelDisabled || removing}
-            onClick={() => void ontkoppel()}
-            style={{ borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F, cursor: (ontkoppelDisabled || removing) ? 'not-allowed' : 'pointer', opacity: (ontkoppelDisabled || removing) ? 0.5 : 1 }}
-          >
-            {removing ? '…' : 'Ontkoppelen'}
-          </button>
+          {!isExtern && (
+            <button
+              type="button"
+              disabled={ontkoppelDisabled || removing}
+              onClick={() => void ontkoppel()}
+              style={{ borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c', background: 'transparent', fontFamily: F, cursor: (ontkoppelDisabled || removing) ? 'not-allowed' : 'pointer', opacity: (ontkoppelDisabled || removing) ? 0.5 : 1 }}
+            >
+              {removing ? '…' : 'Ontkoppelen'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -415,7 +429,7 @@ function GebruikersModal({
 
   const gekoppeld = gekoppeldData?.gebruikers ?? []
   const beschikbaar = useMemo(() => {
-    const ids = new Set(gekoppeld.map(g => g.user_id))
+    const ids = new Set(gekoppeld.filter(g => g.user_id).map(g => g.user_id as string))
     return (portalData?.users ?? [])
       .filter(u => !ids.has(u.user_id) && u.email)
       .sort((a, b) => (a.naam || a.email).localeCompare(b.naam || b.email, 'nl'))
@@ -589,7 +603,7 @@ function GebruikersModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {gekoppeld.map(g => (
                 <GebruikerRij
-                  key={g.user_id}
+                  key={g.koppeling_id}
                   g={g}
                   catalogusId={item.id}
                   isProduct={isProduct}

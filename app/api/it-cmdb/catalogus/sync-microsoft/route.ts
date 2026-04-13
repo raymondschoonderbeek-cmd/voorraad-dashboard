@@ -98,6 +98,7 @@ interface GraphUserLicenses {
   id: string
   mail: string | null
   userPrincipalName: string
+  displayName?: string | null
   assignedLicenses: { skuId: string }[]
 }
 
@@ -117,7 +118,7 @@ async function fetchAllUsersWithLicenses(token: string): Promise<GraphUserLicens
   const users: GraphUserLicenses[] = []
   let url: string | null =
     'https://graph.microsoft.com/v1.0/users' +
-    '?$select=id,mail,userPrincipalName,assignedLicenses' +
+    '?$select=id,mail,userPrincipalName,displayName,assignedLicenses' +
     '&$filter=accountEnabled eq true' +
     '&$top=999'
 
@@ -188,17 +189,19 @@ export async function POST(request: NextRequest) {
   }
   const emailToUserId = new Map(supabaseUsers.map(u => [u.email, u.id]))
 
-  // Bouw skuId → Set<portalUserId> mapping
-  const skuUserMap = new Map<string, Set<string>>()
+  // Bouw skuId → portalgebruikers mapping
+  type SkuUser = { userId: string | null; email: string; naam: string | null }
+  const skuUserMap = new Map<string, Map<string, SkuUser>>() // skuId → email → SkuUser
+
   for (const msUser of msUsers) {
     const email = (msUser.mail ?? msUser.userPrincipalName ?? '').toLowerCase().trim()
     if (!email || email.includes('#ext#')) continue
-    const portalUserId = emailToUserId.get(email)
-    if (!portalUserId) continue
+    const portalUserId = emailToUserId.get(email) ?? null
+    const naam = msUser.displayName?.trim() || null
 
     for (const lic of msUser.assignedLicenses ?? []) {
-      if (!skuUserMap.has(lic.skuId)) skuUserMap.set(lic.skuId, new Set())
-      skuUserMap.get(lic.skuId)!.add(portalUserId)
+      if (!skuUserMap.has(lic.skuId)) skuUserMap.set(lic.skuId, new Map())
+      skuUserMap.get(lic.skuId)!.set(email, { userId: portalUserId, email, naam })
     }
   }
 
@@ -266,16 +269,30 @@ export async function POST(request: NextRequest) {
     // Huidige microsoft-gesyncte koppelingen voor dit item
     const { data: huidigeKoppelingen } = await adminClient
       .from('it_catalogus_gebruikers')
-      .select('id, user_id')
+      .select('id, user_id, microsoft_email')
       .eq('catalogus_id', catalogusId)
       .eq('microsoft_synced', true)
 
-    const huidigeUserIds = new Set((huidigeKoppelingen ?? []).map((k: { user_id: string }) => k.user_id))
-    const nieuweUserIds = skuUserMap.get(sku.skuId) ?? new Set<string>()
+    // Huidige keys: user_id (portal) of microsoft_email (extern)
+    const huidigeKeys = new Set(
+      (huidigeKoppelingen ?? []).map((k: { user_id: string | null; microsoft_email: string | null }) =>
+        k.user_id ?? k.microsoft_email ?? ''
+      )
+    )
+    const nieuweUsers = skuUserMap.get(sku.skuId) ?? new Map<string, SkuUser>()
 
     // Verwijder koppelingen die niet meer in Microsoft staan
     const teVerwijderen = (huidigeKoppelingen ?? [])
-      .filter((k: { user_id: string }) => !nieuweUserIds.has(k.user_id))
+      .filter((k: { user_id: string | null; microsoft_email: string | null }) => {
+        const key = k.user_id ?? k.microsoft_email ?? ''
+        // Check of deze gebruiker nog in Microsoft staat
+        if (k.user_id) {
+          // Portal gebruiker: zoek op userId
+          return ![...nieuweUsers.values()].some(u => u.userId === k.user_id)
+        }
+        // Externe gebruiker: zoek op email
+        return !nieuweUsers.has(k.microsoft_email ?? '')
+      })
       .map((k: { id: string }) => k.id)
 
     if (teVerwijderen.length > 0) {
@@ -284,14 +301,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Voeg nieuwe koppelingen toe
-    const teToevoegen = [...nieuweUserIds]
-      .filter(uid => !huidigeUserIds.has(uid))
-      .map(uid => ({
-        catalogus_id: catalogusId,
-        user_id: uid,
-        toegewezen_op: now,
-        microsoft_synced: true,
-      }))
+    const teToevoegen: Record<string, unknown>[] = []
+    for (const skuUser of nieuweUsers.values()) {
+      const key = skuUser.userId ?? skuUser.email
+      if (huidigeKeys.has(key)) continue
+      if (skuUser.userId) {
+        // Portal gebruiker
+        teToevoegen.push({
+          catalogus_id: catalogusId,
+          user_id: skuUser.userId,
+          toegewezen_op: now,
+          microsoft_synced: true,
+        })
+      } else {
+        // Externe gebruiker (niet in portal)
+        teToevoegen.push({
+          catalogus_id: catalogusId,
+          user_id: null,
+          microsoft_email: skuUser.email,
+          microsoft_naam: skuUser.naam,
+          toegewezen_op: now,
+          microsoft_synced: true,
+        })
+      }
+    }
 
     if (teToevoegen.length > 0) {
       const { error: insertErr } = await adminClient
@@ -299,7 +332,6 @@ export async function POST(request: NextRequest) {
         .insert(teToevoegen)
 
       if (insertErr) {
-        // Negeer duplicate-key fouten (gebruiker al gekoppeld via handmatige sync)
         if (!insertErr.message.toLowerCase().includes('duplicate') && !insertErr.code?.includes('23505')) {
           fouten.push(`Koppelingen ${naam}: ${insertErr.message}`)
         } else {
