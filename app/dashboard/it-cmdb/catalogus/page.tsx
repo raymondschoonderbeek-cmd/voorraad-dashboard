@@ -947,8 +947,13 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
           <button type="button" onClick={() => void exporteerNaarExcel()} disabled={gefilterd.length === 0}
             className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:opacity-80 disabled:opacity-40 whitespace-nowrap flex items-center gap-1.5"
             style={{ background: 'white', border: '1px solid rgba(45,69,124,0.15)', color: DYNAMO_BLUE, fontFamily: F }}>
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Exporteer
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="3" width="14" height="18" rx="2" fill="#1D6F42"/>
+              <path d="M6 8l3 4-3 4M10 8l3 4-3 4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="13" y="7" width="9" height="10" rx="1" fill="#2E7D52"/>
+              <path d="M15 10h5M15 12h5M15 14h5" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            Exporteer naar Excel
           </button>
         </div>
       </div>
