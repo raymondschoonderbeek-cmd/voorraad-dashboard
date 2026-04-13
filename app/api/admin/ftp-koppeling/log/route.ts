@@ -18,13 +18,21 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+  const { searchParams } = new URL(request.url)
+  const koppelingId = searchParams.get('koppeling_id')
+
   const adminClient = createAdminClient()
-  const { data, error } = await adminClient
+  let query = adminClient
     .from('ftp_webhook_log')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(50)
 
+  if (koppelingId) {
+    query = query.eq('koppeling_id', koppelingId)
+  }
+
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ log: data ?? [] })
 }

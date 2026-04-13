@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
-import * as ftp from 'basic-ftp'
 import crypto from 'crypto'
 
 async function requireAdmin() {
@@ -11,10 +10,10 @@ async function requireAdmin() {
   if (!user) return { ok: false as const, error: 'Unauthorized', status: 401 }
   const { data: rol } = await supabase.from('gebruiker_rollen').select('rol').eq('user_id', user.id).single()
   if (rol?.rol !== 'admin') return { ok: false as const, error: 'Geen toegang', status: 403 }
-  return { ok: true as const, supabase }
+  return { ok: true as const }
 }
 
-// GET — huidige instellingen ophalen (wachtwoord gemaskeerd)
+// GET — alle taken ophalen (wachtwoord gemaskeerd)
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -22,25 +21,46 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const adminClient = createAdminClient()
-  const { data } = await adminClient.from('ftp_koppeling_instellingen').select('*').eq('id', 1).maybeSingle()
+  const { data } = await adminClient
+    .from('ftp_koppeling_instellingen')
+    .select('id, naam, ftp_host, ftp_user, ftp_password, ftp_port, ftp_pad, actief, webhook_secret, updated_at')
+    .order('id')
 
-  if (!data) return NextResponse.json({ instellingen: null })
+  // Haal laatste log per taak op
+  const ids = (data ?? []).map(r => r.id as number)
+  const { data: logData } = ids.length > 0
+    ? await adminClient
+        .from('ftp_webhook_log')
+        .select('koppeling_id, status, created_at')
+        .in('koppeling_id', ids)
+        .order('created_at', { ascending: false })
+    : { data: [] }
+
+  // Laatste log entry per koppeling_id
+  const lastLog = new Map<number, { status: string; created_at: string }>()
+  for (const row of logData ?? []) {
+    const kid = row.koppeling_id as number
+    if (!lastLog.has(kid)) lastLog.set(kid, { status: row.status as string, created_at: row.created_at as string })
+  }
 
   return NextResponse.json({
-    instellingen: {
-      ftp_host: data.ftp_host,
-      ftp_user: data.ftp_user,
-      ftp_password_set: Boolean(data.ftp_password),
-      ftp_port: data.ftp_port ?? 21,
-      ftp_pad: data.ftp_pad ?? '/',
-      webhook_secret: data.webhook_secret,
-      actief: data.actief,
-      updated_at: data.updated_at,
-    }
+    taken: (data ?? []).map(r => ({
+      id: r.id,
+      naam: r.naam,
+      ftp_host: r.ftp_host,
+      ftp_user: r.ftp_user,
+      ftp_password_set: Boolean(r.ftp_password),
+      ftp_port: r.ftp_port ?? 21,
+      ftp_pad: r.ftp_pad ?? '/',
+      actief: r.actief,
+      webhook_secret: r.webhook_secret,
+      updated_at: r.updated_at,
+      laatste_status: lastLog.get(r.id as number) ?? null,
+    }))
   })
 }
 
-// POST — instellingen opslaan
+// POST — nieuwe taak aanmaken
 export async function POST(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -48,77 +68,34 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const body = await request.json() as {
+    naam?: string
     ftp_host?: string
     ftp_user?: string
     ftp_password?: string
     ftp_port?: number
     ftp_pad?: string
     actief?: boolean
-    genereer_secret?: boolean
   }
 
   const adminClient = createAdminClient()
+  const webhook_secret = crypto.randomBytes(32).toString('hex')
 
-  // Haal bestaande rij op zodat we niet overschrijven wat niet gestuurd is
-  const { data: bestaand } = await adminClient.from('ftp_koppeling_instellingen').select('*').eq('id', 1).maybeSingle()
-
-  const webhook_secret = body.genereer_secret
-    ? crypto.randomBytes(32).toString('hex')
-    : bestaand?.webhook_secret ?? crypto.randomBytes(32).toString('hex')
-
-  const upsert: Record<string, unknown> = {
-    id: 1,
-    ftp_host: body.ftp_host ?? bestaand?.ftp_host,
-    ftp_user: body.ftp_user ?? bestaand?.ftp_user,
-    ftp_port: body.ftp_port ?? bestaand?.ftp_port ?? 21,
-    ftp_pad: body.ftp_pad ?? bestaand?.ftp_pad ?? '/',
-    actief: body.actief ?? bestaand?.actief ?? true,
-    webhook_secret,
-    updated_at: new Date().toISOString(),
-  }
-
-  // Wachtwoord alleen overschrijven als nieuw wachtwoord meegegeven
-  if (body.ftp_password && body.ftp_password.trim()) {
-    upsert.ftp_password = body.ftp_password
-  } else {
-    upsert.ftp_password = bestaand?.ftp_password
-  }
-
-  const { error } = await adminClient.from('ftp_koppeling_instellingen').upsert(upsert)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ ok: true, webhook_secret })
-}
-
-// PUT — verbinding testen
-export async function PUT(request: NextRequest) {
-  const rl = withRateLimit(request)
-  if (rl) return rl
-  const auth = await requireAdmin()
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
-
-  const adminClient = createAdminClient()
-  const { data } = await adminClient.from('ftp_koppeling_instellingen').select('*').eq('id', 1).maybeSingle()
-
-  if (!data?.ftp_host || !data?.ftp_user || !data?.ftp_password) {
-    return NextResponse.json({ error: 'FTP-instellingen onvolledig. Sla eerst host, gebruikersnaam en wachtwoord op.' }, { status: 400 })
-  }
-
-  const client = new ftp.Client()
-  client.ftp.verbose = false
-  try {
-    await client.access({
-      host: data.ftp_host,
-      user: data.ftp_user,
-      password: data.ftp_password,
-      port: data.ftp_port ?? 21,
-      secure: false,
+  const { data, error } = await adminClient
+    .from('ftp_koppeling_instellingen')
+    .insert({
+      naam: body.naam?.trim() || 'Nieuwe taak',
+      ftp_host: body.ftp_host?.trim() || null,
+      ftp_user: body.ftp_user?.trim() || null,
+      ftp_password: body.ftp_password?.trim() || null,
+      ftp_port: body.ftp_port ?? 21,
+      ftp_pad: body.ftp_pad?.trim() || '/',
+      actief: body.actief ?? true,
+      webhook_secret,
+      updated_at: new Date().toISOString(),
     })
-    const list = await client.list(data.ftp_pad ?? '/')
-    return NextResponse.json({ ok: true, bericht: `Verbinding geslaagd. ${list.length} item(s) in ${data.ftp_pad ?? '/'}.` })
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : 'Verbinding mislukt' }, { status: 500 })
-  } finally {
-    client.close()
-  }
+    .select('id')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true, id: data.id, webhook_secret })
 }
