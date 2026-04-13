@@ -45,6 +45,7 @@ export default function FtpKoppelingPage() {
   const [taken, setTaken] = useState<FtpTaak[]>([])
   const [laden, setLaden] = useState(true)
   const [verwijderBezig, setVerwijderBezig] = useState<number | null>(null)
+  const [nieuwBezig, setNieuwBezig] = useState(false)
 
   const laadTaken = async () => {
     setLaden(true)
@@ -68,6 +69,18 @@ export default function FtpKoppelingPage() {
   useEffect(() => {
     if (allowed === false) router.replace('/dashboard')
   }, [allowed, router])
+
+  async function maakNieuweTaak() {
+    setNieuwBezig(true)
+    const res = await fetch('/api/admin/ftp-koppeling', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ naam: 'Nieuwe taak' }),
+    })
+    const data = await res.json() as { id?: number }
+    if (data.id) router.push(`/dashboard/ftp-koppeling/${data.id}`)
+    else setNieuwBezig(false)
+  }
 
   async function verwijder(id: number) {
     if (!confirm('Taak verwijderen? Dit kan niet ongedaan worden gemaakt.')) return
@@ -108,13 +121,15 @@ export default function FtpKoppelingPage() {
               Bijlagen van Freshdesk-tickets automatisch uploaden naar FTP.
             </p>
           </div>
-          <Link
-            href="/dashboard/ftp-koppeling/nieuw"
-            className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
+          <button
+            type="button"
+            onClick={() => void maakNieuweTaak()}
+            disabled={nieuwBezig}
+            className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
             style={{ background: DYNAMO_BLUE, fontFamily: F }}
           >
-            + Nieuwe taak
-          </Link>
+            {nieuwBezig ? 'Aanmaken…' : '+ Nieuwe taak'}
+          </button>
         </div>
 
         {laden ? (
@@ -122,9 +137,9 @@ export default function FtpKoppelingPage() {
         ) : taken.length === 0 ? (
           <div className="rounded-2xl p-10 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
             <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Nog geen taken aangemaakt.</p>
-            <Link href="/dashboard/ftp-koppeling/nieuw" className="mt-3 inline-block text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
-              Maak je eerste taak aan →
-            </Link>
+            <button type="button" onClick={() => void maakNieuweTaak()} disabled={nieuwBezig} className="mt-3 inline-block text-sm font-semibold disabled:opacity-60" style={{ color: DYNAMO_BLUE, background: 'none', border: 'none', cursor: 'pointer' }}>
+              {nieuwBezig ? 'Aanmaken…' : 'Maak je eerste taak aan →'}
+            </button>
           </div>
         ) : (
           <div className="space-y-3">
