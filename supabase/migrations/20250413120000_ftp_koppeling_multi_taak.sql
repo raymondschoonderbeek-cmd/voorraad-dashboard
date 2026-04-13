@@ -2,6 +2,9 @@
 alter table ftp_koppeling_instellingen
   drop constraint if exists ftp_koppeling_instellingen_singleton;
 
+alter table ftp_koppeling_instellingen
+  drop constraint if exists single_row;
+
 -- Voeg naam kolom toe
 alter table ftp_koppeling_instellingen
   add column if not exists naam text not null default 'Taak 1';

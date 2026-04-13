@@ -44,6 +44,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       ftp_pad: data.ftp_pad ?? '/',
       actief: data.actief,
       webhook_secret: data.webhook_secret,
+      readme: data.readme ?? null,
       updated_at: data.updated_at,
     }
   })
@@ -67,6 +68,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     actief?: boolean
     genereer_secret?: boolean
     test?: boolean
+    readme?: string
   }
 
   const adminClient = createAdminClient()
@@ -116,6 +118,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     ftp_pad: body.ftp_pad ?? bestaand.ftp_pad ?? '/',
     actief: body.actief ?? bestaand.actief ?? true,
     webhook_secret,
+    readme: body.readme !== undefined ? body.readme : bestaand.readme,
     updated_at: new Date().toISOString(),
   }
 

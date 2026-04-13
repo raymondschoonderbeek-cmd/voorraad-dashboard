@@ -27,6 +27,7 @@ interface Taak {
   ftp_pad: string
   webhook_secret: string | null
   actief: boolean
+  readme: string | null
   updated_at: string | null
 }
 
@@ -64,6 +65,9 @@ export default function FtpTaakPage() {
   const [pad, setPad] = useState('/')
   const [actief, setActief] = useState(true)
   const [geheimTonen, setGeheimTonen] = useState(false)
+  const [readme, setReadme] = useState('')
+  const [readmeBewerkModus, setReadmeBewerkModus] = useState(false)
+  const [readmeOpslaan, setReadmeOpslaan] = useState(false)
 
   // Status
   const [opslaan, setOpslaan] = useState(false)
@@ -92,6 +96,7 @@ export default function FtpTaakPage() {
     setPort(String(t.ftp_port ?? 21))
     setPad(t.ftp_pad ?? '/')
     setActief(t.actief)
+    setReadme(t.readme ?? '')
     setLaden(false)
   }, [])
 
@@ -148,6 +153,17 @@ export default function FtpTaakPage() {
     })
     setOpslaan(false)
     if (res.ok) void laadTaak(taakId)
+  }
+
+  async function slaReadmeOp() {
+    setReadmeOpslaan(true)
+    await fetch(`/api/admin/ftp-koppeling/${taakId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ readme }),
+    })
+    setReadmeOpslaan(false)
+    setReadmeBewerkModus(false)
   }
 
   async function testVerbinding() {
@@ -315,6 +331,90 @@ export default function FtpTaakPage() {
                 </div>
               )}
             </form>
+
+            {/* Readme / documentatie */}
+            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Documentatie</h2>
+                {!readmeBewerkModus ? (
+                  <button type="button" onClick={() => setReadmeBewerkModus(true)}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                    style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>
+                    Bewerken
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => void slaReadmeOp()} disabled={readmeOpslaan}
+                      className="rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-80 disabled:opacity-50"
+                      style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                      {readmeOpslaan ? 'Opslaan…' : 'Opslaan'}
+                    </button>
+                    <button type="button" onClick={() => { setReadme(taak?.readme ?? ''); setReadmeBewerkModus(false) }}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                      style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>
+                      Annuleren
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {readmeBewerkModus ? (
+                <textarea
+                  value={readme}
+                  onChange={e => setReadme(e.target.value)}
+                  rows={16}
+                  placeholder="Beschrijf het proces, de configuratie, of andere relevante informatie…"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-y"
+                  style={{ border: '1px solid rgba(45,69,124,0.2)', fontFamily: 'monospace', color: '#1e293b', background: 'white', lineHeight: 1.6 }}
+                />
+              ) : readme ? (
+                <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(45,69,124,0.03)', border: '1px solid rgba(45,69,124,0.07)' }}>
+                  {readme.split('\n').map((line, i) => {
+                    const isH1 = /^#{1}\s/.test(line)
+                    const isH2 = /^#{2}\s/.test(line)
+                    const isH3 = /^#{3}\s/.test(line)
+                    const isBullet = /^(\t•|•|\t-|-|\*)\s/.test(line)
+                    const isArrow = line.trim() === '↓'
+                    const isDivider = /^---+$/.test(line.trim())
+                    const isEmpty = line.trim() === ''
+
+                    if (isEmpty) return <div key={i} className="h-2" />
+                    if (isDivider) return <hr key={i} style={{ border: 'none', borderTop: '1px solid rgba(45,69,124,0.1)', margin: '8px 0' }} />
+                    if (isArrow) return (
+                      <div key={i} className="text-center text-base my-1" style={{ color: 'rgba(45,69,124,0.4)' }}>↓</div>
+                    )
+                    if (isH1) return (
+                      <h1 key={i} className="text-base font-bold mt-3 mb-1 m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                        {line.replace(/^#\s/, '')}
+                      </h1>
+                    )
+                    if (isH2) return (
+                      <h2 key={i} className="text-sm font-bold mt-3 mb-1 m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                        {line.replace(/^##\s/, '')}
+                      </h2>
+                    )
+                    if (isH3) return (
+                      <h3 key={i} className="text-xs font-bold mt-2 mb-0.5 m-0 uppercase tracking-wide" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
+                        {line.replace(/^###\s/, '')}
+                      </h3>
+                    )
+                    if (isBullet) return (
+                      <div key={i} className="flex gap-2 text-sm my-0.5" style={{ color: '#334155', fontFamily: F }}>
+                        <span style={{ color: DYNAMO_BLUE, flexShrink: 0 }}>•</span>
+                        <span>{line.replace(/^(\t•|•|\t-|-|\*)\s/, '')}</span>
+                      </div>
+                    )
+                    return (
+                      <p key={i} className="text-sm my-0.5 m-0" style={{ color: '#334155', fontFamily: F }}>{line}</p>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm italic" style={{ color: dashboardUi.textMuted }}>
+                  Nog geen documentatie. Klik op &apos;Bewerken&apos; om een beschrijving toe te voegen.
+                </p>
+              )}
+            </div>
 
             {/* Activiteitenlog */}
             <div className="rounded-2xl p-5 space-y-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
