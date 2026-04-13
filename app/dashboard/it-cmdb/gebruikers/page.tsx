@@ -295,12 +295,12 @@ function GebruikerKaart({ g }: { g: Gebruiker }) {
 export default function GebruikersPage() {
   const { data, error, isLoading } = useSWR<{ gebruikers: Gebruiker[] }>('/api/it-cmdb/gebruiker-overzicht', fetcher)
   const [zoek, setZoek] = useState('')
+  const gebruikers = Array.isArray(data?.gebruikers) ? data.gebruikers : []
 
   const gefilterd = useMemo(() => {
-    const lijst = data?.gebruikers ?? []
-    if (!zoek.trim()) return lijst
+    if (!zoek.trim()) return gebruikers
     const q = zoek.trim().toLowerCase()
-    return lijst.filter(g => {
+    return gebruikers.filter(g => {
       if (g.email.toLowerCase().includes(q)) return true
       if (g.naam?.toLowerCase().includes(q)) return true
       if (prettyEmail(g.email).toLowerCase().includes(q)) return true
@@ -309,12 +309,12 @@ export default function GebruikersPage() {
       if (g.producten.some(p => p.naam.toLowerCase().includes(q) || p.leverancier.toLowerCase().includes(q))) return true
       return false
     })
-  }, [data, zoek])
+  }, [gebruikers, zoek])
 
-  const totaalGebruikers = data?.gebruikers.length ?? 0
-  const totaalDevices = data?.gebruikers.reduce((s, g) => s + g.devices.length, 0) ?? 0
-  const totaalLicenties = data?.gebruikers.reduce((s, g) => s + g.licenties.length, 0) ?? 0
-  const totaalProducten = data?.gebruikers.reduce((s, g) => s + g.producten.length, 0) ?? 0
+  const totaalGebruikers = gebruikers.length
+  const totaalDevices = gebruikers.reduce((s, g) => s + g.devices.length, 0)
+  const totaalLicenties = gebruikers.reduce((s, g) => s + g.licenties.length, 0)
+  const totaalProducten = gebruikers.reduce((s, g) => s + g.producten.length, 0)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
