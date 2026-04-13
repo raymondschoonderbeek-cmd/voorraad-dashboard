@@ -972,11 +972,11 @@ export default function ItCmdbPage() {
                   {fdDetailData && typeof fdDetailData === 'object' && 'configured' in fdDetailData && fdDetailData.configured === true && 'histError' in fdDetailData && typeof fdDetailData.histError === 'string' && fdDetailData.histError ? (
                     <p className="text-xs m-0 mt-3" style={{ color: '#b45309' }}>Geschiedenis kon niet geladen worden: {fdDetailData.histError}</p>
                   ) : null}
-                  {fdDetailData && typeof fdDetailData === 'object' && 'ticketHistory' in fdDetailData && Array.isArray(fdDetailData.ticketHistory) && fdDetailData.ticketHistory.length > 0 && (
+                  {fdDetailData && typeof fdDetailData === 'object' && 'ticketHistory' in fdDetailData && Array.isArray(fdDetailData.ticketHistory) && fdDetailData.ticketHistory.filter(h => h.fetchState === 'ok').length > 0 && (
                     <div className="mt-4 space-y-2">
                       <p className="text-[11px] font-bold uppercase tracking-wide m-0" style={{ color: dashboardUi.textSubtle, fontFamily: F }}>Ticketgeschiedenis</p>
                       <ul className="m-0 p-0 list-none space-y-2.5">
-                        {fdDetailData.ticketHistory.map(h => {
+                        {fdDetailData.ticketHistory.filter(h => h.fetchState === 'ok').map(h => {
                           const isActive = 'activeTicket' in fdDetailData && fdDetailData.activeTicket != null && fdDetailData.activeTicket.id === h.id
                           return (
                             <li key={`${h.id}-${h.linkedAt}`} className="rounded-lg p-2.5 text-sm" style={{ background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.08)' }}>
@@ -986,7 +986,7 @@ export default function ItCmdbPage() {
                               </div>
                               <p className="m-0 mt-1 line-clamp-2" style={{ color: TABLE_TEXT }}>{h.subject}</p>
                               <p className="text-xs m-0 mt-0.5" style={{ color: dashboardUi.textMuted }}>
-                                {h.statusLabel}{h.fetchState === 'ok' ? ` · prioriteit ${h.priority}` : null} · gekoppeld {formatTicketLinkedAt(h.linkedAt)}
+                                {h.statusLabel} · prioriteit {h.priority} · gekoppeld {formatTicketLinkedAt(h.linkedAt)}
                               </p>
                               {h.url && <a href={h.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5 text-xs font-semibold underline" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Openen in Freshdesk →</a>}
                             </li>

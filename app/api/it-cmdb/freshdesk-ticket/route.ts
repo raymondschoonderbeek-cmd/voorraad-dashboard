@@ -132,45 +132,57 @@ export async function GET(request: NextRequest) {
   const histIds = historyRows.map(r => Number(r.freshdesk_ticket_id)).filter(n => Number.isFinite(n)) as number[]
   const fdMap = histErr ? new Map() : await fetchFreshdeskTicketsByIds(histIds)
 
-  const ticketHistory = historyRows.map(row => {
-    const id = Number(row.freshdesk_ticket_id)
-    const snap = fdMap.get(id)
-    const linkedAt = typeof row.created_at === 'string' ? row.created_at : new Date().toISOString()
-    if (snap === 'missing' || snap === 'error') {
+  // Verwijder tickets die niet meer bestaan in Freshdesk uit de historietabel
+  const missingIds = histIds.filter(id => fdMap.get(id) === 'missing')
+  if (missingIds.length > 0) {
+    await auth.supabase
+      .from('it_cmdb_hardware_freshdesk_ticket')
+      .delete()
+      .eq('hardware_id', hardwareId)
+      .in('freshdesk_ticket_id', missingIds)
+  }
+
+  const ticketHistory = historyRows
+    .filter(row => fdMap.get(Number(row.freshdesk_ticket_id)) !== 'missing')
+    .map(row => {
+      const id = Number(row.freshdesk_ticket_id)
+      const snap = fdMap.get(id)
+      const linkedAt = typeof row.created_at === 'string' ? row.created_at : new Date().toISOString()
+      if (snap === 'error') {
+        return {
+          id,
+          linkedAt,
+          subject: '(Status ophalen mislukt)',
+          status: 0,
+          statusLabel: 'Onbekend',
+          priority: 0,
+          url: freshdeskTicketUrl(id),
+          fetchState: 'error' as const,
+        }
+      }
+      if (snap) {
+        return {
+          id: snap.id,
+          linkedAt,
+          subject: snap.subject,
+          status: snap.status,
+          statusLabel: freshdeskStatusLabelNl(snap.status),
+          priority: snap.priority,
+          url: freshdeskTicketUrl(snap.id),
+          fetchState: 'ok' as const,
+        }
+      }
       return {
         id,
         linkedAt,
-        subject: snap === 'missing' ? '(Ticket niet meer gevonden in Freshdesk)' : '(Status ophalen mislukt)',
+        subject: '(Geen gegevens)',
         status: 0,
-        statusLabel: snap === 'missing' ? 'Onbekend' : 'Onbekend',
+        statusLabel: 'Onbekend',
         priority: 0,
         url: freshdeskTicketUrl(id),
-        fetchState: snap as 'missing' | 'error',
+        fetchState: 'error' as const,
       }
-    }
-    if (snap) {
-      return {
-        id: snap.id,
-        linkedAt,
-        subject: snap.subject,
-        status: snap.status,
-        statusLabel: freshdeskStatusLabelNl(snap.status),
-        priority: snap.priority,
-        url: freshdeskTicketUrl(snap.id),
-        fetchState: 'ok' as const,
-      }
-    }
-    return {
-      id,
-      linkedAt,
-      subject: '(Geen gegevens)',
-      status: 0,
-      statusLabel: 'Onbekend',
-      priority: 0,
-      url: freshdeskTicketUrl(id),
-      fetchState: 'error' as const,
-    }
-  })
+    })
 
   return NextResponse.json({
     configured: true,
