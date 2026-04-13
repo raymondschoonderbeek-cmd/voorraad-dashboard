@@ -385,6 +385,13 @@ export default function ItCmdbPage() {
     await mutate()
   }, [mutate])
 
+  const unlinkFreshdeskTicket = useCallback(async (row: ItCmdbHardwareListItem) => {
+    if (!confirm(`Freshdesk-ticketkoppeling verwijderen voor ${row.hostname?.trim() || row.serial_number}? Het ticket zelf in Freshdesk wordt niet verwijderd.`)) return
+    const res = await fetch(`/api/it-cmdb/freshdesk-ticket?hardwareId=${encodeURIComponent(row.id)}`, { method: 'DELETE' })
+    if (!res.ok) { const d = await res.json().catch(() => ({})); alert((d as { error?: string }).error ?? 'Ontkoppelen mislukt'); return }
+    await mutate(); if (deviceDetailId === row.id) void mutateFdDetail()
+  }, [mutate, mutateFdDetail, deviceDetailId])
+
   const createFreshdeskTicketForDevice = useCallback(async (row: ItCmdbHardwareListItem) => {
     setFreshdeskMsg(null); setFreshdeskBusyId(row.id)
     try {
@@ -876,6 +883,17 @@ export default function ItCmdbPage() {
                 {fdBusy ? 'Bezig…' : 'Maak Freshdesk-ticket'}
               </button>
             )}
+            {fdId != null && freshdeskConfigData?.configured && (
+              <button
+                type="button"
+                onClick={() => { void unlinkFreshdeskTicket(row); setOpenMenuId(null) }}
+                className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-orange-50 transition-colors"
+                style={{ color: '#c2410c', fontFamily: F }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                Ticket ontkoppelen
+              </button>
+            )}
             <div className="my-1 border-t" style={{ borderColor: 'rgba(45,69,124,0.08)' }} />
             <button
               type="button"
@@ -942,7 +960,19 @@ export default function ItCmdbPage() {
                   ) : fdDetailData && typeof fdDetailData === 'object' && 'configured' in fdDetailData && fdDetailData.configured === false ? (
                     <p className="text-sm m-0" style={{ color: dashboardUi.textMuted }}>{'error' in fdDetailData && typeof fdDetailData.error === 'string' ? fdDetailData.error : 'Freshdesk is niet geconfigureerd.'}</p>
                   ) : fdDetailData && typeof fdDetailData === 'object' && 'fetchError' in fdDetailData && fdDetailData.fetchError ? (
-                    <p className="text-sm m-0" style={{ color: '#b91c1c' }}>{String(fdDetailData.fetchError)}</p>
+                    <div className="space-y-2">
+                      <p className="text-sm m-0" style={{ color: '#b91c1c' }}>{String(fdDetailData.fetchError)}</p>
+                      {'item' in fdDetailData && fdDetailData.item && typeof fdDetailData.item === 'object' && 'freshdesk_ticket_id' in fdDetailData.item && fdDetailData.item.freshdesk_ticket_id != null && (
+                        <button
+                          type="button"
+                          onClick={() => void unlinkFreshdeskTicket(detailRow!)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                          style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontFamily: F }}
+                        >
+                          Ticket ontkoppelen
+                        </button>
+                      )}
+                    </div>
                   ) : fdDetailData && typeof fdDetailData === 'object' && 'activeTicket' in fdDetailData && fdDetailData.activeTicket != null ? (
                     <div className="space-y-2">
                       <p className="text-sm m-0 font-semibold" style={{ color: TABLE_TEXT }}>{fdDetailData.activeTicket.subject}</p>

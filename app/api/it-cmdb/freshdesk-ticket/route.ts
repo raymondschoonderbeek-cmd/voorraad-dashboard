@@ -347,3 +347,25 @@ export async function POST(request: NextRequest) {
     },
   })
 }
+
+/** DELETE: verwijder de Freshdesk-ticketkoppeling voor een apparaat (handmatig ontkoppelen). */
+export async function DELETE(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
+
+  const auth = await requireItCmdbAccess()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+
+  const { searchParams } = new URL(request.url)
+  const hardwareId = searchParams.get('hardwareId')?.trim()
+  if (!hardwareId) return NextResponse.json({ error: 'hardwareId is verplicht' }, { status: 400 })
+
+  const { error } = await auth.supabase
+    .from('it_cmdb_hardware')
+    .update({ freshdesk_ticket_id: null, updated_at: new Date().toISOString() })
+    .eq('id', hardwareId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}
