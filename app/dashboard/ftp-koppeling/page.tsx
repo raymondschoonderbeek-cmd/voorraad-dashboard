@@ -45,6 +45,7 @@ export default function FtpKoppelingPage() {
   const [taken, setTaken] = useState<FtpTaak[]>([])
   const [laden, setLaden] = useState(true)
   const [verwijderBezig, setVerwijderBezig] = useState<number | null>(null)
+  const [kopieerBezig, setKopieerBezig] = useState<number | null>(null)
   const [nieuwBezig, setNieuwBezig] = useState(false)
 
   const laadTaken = async () => {
@@ -80,6 +81,24 @@ export default function FtpKoppelingPage() {
     const data = await res.json() as { id?: number }
     if (data.id) router.push(`/dashboard/ftp-koppeling/${data.id}`)
     else setNieuwBezig(false)
+  }
+
+  async function kopieer(taak: FtpTaak) {
+    setKopieerBezig(taak.id)
+    const res = await fetch('/api/admin/ftp-koppeling', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        naam: `Kopie van ${taak.naam}`,
+        ftp_host: taak.ftp_host,
+        ftp_pad: taak.ftp_pad,
+        actief: false,
+      }),
+    })
+    const data = await res.json() as { id?: number }
+    setKopieerBezig(null)
+    if (data.id) router.push(`/dashboard/ftp-koppeling/${data.id}`)
+    else void laadTaken()
   }
 
   async function verwijder(id: number) {
@@ -190,6 +209,15 @@ export default function FtpKoppelingPage() {
                     >
                       Bewerken
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => void kopieer(taak)}
+                      disabled={kopieerBezig === taak.id}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 disabled:opacity-40"
+                      style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
+                    >
+                      {kopieerBezig === taak.id ? '…' : 'Kopieer'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => void verwijder(taak.id)}
