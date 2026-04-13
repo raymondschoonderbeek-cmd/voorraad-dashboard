@@ -23,7 +23,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
 /**
  * POST: synchroniseer Microsoft Intune managed devices → it_cmdb_hardware (match op serienummer).
  * Vereist server-env: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET + Graph app-rechten.
- * Overschrijft bij bestaande rij: hostname, intune, user_name, device_type — niet: notes, location, assigned_user_id.
+ * Overschrijft bij bestaande rij: hostname, intune, user_name, device_type — niet: notes, location.
+ * Koppelt assigned_user_id automatisch op basis van Intune e-mailadres (alleen als nog niet handmatig ingesteld).
  */
 export async function POST(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -50,11 +51,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 
+  // Bouw email → user_id map op basis van auth.users via RPC
+  const { data: emailRows } = await auth.supabase.rpc('get_user_emails', { user_ids: [] }).then(
+    async () => {
+      // Haal alle users op via gebruiker_rollen + get_user_emails
+      const { data: rollen } = await auth.supabase.from('gebruiker_rollen').select('user_id')
+      const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
+      if (userIds.length === 0) return { data: [] }
+      return auth.supabase.rpc('get_user_emails', { user_ids: userIds })
+    }
+  )
+  const emailToUserId = new Map<string, string>()
+  for (const row of emailRows ?? []) {
+    const email = (row as { email: string }).email?.toLowerCase().trim()
+    const uid = (row as { user_id: string }).user_id
+    if (email && uid) emailToUserId.set(email, uid)
+  }
+
   const skippedNoSerial = graphDevices.filter(d => !d.serialNumber?.trim()).length
-  const bySerial = new Map<
-    string,
-    ReturnType<typeof mapManagedDeviceToCmdb>
-  >()
+  const bySerial = new Map<string, ReturnType<typeof mapManagedDeviceToCmdb>>()
 
   for (const d of graphDevices) {
     try {
@@ -66,28 +81,50 @@ export async function POST(request: NextRequest) {
   }
 
   const serials = [...bySerial.keys()]
-  const existingSerials = new Set<string>()
+
+  // Haal bestaande devices op inclusief assigned_user_id om handmatige koppelingen te bewaren
+  const existingMap = new Map<string, { assigned_user_id: string | null }>()
   for (const part of chunk(serials, 400)) {
     if (part.length === 0) continue
-    const { data, error } = await auth.supabase.from('it_cmdb_hardware').select('serial_number').in('serial_number', part)
+    const { data, error } = await auth.supabase
+      .from('it_cmdb_hardware')
+      .select('serial_number, assigned_user_id')
+      .in('serial_number', part)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     for (const row of data ?? []) {
-      existingSerials.add(row.serial_number)
+      existingMap.set(row.serial_number, { assigned_user_id: row.assigned_user_id ?? null })
     }
   }
 
   let inserted = 0
   let updated = 0
+  let autoGekoppeld = 0
   const errors: string[] = []
   const now = new Date().toISOString()
 
-  const toInsert = serials.filter(s => !existingSerials.has(s))
-  const toUpdate = serials.filter(s => existingSerials.has(s))
+  const toInsert = serials.filter(s => !existingMap.has(s))
+  const toUpdate = serials.filter(s => existingMap.has(s))
+
+  // Helper: zoek user_id op basis van Intune e-mailadres
+  function findUserId(m: ReturnType<typeof mapManagedDeviceToCmdb>): string | null {
+    const snap = m.intune_snapshot as { emailAddress?: string; userPrincipalName?: string } | null
+    const emails = [
+      snap?.emailAddress?.toLowerCase().trim(),
+      snap?.userPrincipalName?.toLowerCase().trim(),
+      m.user_name?.toLowerCase().trim(),
+    ].filter((e): e is string => !!e && e.includes('@'))
+    for (const email of emails) {
+      const uid = emailToUserId.get(email)
+      if (uid) return uid
+    }
+    return null
+  }
 
   for (const batch of chunk(toInsert, 25)) {
     await Promise.all(
       batch.map(async serial => {
         const m = bySerial.get(serial)!
+        const autoUserId = findUserId(m)
         const { error } = await auth.supabase.from('it_cmdb_hardware').insert({
           serial_number: m.serial_number,
           hostname: m.hostname,
@@ -97,12 +134,15 @@ export async function POST(request: NextRequest) {
           device_type: m.device_type,
           notes: null,
           location: null,
-          assigned_user_id: null,
+          assigned_user_id: autoUserId,
           created_by: auth.user.id,
           updated_at: now,
         })
         if (error) errors.push(`${serial}: ${error.message}`)
-        else inserted++
+        else {
+          inserted++
+          if (autoUserId) autoGekoppeld++
+        }
       })
     )
   }
@@ -111,16 +151,28 @@ export async function POST(request: NextRequest) {
     await Promise.all(
       batch.map(async serial => {
         const m = bySerial.get(serial)!
+        const existing = existingMap.get(serial)!
+        const autoUserId = findUserId(m)
+
+        // Alleen overschrijven als nog niet handmatig gekoppeld
+        const newUserId = existing.assigned_user_id ?? autoUserId
+
+        const updatePayload: Record<string, unknown> = {
+          hostname: m.hostname,
+          intune: m.intune,
+          intune_snapshot: m.intune_snapshot,
+          user_name: m.user_name,
+          device_type: m.device_type,
+          updated_at: now,
+        }
+        if (!existing.assigned_user_id && autoUserId) {
+          updatePayload.assigned_user_id = newUserId
+          autoGekoppeld++
+        }
+
         const { error } = await auth.supabase
           .from('it_cmdb_hardware')
-          .update({
-            hostname: m.hostname,
-            intune: m.intune,
-            intune_snapshot: m.intune_snapshot,
-            user_name: m.user_name,
-            device_type: m.device_type,
-            updated_at: now,
-          })
+          .update(updatePayload)
           .eq('serial_number', serial)
         if (error) errors.push(`${serial}: ${error.message}`)
         else updated++
@@ -135,6 +187,7 @@ export async function POST(request: NextRequest) {
     skippedNoSerial,
     inserted,
     updated,
+    autoGekoppeld,
     errors: errors.length ? errors.slice(0, 25) : undefined,
     errorCount: errors.length,
   })

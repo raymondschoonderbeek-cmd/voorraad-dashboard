@@ -351,6 +351,7 @@ export default function ItCmdbPage() {
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { setIntuneMsg({ ok: false, text: typeof d.error === 'string' ? d.error : 'Intune-sync mislukt' }); return }
       const parts = [`${d.graphDevices ?? 0} apparaten opgehaald`, `${d.inserted ?? 0} nieuw`, `${d.updated ?? 0} bijgewerkt`]
+      if (d.autoGekoppeld > 0) parts.push(`${d.autoGekoppeld} automatisch gekoppeld aan gebruiker`)
       if (d.skippedNoSerial > 0) parts.push(`${d.skippedNoSerial} zonder serienummer overgeslagen`)
       if (d.errorCount > 0) parts.push(`${d.errorCount} schrijffout(en)`)
       let text = parts.join(' · ')
