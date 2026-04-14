@@ -62,6 +62,13 @@ export default function LunchOverzichtPage() {
               <span>←</span>
               <span className="font-bold">{lunchOnly ? 'Mijn bestellingen' : 'DRG Portal'}</span>
             </Link>
+            <Link
+              href="/dashboard/instellingen"
+              className="text-sm font-medium px-3 py-1.5 rounded-lg ml-2"
+              style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
+            >
+              Mijn instellingen
+            </Link>
             {isAdmin && (
               <Link
                 href="/dashboard/lunch/beheer"

@@ -213,6 +213,13 @@ export default function LunchPage() {
             >
               Mijn bestellingen
             </Link>
+            <Link
+              href="/dashboard/instellingen"
+              className="text-sm font-medium px-3 py-1.5 rounded-lg"
+              style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
+            >
+              Mijn instellingen
+            </Link>
             {isAdmin && (
               <Link
                 href="/dashboard/lunch/beheer"
