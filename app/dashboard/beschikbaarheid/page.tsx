@@ -52,6 +52,13 @@ function statusSortOrder(s: BeschikbaarheidStatus) {
   return STATUS_VOLGORDE.indexOf(s)
 }
 
+function normaliseerAfdeling(afdeling: string | null | undefined): string | null {
+  const raw = (afdeling ?? '').trim()
+  if (!raw) return null
+  const hoofdAfdeling = raw.split(',')[0]?.trim() ?? ''
+  return hoofdAfdeling || null
+}
+
 /** Compact kaart per persoon */
 function PersonCard({ g, now }: { g: GebruikerStatus; now: Date }) {
   const av = avatarKleur(g.naam, g.email)
@@ -234,12 +241,12 @@ export default function BeschikbaarheidDashboardPage() {
     return statussen.filter(g =>
       (g.naam ?? '').toLowerCase().includes(q) ||
       g.email.toLowerCase().includes(q) ||
-      (g.afdeling ?? '').toLowerCase().includes(q)
+      (normaliseerAfdeling(g.afdeling) ?? '').toLowerCase().includes(q)
     )
   }, [statussen, zoek])
 
   const heeftAfdelingsdata = useMemo(
-    () => statussen.some(g => g.afdeling && g.afdeling.trim() !== ''),
+    () => statussen.some(g => normaliseerAfdeling(g.afdeling) !== null),
     [statussen]
   )
 
@@ -263,7 +270,7 @@ export default function BeschikbaarheidDashboardPage() {
     // Afdeling-groepering
     const map = new Map<string, GebruikerStatus[]>()
     for (const g of gefilterd) {
-      const key = g.afdeling ?? 'Onbekend'
+      const key = normaliseerAfdeling(g.afdeling) ?? 'Onbekend'
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(g)
     }
@@ -292,7 +299,7 @@ export default function BeschikbaarheidDashboardPage() {
   }), [statussen])
 
   const afdelingsTelling = useMemo(() => {
-    const metAfdeling = statussen.filter(g => (g.afdeling ?? '').trim() !== '').length
+    const metAfdeling = statussen.filter(g => normaliseerAfdeling(g.afdeling) !== null).length
     const zonderAfdeling = statussen.length - metAfdeling
     return {
       totaal: statussen.length,
