@@ -200,6 +200,7 @@ export default function BeschikbaarheidDashboardPage() {
   const [zoek, setZoek] = useState('')
   const [weergave, setWeergave] = useState<'kaarten' | 'lijst'>('kaarten')
   const [groepering, setGroepering] = useState<Groepering>('afdeling')
+  const [statusFilter, setStatusFilter] = useState<BeschikbaarheidStatus | null>(null)
   const [syncBezig, setSyncBezig] = useState(false)
   const [syncResultaat, setSyncResultaat] = useState<string | null>(null)
 
@@ -236,14 +237,16 @@ export default function BeschikbaarheidDashboardPage() {
   const statussen = data?.statussen ?? []
 
   const gefilterd = useMemo(() => {
+    let result = statussen
+    if (statusFilter) result = result.filter(g => g.status === statusFilter)
     const q = zoek.trim().toLowerCase()
-    if (!q) return statussen
-    return statussen.filter(g =>
+    if (!q) return result
+    return result.filter(g =>
       (g.naam ?? '').toLowerCase().includes(q) ||
       g.email.toLowerCase().includes(q) ||
       (normaliseerAfdeling(g.afdeling) ?? '').toLowerCase().includes(q)
     )
-  }, [statussen, zoek])
+  }, [statussen, zoek, statusFilter])
 
   const heeftAfdelingsdata = useMemo(
     () => statussen.some(g => normaliseerAfdeling(g.afdeling) !== null),
@@ -434,19 +437,31 @@ export default function BeschikbaarheidDashboardPage() {
           </div>
         )}
 
-        {/* Stat-chips */}
+        {/* Stat-chips — klikbaar als statusfilter */}
         {!isLoading && statussen.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            <StatChip color="#16a34a" bg="#dcfce7" label={`${tellen.beschikbaar} beschikbaar`}
+            <StatChip
+              color="#16a34a" bg="#dcfce7"
+              label={`${tellen.beschikbaar} beschikbaar`}
+              actief={statusFilter === 'beschikbaar'}
+              onClick={() => setStatusFilter(s => s === 'beschikbaar' ? null : 'beschikbaar')}
               icon={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>}
             />
             {tellen.oof > 0 && (
-              <StatChip color="#c2410c" bg="#fff7ed" label={`${tellen.oof} out of office`}
+              <StatChip
+                color="#c2410c" bg="#fff7ed"
+                label={`${tellen.oof} out of office`}
+                actief={statusFilter === 'out-of-office'}
+                onClick={() => setStatusFilter(s => s === 'out-of-office' ? null : 'out-of-office')}
                 icon={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
               />
             )}
             {tellen.buiten > 0 && (
-              <StatChip color="#64748b" bg="#f1f5f9" label={`${tellen.buiten} buiten werktijd`}
+              <StatChip
+                color="#64748b" bg="#f1f5f9"
+                label={`${tellen.buiten} buiten werktijd`}
+                actief={statusFilter === 'buiten-werktijd'}
+                onClick={() => setStatusFilter(s => s === 'buiten-werktijd' ? null : 'buiten-werktijd')}
                 icon={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
               />
             )}
@@ -745,7 +760,35 @@ function EmptyState({ isAdmin, onSync }: { isAdmin: boolean; onSync: () => void 
   )
 }
 
-function StatChip({ color, bg, label, icon }: { color: string; bg: string; label: string; icon: React.ReactNode }) {
+function StatChip({ color, bg, label, icon, onClick, actief }: {
+  color: string; bg: string; label: string; icon: React.ReactNode
+  onClick?: () => void; actief?: boolean
+}) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all"
+        style={{
+          background: actief ? color : bg,
+          color: actief ? 'white' : color,
+          fontFamily: FONT_FAMILY,
+          outline: actief ? `2px solid ${color}` : 'none',
+          outlineOffset: '1px',
+        }}
+        aria-pressed={actief}
+      >
+        {icon}{label}
+        {actief && (
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        )}
+      </button>
+    )
+  }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
       style={{ background: bg, color, fontFamily: FONT_FAMILY }}>
