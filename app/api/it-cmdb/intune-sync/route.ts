@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireItCmdbAccess } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { fetchAllManagedDevices, isIntuneGraphConfigured, mapManagedDeviceToCmdb } from '@/lib/intune-graph'
+import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 
 /** GET: of Intune/Graph server-side is geconfigureerd (zonder geheimen te tonen). */
 export async function GET(request: NextRequest) {
@@ -51,21 +52,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 
-  // Bouw email → user_id map op basis van auth.users via RPC
-  const { data: emailRows } = await auth.supabase.rpc('get_user_emails', { user_ids: [] }).then(
-    async () => {
-      // Haal alle users op via gebruiker_rollen + get_user_emails
-      const { data: rollen } = await auth.supabase.from('gebruiker_rollen').select('user_id')
-      const userIds = (rollen ?? []).map((r: { user_id: string }) => r.user_id)
-      if (userIds.length === 0) return { data: [] }
-      return auth.supabase.rpc('get_user_emails', { user_ids: userIds })
-    }
-  )
+  // Bouw email → user_id map op basis van alle auth.users (via admin-client)
+  // Dit werkt ook als de IT-beheerder geen 'admin' rol heeft in gebruiker_rollen.
   const emailToUserId = new Map<string, string>()
-  for (const row of emailRows ?? []) {
-    const email = (row as { email: string }).email?.toLowerCase().trim()
-    const uid = (row as { user_id: string }).user_id
-    if (email && uid) emailToUserId.set(email, uid)
+  if (hasAdminKey()) {
+    const adminClient = createAdminClient()
+    let page = 1
+    while (true) {
+      const { data: { users: batch } } = await adminClient.auth.admin.listUsers({ page, perPage: 1000 })
+      if (!batch || batch.length === 0) break
+      for (const u of batch) {
+        const email = (u.email ?? '').toLowerCase().trim()
+        if (email) emailToUserId.set(email, u.id)
+      }
+      if (batch.length < 1000) break
+      page++
+    }
   }
 
   const skippedNoSerial = graphDevices.filter(d => !d.serialNumber?.trim()).length
