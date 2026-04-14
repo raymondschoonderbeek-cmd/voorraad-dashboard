@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
       naam: naamByUser.get(rec.user_id) ?? null,
       afdeling: afdelingByUser.get(rec.user_id) ?? null,
       office_location: officeLocationByUser.get(rec.user_id) ?? null,
+      werklocatie: rec.werklocatie ?? null,
       status,
       oof_start: rec.oof_status === 'scheduled' ? rec.oof_start : null,
       oof_end: rec.oof_status === 'scheduled' ? rec.oof_end : null,

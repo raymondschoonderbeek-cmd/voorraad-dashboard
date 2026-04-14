@@ -126,6 +126,58 @@ export async function getMailboxSettings(upn: string): Promise<MailboxSettings> 
   }
 }
 
+export type WerklocatieType = 'thuis' | 'kantoor' | 'anders' | null
+
+/**
+ * Haal de werklocatie van vandaag op via de Graph Calendar API.
+ * Vereist Calendars.Read applicatiemachtiging.
+ * Geeft null terug als de gebruiker geen werklocatie heeft ingesteld.
+ */
+export async function getWerklocatie(upn: string, datum?: Date): Promise<{ type: WerklocatieType; label: string | null }> {
+  const token = await getGraphToken()
+  const dag = datum ?? new Date()
+
+  // Zet datum om naar YYYY-MM-DD in UTC
+  const yyyy = dag.getUTCFullYear()
+  const mm = String(dag.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(dag.getUTCDate()).padStart(2, '0')
+  const start = `${yyyy}-${mm}-${dd}T00:00:00Z`
+  const end   = `${yyyy}-${mm}-${dd}T23:59:59Z`
+
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
+    `?startDateTime=${start}&endDateTime=${end}` +
+    `&$select=type,locations,subject` +
+    `&$top=10`
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) return { type: null, label: null }
+
+  const data = await res.json() as {
+    value?: Array<{
+      type?: string
+      subject?: string
+      locations?: Array<{ locationType?: string; displayName?: string }>
+    }>
+  }
+
+  const event = (data.value ?? []).find(e => e.type === 'workingLocation')
+  if (!event) return { type: null, label: null }
+
+  const loc = event.locations?.[0]
+  const locType = loc?.locationType?.toLowerCase() ?? ''
+
+  if (locType === 'homeoffice' || locType === 'home') {
+    return { type: 'thuis', label: 'Thuis' }
+  }
+  if (locType === 'businessaddress' || locType === 'office' || locType === 'conferenceroom') {
+    return { type: 'kantoor', label: loc?.displayName?.trim() || 'Kantoor' }
+  }
+  if (loc?.displayName?.trim()) {
+    return { type: 'anders', label: loc.displayName.trim() }
+  }
+  return { type: null, label: null }
+}
+
 /** Sla OOF-instellingen op via Microsoft Graph. */
 export async function patchMailboxOof(upn: string, oof: MailboxOof): Promise<void> {
   const token = await getGraphToken()

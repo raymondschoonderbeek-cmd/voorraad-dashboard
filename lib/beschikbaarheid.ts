@@ -33,6 +33,7 @@ export interface BeschikbaarheidRecord {
   oof_external_msg: string | null
   work_schedule: WeekSchema | null
   work_timezone: string
+  werklocatie: string | null
   graph_synced_at: string | null
   updated_at: string
 }
@@ -43,6 +44,7 @@ export interface GebruikerStatus {
   naam: string | null
   afdeling: string | null
   office_location: string | null
+  werklocatie: string | null
   status: BeschikbaarheidStatus
   oof_end: string | null
   oof_start: string | null
