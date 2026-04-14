@@ -13,6 +13,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userIdsParam = searchParams.get('userIds')
 
+  // Optionele datum: ?date=YYYY-MM-DD → bereken status om 10:00 UTC op die dag
+  // (= 12:00 CEST / 11:00 CET — ruim binnen kantooruren voor EU-tijdzones)
+  const dateParam = searchParams.get('date')
+  const now = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+    ? new Date(`${dateParam}T10:00:00Z`)
+    : new Date()
+
   let query = supabase.from('gebruiker_beschikbaarheid').select('*')
   if (userIdsParam) {
     const ids = userIdsParam.split(',').map(s => s.trim()).filter(Boolean)
@@ -49,7 +56,6 @@ export async function GET(request: NextRequest) {
     }
   } catch { /* optioneel */ }
 
-  const now = new Date()
   const statussen: GebruikerStatus[] = (rows ?? []).map(row => {
     const rec = row as BeschikbaarheidRecord
     const status = berekenStatus(rec, now)

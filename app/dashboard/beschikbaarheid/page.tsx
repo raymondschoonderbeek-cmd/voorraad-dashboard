@@ -195,7 +195,25 @@ export default function BeschikbaarheidDashboardPage() {
   const [groepering, setGroepering] = useState<Groepering>('afdeling')
   const [syncBezig, setSyncBezig] = useState(false)
   const [syncResultaat, setSyncResultaat] = useState<string | null>(null)
-  const now = useMemo(() => new Date(), [])
+
+  // Datum: '' = vandaag (live), anders YYYY-MM-DD
+  const vandaagStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+  const [gekozenDatum, setGekozenDatum] = useState('')
+  const isVandaag = !gekozenDatum || gekozenDatum === vandaagStr
+
+  // `now` voor client-side berekeningen (PersonCard werktijden)
+  const now = useMemo(() => {
+    if (isVandaag) return new Date()
+    const d = new Date(`${gekozenDatum}T10:00:00Z`)
+    return Number.isNaN(d.getTime()) ? new Date() : d
+  }, [gekozenDatum, isVandaag])
+
+  const statusUrl = isVandaag
+    ? '/api/beschikbaarheid/status'
+    : `/api/beschikbaarheid/status?date=${gekozenDatum}`
 
   const { data: sessionData } = useSWR<{ isAdmin?: boolean }>(
     '/api/auth/session-info', fetcher, { revalidateOnFocus: false }
@@ -203,9 +221,9 @@ export default function BeschikbaarheidDashboardPage() {
   const isAdmin = sessionData?.isAdmin === true
 
   const { data, isLoading, mutate } = useSWR<{ statussen: GebruikerStatus[]; timestamp: string }>(
-    '/api/beschikbaarheid/status',
+    statusUrl,
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: isVandaag ? 60_000 : 0 }
   )
 
   const statussen = data?.statussen ?? []
@@ -409,6 +427,95 @@ export default function BeschikbaarheidDashboardPage() {
             )}
           </div>
         )}
+
+        {/* Datumkiezer */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 rounded-xl border overflow-hidden"
+            style={{ borderColor: 'rgba(45,69,124,0.2)', background: 'white' }}>
+            {/* Vorige dag */}
+            <button
+              type="button"
+              onClick={() => {
+                const base = gekozenDatum || vandaagStr
+                const d = new Date(`${base}T12:00:00Z`)
+                d.setUTCDate(d.getUTCDate() - 1)
+                const s = d.toISOString().slice(0, 10)
+                setGekozenDatum(s === vandaagStr ? '' : s)
+              }}
+              className="px-2.5 py-2 hover:bg-slate-50 transition-colors"
+              style={{ color: DYNAMO_BLUE }}
+              title="Vorige dag"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+
+            {/* Datuminput */}
+            <div className="relative flex items-center">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className="absolute left-2 pointer-events-none" style={{ color: DYNAMO_BLUE }} aria-hidden>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <input
+                type="date"
+                value={gekozenDatum || vandaagStr}
+                onChange={e => {
+                  const v = e.target.value
+                  setGekozenDatum(v === vandaagStr ? '' : v)
+                }}
+                className="pl-7 pr-2 py-2 text-sm font-medium outline-none bg-transparent"
+                style={{ color: '#1e293b', fontFamily: F, width: '140px' }}
+              />
+            </div>
+
+            {/* Volgende dag */}
+            <button
+              type="button"
+              onClick={() => {
+                const base = gekozenDatum || vandaagStr
+                const d = new Date(`${base}T12:00:00Z`)
+                d.setUTCDate(d.getUTCDate() + 1)
+                const s = d.toISOString().slice(0, 10)
+                setGekozenDatum(s === vandaagStr ? '' : s)
+              }}
+              className="px-2.5 py-2 hover:bg-slate-50 transition-colors"
+              style={{ color: DYNAMO_BLUE }}
+              title="Volgende dag"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Vandaag-knop: alleen tonen als een andere datum is geselecteerd */}
+          {!isVandaag && (
+            <button
+              type="button"
+              onClick={() => setGekozenDatum('')}
+              className="rounded-xl px-3 py-2 text-xs font-semibold border transition hover:opacity-80"
+              style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+            >
+              Vandaag
+            </button>
+          )}
+
+          {/* Label: niet-vandaag datumindicator */}
+          {!isVandaag && (
+            <span className="text-xs font-medium px-2.5 py-1.5 rounded-lg"
+              style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE, fontFamily: F }}>
+              {new Date(`${gekozenDatum}T12:00:00Z`).toLocaleDateString('nl-NL', {
+                weekday: 'long', day: 'numeric', month: 'long',
+              })}
+            </span>
+          )}
+        </div>
 
         {/* Toolbar: zoek + groepering + weergave */}
         <div className="flex items-center gap-2 flex-wrap">
