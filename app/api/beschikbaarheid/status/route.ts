@@ -24,14 +24,19 @@ export async function GET(request: NextRequest) {
 
   const userIds = (rows ?? []).map(r => r.user_id as string)
 
+  // Haal naam + afdeling op uit gebruiker_rollen
   const { data: rollen } = userIds.length > 0
-    ? await supabase.from('gebruiker_rollen').select('user_id, naam').in('user_id', userIds)
+    ? await supabase.from('gebruiker_rollen').select('user_id, naam, afdeling').in('user_id', userIds)
     : { data: [] }
 
   const naamByUser = new Map<string, string | null>(
     (rollen ?? []).map(r => [r.user_id, r.naam ?? null])
   )
+  const afdelingByUser = new Map<string, string | null>(
+    (rollen ?? []).map(r => [r.user_id, (r.afdeling as string | null) ?? null])
+  )
 
+  // Email lookup via admin client
   const emailByUser = new Map<string, string>()
   try {
     const { createAdminClient, hasAdminKey } = await import('@/lib/supabase/admin')
@@ -52,6 +57,7 @@ export async function GET(request: NextRequest) {
       user_id: rec.user_id,
       email: emailByUser.get(rec.user_id) ?? '',
       naam: naamByUser.get(rec.user_id) ?? null,
+      afdeling: afdelingByUser.get(rec.user_id) ?? null,
       status,
       oof_start: rec.oof_status === 'scheduled' ? rec.oof_start : null,
       oof_end: rec.oof_status === 'scheduled' ? rec.oof_end : null,

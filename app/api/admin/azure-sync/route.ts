@@ -311,6 +311,7 @@ export async function POST(request: NextRequest) {
         naam,
         manager_naam: managerNaam,
         manager_email: managerEmail,
+        afdeling: azUser.department?.trim() ?? null,
       })
 
       if (rolErr) {
@@ -321,7 +322,7 @@ export async function POST(request: NextRequest) {
           await adminClient.from('profiles').upsert(
             {
               user_id: userId,
-              modules_toegang: ['voorraad', 'brand-groep', 'branche-nieuws', 'meer'],
+              modules_toegang: ['voorraad', 'brand-groep', 'branche-nieuws', 'beschikbaarheid', 'meer'],
               updated_at: new Date().toISOString(),
             },
             { onConflict: 'user_id' }
@@ -335,6 +336,7 @@ export async function POST(request: NextRequest) {
       // Alleen manager overschrijven als we hem daadwerkelijk hebben opgehaald
       const updatePayload: Record<string, unknown> = {
         naam: azUser.displayName ?? email,
+        afdeling: azUser.department?.trim() ?? null,
       }
       if (azUser.manager !== undefined) {
         // manager property is gezet door fetchManagersForUsers (ook als null = geen manager)
