@@ -18,7 +18,6 @@ interface GraphUser {
   surname: string | null
   jobTitle: string | null
   department: string | null
-  officeLocation: string | null
   accountEnabled: boolean
   userType: string | null
   assignedLicenses: { skuId: string }[]
@@ -95,7 +94,7 @@ async function fetchAllAzureUsers(token: string): Promise<GraphUser[]> {
   // Managers are fetched separately after filtering (see fetchManagersForUsers)
   let url: string | null =
     'https://graph.microsoft.com/v1.0/users' +
-    '?$select=id,displayName,mail,userPrincipalName,givenName,surname,jobTitle,department,officeLocation,accountEnabled,userType,assignedLicenses' +
+    '?$select=id,displayName,mail,userPrincipalName,givenName,surname,jobTitle,department,accountEnabled,userType,assignedLicenses' +
     '&$filter=accountEnabled eq true and userType eq \'Member\'' +
     '&$top=999'
 
@@ -313,7 +312,6 @@ export async function POST(request: NextRequest) {
         manager_naam: managerNaam,
         manager_email: managerEmail,
         afdeling: azUser.department?.trim() ?? null,
-        office_location: azUser.officeLocation?.trim() ?? null,
       })
 
       if (rolErr) {
@@ -339,7 +337,6 @@ export async function POST(request: NextRequest) {
       const updatePayload: Record<string, unknown> = {
         naam: azUser.displayName ?? email,
         afdeling: azUser.department?.trim() ?? null,
-        office_location: azUser.officeLocation?.trim() ?? null,
       }
       if (azUser.manager !== undefined) {
         // manager property is gezet door fetchManagersForUsers (ook als null = geen manager)

@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
   // Gebruik service role als beschikbaar, zodat RLS geen afdelingsdata blokkeert.
   const rollenClient = hasAdminKey() ? createAdminClient() : supabase
   const rollenResult = userIds.length > 0
-    ? await rollenClient.from('gebruiker_rollen').select('user_id, naam, afdeling, office_location').in('user_id', userIds)
+    ? await rollenClient.from('gebruiker_rollen').select('user_id, naam, afdeling').in('user_id', userIds)
     : { data: [], error: null }
 
   // Graceful fallback als een kolom nog niet bestaat.
-  let rollen: Array<{ user_id: string; naam: string | null; afdeling?: string | null; office_location?: string | null }> = []
+  let rollen: Array<{ user_id: string; naam: string | null; afdeling?: string | null }> = []
   if (!rollenResult.error) {
     rollen = rollenResult.data ?? []
   } else {
@@ -63,9 +63,6 @@ export async function GET(request: NextRequest) {
   )
   const afdelingByUser = new Map<string, string | null>(
     rollen.map(r => [r.user_id, ((r as Record<string, unknown>).afdeling as string | null) ?? null])
-  )
-  const officeLocationByUser = new Map<string, string | null>(
-    rollen.map(r => [r.user_id, ((r as Record<string, unknown>).office_location as string | null) ?? null])
   )
 
   // Email lookup via admin client
@@ -95,7 +92,6 @@ export async function GET(request: NextRequest) {
       email: emailByUser.get(rec.user_id) ?? '',
       naam: naamByUser.get(rec.user_id) ?? null,
       afdeling: afdelingByUser.get(rec.user_id) ?? null,
-      office_location: officeLocationByUser.get(rec.user_id) ?? null,
       werklocatie: rec.werklocatie ?? null,
       status,
       oof_start: rec.oof_status === 'scheduled' ? rec.oof_start : null,

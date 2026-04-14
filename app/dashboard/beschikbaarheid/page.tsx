@@ -99,7 +99,7 @@ function PersonCard({ g, now }: { g: GebruikerStatus; now: Date }) {
             <div className="text-[11px] truncate" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
               {g.email}
             </div>
-            {(g.werklocatie ?? g.office_location) && (
+            {(g.werklocatie) && (
               <span
                 className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0"
                 style={{ background: 'rgba(45,69,124,0.07)', color: DYNAMO_BLUE, fontFamily: F }}
@@ -107,7 +107,7 @@ function PersonCard({ g, now }: { g: GebruikerStatus; now: Date }) {
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                 </svg>
-                {g.werklocatie ?? g.office_location}
+                {g.werklocatie}
               </span>
             )}
           </div>
@@ -161,7 +161,7 @@ function PersonRow({ g }: { g: GebruikerStatus }) {
           <div className="text-sm font-semibold truncate" style={{ color: '#1e293b', fontFamily: F }}>
             {g.naam ?? g.email.split('@')[0]}
           </div>
-          {(g.werklocatie ?? g.office_location) && (
+          {(g.werklocatie) && (
             <span
               className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0"
               style={{ background: 'rgba(45,69,124,0.07)', color: DYNAMO_BLUE, fontFamily: F }}
@@ -169,7 +169,7 @@ function PersonRow({ g }: { g: GebruikerStatus }) {
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
-              {g.werklocatie ?? g.office_location}
+              {g.werklocatie}
             </span>
           )}
         </div>
