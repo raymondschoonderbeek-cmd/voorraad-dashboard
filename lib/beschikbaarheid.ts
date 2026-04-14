@@ -78,13 +78,6 @@ export function toIana(windowsTz: string): string {
 
 /** Bereken de beschikbaarheidsstatus voor een gebruiker op tijdstip `now`. */
 export function berekenStatus(rec: BeschikbaarheidRecord, now: Date = new Date()): BeschikbaarheidStatus {
-  // 1. Out of Office
-  if (rec.oof_status === 'alwaysEnabled') return 'out-of-office'
-  if (rec.oof_status === 'scheduled' && rec.oof_start && rec.oof_end) {
-    if (now >= new Date(rec.oof_start) && now <= new Date(rec.oof_end)) return 'out-of-office'
-  }
-
-  // 2. Per-dag werktijden
   const schema = rec.work_schedule ?? DEFAULT_WEEK_SCHEMA
   const iana = toIana(rec.work_timezone ?? 'W. Europe Standard Time')
 
@@ -93,9 +86,17 @@ export function berekenStatus(rec: BeschikbaarheidRecord, now: Date = new Date()
     .toLowerCase() as DagNaam
 
   const dag = schema[dayName]
+
+  // 1. Niet-werkdag heeft altijd voorrang — ook als OOF aanstaat
   if (!dag?.enabled) return 'buiten-werktijd'
 
-  // Huidige tijd als "HH:MM" in de juiste tijdzone
+  // 2. Out of Office (alleen op werkdagen)
+  if (rec.oof_status === 'alwaysEnabled') return 'out-of-office'
+  if (rec.oof_status === 'scheduled' && rec.oof_start && rec.oof_end) {
+    if (now >= new Date(rec.oof_start) && now <= new Date(rec.oof_end)) return 'out-of-office'
+  }
+
+  // 3. Buiten werktijden op een werkdag
   const hhmm = now.toLocaleTimeString('nl-NL', {
     hour: '2-digit', minute: '2-digit',
     timeZone: iana, hour12: false,
@@ -155,9 +156,12 @@ export function berekenVolgendeLabel(rec: BeschikbaarheidRecord, now: Date = new
     if (rec.oof_status === 'scheduled' && rec.oof_end) {
       const end = new Date(rec.oof_end)
       if (!Number.isNaN(end.getTime())) {
+        // Terugdatum = dag ná het einde van OOF
+        // Bijv. OOF t/m 17 april → "Terug 18 april"
+        const terug = new Date(end.getTime() + 86_400_000)
         const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
-        if (end.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
-        return `Terug ${end.toLocaleDateString('nl-NL', opts)}`
+        if (terug.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
+        return `Terug ${terug.toLocaleDateString('nl-NL', opts)}`
       }
     }
     return null
