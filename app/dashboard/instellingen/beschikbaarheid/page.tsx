@@ -8,7 +8,7 @@ import {
   berekenStatus, berekenVolgendeLabel,
   DAG_LABELS, ALLE_DAGEN, TIJDZONE_OPTIES,
   DEFAULT_WEEK_SCHEMA,
-  type BeschikbaarheidRecord, type WeekSchema, type DagNaam,
+  type BeschikbaarheidRecord, type WeekSchema, type DagNaam, type WerklocatieSchema,
 } from '@/lib/beschikbaarheid'
 import { useToast } from '@/components/Toast'
 import type { MailboxOof } from '@/lib/microsoft-mailbox'
@@ -47,9 +47,12 @@ export default function BeschikbaarheidInstellingenPage() {
   const [workSchedule, setWorkSchedule] = useState<WeekSchema>(DEFAULT_WEEK_SCHEMA)
   const [workTz, setWorkTz] = useState('W. Europe Standard Time')
 
-  // Werklocatie
+  // Werklocatie (vandaag, éénmalig)
   const [werklocatie, setWerklocatie] = useState<string>('')
   const [werklocatieAndere, setWerklocatieAndere] = useState('')
+
+  // Werklocatie schema (standaard per dag)
+  const [werklocatieSchema, setWerklocatieSchema] = useState<WerklocatieSchema>({})
 
   const fillForm = useCallback((row: BeschikbaarheidRecord) => {
     setOofStatus((row.oof_status as typeof oofStatus) ?? 'disabled')
@@ -59,6 +62,7 @@ export default function BeschikbaarheidInstellingenPage() {
     setOofExternal(row.oof_external_msg ?? '')
     setWorkSchedule(row.work_schedule ?? DEFAULT_WEEK_SCHEMA)
     setWorkTz(row.work_timezone ?? 'W. Europe Standard Time')
+    setWerklocatieSchema((row.werklocatie_schema as WerklocatieSchema) ?? {})
     const loc = row.werklocatie ?? ''
     if (loc === 'Thuis' || loc === 'Kantoor' || loc === '') {
       setWerklocatie(loc)
@@ -109,7 +113,7 @@ export default function BeschikbaarheidInstellingenPage() {
       const res = await fetch('/api/beschikbaarheid', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde }),
+        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde, werklocatieSchema }),
       })
       const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string }
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
@@ -378,24 +382,70 @@ export default function BeschikbaarheidInstellingenPage() {
               </p>
             </section>
 
-            {/* ── Werklocatie ────────────────────────────────────── */}
+            {/* ── Standaard werklocatie per dag ─────────────────── */}
+            <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+              <div>
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Standaard werklocatie per dag</h2>
+                <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
+                  Stel in waar je normaal gesproken per dag werkt. Gesynchroniseerd vanuit je Outlook-agenda.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                {ALLE_DAGEN.filter(dag => workSchedule[dag]?.enabled).map(dag => {
+                  const huidige = werklocatieSchema[dag] ?? ''
+                  const isAnders = huidige !== '' && huidige !== 'Thuis' && huidige !== 'Kantoor'
+                  return (
+                    <div key={dag} className="grid items-center gap-2 rounded-xl px-3 py-2"
+                      style={{ gridTemplateColumns: '120px 1fr', background: 'rgba(45,69,124,0.03)' }}>
+                      <span className="text-sm font-semibold" style={{ color: '#1e293b', fontFamily: F }}>
+                        {DAG_LABELS[dag]}
+                      </span>
+                      <div className="flex gap-1.5 flex-wrap items-center">
+                        {(['', 'Thuis', 'Kantoor'] as const).map(opt => (
+                          <button key={opt} type="button"
+                            onClick={() => setWerklocatieSchema(prev => ({ ...prev, [dag]: opt }))}
+                            className="rounded-lg px-2.5 py-1 text-xs font-semibold border transition"
+                            style={{
+                              background: huidige === opt ? DYNAMO_BLUE : 'white',
+                              color: huidige === opt ? 'white' : DYNAMO_BLUE,
+                              borderColor: huidige === opt ? DYNAMO_BLUE : 'rgba(45,69,124,0.2)',
+                              fontFamily: F,
+                            }}
+                          >
+                            {opt === '' ? '–' : opt === 'Thuis' ? '🏠 Thuis' : '🏢 Kantoor'}
+                          </button>
+                        ))}
+                        <input
+                          type="text"
+                          value={isAnders ? huidige : ''}
+                          onChange={e => setWerklocatieSchema(prev => ({ ...prev, [dag]: e.target.value }))}
+                          placeholder="Andere locatie"
+                          className={`${inputCls} text-xs`}
+                          style={{ ...inputStyle, width: '130px', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            {/* ── Werklocatie vandaag (override) ─────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
               <div>
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werklocatie vandaag</h2>
                 <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
-                  Waar werk je vandaag? Dit is zichtbaar voor collega&apos;s op het beschikbaarheidsdashboard.
+                  Afwijking van je standaard? Stel hier een eenmalige override in voor vandaag.
                 </p>
               </div>
 
               <div className="flex gap-2 flex-wrap">
                 {(['', 'Thuis', 'Kantoor', 'anders'] as const).map(opt => {
-                  const label = opt === '' ? 'Niet ingesteld' : opt === 'anders' ? 'Andere locatie…' : opt
+                  const label = opt === '' ? 'Standaard (geen override)' : opt === 'anders' ? 'Andere locatie…' : opt
                   const actief = werklocatie === opt
                   return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setWerklocatie(opt)}
+                    <button key={opt} type="button" onClick={() => setWerklocatie(opt)}
                       className="rounded-xl px-4 py-2 text-sm font-semibold border transition"
                       style={{
                         background: actief ? DYNAMO_BLUE : 'white',
@@ -411,14 +461,9 @@ export default function BeschikbaarheidInstellingenPage() {
               </div>
 
               {werklocatie === 'anders' && (
-                <input
-                  type="text"
-                  value={werklocatieAndere}
-                  onChange={e => setWerklocatieAndere(e.target.value)}
+                <input type="text" value={werklocatieAndere} onChange={e => setWerklocatieAndere(e.target.value)}
                   placeholder="bijv. Vestiging Amsterdam, klant, onderweg…"
-                  className={`${inputCls} w-full`}
-                  style={inputStyle}
-                />
+                  className={`${inputCls} w-full`} style={inputStyle} />
               )}
             </section>
 

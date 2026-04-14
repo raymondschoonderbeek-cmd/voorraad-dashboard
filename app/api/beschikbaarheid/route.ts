@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import {
   getMailboxSettings,
+  getWerklocatieSchema,
   patchMailboxOof,
   patchMailboxWorkHours,
   isGraphConfigured,
@@ -58,9 +59,11 @@ export async function GET(request: NextRequest) {
     try {
       const upn = user.email
       if (upn) {
-        const ms = await getMailboxSettings(upn)
+        const [ms, locSchema] = await Promise.all([
+          getMailboxSettings(upn),
+          getWerklocatieSchema(upn).catch(() => ({})),
+        ])
         const nu = new Date().toISOString()
-        // Gebruik bestaand week-schema als dat al per-dag is geconfigureerd
         const bestaandSchema = row?.work_schedule as WeekSchema | null
         const workSchedule = bestaandSchema ?? graphWorkHoursToWeekSchema(
           ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime
@@ -75,6 +78,7 @@ export async function GET(request: NextRequest) {
             oof_external_msg: ms.oof.externalMsg,
             work_schedule: workSchedule,
             work_timezone: ms.workHours.timezone,
+            werklocatie_schema: Object.keys(locSchema).length > 0 ? locSchema : null,
             graph_synced_at: nu,
             updated_at: nu,
           },
@@ -104,7 +108,7 @@ export async function PATCH(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
-  let body: { oof?: MailboxOof; workSchedule?: WeekSchema; workTimezone?: string; werklocatie?: string | null }
+  let body: { oof?: MailboxOof; workSchedule?: WeekSchema; workTimezone?: string; werklocatie?: string | null; werklocatieSchema?: Record<string, string> | null }
   try {
     body = await request.json()
   } catch {
@@ -148,6 +152,7 @@ export async function PATCH(request: NextRequest) {
   if (body.workSchedule) upsertData.work_schedule = body.workSchedule
   if (body.workTimezone) upsertData.work_timezone = body.workTimezone
   if ('werklocatie' in body) upsertData.werklocatie = body.werklocatie ?? null
+  if ('werklocatieSchema' in body) upsertData.werklocatie_schema = body.werklocatieSchema ?? null
 
   const { error: dbErr } = await supabase
     .from('gebruiker_beschikbaarheid')

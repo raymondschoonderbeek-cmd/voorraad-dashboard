@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
-import { berekenStatus, berekenVolgendeLabel, type BeschikbaarheidRecord, type GebruikerStatus } from '@/lib/beschikbaarheid'
+import { berekenStatus, berekenVolgendeLabel, effectieveWerklocatie, toIana, type BeschikbaarheidRecord, type GebruikerStatus } from '@/lib/beschikbaarheid'
 import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       email: emailByUser.get(rec.user_id) ?? '',
       naam: naamByUser.get(rec.user_id) ?? null,
       afdeling: afdelingByUser.get(rec.user_id) ?? null,
-      werklocatie: rec.werklocatie ?? null,
+      werklocatie: effectieveWerklocatie(rec, now, toIana(rec.work_timezone ?? 'W. Europe Standard Time')),
       status,
       oof_start: rec.oof_status === 'scheduled' ? rec.oof_start : null,
       oof_end: rec.oof_status === 'scheduled' ? rec.oof_end : null,

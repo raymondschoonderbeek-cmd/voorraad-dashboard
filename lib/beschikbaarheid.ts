@@ -14,6 +14,10 @@ export interface DagSchema {
 
 export type WeekSchema = Record<DagNaam, DagSchema>
 
+/** Werklocatie per dag: '' = niet ingesteld */
+export type WerklocatieWaarde = 'Thuis' | 'Kantoor' | string  // string voor vrije tekst
+export type WerklocatieSchema = Partial<Record<DagNaam, WerklocatieWaarde>>
+
 export const DEFAULT_WEEK_SCHEMA: WeekSchema = {
   monday:    { enabled: true,  start: '09:00', end: '17:00' },
   tuesday:   { enabled: true,  start: '09:00', end: '17:00' },
@@ -34,6 +38,7 @@ export interface BeschikbaarheidRecord {
   work_schedule: WeekSchema | null
   work_timezone: string
   werklocatie: string | null
+  werklocatie_schema: WerklocatieSchema | null
   graph_synced_at: string | null
   updated_at: string
 }
@@ -127,6 +132,24 @@ export function statusKleur(status: BeschikbaarheidStatus): { bg: string; fg: st
     case 'buiten-werktijd': return { bg: '#f1f5f9', fg: '#64748b', dot: '#94a3b8' }
     default:                return { bg: '#f8fafc', fg: '#94a3b8', dot: '#cbd5e1' }
   }
+}
+
+/**
+ * Geef de effectieve werklocatie terug:
+ * 1. Éénmalige override (`werklocatie`) als die vandaag relevant is
+ * 2. Schema-waarde voor de huidige dag
+ * 3. null
+ */
+export function effectieveWerklocatie(
+  rec: Pick<BeschikbaarheidRecord, 'werklocatie' | 'werklocatie_schema'>,
+  now: Date = new Date(),
+  iana = 'Europe/Amsterdam',
+): string | null {
+  if (rec.werklocatie?.trim()) return rec.werklocatie.trim()
+  const dagNaam = now
+    .toLocaleDateString('en-US', { weekday: 'long', timeZone: iana })
+    .toLowerCase() as DagNaam
+  return rec.werklocatie_schema?.[dagNaam]?.trim() || null
 }
 
 export const DAG_LABELS: Record<DagNaam, string> = {

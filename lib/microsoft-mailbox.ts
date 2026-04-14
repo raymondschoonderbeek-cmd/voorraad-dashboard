@@ -178,6 +178,62 @@ export async function getWerklocatie(upn: string, datum?: Date): Promise<{ type:
   return { type: null, label: null }
 }
 
+/**
+ * Haal het standaard werklocatieschema per dag op via de Graph Calendar API.
+ * Queryt de komende 14 dagen en haalt recurring workingLocation-events op.
+ */
+export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<string, string>>> {
+  const token = await getGraphToken()
+  const now = new Date()
+  const start = now.toISOString().split('T')[0] + 'T00:00:00Z'
+  const eind = new Date(now.getTime() + 14 * 86_400_000).toISOString().split('T')[0] + 'T23:59:59Z'
+
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
+    `?startDateTime=${start}&endDateTime=${eind}` +
+    `&$select=type,locations,start,recurrence` +
+    `&$top=50`
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) return {}
+
+  const data = await res.json() as {
+    value?: Array<{
+      type?: string
+      start?: { dateTime?: string; timeZone?: string }
+      recurrence?: unknown
+      locations?: Array<{ locationType?: string; displayName?: string }>
+    }>
+  }
+
+  const schema: Partial<Record<string, string>> = {}
+  for (const event of data.value ?? []) {
+    if (event.type !== 'workingLocation') continue
+    if (!event.start?.dateTime) continue
+
+    // Bepaal dag van de week
+    const dagDatum = new Date(event.start.dateTime.endsWith('Z')
+      ? event.start.dateTime
+      : event.start.dateTime + 'Z')
+    const dagNaam = dagDatum
+      .toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
+      .toLowerCase()
+
+    const loc = event.locations?.[0]
+    const locType = loc?.locationType?.toLowerCase() ?? ''
+    let label: string | null = null
+    if (locType === 'homeoffice' || locType === 'home') label = 'Thuis'
+    else if (locType === 'businessaddress' || locType === 'office' || locType === 'conferenceroom') {
+      label = loc?.displayName?.trim() || 'Kantoor'
+    } else if (loc?.displayName?.trim()) {
+      label = loc.displayName.trim()
+    }
+
+    if (label && !schema[dagNaam]) schema[dagNaam] = label
+  }
+
+  return schema
+}
+
 /** Sla OOF-instellingen op via Microsoft Graph. */
 export async function patchMailboxOof(upn: string, oof: MailboxOof): Promise<void> {
   const token = await getGraphToken()

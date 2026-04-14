@@ -5,6 +5,7 @@ import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import {
   getMailboxSettings,
   getWerklocatie,
+  getWerklocatieSchema,
   isGraphConfigured,
 } from '@/lib/microsoft-mailbox'
 import { DEFAULT_WEEK_SCHEMA, type WeekSchema } from '@/lib/beschikbaarheid'
@@ -103,9 +104,10 @@ export async function POST(request: NextRequest) {
 
         if (graphOk) {
           try {
-            const [ms, locatie] = await Promise.all([
+            const [ms, locatie, locSchema] = await Promise.all([
               getMailboxSettings(u.email),
               getWerklocatie(u.email).catch(() => ({ type: null, label: null })),
+              getWerklocatieSchema(u.email).catch(() => ({})),
             ])
             // Behoudt bestaand per-dag-schema als dat al is ingesteld
             const workSchedule = bestaandRij?.work_schedule ?? graphWorkHoursToWeekSchema(
@@ -121,6 +123,7 @@ export async function POST(request: NextRequest) {
               work_schedule: workSchedule,
               work_timezone: ms.workHours.timezone,
               werklocatie: locatie.label,
+              werklocatie_schema: Object.keys(locSchema).length > 0 ? locSchema : null,
               graph_synced_at: nu,
             }
             gesynchroniseerd++
