@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
   const auth = await requireItCmdbAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  // Hardware per portalgebruiker
+  // Hardware met een bekende gebruiker (portal-id, e-mail of naam)
   const { data: hardware, error: hwErr } = await auth.supabase
     .from('it_cmdb_hardware')
     .select('id, serial_number, hostname, device_type, location, assigned_user_id, assigned_user_email, user_name, intune_snapshot')
-    .not('assigned_user_id', 'is', null)
+    .or('assigned_user_id.not.is.null,assigned_user_email.not.is.null,user_name.not.is.null')
     .order('assigned_user_email')
 
   if (hwErr) return NextResponse.json({ error: hwErr.message }, { status: 500 })
@@ -93,11 +93,33 @@ export async function GET(request: NextRequest) {
     return gebruikers.get(key)!
   }
 
-  // Voeg hardware toe
+  // Voeg hardware toe — ook apparaten zonder portal-user_id (alleen e-mail/naam via Intune)
   for (const hw of hardware ?? []) {
-    const uid = hw.assigned_user_id as string
-    const email = (hw.assigned_user_email as string | null) ?? emailByUser.get(uid) ?? uid
-    const g = getOfMaak(uid, uid, email, null)
+    const uid = hw.assigned_user_id as string | null
+    const hwEmail = hw.assigned_user_email as string | null
+    const hwName = hw.user_name as string | null
+
+    // Bepaal key, email en naam op basis van beschikbare velden
+    let key: string
+    let email: string
+    let naam: string | null = null
+
+    if (uid) {
+      key = uid
+      email = hwEmail ?? emailByUser.get(uid) ?? uid
+    } else if (hwEmail) {
+      key = `ext:${hwEmail.toLowerCase()}`
+      email = hwEmail
+      naam = hwName
+    } else if (hwName) {
+      key = `name:${hwName}`
+      email = hwName
+      naam = hwName
+    } else {
+      continue
+    }
+
+    const g = getOfMaak(key, uid, email, naam)
     g.devices.push({
       id: hw.id as string,
       serial_number: hw.serial_number as string,
@@ -124,7 +146,7 @@ export async function GET(request: NextRequest) {
       email = emailByUser.get(userId) ?? userId
       naam = null
     } else if (k.microsoft_email) {
-      key = `ext:${k.microsoft_email as string}`
+      key = `ext:${(k.microsoft_email as string).toLowerCase()}`
       userId = null
       email = k.microsoft_email as string
       naam = k.microsoft_naam as string | null
