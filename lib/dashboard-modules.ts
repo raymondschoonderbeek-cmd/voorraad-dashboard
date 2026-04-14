@@ -7,6 +7,7 @@ export const DASHBOARD_MODULE_ORDER = [
   'branche-nieuws',
   'interne-nieuws',
   'it-cmdb',
+  'beschikbaarheid',
   'winkels',
   'meer',
 ] as const
@@ -58,6 +59,7 @@ export function resolveDashboardModules(
   set.add('voorraad')
   set.add('brand-groep')
   set.add('branche-nieuws')
+  set.add('beschikbaarheid')
   set.add('meer')
   if (profile?.lunch_module_enabled === true) set.add('lunch')
   if (profile?.campagne_fietsen_toegang === true) set.add('campagne-fietsen')

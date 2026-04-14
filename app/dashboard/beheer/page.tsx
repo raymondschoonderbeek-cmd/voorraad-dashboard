@@ -25,6 +25,7 @@ const MODULE_LABELS: Record<DashboardModuleId, string> = {
   'branche-nieuws': 'Branche nieuws',
   'interne-nieuws': 'Interne nieuwsberichten beheer',
   'it-cmdb': 'IT-hardware (CMDB)',
+  beschikbaarheid: 'Beschikbaarheid team',
   winkels: 'Winkels & vestigingen',
   meer: 'Meer',
 }
@@ -81,7 +82,7 @@ export default function BeheerPage() {
   const [nieuwWachtwoord, setNieuwWachtwoord] = useState('')
   const [nieuwRol, setNieuwRol] = useState('viewer')
   const [nieuwMfaVerplicht, setNieuwMfaVerplicht] = useState(false)
-  const [nieuwModules, setNieuwModules] = useState<DashboardModuleId[]>(['voorraad', 'brand-groep', 'branche-nieuws', 'meer'])
+  const [nieuwModules, setNieuwModules] = useState<DashboardModuleId[]>(['voorraad', 'brand-groep', 'branche-nieuws', 'beschikbaarheid', 'meer'])
   const [nieuwLandFilter, setNieuwLandFilter] = useState<LandFilter>('alle')
   const [formLoading, setFormLoading] = useState(false)
   const [formError, setFormError] = useState('')
