@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
           getWerklocatieSchema(upn).catch(() => ({})),
         ])
         const nu = new Date().toISOString()
-        const bestaandSchema = row?.work_schedule as WeekSchema | null
-        const workSchedule = bestaandSchema ?? graphWorkHoursToWeekSchema(
+        // Altijd Graph-data gebruiken bij sync (niet preserveren)
+        const workSchedule = graphWorkHoursToWeekSchema(
           ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime
         )
         await supabase.from('gebruiker_beschikbaarheid').upsert(
@@ -89,7 +89,15 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle()
-        return NextResponse.json({ settings: fresh, graphConfigured: true, synced: true })
+        return NextResponse.json({
+          settings: fresh,
+          graphConfigured: true,
+          synced: true,
+          debug: {
+            workHours: ms.workHours,
+            werklocatieSchema: locSchema,
+          },
+        })
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Graph-fout'
