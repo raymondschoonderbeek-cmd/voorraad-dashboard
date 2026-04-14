@@ -725,20 +725,20 @@ export default function VenditApiTesterPage() {
         }
       `}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
-        <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white font-bold hover:opacity-90">
-            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 w-auto object-contain" />
-            <span className="hidden sm:inline">Vendit API Tester</span>
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
+            ← Portal
           </Link>
-          <div className="flex items-center gap-3">
-            <a href="https://api2.vendit.online/VenditPublicApiSpec/index.html" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-90" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+          <span className="text-white/50 text-xs select-none">Vendit API Tester</span>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2 shrink-0">
+            <a href="https://api2.vendit.online/VenditPublicApiSpec/index.html" target="_blank" rel="noopener noreferrer" className="rounded-lg px-3 py-1.5 text-xs font-semibold hover:opacity-90" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
               API Docs
             </a>
-            <Link href="/dashboard/beheer" className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+            <Link href="/dashboard/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
               Beheer
             </Link>
-            <Link href="/dashboard" className="text-xs font-semibold" style={{ color: 'white' }}>← DRG Portal</Link>
           </div>
         </div>
       </header>

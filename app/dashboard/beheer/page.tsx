@@ -1083,28 +1083,23 @@ export default function BeheerPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0" style={{ minHeight: '56px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <Link href="/dashboard" className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0" style={{ fontFamily: F }}>
+            ← Portal
           </Link>
-          <div className="flex items-center px-3 sm:px-5">
-            <span className="text-xs sm:text-sm font-semibold" style={{ color: 'white', fontFamily: F }}>Beheer</span>
-          </div>
+          <span className="text-white/50 text-xs select-none" style={{ fontFamily: F }}>Beheer</span>
           <div className="flex-1" />
-          <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {isAdmin && (
-              <Link href="/dashboard/vendit-api-tester" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(59,130,246,0.2)', color: 'rgba(255,255,255,0.95)', border: '1px solid rgba(59,130,246,0.4)', fontFamily: F }} title="Vendit Public API testen">
+              <Link href="/dashboard/vendit-api-tester" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80" style={{ background: 'rgba(59,130,246,0.2)', color: 'rgba(255,255,255,0.95)', border: '1px solid rgba(59,130,246,0.4)', fontFamily: F }} title="Vendit Public API testen">
                 Vendit API
               </Link>
             )}
             {isAdmin && (
-              <Link href="/dashboard/ftp-koppeling" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Freshdesk → FTP koppeling">
+              <Link href="/dashboard/ftp-koppeling" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Freshdesk → FTP koppeling">
                 FTP-koppeling
               </Link>
             )}
-            <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }}>
-              <IconArrowLeft /> DRG Portal
-            </Link>
           </div>
         </div>
       </header>

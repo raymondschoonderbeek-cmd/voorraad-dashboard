@@ -199,43 +199,22 @@ export default function LunchPage() {
         input::placeholder { color: #6b7280 !important; }
       `}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="flex items-center gap-2 text-white hover:opacity-90">
-            <span>←</span>
-            <span className="font-bold">{lunchOnly ? 'Lunch bestellen' : 'DRG Portal'}</span>
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
+            ← Portal
           </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/lunch/overzicht"
-              className="text-sm font-medium px-3 py-1.5 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-            >
+          <span className="text-white/50 text-xs select-none">Lunch bestellen</span>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/dashboard/lunch/overzicht" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90">
               Mijn bestellingen
             </Link>
-            <Link
-              href="/dashboard/instellingen"
-              className="text-sm font-medium px-3 py-1.5 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-            >
-              Mijn instellingen
-            </Link>
             {isAdmin && (
-              <Link
-                href="/dashboard/lunch/beheer"
-                className="text-sm font-medium px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
-              >
+              <Link href="/dashboard/lunch/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10">
                 Beheer
               </Link>
             )}
-            <button
-              onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-              className="text-sm font-medium px-3 py-1.5 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
-            >
-              Uitloggen
-            </button>
           </div>
         </div>
       </header>

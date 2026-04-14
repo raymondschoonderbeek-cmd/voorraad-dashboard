@@ -300,30 +300,19 @@ export default function CampagneFietsenPage() {
 
   return (
     <div className="min-h-screen flex flex-col text-gray-900" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-50 shadow-md">
-        <div className="px-4 py-3 flex items-center justify-between gap-3">
-          <Link href="/dashboard" className="flex items-center gap-2 text-white hover:opacity-90 min-w-0">
-            <img src={DYNAMO_LOGO} alt="" className="h-8 w-auto shrink-0 object-contain" />
-            <span className="font-bold truncate text-sm sm:text-base">Voorraad Campagnefietsen</span>
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
+            ← Portal
           </Link>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/dashboard/beheer?tab=campagnefietsen"
-              className="text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg bg-white/10 text-white border border-white/20 hover:bg-white/15"
-            >
-              Beheer
-            </Link>
-            <button
-              type="button"
-              onClick={async () => {
-                await supabase.auth.signOut()
-                router.push('/login')
-              }}
-              className="text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg bg-white/10 text-white border border-white/20"
-            >
-              Uitloggen
-            </button>
-          </div>
+          <span className="text-white/50 text-xs select-none">Campagne fietsen</span>
+          <div className="flex-1" />
+          <Link
+            href="/dashboard/beheer?tab=campagnefietsen"
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10"
+          >
+            Beheer
+          </Link>
         </div>
       </header>
 

@@ -126,11 +126,11 @@ export default function WinkelsPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-3 sm:px-5 flex flex-wrap items-center gap-2 py-2 min-h-[56px]">
-          <Link href="/dashboard" className="flex items-center gap-2 shrink-0 hover:opacity-90 transition" style={{ borderRight: '1px solid rgba(255,255,255,0.07)', paddingRight: '16px', marginRight: '4px' }}>
-            <img src={DYNAMO_LOGO} alt="DRG Portal" className="h-7 w-auto object-contain" />
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
+            ← Portal
           </Link>
-          <span className="text-white text-sm font-semibold">Winkels &amp; vestigingen</span>
+          <span className="text-white/50 text-xs select-none">Winkels &amp; vestigingen</span>
         </div>
       </header>
 

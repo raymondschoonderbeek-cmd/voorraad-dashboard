@@ -150,20 +150,12 @@ export default function BeschikbaarheidInstellingenPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10" style={{ borderColor: dashboardUi.sectionDivider }}>
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-          <Link
-            href="/dashboard/instellingen"
-            className="text-sm font-medium flex items-center gap-1.5 hover:opacity-75 transition-opacity"
-            style={{ color: DYNAMO_BLUE }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-            Instellingen
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href="/dashboard/instellingen" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
+            ← Instellingen
           </Link>
-          <span className="text-gray-300 select-none">/</span>
-          <span className="text-sm font-semibold" style={{ color: '#1e293b' }}>Beschikbaarheid</span>
+          <span className="text-white/50 text-xs select-none">Beschikbaarheid</span>
         </div>
       </header>
 

@@ -265,23 +265,16 @@ export default function InstellingenPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Sticky header met terugnavigatie */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium flex items-center gap-1.5 text-[#2D457C] hover:opacity-75 transition-opacity shrink-0"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-            Dashboard
+      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
+        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
+          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
+            ← Portal
           </Link>
-          <span className="text-gray-300 select-none">/</span>
-          <span className="text-sm font-semibold text-gray-900">Instellingen</span>
+          <span className="text-white/50 text-xs select-none">Mijn instellingen</span>
           {isLunchOnly && (
             <Link
               href="/dashboard/lunch"
-              className="ml-auto text-xs font-semibold flex items-center gap-1.5 rounded-lg px-3 py-1.5 border border-gray-200 text-[#2D457C] hover:bg-gray-50 transition-colors"
+              className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10 transition-colors"
             >
               🥪 Lunch bestellen
             </Link>
