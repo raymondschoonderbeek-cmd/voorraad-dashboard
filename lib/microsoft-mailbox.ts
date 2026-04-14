@@ -1,0 +1,186 @@
+/**
+ * Microsoft Graph – mailboxSettings (out-of-office + werktijden)
+ * Vereist applicatiemachtiging: MailboxSettings.ReadWrite.All
+ */
+
+export type OofStatus = 'disabled' | 'alwaysEnabled' | 'scheduled'
+
+export interface MailboxOof {
+  status: OofStatus
+  start: string | null  // ISO datetime string (UTC)
+  end: string | null
+  internalMsg: string
+  externalMsg: string
+}
+
+export interface MailboxWorkHours {
+  days: string[]       // ['monday','tuesday',...]
+  startTime: string    // 'HH:MM'
+  endTime: string      // 'HH:MM'
+  timezone: string     // Windows TZ name, e.g. 'W. Europe Standard Time'
+}
+
+export interface MailboxSettings {
+  oof: MailboxOof
+  workHours: MailboxWorkHours
+}
+
+/** Haal een Azure AD token op via client credentials. */
+async function getGraphToken(): Promise<string> {
+  const tenantId = process.env.AZURE_TENANT_ID
+  const clientId = process.env.AZURE_CLIENT_ID
+  const clientSecret = process.env.AZURE_CLIENT_SECRET
+  if (!tenantId || !clientId || !clientSecret) {
+    throw new Error('Azure omgevingsvariabelen ontbreken (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET).')
+  }
+  const res = await fetch(
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'https://graph.microsoft.com/.default',
+      }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error_description?: string }
+    throw new Error(`Azure token ophalen mislukt: ${err.error_description ?? res.statusText}`)
+  }
+  const data = await res.json() as { access_token: string }
+  return data.access_token
+}
+
+/** Controleer of de Azure Graph-koppeling geconfigureerd is. */
+export function isGraphConfigured(): boolean {
+  return !!(
+    process.env.AZURE_TENANT_ID?.trim() &&
+    process.env.AZURE_CLIENT_ID?.trim() &&
+    process.env.AZURE_CLIENT_SECRET?.trim()
+  )
+}
+
+/** Normaliseer tijd "09:00:00.0000000" → "09:00" */
+function normTime(raw: string | null | undefined): string {
+  if (!raw) return '09:00'
+  return raw.substring(0, 5)
+}
+
+/** Haal mailboxSettings op voor een gebruiker (via UPN/email). */
+export async function getMailboxSettings(upn: string): Promise<MailboxSettings> {
+  const token = await getGraphToken()
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/mailboxSettings`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } }
+    throw new Error(`Graph mailboxSettings ophalen mislukt (${res.status}): ${err.error?.message ?? res.statusText}`)
+  }
+  const data = await res.json() as {
+    automaticRepliesSetting?: {
+      status?: string
+      scheduledStartDateTime?: { dateTime?: string; timeZone?: string }
+      scheduledEndDateTime?: { dateTime?: string; timeZone?: string }
+      internalReplyMessage?: string
+      externalReplyMessage?: string
+    }
+    workingHours?: {
+      daysOfWeek?: string[]
+      startTime?: string
+      endTime?: string
+      timeZone?: { name?: string }
+    }
+  }
+
+  const oof = data.automaticRepliesSetting ?? {}
+  const wh = data.workingHours ?? {}
+
+  // Converteer Graph datetime naar ISO UTC string
+  function graphDtToIso(dt?: { dateTime?: string; timeZone?: string }): string | null {
+    if (!dt?.dateTime) return null
+    if ((dt.timeZone ?? 'UTC') === 'UTC') {
+      return dt.dateTime.endsWith('Z') ? dt.dateTime : `${dt.dateTime}Z`
+    }
+    // Als niet UTC: gebruik als-is (Graph geeft vaak al UTC terug)
+    return dt.dateTime.endsWith('Z') ? dt.dateTime : `${dt.dateTime}Z`
+  }
+
+  return {
+    oof: {
+      status: (oof.status as OofStatus) ?? 'disabled',
+      start: graphDtToIso(oof.scheduledStartDateTime),
+      end: graphDtToIso(oof.scheduledEndDateTime),
+      internalMsg: oof.internalReplyMessage ?? '',
+      externalMsg: oof.externalReplyMessage ?? '',
+    },
+    workHours: {
+      days: wh.daysOfWeek ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      startTime: normTime(wh.startTime),
+      endTime: normTime(wh.endTime),
+      timezone: wh.timeZone?.name ?? 'W. Europe Standard Time',
+    },
+  }
+}
+
+/** Sla OOF-instellingen op via Microsoft Graph. */
+export async function patchMailboxOof(upn: string, oof: MailboxOof): Promise<void> {
+  const token = await getGraphToken()
+
+  const payload: Record<string, unknown> = {
+    automaticRepliesSetting: {
+      status: oof.status,
+      internalReplyMessage: oof.internalMsg,
+      externalReplyMessage: oof.externalMsg,
+      ...(oof.status === 'scheduled' && oof.start && oof.end
+        ? {
+            scheduledStartDateTime: { dateTime: oof.start.replace('Z', ''), timeZone: 'UTC' },
+            scheduledEndDateTime: { dateTime: oof.end.replace('Z', ''), timeZone: 'UTC' },
+          }
+        : {}),
+    },
+  }
+
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/mailboxSettings`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } }
+    throw new Error(`OOF bijwerken mislukt (${res.status}): ${err.error?.message ?? res.statusText}`)
+  }
+}
+
+/** Sla werktijden op via Microsoft Graph. */
+export async function patchMailboxWorkHours(upn: string, wh: MailboxWorkHours): Promise<void> {
+  const token = await getGraphToken()
+
+  const payload = {
+    workingHours: {
+      daysOfWeek: wh.days,
+      startTime: `${wh.startTime}:00.0000000`,
+      endTime: `${wh.endTime}:00.0000000`,
+      timeZone: { name: wh.timezone },
+    },
+  }
+
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/mailboxSettings`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } }
+    throw new Error(`Werktijden bijwerken mislukt (${res.status}): ${err.error?.message ?? res.statusText}`)
+  }
+}
