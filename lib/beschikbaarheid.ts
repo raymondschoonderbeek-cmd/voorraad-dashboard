@@ -167,7 +167,19 @@ export function berekenVolgendeLabel(rec: BeschikbaarheidRecord, now: Date = new
     return null
   }
 
-  // Buiten werktijd — zoek eerstvolgende werkdag + begintijd
+  // Buiten werktijd — maar als OOF ook actief is, toon OOF-terugdatum
+  if (rec.oof_status === 'alwaysEnabled') return 'Onbepaalde tijd'
+  if (rec.oof_status === 'scheduled' && rec.oof_end) {
+    const end = new Date(rec.oof_end)
+    if (!Number.isNaN(end.getTime()) && now <= end) {
+      const terug = new Date(end.getTime() + 86_400_000)
+      const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
+      if (terug.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
+      return `Terug ${terug.toLocaleDateString('nl-NL', opts)}`
+    }
+  }
+
+  // Geen actieve OOF — zoek eerstvolgende werkdag + begintijd
   const schema = rec.work_schedule ?? DEFAULT_WEEK_SCHEMA
   const iana = toIana(rec.work_timezone ?? 'W. Europe Standard Time')
 
