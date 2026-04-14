@@ -32,8 +32,10 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
           router.replace('/update-password')
           return
         }
+        const isInstellingenPath = pathname.startsWith('/dashboard/instellingen')
+
         if (data?.requiresMfaSetup) {
-          if (pathname !== '/dashboard/instellingen') {
+          if (!isInstellingenPath) {
             router.replace('/dashboard/instellingen?mfa=verplicht')
           } else {
             setReady(true)
@@ -46,7 +48,7 @@ export function MfaGuard({ children }: { children: React.ReactNode }) {
         }
         // Lunch-rol: alleen lunch-pagina's en instellingen (geen dashboard/campagne)
         const isLunchPath = pathname === '/dashboard/lunch' || pathname.startsWith('/dashboard/lunch/')
-        const isInstellingen = pathname === '/dashboard/instellingen'
+        const isInstellingen = isInstellingenPath
         if (data?.lunchOnly && !isLunchPath && !isInstellingen) {
           router.replace('/dashboard/lunch')
           return
