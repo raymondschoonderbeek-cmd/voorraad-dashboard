@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
   const auth = await requireItCmdbAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  // Alle hardware ophalen (IT CMDB is een beheerde lijst, geen enorme tabel)
+  // Alle hardware ophalen (assigned_user_email bestaat niet als kolom — email via RPC)
   const { data: hardware, error: hwErr } = await auth.supabase
     .from('it_cmdb_hardware')
-    .select('id, serial_number, hostname, device_type, location, assigned_user_id, assigned_user_email, user_name, intune_snapshot')
-    .order('assigned_user_email')
+    .select('id, serial_number, hostname, device_type, location, assigned_user_id, user_name, intune_snapshot')
+    .order('serial_number')
 
   if (hwErr) return NextResponse.json({ error: hwErr.message }, { status: 500 })
 
@@ -95,25 +95,20 @@ export async function GET(request: NextRequest) {
   // Voeg hardware toe (inclusief Intune-only apparaten zonder portal-user_id)
   for (const hw of hardware ?? []) {
     const uid = hw.assigned_user_id as string | null
-    const hwEmail = hw.assigned_user_email as string | null
     const hwName = hw.user_name as string | null
 
-    // Intune snapshot kan ook een e-mail / UPN bevatten
+    // Intune snapshot kan een e-mail / UPN bevatten
     const snap = hw.intune_snapshot as { emailAddress?: string; userPrincipalName?: string } | null
     const intuneEmail = snap?.emailAddress?.trim() || snap?.userPrincipalName?.trim() || null
 
-    // Bepaal key, email en naam op basis van beschikbare velden (fallback-keten)
+    // Fallback-keten: portal-id → Intune-email → user_name
     let key: string
     let email: string
     let naam: string | null = null
 
     if (uid) {
       key = uid
-      email = hwEmail ?? emailByUser.get(uid) ?? intuneEmail ?? uid
-    } else if (hwEmail) {
-      key = `ext:${hwEmail.toLowerCase()}`
-      email = hwEmail
-      naam = hwName
+      email = emailByUser.get(uid) ?? intuneEmail ?? uid
     } else if (intuneEmail) {
       key = `ext:${intuneEmail.toLowerCase()}`
       email = intuneEmail
