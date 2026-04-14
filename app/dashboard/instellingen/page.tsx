@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import useSWR from 'swr'
 import { useToast } from '@/components/Toast'
+import { DYNAMO_BLUE } from '@/lib/theme'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
