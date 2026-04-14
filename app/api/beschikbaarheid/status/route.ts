@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
-import { berekenStatus, type BeschikbaarheidRecord, type GebruikerStatus } from '@/lib/beschikbaarheid'
+import { berekenStatus, berekenVolgendeLabel, type BeschikbaarheidRecord, type GebruikerStatus } from '@/lib/beschikbaarheid'
 
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -47,14 +47,17 @@ export async function GET(request: NextRequest) {
   const now = new Date()
   const statussen: GebruikerStatus[] = (rows ?? []).map(row => {
     const rec = row as BeschikbaarheidRecord
+    const status = berekenStatus(rec, now)
     return {
       user_id: rec.user_id,
       email: emailByUser.get(rec.user_id) ?? '',
       naam: naamByUser.get(rec.user_id) ?? null,
-      status: berekenStatus(rec, now),
+      status,
+      oof_start: rec.oof_status === 'scheduled' ? rec.oof_start : null,
       oof_end: rec.oof_status === 'scheduled' ? rec.oof_end : null,
       work_schedule: rec.work_schedule,
       work_timezone: rec.work_timezone,
+      next_available_label: berekenVolgendeLabel(rec, now),
     }
   })
 

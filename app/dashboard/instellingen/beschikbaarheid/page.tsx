@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 import { BeschikbaarheidBadge } from '@/components/BeschikbaarheidBadge'
 import {
-  berekenStatus,
+  berekenStatus, berekenVolgendeLabel,
   DAG_LABELS, ALLE_DAGEN, TIJDZONE_OPTIES,
   DEFAULT_WEEK_SCHEMA,
   type BeschikbaarheidRecord, type WeekSchema, type DagNaam,
@@ -180,7 +180,9 @@ export default function BeschikbaarheidInstellingenPage() {
           <div className="flex items-center gap-2 shrink-0">
             <BeschikbaarheidBadge
               status={previewStatus}
+              oofStart={oofStatus === 'scheduled' && oofStart ? localToIso(oofStart) : null}
               oofEnd={oofStatus === 'scheduled' && oofEnd ? localToIso(oofEnd) : null}
+              nextAvailableLabel={berekenVolgendeLabel(previewRec)}
             />
             {graphConfigured && (
               <button

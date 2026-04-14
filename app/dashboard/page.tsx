@@ -17,7 +17,7 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
-const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'winkels', 'meer'] as const
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'beschikbaarheid', 'winkels', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 
@@ -809,6 +809,30 @@ export default function Dashboard() {
                             <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
                               <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Open overzicht →</span>
                               <div style={{ color: 'rgba(255,255,255,0.45)' }} aria-hidden><IconLaptop /></div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
+                    if (id === 'beschikbaarheid') {
+                      return (
+                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/beschikbaarheid" aria-label="Beschikbaarheid team" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...dashboardModuleTile.surface }}>
+                            {dragHandle}
+                            <div className="p-6 flex-1">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...dashboardModuleTile.iconWrap }}>
+                                <div style={{ color: 'white' }} aria-hidden>
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><circle cx="19" cy="3" r="2" fill="currentColor" stroke="none" style={{fill:'#4ade80'}}/></svg>
+                                </div>
+                              </div>
+                              <div style={modTitleStyle}>Beschikbaarheid</div>
+                              <div style={{ ...dashboardModuleTile.subtitle, fontFamily: F }}>
+                                Wie is er vandaag? OOF & werktijden per collega
+                              </div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...dashboardModuleTile.footer }}>
+                              <span style={{ color: 'white', fontSize: '12px', fontWeight: 600, fontFamily: F }}>Open overzicht →</span>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             </div>
                           </Link>
                         </div>

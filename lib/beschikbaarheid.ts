@@ -43,8 +43,10 @@ export interface GebruikerStatus {
   naam: string | null
   status: BeschikbaarheidStatus
   oof_end: string | null
+  oof_start: string | null
   work_schedule: WeekSchema | null
   work_timezone: string
+  next_available_label: string | null
 }
 
 /** Windows-tijdzonenamen → IANA. */
@@ -136,6 +138,59 @@ export const DAG_LABELS: Record<DagNaam, string> = {
 export const ALLE_DAGEN: DagNaam[] = [
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
 ]
+
+/**
+ * Bereken wanneer de gebruiker eerstvolgens beschikbaar is.
+ * Geeft een leesbaar label terug, bijv. "Vandaag om 09:00", "Morgen om 09:00",
+ * "Maandag om 09:00", "Terug 15 mei", of null als nu al beschikbaar.
+ */
+export function berekenVolgendeLabel(rec: BeschikbaarheidRecord, now: Date = new Date()): string | null {
+  const status = berekenStatus(rec, now)
+  if (status === 'beschikbaar') return null
+
+  // Out of Office
+  if (status === 'out-of-office') {
+    if (rec.oof_status === 'alwaysEnabled') return 'Onbepaalde tijd'
+    if (rec.oof_status === 'scheduled' && rec.oof_end) {
+      const end = new Date(rec.oof_end)
+      if (!Number.isNaN(end.getTime())) {
+        const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
+        if (end.getFullYear() !== now.getFullYear()) opts.year = 'numeric'
+        return `Terug ${end.toLocaleDateString('nl-NL', opts)}`
+      }
+    }
+    return null
+  }
+
+  // Buiten werktijd — zoek eerstvolgende werkdag + begintijd
+  const schema = rec.work_schedule ?? DEFAULT_WEEK_SCHEMA
+  const iana = toIana(rec.work_timezone ?? 'W. Europe Standard Time')
+
+  for (let i = 0; i <= 7; i++) {
+    // Bereken datum i dagen vooruit
+    const check = new Date(now.getTime() + i * 86_400_000)
+    const dayName = check
+      .toLocaleDateString('en-US', { weekday: 'long', timeZone: iana })
+      .toLowerCase() as DagNaam
+    const dag = schema[dayName]
+    if (!dag?.enabled) continue
+
+    if (i === 0) {
+      // Vandaag: alleen als de werkdag nog niet begonnen is
+      const hhmm = now.toLocaleTimeString('nl-NL', {
+        hour: '2-digit', minute: '2-digit',
+        timeZone: iana, hour12: false,
+      })
+      if (hhmm < dag.start) return `Vandaag om ${dag.start}`
+      continue // Werkdag van vandaag is al voorbij
+    }
+
+    if (i === 1) return `Morgen om ${dag.start}`
+    return `${DAG_LABELS[dayName]} om ${dag.start}`
+  }
+
+  return null
+}
 
 export const TIJDZONE_OPTIES = [
   { value: 'W. Europe Standard Time',       label: 'Nederland / België (CET/CEST)' },
