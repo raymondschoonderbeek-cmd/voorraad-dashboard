@@ -72,6 +72,11 @@ export default function InstellingenPage() {
   const toast = useToast()
   const supabase = createClient()
 
+  const { data: sessionData } = useSWR<{ lunchOnly?: boolean }>(
+    '/api/auth/session-info', fetcher, { revalidateOnFocus: false }
+  )
+  const isLunchOnly = sessionData?.lunchOnly === true
+
   const { data: profileData, mutate: mutateProfile } = useSWR<{
     lunch_module_enabled?: boolean
     lunch_reminder_opt_out?: boolean
@@ -273,16 +278,14 @@ export default function InstellingenPage() {
           </Link>
           <span className="text-gray-300 select-none">/</span>
           <span className="text-sm font-semibold text-gray-900">Instellingen</span>
-          <div className="ml-auto flex items-center gap-2">
-            {lunchModuleEnabled && (
-              <Link
-                href="/dashboard/lunch"
-                className="text-xs font-semibold flex items-center gap-1.5 rounded-lg px-3 py-1.5 border border-gray-200 text-[#2D457C] hover:bg-gray-50 transition-colors"
-              >
-                🥪 Lunch bestellen
-              </Link>
-            )}
-          </div>
+          {isLunchOnly && (
+            <Link
+              href="/dashboard/lunch"
+              className="ml-auto text-xs font-semibold flex items-center gap-1.5 rounded-lg px-3 py-1.5 border border-gray-200 text-[#2D457C] hover:bg-gray-50 transition-colors"
+            >
+              🥪 Lunch bestellen
+            </Link>
+          )}
         </div>
       </header>
 
