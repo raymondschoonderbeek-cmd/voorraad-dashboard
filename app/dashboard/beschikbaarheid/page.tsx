@@ -238,9 +238,17 @@ export default function BeschikbaarheidDashboardPage() {
     )
   }, [statussen, zoek])
 
+  const heeftAfdelingsdata = useMemo(
+    () => statussen.some(g => g.afdeling && g.afdeling.trim() !== ''),
+    [statussen]
+  )
+
+  const effectieveGroepering: Groepering =
+    groepering === 'afdeling' && !heeftAfdelingsdata ? 'status' : groepering
+
   // Groepeer per afdeling of per status
   const groepen = useMemo(() => {
-    if (groepering === 'status') {
+    if (effectieveGroepering === 'status') {
       return STATUS_VOLGORDE
         .map(s => ({
           sleutel: s,
@@ -275,7 +283,7 @@ export default function BeschikbaarheidDashboardPage() {
           return (a.naam ?? a.email).localeCompare(b.naam ?? b.email, 'nl')
         }),
       }))
-  }, [gefilterd, groepering])
+  }, [gefilterd, effectieveGroepering])
 
   const tellen = useMemo(() => ({
     beschikbaar: statussen.filter(g => g.status === 'beschikbaar').length,
@@ -517,6 +525,29 @@ export default function BeschikbaarheidDashboardPage() {
           )}
         </div>
 
+        {/* Melding: afdeling gekozen maar geen data */}
+        {groepering === 'afdeling' && !heeftAfdelingsdata && !isLoading && statussen.length > 0 && (
+          <div className="rounded-xl border px-4 py-3 flex items-start gap-3"
+            style={{ background: '#fffbeb', borderColor: '#fcd34d' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400e"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold m-0" style={{ color: '#92400e', fontFamily: F }}>
+                Afdelingsdata ontbreekt
+              </p>
+              <p className="text-xs mt-0.5 m-0" style={{ color: '#b45309', fontFamily: F }}>
+                Voer eerst een{' '}
+                <strong>Azure-sync</strong> uit (Beheer → Azure-sync) zodat afdelingen worden ingelezen.
+                {isAdmin && <> Daarna klik op <strong>Sync alle</strong> om beschikbaarheid te vullen.</>}
+                {' '}Nu gegroepeerd op status.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Toolbar: zoek + groepering + weergave */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Zoek */}
@@ -539,22 +570,31 @@ export default function BeschikbaarheidDashboardPage() {
 
           {/* Groepering */}
           <div className="flex rounded-xl border overflow-hidden shrink-0" style={{ borderColor: 'rgba(45,69,124,0.2)' }}>
-            {(['afdeling', 'status'] as const).map(g => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setGroepering(g)}
-                className="px-3 py-2 text-xs font-semibold transition-colors first:border-r"
-                style={{
-                  background: groepering === g ? DYNAMO_BLUE : 'white',
-                  color: groepering === g ? 'white' : DYNAMO_BLUE,
-                  borderColor: 'rgba(45,69,124,0.2)',
-                }}
-                aria-pressed={groepering === g}
-              >
-                {g === 'afdeling' ? 'Afdeling' : 'Status'}
-              </button>
-            ))}
+            {(['afdeling', 'status'] as const).map(g => {
+              const actief = effectieveGroepering === g
+              const gekozen = groepering === g
+              const uitgeschakeld = g === 'afdeling' && !heeftAfdelingsdata
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGroepering(g)}
+                  className="px-3 py-2 text-xs font-semibold transition-colors first:border-r"
+                  style={{
+                    background: actief ? DYNAMO_BLUE : 'white',
+                    color: actief ? 'white' : uitgeschakeld ? 'rgba(45,69,124,0.35)' : DYNAMO_BLUE,
+                    borderColor: 'rgba(45,69,124,0.2)',
+                  }}
+                  aria-pressed={gekozen}
+                  title={uitgeschakeld ? 'Geen afdelingsdata — voer eerst een Azure-sync uit' : undefined}
+                >
+                  {g === 'afdeling' ? 'Afdeling' : 'Status'}
+                  {uitgeschakeld && (
+                    <span className="ml-1 opacity-50">⚠</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
 
           {/* Kaart/lijst */}
@@ -615,7 +655,7 @@ export default function BeschikbaarheidDashboardPage() {
                     {items.length}
                   </span>
                   {/* Statusbalk per afdeling (alleen bij afdeling-groepering) */}
-                  {groepering === 'afdeling' && <StatusBar items={items} />}
+                  {effectieveGroepering === 'afdeling' && <StatusBar items={items} />}
                 </div>
 
                 {weergave === 'kaarten' ? (

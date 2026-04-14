@@ -32,15 +32,21 @@ export async function GET(request: NextRequest) {
   const userIds = (rows ?? []).map(r => r.user_id as string)
 
   // Haal naam + afdeling op uit gebruiker_rollen
-  const { data: rollen } = userIds.length > 0
+  // afdeling kan ontbreken als de migratie nog niet gedraaid is → veilig afhandelen
+  const rollenResult = userIds.length > 0
     ? await supabase.from('gebruiker_rollen').select('user_id, naam, afdeling').in('user_id', userIds)
-    : { data: [] }
+    : { data: [], error: null }
+
+  // Als afdeling kolom niet bestaat, probeer opnieuw zonder die kolom
+  const rollen = rollenResult.error
+    ? ((await supabase.from('gebruiker_rollen').select('user_id, naam').in('user_id', userIds)).data ?? [])
+    : (rollenResult.data ?? [])
 
   const naamByUser = new Map<string, string | null>(
-    (rollen ?? []).map(r => [r.user_id, r.naam ?? null])
+    rollen.map(r => [r.user_id, r.naam ?? null])
   )
   const afdelingByUser = new Map<string, string | null>(
-    (rollen ?? []).map(r => [r.user_id, (r.afdeling as string | null) ?? null])
+    rollen.map(r => [r.user_id, ((r as Record<string, unknown>).afdeling as string | null) ?? null])
   )
 
   // Email lookup via admin client
