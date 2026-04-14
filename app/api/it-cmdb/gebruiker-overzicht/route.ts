@@ -13,11 +13,10 @@ export async function GET(request: NextRequest) {
   const auth = await requireItCmdbAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
-  // Hardware met een bekende gebruiker (portal-id, e-mail of naam)
+  // Alle hardware ophalen (IT CMDB is een beheerde lijst, geen enorme tabel)
   const { data: hardware, error: hwErr } = await auth.supabase
     .from('it_cmdb_hardware')
     .select('id, serial_number, hostname, device_type, location, assigned_user_id, assigned_user_email, user_name, intune_snapshot')
-    .or('assigned_user_id.not.is.null,assigned_user_email.not.is.null,user_name.not.is.null')
     .order('assigned_user_email')
 
   if (hwErr) return NextResponse.json({ error: hwErr.message }, { status: 500 })
@@ -93,29 +92,38 @@ export async function GET(request: NextRequest) {
     return gebruikers.get(key)!
   }
 
-  // Voeg hardware toe — ook apparaten zonder portal-user_id (alleen e-mail/naam via Intune)
+  // Voeg hardware toe (inclusief Intune-only apparaten zonder portal-user_id)
   for (const hw of hardware ?? []) {
     const uid = hw.assigned_user_id as string | null
     const hwEmail = hw.assigned_user_email as string | null
     const hwName = hw.user_name as string | null
 
-    // Bepaal key, email en naam op basis van beschikbare velden
+    // Intune snapshot kan ook een e-mail / UPN bevatten
+    const snap = hw.intune_snapshot as { emailAddress?: string; userPrincipalName?: string } | null
+    const intuneEmail = snap?.emailAddress?.trim() || snap?.userPrincipalName?.trim() || null
+
+    // Bepaal key, email en naam op basis van beschikbare velden (fallback-keten)
     let key: string
     let email: string
     let naam: string | null = null
 
     if (uid) {
       key = uid
-      email = hwEmail ?? emailByUser.get(uid) ?? uid
+      email = hwEmail ?? emailByUser.get(uid) ?? intuneEmail ?? uid
     } else if (hwEmail) {
       key = `ext:${hwEmail.toLowerCase()}`
       email = hwEmail
+      naam = hwName
+    } else if (intuneEmail) {
+      key = `ext:${intuneEmail.toLowerCase()}`
+      email = intuneEmail
       naam = hwName
     } else if (hwName) {
       key = `name:${hwName}`
       email = hwName
       naam = hwName
     } else {
+      // Geen gebruikersinformatie — overslaan
       continue
     }
 
