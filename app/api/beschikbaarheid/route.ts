@@ -6,6 +6,8 @@ import {
   getWerklocatieSchema,
   patchMailboxOof,
   patchMailboxWorkHours,
+  patchWerklocatieVandaag,
+  patchWerklocatieSchema as patchGraphWerklocatieSchema,
   isGraphConfigured,
   type MailboxOof,
 } from '@/lib/microsoft-mailbox'
@@ -144,6 +146,16 @@ export async function PATCH(request: NextRequest) {
         })
       } catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werktijden opslaan mislukt') }
     }
+    // Werklocatie vandaag (one-off override) → Outlook Calendar
+    if ('werklocatie' in body) {
+      try { await patchWerklocatieVandaag(upn, body.werklocatie ?? null) }
+      catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werklocatie vandaag opslaan mislukt') }
+    }
+    // Werklocatie schema (per dag) → Outlook Calendar (PATCHt bestaande events)
+    if (body.werklocatieSchema && Object.keys(body.werklocatieSchema).length > 0) {
+      try { await patchGraphWerklocatieSchema(upn, body.werklocatieSchema) }
+      catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werklocatieschema opslaan mislukt') }
+    }
   }
 
   const nu = new Date().toISOString()
@@ -168,9 +180,59 @@ export async function PATCH(request: NextRequest) {
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 })
 
+  // Na opslaan: sync verse data terug vanuit Graph zodat de UI altijd de echte Outlook-staat toont
+  if (graphOk && upn && graphErrors.length === 0) {
+    try {
+      const [ms, locSchema] = await Promise.all([
+        getMailboxSettings(upn),
+        getWerklocatieSchema(upn).catch(() => ({})),
+      ])
+      const nu2 = new Date().toISOString()
+      const workSchedule = graphWorkHoursToWeekSchema(
+        ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime
+      )
+      await supabase.from('gebruiker_beschikbaarheid').upsert(
+        {
+          user_id: user.id,
+          oof_status: ms.oof.status,
+          oof_start: ms.oof.start,
+          oof_end: ms.oof.end,
+          oof_internal_msg: ms.oof.internalMsg,
+          oof_external_msg: ms.oof.externalMsg,
+          work_schedule: workSchedule,
+          work_timezone: ms.workHours.timezone,
+          werklocatie_schema: Object.keys(locSchema).length > 0 ? locSchema : null,
+          graph_synced_at: nu2,
+          updated_at: nu2,
+        },
+        { onConflict: 'user_id' }
+      )
+      const { data: fresh } = await supabase
+        .from('gebruiker_beschikbaarheid')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      return NextResponse.json({
+        ok: true,
+        graphConfigured: graphOk,
+        synced: true,
+        settings: fresh,
+      })
+    } catch {
+      // Graph-sync na opslaan mislukt — gewoon OK teruggeven zonder verse data
+    }
+  }
+
+  const { data: opgeslagenRow } = await supabase
+    .from('gebruiker_beschikbaarheid')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   return NextResponse.json({
     ok: true,
     graphConfigured: graphOk,
     graphErrors: graphErrors.length ? graphErrors : undefined,
+    settings: opgeslagenRow,
   })
 }

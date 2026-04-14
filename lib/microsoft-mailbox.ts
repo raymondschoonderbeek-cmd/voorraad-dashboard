@@ -234,6 +234,129 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
   return schema
 }
 
+/** Converteer een portaallocatie-label naar een Graph Location-object. */
+function locatieNaarGraphLocation(locatie: string | null): { locationType: string; displayName: string } {
+  if (!locatie || locatie.trim() === '') return { locationType: 'default', displayName: '' }
+  if (locatie === 'Thuis') return { locationType: 'homeOffice', displayName: 'Home' }
+  if (locatie === 'Kantoor') return { locationType: 'businessAddress', displayName: 'Office' }
+  return { locationType: 'default', displayName: locatie.trim() }
+}
+
+/**
+ * Werk de werklocatie van vandaag bij via de Graph Calendar API.
+ * PATCHt het bestaande workingLocation-event als dat bestaat.
+ * Maakt een nieuw all-day vrij-event aan als er geen workingLocation-event is.
+ * Vereist Calendars.ReadWrite applicatiemachtiging.
+ */
+export async function patchWerklocatieVandaag(upn: string, locatie: string | null): Promise<void> {
+  const token = await getGraphToken()
+  const nu = new Date()
+  const yyyy = nu.getUTCFullYear()
+  const mm = String(nu.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(nu.getUTCDate()).padStart(2, '0')
+  const startDt = `${yyyy}-${mm}-${dd}T00:00:00Z`
+  const eindDt  = `${yyyy}-${mm}-${dd}T23:59:59Z`
+
+  // Zoek bestaand workingLocation event voor vandaag
+  const listUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
+    `?startDateTime=${startDt}&endDateTime=${eindDt}&$select=id,type,locations&$top=25`
+  const listRes = await fetch(listUrl, { headers: { Authorization: `Bearer ${token}` } })
+  if (!listRes.ok) {
+    const err = await listRes.json().catch(() => ({})) as { error?: { message?: string } }
+    throw new Error(`Kalender ophalen mislukt (${listRes.status}): ${err.error?.message ?? listRes.statusText}`)
+  }
+  const listData = await listRes.json() as { value?: Array<{ id: string; type?: string }> }
+  const bestaand = (listData.value ?? []).find(e => e.type === 'workingLocation')
+
+  const locationBody = [locatieNaarGraphLocation(locatie)]
+
+  if (bestaand) {
+    const patchRes = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/events/${bestaand.id}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locations: locationBody }),
+      }
+    )
+    if (!patchRes.ok) {
+      const err = await patchRes.json().catch(() => ({})) as { error?: { message?: string } }
+      throw new Error(`Werklocatie vandaag bijwerken mislukt (${patchRes.status}): ${err.error?.message ?? patchRes.statusText}`)
+    }
+  } else if (locatie) {
+    // Geen bestaand workingLocation-event: maak een all-day vrij-event aan
+    const postRes = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/events`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: `Werklocatie: ${locatie}`,
+          isAllDay: true,
+          showAs: 'free',
+          start: { dateTime: `${yyyy}-${mm}-${dd}T00:00:00`, timeZone: 'UTC' },
+          end:   { dateTime: `${yyyy}-${mm}-${dd}T00:00:00`, timeZone: 'UTC' },
+          locations: locationBody,
+        }),
+      }
+    )
+    if (!postRes.ok) {
+      const err = await postRes.json().catch(() => ({})) as { error?: { message?: string } }
+      throw new Error(`Werklocatie vandaag aanmaken mislukt (${postRes.status}): ${err.error?.message ?? postRes.statusText}`)
+    }
+  }
+}
+
+/**
+ * Werk het standaard werklocatieschema per dag bij via de Graph Calendar API.
+ * PATCHt bestaande workingLocation-events in het komende 14-dagenvenster.
+ * Nieuwe events worden niet aangemaakt (recurring events zijn complex om te creëren via de API).
+ * Vereist Calendars.ReadWrite applicatiemachtiging.
+ */
+export async function patchWerklocatieSchema(
+  upn: string,
+  schema: Partial<Record<string, string>>
+): Promise<void> {
+  const token = await getGraphToken()
+  const now = new Date()
+  const start = now.toISOString().split('T')[0] + 'T00:00:00Z'
+  const eind  = new Date(now.getTime() + 14 * 86_400_000).toISOString().split('T')[0] + 'T23:59:59Z'
+
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
+    `?startDateTime=${start}&endDateTime=${eind}&$select=id,type,start&$top=100`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) return // silent fail: geen kalendertoegang
+
+  const data = await res.json() as {
+    value?: Array<{ id: string; type?: string; start?: { dateTime?: string } }>
+  }
+
+  // Eerste workingLocation event per weekdag (voor de komende 14 dagen)
+  const eventPerDag = new Map<string, string>() // dagNaam → eventId
+  for (const event of data.value ?? []) {
+    if (event.type !== 'workingLocation' || !event.start?.dateTime) continue
+    const dt = new Date(event.start.dateTime.endsWith('Z') ? event.start.dateTime : event.start.dateTime + 'Z')
+    const dag = dt.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }).toLowerCase()
+    if (!eventPerDag.has(dag)) eventPerDag.set(dag, event.id)
+  }
+
+  // PATCH elk gevonden event met de nieuwe locatie
+  await Promise.allSettled(
+    Array.from(eventPerDag.entries())
+      .filter(([dag]) => dag in schema)
+      .map(([dag, eventId]) =>
+        fetch(
+          `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/events/${eventId}`,
+          {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locations: [locatieNaarGraphLocation(schema[dag] ?? null)] }),
+          }
+        )
+      )
+  )
+}
+
 /** Sla OOF-instellingen op via Microsoft Graph. */
 export async function patchMailboxOof(upn: string, oof: MailboxOof): Promise<void> {
   const token = await getGraphToken()

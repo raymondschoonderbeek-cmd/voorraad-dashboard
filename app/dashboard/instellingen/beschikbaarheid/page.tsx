@@ -86,13 +86,20 @@ export default function BeschikbaarheidInstellingenPage() {
       .finally(() => setLoading(false))
   }, [fillForm, addToast])
 
+  const syncFromGraph = useCallback(async (): Promise<boolean> => {
+    const res = await fetch('/api/beschikbaarheid')
+    const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string }
+    if (data.syncError) { setSyncError(data.syncError); return false }
+    if (data.settings) fillForm(data.settings)
+    return true
+  }, [fillForm])
+
   const handleSync = async () => {
     setSyncing(true); setSyncError(null)
     try {
-      const res = await fetch('/api/beschikbaarheid')
-      const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string }
-      if (data.syncError) { setSyncError(data.syncError); addToast('Sync gedeeltelijk mislukt', 'warning') }
-      else { if (data.settings) fillForm(data.settings); addToast('Gesynchroniseerd met Microsoft', 'success') }
+      const ok = await syncFromGraph()
+      if (ok) addToast('Gesynchroniseerd met Microsoft', 'success')
+      else addToast('Sync gedeeltelijk mislukt', 'warning')
     } catch { addToast('Sync mislukt', 'error') }
     finally { setSyncing(false) }
   }
@@ -115,12 +122,16 @@ export default function BeschikbaarheidInstellingenPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde, werklocatieSchema }),
       })
-      const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string }
+      const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean }
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
       if (data.graphErrors?.length) {
         addToast(`Opgeslagen, maar Microsoft-fout: ${data.graphErrors[0]}`, 'warning')
       } else {
-        addToast(graphConfigured ? 'Opgeslagen en gesynchroniseerd' : 'Opgeslagen', 'success')
+        addToast(graphConfigured ? 'Opgeslagen en gesynchroniseerd met Outlook' : 'Opgeslagen', 'success')
+      }
+      // Vul form met verse settings uit de response (na-sync vanuit Graph)
+      if (data.settings) {
+        fillForm(data.settings)
       }
     } catch { addToast('Netwerkfout', 'error') }
     finally { setSaving(false) }
