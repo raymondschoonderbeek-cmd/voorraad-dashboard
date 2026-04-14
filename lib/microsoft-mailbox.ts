@@ -180,7 +180,10 @@ export async function getWerklocatie(upn: string, datum?: Date): Promise<{ type:
 
 /**
  * Haal het standaard werklocatieschema per dag op via de Graph Calendar API.
- * Queryt de komende 14 dagen en haalt recurring workingLocation-events op.
+ * Queryt de komende 14 dagen. Accepteert zowel:
+ * - type='workingLocation' (eenmalig ingesteld)
+ * - type='occurrence' met isAllDay=true (recurring werklocatie-events, wekelijks schema)
+ * Gebruikt displayName als primair label zodat Outlook-labels (bijv. "Extern") behouden blijven.
  */
 export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<string, string>>> {
   const token = await getGraphToken()
@@ -190,8 +193,8 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
 
   const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
     `?startDateTime=${start}&endDateTime=${eind}` +
-    `&$select=type,locations,start,recurrence` +
-    `&$top=50`
+    `&$select=type,isAllDay,locations,start,showAs` +
+    `&$top=100`
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) return {}
@@ -199,18 +202,48 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
   const data = await res.json() as {
     value?: Array<{
       type?: string
+      isAllDay?: boolean
+      showAs?: string
       start?: { dateTime?: string; timeZone?: string }
-      recurrence?: unknown
       locations?: Array<{ locationType?: string; displayName?: string }>
     }>
   }
 
+  // Bekende werklocatie-typen (locationType van het locatie-object)
+  const WERKLOCATIE_TYPES = new Set([
+    'homeoffice', 'home', 'businessaddress', 'officelocation', 'office', 'conferenceroom',
+  ])
+
   const schema: Partial<Record<string, string>> = {}
   for (const event of data.value ?? []) {
-    if (event.type !== 'workingLocation') continue
     if (!event.start?.dateTime) continue
 
-    // Bepaal dag van de week
+    const isDirectWorkingLocation = event.type === 'workingLocation'
+    // Recurring werklocatie-events komen als 'occurrence' met isAllDay=true en showAs='free'
+    const isRecurringWerklocatie = event.type === 'occurrence' && event.isAllDay === true && event.showAs === 'free'
+
+    if (!isDirectWorkingLocation && !isRecurringWerklocatie) continue
+
+    const loc = event.locations?.[0]
+    const locType = (loc?.locationType ?? '').toLowerCase()
+
+    // Bij recurring events: alleen accepteren als het een bekend werklocatie-type heeft
+    if (isRecurringWerklocatie && !WERKLOCATIE_TYPES.has(locType)) continue
+
+    // Label: displayName van Outlook heeft prioriteit (bijv. "Extern", "Kantoor")
+    // Valt terug op type-gebaseerd label als displayName leeg is
+    let label: string | null = null
+    if (loc?.displayName?.trim()) {
+      label = loc.displayName.trim()
+    } else if (locType === 'homeoffice' || locType === 'home') {
+      label = 'Thuis'
+    } else if (WERKLOCATIE_TYPES.has(locType)) {
+      label = 'Kantoor'
+    }
+
+    if (!label) continue
+
+    // Bepaal dag van de week (UTC)
     const dagDatum = new Date(event.start.dateTime.endsWith('Z')
       ? event.start.dateTime
       : event.start.dateTime + 'Z')
@@ -218,17 +251,8 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
       .toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
       .toLowerCase()
 
-    const loc = event.locations?.[0]
-    const locType = loc?.locationType?.toLowerCase() ?? ''
-    let label: string | null = null
-    if (locType === 'homeoffice' || locType === 'home') label = 'Thuis'
-    else if (locType === 'businessaddress' || locType === 'office' || locType === 'conferenceroom') {
-      label = loc?.displayName?.trim() || 'Kantoor'
-    } else if (loc?.displayName?.trim()) {
-      label = loc.displayName.trim()
-    }
-
-    if (label && !schema[dagNaam]) schema[dagNaam] = label
+    // Eerste locatie per dag wint
+    if (!schema[dagNaam]) schema[dagNaam] = label
   }
 
   return schema
