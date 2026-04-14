@@ -4,23 +4,25 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 import { BeschikbaarheidBadge } from '@/components/BeschikbaarheidBadge'
-import { berekenStatus, DAG_LABELS, ALLE_DAGEN, TIJDZONE_OPTIES, type BeschikbaarheidRecord } from '@/lib/beschikbaarheid'
+import {
+  berekenStatus,
+  DAG_LABELS, ALLE_DAGEN, TIJDZONE_OPTIES,
+  DEFAULT_WEEK_SCHEMA,
+  type BeschikbaarheidRecord, type WeekSchema, type DagNaam,
+} from '@/lib/beschikbaarheid'
 import { useToast } from '@/components/Toast'
-import type { MailboxOof, MailboxWorkHours } from '@/lib/microsoft-mailbox'
+import type { MailboxOof } from '@/lib/microsoft-mailbox'
 
 const F = FONT_FAMILY
 
-// Datum naar datetime-local string (YYYY-MM-DDTHH:MM)
 function toDatetimeLocal(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  // Naar lokale tijd
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// datetime-local → ISO UTC
 function localToIso(local: string): string {
   if (!local) return ''
   return new Date(local).toISOString()
@@ -34,37 +36,32 @@ export default function BeschikbaarheidInstellingenPage() {
   const [graphConfigured, setGraphConfigured] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
 
-  // OOF velden
+  // OOF
   const [oofStatus, setOofStatus] = useState<'disabled' | 'alwaysEnabled' | 'scheduled'>('disabled')
   const [oofStart, setOofStart] = useState('')
   const [oofEnd, setOofEnd] = useState('')
   const [oofInternal, setOofInternal] = useState('')
   const [oofExternal, setOofExternal] = useState('')
 
-  // Werktijden velden
-  const [workDays, setWorkDays] = useState<string[]>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
-  const [workStart, setWorkStart] = useState('09:00')
-  const [workEnd, setWorkEnd] = useState('17:00')
+  // Werktijden
+  const [workSchedule, setWorkSchedule] = useState<WeekSchema>(DEFAULT_WEEK_SCHEMA)
   const [workTz, setWorkTz] = useState('W. Europe Standard Time')
 
   const fillForm = useCallback((row: BeschikbaarheidRecord) => {
-    setOofStatus((row.oof_status as 'disabled' | 'alwaysEnabled' | 'scheduled') ?? 'disabled')
+    setOofStatus((row.oof_status as typeof oofStatus) ?? 'disabled')
     setOofStart(toDatetimeLocal(row.oof_start))
     setOofEnd(toDatetimeLocal(row.oof_end))
     setOofInternal(row.oof_internal_msg ?? '')
     setOofExternal(row.oof_external_msg ?? '')
-    setWorkDays(row.work_days ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
-    setWorkStart(row.work_start_time ?? '09:00')
-    setWorkEnd(row.work_end_time ?? '17:00')
+    setWorkSchedule(row.work_schedule ?? DEFAULT_WEEK_SCHEMA)
     setWorkTz(row.work_timezone ?? 'W. Europe Standard Time')
   }, [])
 
-  // Ophalen bij laden
   useEffect(() => {
     setLoading(true)
     fetch('/api/beschikbaarheid')
       .then(r => r.json())
-      .then((data: { settings?: BeschikbaarheidRecord; graphConfigured?: boolean; synced?: boolean; syncError?: string }) => {
+      .then((data: { settings?: BeschikbaarheidRecord; graphConfigured?: boolean; syncError?: string }) => {
         setGraphConfigured(data.graphConfigured ?? false)
         setSyncError(data.syncError ?? null)
         if (data.settings) fillForm(data.settings)
@@ -73,12 +70,10 @@ export default function BeschikbaarheidInstellingenPage() {
       .finally(() => setLoading(false))
   }, [fillForm, addToast])
 
-  // Handmatige sync vanuit Graph
   const handleSync = async () => {
-    setSyncing(true)
-    setSyncError(null)
+    setSyncing(true); setSyncError(null)
     try {
-      const res = await fetch('/api/beschikbaarheid?force=1')
+      const res = await fetch('/api/beschikbaarheid')
       const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string }
       if (data.syncError) { setSyncError(data.syncError); addToast('Sync gedeeltelijk mislukt', 'warning') }
       else { if (data.settings) fillForm(data.settings); addToast('Gesynchroniseerd met Microsoft', 'success') }
@@ -86,7 +81,6 @@ export default function BeschikbaarheidInstellingenPage() {
     finally { setSyncing(false) }
   }
 
-  // Opslaan
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -97,29 +91,45 @@ export default function BeschikbaarheidInstellingenPage() {
         internalMsg: oofInternal,
         externalMsg: oofExternal,
       }
-      const workHours: MailboxWorkHours = {
-        days: workDays,
-        startTime: workStart,
-        endTime: workEnd,
-        timezone: workTz,
-      }
       const res = await fetch('/api/beschikbaarheid', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oof, workHours }),
+        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz }),
       })
       const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string }
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
       if (data.graphErrors?.length) {
-        addToast(`Opgeslagen, maar Graph-fout: ${data.graphErrors[0]}`, 'warning')
+        addToast(`Opgeslagen, maar Microsoft-fout: ${data.graphErrors[0]}`, 'warning')
       } else {
-        addToast(graphConfigured ? 'Opgeslagen en gesynchroniseerd met Microsoft' : 'Opgeslagen', 'success')
+        addToast(graphConfigured ? 'Opgeslagen en gesynchroniseerd' : 'Opgeslagen', 'success')
       }
-    } catch { addToast('Netwerkfout — probeer opnieuw', 'error') }
+    } catch { addToast('Netwerkfout', 'error') }
     finally { setSaving(false) }
   }
 
-  // Live preview
+  // Helper: zet één veld van een dag
+  const setDagVeld = (dag: DagNaam, veld: 'enabled' | 'start' | 'end', waarde: boolean | string) => {
+    setWorkSchedule(prev => ({
+      ...prev,
+      [dag]: { ...prev[dag], [veld]: waarde },
+    }))
+  }
+
+  // Kopieer tijden van één dag naar alle actieve dagen
+  const kopieertijden = (bronDag: DagNaam) => {
+    const bron = workSchedule[bronDag]
+    setWorkSchedule(prev => {
+      const nieuw = { ...prev }
+      for (const dag of ALLE_DAGEN) {
+        if (nieuw[dag].enabled) {
+          nieuw[dag] = { ...nieuw[dag], start: bron.start, end: bron.end }
+        }
+      }
+      return nieuw
+    })
+  }
+
+  // Live status preview
   const previewRec: BeschikbaarheidRecord = {
     user_id: '',
     oof_status: oofStatus,
@@ -127,16 +137,14 @@ export default function BeschikbaarheidInstellingenPage() {
     oof_end: oofEnd ? localToIso(oofEnd) : null,
     oof_internal_msg: oofInternal,
     oof_external_msg: oofExternal,
-    work_days: workDays,
-    work_start_time: workStart,
-    work_end_time: workEnd,
+    work_schedule: workSchedule,
     work_timezone: workTz,
     graph_synced_at: null,
     updated_at: new Date().toISOString(),
   }
   const previewStatus = berekenStatus(previewRec)
 
-  const inputCls = 'w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:border-[#2D457C] focus:ring-2 focus:ring-[#2D457C]/20'
+  const inputCls = 'rounded-lg border px-2 py-1.5 text-sm outline-none transition focus:border-[#2D457C] focus:ring-2 focus:ring-[#2D457C]/20'
   const inputStyle = { fontFamily: F, borderColor: 'rgba(45,69,124,0.2)', color: '#1e293b' }
 
   return (
@@ -159,19 +167,17 @@ export default function BeschikbaarheidInstellingenPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
         {/* Paginakop */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold m-0" style={{ color: DYNAMO_BLUE }}>Beschikbaarheid</h1>
             <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
-              Beheer je out-of-office en werktijden.
-              {graphConfigured && ' Wijzigingen worden direct in Microsoft 365 opgeslagen.'}
+              Stel per dag je werktijden en out-of-office in.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {/* Live status preview */}
             <BeschikbaarheidBadge
               status={previewStatus}
               oofEnd={oofStatus === 'scheduled' && oofEnd ? localToIso(oofEnd) : null}
@@ -197,169 +203,176 @@ export default function BeschikbaarheidInstellingenPage() {
 
         {syncError && (
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-            <strong>Sync-waarschuwing:</strong> {syncError}
+            <strong>Let op:</strong> {syncError}
           </div>
         )}
-
         {!graphConfigured && (
           <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
-            Microsoft Graph is niet geconfigureerd. Wijzigingen worden lokaal opgeslagen maar niet doorgevoerd in Outlook.
-            Zet <code>AZURE_TENANT_ID</code>, <code>AZURE_CLIENT_ID</code> en <code>AZURE_CLIENT_SECRET</code> in de serveromgeving en voeg de applicatiemachtiging <code>MailboxSettings.ReadWrite.All</code> toe.
+            Microsoft Graph niet geconfigureerd — wijzigingen worden lokaal opgeslagen.
           </div>
         )}
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <span className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin inline-block" style={{ borderColor: DYNAMO_BLUE }} />
+          <div className="flex justify-center py-16">
+            <span className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
           </div>
         ) : (
           <>
-            {/* ── Out of Office ────────────────────────────────────── */}
+            {/* ── Out of Office ──────────────────────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
               <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Out of office</h2>
 
-              {/* Status toggle */}
               <div className="flex flex-col gap-2">
-                {(
-                  [
-                    { value: 'disabled', label: 'Uitgeschakeld' },
-                    { value: 'alwaysEnabled', label: 'Altijd aan' },
-                    { value: 'scheduled', label: 'Gepland (op datum)' },
-                  ] as const
-                ).map(opt => (
-                  <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer group">
-                    <input
-                      type="radio"
-                      name="oofStatus"
-                      value={opt.value}
-                      checked={oofStatus === opt.value}
-                      onChange={() => setOofStatus(opt.value)}
-                      className="accent-[#2D457C] w-4 h-4"
-                    />
+                {([
+                  { value: 'disabled',      label: 'Uitgeschakeld' },
+                  { value: 'alwaysEnabled', label: 'Altijd aan' },
+                  { value: 'scheduled',     label: 'Gepland (datum en tijd)' },
+                ] as const).map(opt => (
+                  <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="radio" name="oofStatus" value={opt.value}
+                      checked={oofStatus === opt.value} onChange={() => setOofStatus(opt.value)}
+                      className="accent-[#2D457C] w-4 h-4" />
                     <span className="text-sm font-medium" style={{ color: '#1e293b' }}>{opt.label}</span>
                   </label>
                 ))}
               </div>
 
-              {/* Geplande periode */}
               {oofStatus === 'scheduled' && (
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Van</label>
                     <input type="datetime-local" value={oofStart} onChange={e => setOofStart(e.target.value)}
-                      className={inputCls} style={inputStyle} />
+                      className={`${inputCls} w-full`} style={inputStyle} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Tot</label>
                     <input type="datetime-local" value={oofEnd} onChange={e => setOofEnd(e.target.value)}
-                      className={inputCls} style={inputStyle} />
+                      className={`${inputCls} w-full`} style={inputStyle} />
                   </div>
                 </div>
               )}
 
-              {/* Berichten */}
               {oofStatus !== 'disabled' && (
                 <div className="space-y-3 pt-1">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>
-                      Bericht voor collega&apos;s (intern)
-                    </label>
-                    <textarea
-                      value={oofInternal}
-                      onChange={e => setOofInternal(e.target.value)}
-                      rows={3}
-                      placeholder="Ik ben momenteel afwezig..."
-                      className={inputCls}
-                      style={inputStyle}
-                    />
+                    <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Bericht voor collega&apos;s (intern)</label>
+                    <textarea value={oofInternal} onChange={e => setOofInternal(e.target.value)} rows={3}
+                      placeholder="Ik ben momenteel afwezig…"
+                      className={`${inputCls} w-full resize-none`} style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>
-                      Bericht voor externe afzenders
-                    </label>
-                    <textarea
-                      value={oofExternal}
-                      onChange={e => setOofExternal(e.target.value)}
-                      rows={3}
-                      placeholder="Bedankt voor uw bericht. Ik ben momenteel niet beschikbaar..."
-                      className={inputCls}
-                      style={inputStyle}
-                    />
+                    <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Bericht voor externe afzenders</label>
+                    <textarea value={oofExternal} onChange={e => setOofExternal(e.target.value)} rows={3}
+                      placeholder="Bedankt voor uw bericht. Ik ben momenteel niet beschikbaar…"
+                      className={`${inputCls} w-full resize-none`} style={inputStyle} />
                   </div>
                 </div>
               )}
             </section>
 
-            {/* ── Werktijden ───────────────────────────────────────── */}
+            {/* ── Werktijden ─────────────────────────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
-              <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden</h2>
-
-              {/* Werkdagen */}
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: dashboardUi.textSubtle }}>Werkdagen</label>
-                <div className="flex flex-wrap gap-2">
-                  {ALLE_DAGEN.map(dag => {
-                    const actief = workDays.includes(dag)
-                    return (
-                      <button
-                        key={dag}
-                        type="button"
-                        onClick={() =>
-                          setWorkDays(actief ? workDays.filter(d => d !== dag) : [...workDays, dag])
-                        }
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold border transition"
-                        style={{
-                          background: actief ? DYNAMO_BLUE : 'white',
-                          color: actief ? 'white' : '#64748b',
-                          borderColor: actief ? DYNAMO_BLUE : 'rgba(0,0,0,0.12)',
-                        }}
-                      >
-                        {DAG_LABELS[dag].slice(0, 2)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Tijden */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Begintijd</label>
-                  <input type="time" value={workStart} onChange={e => setWorkStart(e.target.value)}
-                    className={inputCls} style={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Eindtijd</label>
-                  <input type="time" value={workEnd} onChange={e => setWorkEnd(e.target.value)}
-                    className={inputCls} style={inputStyle} />
-                </div>
-              </div>
-
-              {/* Tijdzone */}
-              <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Tijdzone</label>
-                <select
-                  value={workTz}
-                  onChange={e => setWorkTz(e.target.value)}
-                  className={inputCls}
-                  style={inputStyle}
-                >
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden per dag</h2>
+                {/* Tijdzone */}
+                <select value={workTz} onChange={e => setWorkTz(e.target.value)}
+                  className={`${inputCls} text-xs`} style={{ ...inputStyle, fontSize: '12px' }}>
                   {TIJDZONE_OPTIES.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Per-dag rijen */}
+              <div className="space-y-1">
+                {/* Header */}
+                <div className="grid items-center gap-2 px-1 pb-1"
+                  style={{ gridTemplateColumns: '1fr auto auto auto auto' }}>
+                  <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dashboardUi.textSubtle }}>Dag</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide w-16 text-center" style={{ color: dashboardUi.textSubtle }}>Begin</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dashboardUi.textSubtle }}>—</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide w-16 text-center" style={{ color: dashboardUi.textSubtle }}>Eind</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide w-8" style={{ color: dashboardUi.textSubtle }}></span>
+                </div>
+
+                {ALLE_DAGEN.map(dag => {
+                  const d = workSchedule[dag]
+                  return (
+                    <div
+                      key={dag}
+                      className="grid items-center gap-2 rounded-xl px-3 py-2 transition-colors"
+                      style={{
+                        gridTemplateColumns: '1fr auto auto auto auto',
+                        background: d.enabled ? 'rgba(45,69,124,0.04)' : 'transparent',
+                        opacity: d.enabled ? 1 : 0.45,
+                      }}
+                    >
+                      {/* Dag + toggle */}
+                      <label className="flex items-center gap-2.5 cursor-pointer min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={d.enabled}
+                          onChange={e => setDagVeld(dag, 'enabled', e.target.checked)}
+                          className="accent-[#2D457C] w-4 h-4 shrink-0"
+                        />
+                        <span className="text-sm font-semibold truncate" style={{ color: '#1e293b' }}>
+                          {DAG_LABELS[dag]}
+                        </span>
+                      </label>
+
+                      {/* Begintijd */}
+                      <input
+                        type="time"
+                        value={d.start}
+                        disabled={!d.enabled}
+                        onChange={e => setDagVeld(dag, 'start', e.target.value)}
+                        className={`${inputCls} w-24 text-center`}
+                        style={{ ...inputStyle, opacity: d.enabled ? 1 : 0.5 }}
+                      />
+
+                      <span className="text-sm text-gray-400 select-none">—</span>
+
+                      {/* Eindtijd */}
+                      <input
+                        type="time"
+                        value={d.end}
+                        disabled={!d.enabled}
+                        onChange={e => setDagVeld(dag, 'end', e.target.value)}
+                        className={`${inputCls} w-24 text-center`}
+                        style={{ ...inputStyle, opacity: d.enabled ? 1 : 0.5 }}
+                      />
+
+                      {/* Kopieer naar alle actieve dagen */}
+                      {d.enabled && (
+                        <button
+                          type="button"
+                          title="Kopieer naar alle actieve dagen"
+                          onClick={() => kopieertijden(dag)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[rgba(45,69,124,0.1)] transition-colors"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                            style={{ color: DYNAMO_BLUE }} aria-hidden>
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                          </svg>
+                        </button>
+                      )}
+                      {!d.enabled && <div className="w-7" />}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="text-xs" style={{ color: dashboardUi.textSubtle }}>
+                Klik op <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mx-0.5 -mt-0.5" aria-hidden><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> om de tijden van die dag naar alle actieve dagen te kopiëren.
+              </p>
             </section>
 
             {/* Opslaan */}
             <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={saving}
+              <button type="button" onClick={() => void handleSave()} disabled={saving}
                 className="rounded-xl px-6 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: DYNAMO_BLUE, fontFamily: F }}
-              >
+                style={{ background: DYNAMO_BLUE, fontFamily: F }}>
                 {saving ? 'Opslaan…' : 'Opslaan'}
               </button>
             </div>
