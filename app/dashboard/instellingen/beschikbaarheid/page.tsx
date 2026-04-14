@@ -47,6 +47,10 @@ export default function BeschikbaarheidInstellingenPage() {
   const [workSchedule, setWorkSchedule] = useState<WeekSchema>(DEFAULT_WEEK_SCHEMA)
   const [workTz, setWorkTz] = useState('W. Europe Standard Time')
 
+  // Werklocatie
+  const [werklocatie, setWerklocatie] = useState<string>('')
+  const [werklocatieAndere, setWerklocatieAndere] = useState('')
+
   const fillForm = useCallback((row: BeschikbaarheidRecord) => {
     setOofStatus((row.oof_status as typeof oofStatus) ?? 'disabled')
     setOofStart(toDatetimeLocal(row.oof_start))
@@ -55,6 +59,14 @@ export default function BeschikbaarheidInstellingenPage() {
     setOofExternal(row.oof_external_msg ?? '')
     setWorkSchedule(row.work_schedule ?? DEFAULT_WEEK_SCHEMA)
     setWorkTz(row.work_timezone ?? 'W. Europe Standard Time')
+    const loc = row.werklocatie ?? ''
+    if (loc === 'Thuis' || loc === 'Kantoor' || loc === '') {
+      setWerklocatie(loc)
+      setWerklocatieAndere('')
+    } else {
+      setWerklocatie('anders')
+      setWerklocatieAndere(loc)
+    }
   }, [])
 
   useEffect(() => {
@@ -91,10 +103,13 @@ export default function BeschikbaarheidInstellingenPage() {
         internalMsg: oofInternal,
         externalMsg: oofExternal,
       }
+      const werklocatieWaarde = werklocatie === 'anders'
+        ? (werklocatieAndere.trim() || null)
+        : (werklocatie || null)
       const res = await fetch('/api/beschikbaarheid', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz }),
+        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde }),
       })
       const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string }
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
@@ -139,6 +154,7 @@ export default function BeschikbaarheidInstellingenPage() {
     oof_external_msg: oofExternal,
     work_schedule: workSchedule,
     work_timezone: workTz,
+    werklocatie: werklocatie === 'anders' ? werklocatieAndere.trim() || null : werklocatie || null,
     graph_synced_at: null,
     updated_at: new Date().toISOString(),
   }
@@ -360,6 +376,50 @@ export default function BeschikbaarheidInstellingenPage() {
               <p className="text-xs" style={{ color: dashboardUi.textSubtle }}>
                 Klik op <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mx-0.5 -mt-0.5" aria-hidden><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> om de tijden van die dag naar alle actieve dagen te kopiëren.
               </p>
+            </section>
+
+            {/* ── Werklocatie ────────────────────────────────────── */}
+            <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+              <div>
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werklocatie vandaag</h2>
+                <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
+                  Waar werk je vandaag? Dit is zichtbaar voor collega&apos;s op het beschikbaarheidsdashboard.
+                </p>
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                {(['', 'Thuis', 'Kantoor', 'anders'] as const).map(opt => {
+                  const label = opt === '' ? 'Niet ingesteld' : opt === 'anders' ? 'Andere locatie…' : opt
+                  const actief = werklocatie === opt
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setWerklocatie(opt)}
+                      className="rounded-xl px-4 py-2 text-sm font-semibold border transition"
+                      style={{
+                        background: actief ? DYNAMO_BLUE : 'white',
+                        color: actief ? 'white' : DYNAMO_BLUE,
+                        borderColor: actief ? DYNAMO_BLUE : 'rgba(45,69,124,0.2)',
+                        fontFamily: F,
+                      }}
+                    >
+                      {opt === 'Thuis' && '🏠 '}{opt === 'Kantoor' && '🏢 '}{label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {werklocatie === 'anders' && (
+                <input
+                  type="text"
+                  value={werklocatieAndere}
+                  onChange={e => setWerklocatieAndere(e.target.value)}
+                  placeholder="bijv. Vestiging Amsterdam, klant, onderweg…"
+                  className={`${inputCls} w-full`}
+                  style={inputStyle}
+                />
+              )}
             </section>
 
             {/* Opslaan */}

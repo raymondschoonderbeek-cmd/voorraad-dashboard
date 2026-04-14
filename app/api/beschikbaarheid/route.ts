@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
-  let body: { oof?: MailboxOof; workSchedule?: WeekSchema; workTimezone?: string }
+  let body: { oof?: MailboxOof; workSchedule?: WeekSchema; workTimezone?: string; werklocatie?: string | null }
   try {
     body = await request.json()
   } catch {
@@ -147,6 +147,7 @@ export async function PATCH(request: NextRequest) {
   }
   if (body.workSchedule) upsertData.work_schedule = body.workSchedule
   if (body.workTimezone) upsertData.work_timezone = body.workTimezone
+  if ('werklocatie' in body) upsertData.werklocatie = body.werklocatie ?? null
 
   const { error: dbErr } = await supabase
     .from('gebruiker_beschikbaarheid')
