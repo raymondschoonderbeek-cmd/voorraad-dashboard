@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
@@ -311,8 +311,12 @@ export default function BeschikbaarheidDashboardPage() {
     }
   }, [statussen])
 
-  const timestamp = data?.timestamp
-    ? new Date(data.timestamp).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+  // Gebruik client-side tijdstip van de laatste ontvangen respons — voorkomt
+  // UTC/CEST-verwarring met de server timestamp.
+  const [lastFetched, setLastFetched] = useState<Date | null>(null)
+  useEffect(() => { if (data) setLastFetched(new Date()) }, [data])
+  const timestamp = lastFetched
+    ? lastFetched.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
     : null
 
   const handleBulkSync = async () => {
