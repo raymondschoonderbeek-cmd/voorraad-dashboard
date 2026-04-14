@@ -159,6 +159,7 @@ export default function BeschikbaarheidInstellingenPage() {
     work_schedule: workSchedule,
     work_timezone: workTz,
     werklocatie: werklocatie === 'anders' ? werklocatieAndere.trim() || null : werklocatie || null,
+    werklocatie_schema: werklocatieSchema,
     graph_synced_at: null,
     updated_at: new Date().toISOString(),
   }
