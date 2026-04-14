@@ -291,6 +291,16 @@ export default function BeschikbaarheidDashboardPage() {
     buiten: statussen.filter(g => g.status === 'buiten-werktijd').length,
   }), [statussen])
 
+  const afdelingsTelling = useMemo(() => {
+    const metAfdeling = statussen.filter(g => (g.afdeling ?? '').trim() !== '').length
+    const zonderAfdeling = statussen.length - metAfdeling
+    return {
+      totaal: statussen.length,
+      metAfdeling,
+      zonderAfdeling,
+    }
+  }, [statussen])
+
   const timestamp = data?.timestamp
     ? new Date(data.timestamp).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
     : null
@@ -433,6 +443,16 @@ export default function BeschikbaarheidDashboardPage() {
                 icon={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
               />
             )}
+            <StatChip
+              color={afdelingsTelling.zonderAfdeling > 0 ? '#92400e' : '#166534'}
+              bg={afdelingsTelling.zonderAfdeling > 0 ? '#fffbeb' : '#f0fdf4'}
+              label={`Afdeling: ${afdelingsTelling.metAfdeling}/${afdelingsTelling.totaal}`}
+              icon={
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>
+                </svg>
+              }
+            />
           </div>
         )}
 
@@ -542,7 +562,7 @@ export default function BeschikbaarheidDashboardPage() {
                 Voer eerst een{' '}
                 <strong>Azure-sync</strong> uit (Beheer → Azure-sync) zodat afdelingen worden ingelezen.
                 {isAdmin && <> Daarna klik op <strong>Sync alle</strong> om beschikbaarheid te vullen.</>}
-                {' '}Nu gegroepeerd op status.
+                {' '}Nu gegroepeerd op status. Zonder afdeling: <strong>{afdelingsTelling.zonderAfdeling}</strong> van <strong>{afdelingsTelling.totaal}</strong>.
               </p>
             </div>
           </div>

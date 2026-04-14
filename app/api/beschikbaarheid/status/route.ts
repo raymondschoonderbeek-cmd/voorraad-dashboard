@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { berekenStatus, berekenVolgendeLabel, type BeschikbaarheidRecord, type GebruikerStatus } from '@/lib/beschikbaarheid'
+import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -31,16 +32,32 @@ export async function GET(request: NextRequest) {
 
   const userIds = (rows ?? []).map(r => r.user_id as string)
 
-  // Haal naam + afdeling op uit gebruiker_rollen
-  // afdeling kan ontbreken als de migratie nog niet gedraaid is → veilig afhandelen
+  // Haal naam + afdeling op uit gebruiker_rollen.
+  // Gebruik service role als beschikbaar, zodat RLS geen afdelingsdata blokkeert.
+  const rollenClient = hasAdminKey() ? createAdminClient() : supabase
   const rollenResult = userIds.length > 0
-    ? await supabase.from('gebruiker_rollen').select('user_id, naam, afdeling').in('user_id', userIds)
+    ? await rollenClient.from('gebruiker_rollen').select('user_id, naam, afdeling').in('user_id', userIds)
     : { data: [], error: null }
 
-  // Als afdeling kolom niet bestaat, probeer opnieuw zonder die kolom
-  const rollen = rollenResult.error
-    ? ((await supabase.from('gebruiker_rollen').select('user_id, naam').in('user_id', userIds)).data ?? [])
-    : (rollenResult.data ?? [])
+  // Alleen fallbacken zonder afdeling als kolom nog niet bestaat.
+  // Andere fouten (zoals permissies) moeten zichtbaar zijn.
+  let rollen: Array<{ user_id: string; naam: string | null; afdeling?: string | null }> = []
+  if (!rollenResult.error) {
+    rollen = rollenResult.data ?? []
+  } else {
+    const msg = (rollenResult.error.message ?? '').toLowerCase()
+    const kolomOntbreekt = msg.includes('afdeling') && (msg.includes('column') || msg.includes('kolom'))
+    if (!kolomOntbreekt) {
+      return NextResponse.json({ error: rollenResult.error.message }, { status: 500 })
+    }
+    const fallback = userIds.length > 0
+      ? await rollenClient.from('gebruiker_rollen').select('user_id, naam').in('user_id', userIds)
+      : { data: [], error: null }
+    if (fallback.error) {
+      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+    }
+    rollen = (fallback.data ?? []) as Array<{ user_id: string; naam: string | null }>
+  }
 
   const naamByUser = new Map<string, string | null>(
     rollen.map(r => [r.user_id, r.naam ?? null])
@@ -52,12 +69,18 @@ export async function GET(request: NextRequest) {
   // Email lookup via admin client
   const emailByUser = new Map<string, string>()
   try {
-    const { createAdminClient, hasAdminKey } = await import('@/lib/supabase/admin')
     if (hasAdminKey() && userIds.length > 0) {
       const admin = createAdminClient()
-      const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
-      for (const u of authUsers ?? []) {
-        if (userIds.includes(u.id) && u.email) emailByUser.set(u.id, u.email)
+      let page = 1
+      const userIdSet = new Set(userIds)
+      while (true) {
+        const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ page, perPage: 1000 })
+        if (!authUsers || authUsers.length === 0) break
+        for (const u of authUsers) {
+          if (userIdSet.has(u.id) && u.email) emailByUser.set(u.id, u.email)
+        }
+        if (authUsers.length < 1000) break
+        page++
       }
     }
   } catch { /* optioneel */ }
