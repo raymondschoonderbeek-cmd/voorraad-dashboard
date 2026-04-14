@@ -87,7 +87,8 @@ export default function BeschikbaarheidInstellingenPage() {
   }, [fillForm, addToast])
 
   const syncFromGraph = useCallback(async (): Promise<boolean> => {
-    const res = await fetch('/api/beschikbaarheid')
+    // force=true: alles overschrijven vanuit Outlook (werktijden + schema)
+    const res = await fetch('/api/beschikbaarheid?force=true')
     const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string }
     if (data.syncError) { setSyncError(data.syncError); return false }
     if (data.settings) fillForm(data.settings)

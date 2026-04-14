@@ -39,13 +39,24 @@ function weekSchemaToGraphHours(schema: WeekSchema): { days: string[]; start: st
   }
 }
 
-/** GET: haal eigen beschikbaarheidsinstellingen op (sync vanuit Graph als cache oud is). */
+/**
+ * GET: haal eigen beschikbaarheidsinstellingen op.
+ *
+ * Gedrag:
+ * - ?force=true  → "Sync Microsoft"-knop: alles overschrijven vanuit Graph (werk­tijden + schema)
+ * - (geen force)  → auto-sync bij paginaladen: alleen OOF vanuit Graph; werk­tijden en
+ *                   werklocatie-schema blijven staan als de gebruiker ze in de portal heeft
+ *                   opgeslagen (portal-wijzigingen worden niet overschreven).
+ */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
 
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+
+  const { searchParams } = new URL(request.url)
+  const force = searchParams.get('force') === 'true'
 
   const { data: row } = await supabase
     .from('gebruiker_beschikbaarheid')
@@ -57,7 +68,7 @@ export async function GET(request: NextRequest) {
   const cacheOud = !row?.graph_synced_at ||
     Date.now() - new Date(row.graph_synced_at).getTime() > SYNC_TTL_MS
 
-  if (graphOk && (cacheOud || !row)) {
+  if (graphOk && (force || cacheOud || !row)) {
     try {
       const upn = user.email
       if (upn) {
@@ -66,13 +77,21 @@ export async function GET(request: NextRequest) {
           getWerklocatieSchema(upn).catch(() => ({})),
         ])
         const nu = new Date().toISOString()
-        // Altijd Graph-data gebruiken bij sync (niet preserveren)
-        const workSchedule = graphWorkHoursToWeekSchema(
-          ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime
-        )
+
+        // werk­tijden: alleen overschrijven bij force-sync of bij eerste setup (geen rij)
+        const workSchedule = (force || !row?.work_schedule)
+          ? graphWorkHoursToWeekSchema(ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime)
+          : row.work_schedule as WeekSchema
+
+        // werklocatie-schema: zelfde logica
+        const werklocatieSchema = (force || !row?.werklocatie_schema)
+          ? (Object.keys(locSchema).length > 0 ? locSchema : null)
+          : row.werklocatie_schema
+
         await supabase.from('gebruiker_beschikbaarheid').upsert(
           {
             user_id: user.id,
+            // OOF altijd vanuit Graph (tijdgevoelig)
             oof_status: ms.oof.status,
             oof_start: ms.oof.start,
             oof_end: ms.oof.end,
@@ -80,7 +99,7 @@ export async function GET(request: NextRequest) {
             oof_external_msg: ms.oof.externalMsg,
             work_schedule: workSchedule,
             work_timezone: ms.workHours.timezone,
-            werklocatie_schema: Object.keys(locSchema).length > 0 ? locSchema : null,
+            werklocatie_schema: werklocatieSchema,
             graph_synced_at: nu,
             updated_at: nu,
           },
@@ -159,8 +178,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   const nu = new Date().toISOString()
+  // Alleen updated_at — graph_synced_at wordt uitsluitend bijgewerkt door de GET-sync,
+  // zodat de auto-sync weet welke data vanuit Graph komt vs. vanuit de portal.
   const upsertData: Record<string, unknown> = { user_id: user.id, updated_at: nu }
-  if (graphOk && graphErrors.length === 0 && upn) upsertData.graph_synced_at = nu
 
   if (body.oof) {
     upsertData.oof_status = body.oof.status
