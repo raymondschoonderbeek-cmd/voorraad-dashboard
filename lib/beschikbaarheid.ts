@@ -42,6 +42,7 @@ export interface GebruikerStatus {
   email: string
   naam: string | null
   afdeling: string | null
+  office_location: string | null
   status: BeschikbaarheidStatus
   oof_end: string | null
   oof_start: string | null
