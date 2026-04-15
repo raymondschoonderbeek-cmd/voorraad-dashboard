@@ -1,6 +1,9 @@
 /**
- * Microsoft Graph – mailboxSettings (out-of-office + werktijden)
- * Vereist applicatiemachtiging: MailboxSettings.ReadWrite.All
+ * Microsoft Graph – mailboxSettings (out-of-office + werktijden) + Presence API (werklocatie)
+ * Vereist applicatiemachtigingen:
+ *   MailboxSettings.ReadWrite.All  – OOF + werktijden lezen/schrijven
+ *   Calendars.ReadWrite            – werklocatie-agenda events lezen/schrijven
+ *   Presence.ReadWrite.All         – huidige werklocatie (office/remote) zetten via Presence API
  */
 
 export type OofStatus = 'disabled' | 'alwaysEnabled' | 'scheduled'
@@ -420,6 +423,49 @@ export async function patchWerklocatieSchema(
       )
     )
   )
+}
+
+/**
+ * Zet de werklocatie (office/remote) via de Graph Presence API — setManualLocation.
+ * Dit is de officiële methode voor het instellen van werklocatie in Teams/Outlook.
+ * Vereist Presence.ReadWrite.All applicatiemachtiging.
+ *
+ * locatie: 'Kantoor' → type='office', 'Thuis'/'Extern'/overig → type='remote', null → wissen
+ */
+export async function patchPresenceWerklocatie(upn: string, locatie: string | null): Promise<void> {
+  const token = await getGraphToken()
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/presence/setManualLocation`
+
+  if (!locatie) {
+    // Wis de handmatig gezette locatie (terug naar automatisch)
+    await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ location: { type: 'unknown' } }),
+    })
+    return
+  }
+
+  const isKantoor = locatie === 'Kantoor' ||
+    locatie.toLowerCase().includes('kantoor') ||
+    locatie.toLowerCase().includes('office')
+
+  const payload = {
+    location: {
+      type: isKantoor ? 'office' : 'remote',
+      displayName: locatie,
+    },
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } }
+    throw new Error(`Presence werklocatie zetten mislukt (${res.status}): ${err.error?.message ?? res.statusText}`)
+  }
 }
 
 /** Sla OOF-instellingen op via Microsoft Graph. */

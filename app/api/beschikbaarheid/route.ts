@@ -8,6 +8,7 @@ import {
   patchMailboxWorkHours,
   patchWerklocatieVandaag,
   patchWerklocatieSchema as patchGraphWerklocatieSchema,
+  patchPresenceWerklocatie,
   isGraphConfigured,
   type MailboxOof,
 } from '@/lib/microsoft-mailbox'
@@ -195,10 +196,12 @@ export async function PATCH(request: NextRequest) {
         }
       } catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werktijden opslaan mislukt') }
     }
-    // Werklocatie vandaag (one-off override) → Outlook Calendar
+    // Werklocatie vandaag → Presence API (primair: dit is wat Teams/Outlook toont)
     if ('werklocatie' in body) {
-      try { await patchWerklocatieVandaag(upn, body.werklocatie ?? null) }
-      catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werklocatie vandaag opslaan mislukt') }
+      try { await patchPresenceWerklocatie(upn, body.werklocatie ?? null) }
+      catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Presence werklocatie opslaan mislukt') }
+      // Kalender-event als fallback/aanvulling (best effort, fouten worden genegeerd)
+      patchWerklocatieVandaag(upn, body.werklocatie ?? null).catch(() => undefined)
     }
     // Werklocatie schema (per dag) → Outlook Calendar (PATCHt bestaande events)
     if (body.werklocatieSchema && Object.keys(body.werklocatieSchema).length > 0) {
