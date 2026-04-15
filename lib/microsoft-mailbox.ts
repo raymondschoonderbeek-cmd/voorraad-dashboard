@@ -20,6 +20,17 @@ export interface MailboxWorkHours {
   timezone: string     // Windows TZ name, e.g. 'W. Europe Standard Time'
 }
 
+const PORTAL_WERKLOCATIE_SUBJECT_PREFIX = '[Portal Werklocatie]'
+
+function normalizeGraphDayName(day: string): string {
+  return day.trim().toLowerCase()
+}
+
+function toGraphDayEnum(day: string): string {
+  const d = normalizeGraphDayName(day)
+  return d.charAt(0).toUpperCase() + d.slice(1)
+}
+
 export interface MailboxSettings {
   oof: MailboxOof
   workHours: MailboxWorkHours
@@ -118,7 +129,7 @@ export async function getMailboxSettings(upn: string): Promise<MailboxSettings> 
       externalMsg: oof.externalReplyMessage ?? '',
     },
     workHours: {
-      days: wh.daysOfWeek ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      days: (wh.daysOfWeek ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']).map(normalizeGraphDayName),
       startTime: normTime(wh.startTime),
       endTime: normTime(wh.endTime),
       timezone: wh.timeZone?.name ?? 'W. Europe Standard Time',
@@ -193,7 +204,7 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
 
   const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
     `?startDateTime=${start}&endDateTime=${eind}` +
-    `&$select=type,isAllDay,locations,start,showAs` +
+    `&$select=subject,type,isAllDay,locations,start,showAs` +
     `&$top=100`
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
@@ -201,6 +212,7 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
 
   const data = await res.json() as {
     value?: Array<{
+      subject?: string
       type?: string
       isAllDay?: boolean
       showAs?: string
@@ -221,14 +233,17 @@ export async function getWerklocatieSchema(upn: string): Promise<Partial<Record<
     const isDirectWorkingLocation = event.type === 'workingLocation'
     // Recurring werklocatie-events komen als 'occurrence' met isAllDay=true en showAs='free'
     const isRecurringWerklocatie = event.type === 'occurrence' && event.isAllDay === true && event.showAs === 'free'
+    const isPortalEvent = (event.subject ?? '').startsWith(PORTAL_WERKLOCATIE_SUBJECT_PREFIX)
+      && event.isAllDay === true
+      && event.showAs === 'free'
 
-    if (!isDirectWorkingLocation && !isRecurringWerklocatie) continue
+    if (!isDirectWorkingLocation && !isRecurringWerklocatie && !isPortalEvent) continue
 
     const loc = event.locations?.[0]
     const locType = (loc?.locationType ?? '').toLowerCase()
 
     // Bij recurring events: alleen accepteren als het een bekend werklocatie-type heeft
-    if (isRecurringWerklocatie && !WERKLOCATIE_TYPES.has(locType)) continue
+    if (isRecurringWerklocatie && !isPortalEvent && !WERKLOCATIE_TYPES.has(locType)) continue
 
     // Label: displayName van Outlook heeft prioriteit (bijv. "Extern", "Kantoor")
     // Valt terug op type-gebaseerd label als displayName leeg is
@@ -347,37 +362,63 @@ export async function patchWerklocatieSchema(
   const eind  = new Date(now.getTime() + 14 * 86_400_000).toISOString().split('T')[0] + 'T23:59:59Z'
 
   const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/calendarView` +
-    `?startDateTime=${start}&endDateTime=${eind}&$select=id,type,start&$top=100`
+    `?startDateTime=${start}&endDateTime=${eind}&$select=id,subject,isAllDay,showAs&$top=200`
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) return // silent fail: geen kalendertoegang
 
   const data = await res.json() as {
-    value?: Array<{ id: string; type?: string; start?: { dateTime?: string } }>
+    value?: Array<{ id: string; subject?: string; isAllDay?: boolean; showAs?: string }>
   }
 
-  // Eerste workingLocation event per weekdag (voor de komende 14 dagen)
-  const eventPerDag = new Map<string, string>() // dagNaam → eventId
-  for (const event of data.value ?? []) {
-    if (event.type !== 'workingLocation' || !event.start?.dateTime) continue
-    const dt = new Date(event.start.dateTime.endsWith('Z') ? event.start.dateTime : event.start.dateTime + 'Z')
-    const dag = dt.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }).toLowerCase()
-    if (!eventPerDag.has(dag)) eventPerDag.set(dag, event.id)
-  }
+  // Verwijder eerst eerder door de portal aangemaakte werklocatie-events in dit venster.
+  const portalEventIds = (data.value ?? [])
+    .filter(e =>
+      (e.subject ?? '').startsWith(PORTAL_WERKLOCATIE_SUBJECT_PREFIX) &&
+      e.isAllDay === true &&
+      e.showAs === 'free'
+    )
+    .map(e => e.id)
 
-  // PATCH elk gevonden event met de nieuwe locatie
   await Promise.allSettled(
-    Array.from(eventPerDag.entries())
-      .filter(([dag]) => dag in schema)
-      .map(([dag, eventId]) =>
-        fetch(
-          `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/events/${eventId}`,
-          {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ locations: [locatieNaarGraphLocation(schema[dag] ?? null)] }),
-          }
-        )
+    portalEventIds.map(eventId =>
+      fetch(
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/events/${eventId}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
       )
+    )
+  )
+
+  // Maak daarna events aan voor de komende 14 dagen op basis van weekdagschema.
+  const createBodies: Array<Record<string, unknown>> = []
+  for (let i = 0; i < 14; i++) {
+    const dag = new Date(now.getTime() + i * 86_400_000)
+    const dagNaam = dag.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }).toLowerCase()
+    const waarde = (schema[dagNaam] ?? '').trim()
+    if (!waarde) continue
+    const yyyy = dag.getUTCFullYear()
+    const mm = String(dag.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(dag.getUTCDate()).padStart(2, '0')
+    createBodies.push({
+      subject: `${PORTAL_WERKLOCATIE_SUBJECT_PREFIX} ${waarde}`,
+      isAllDay: true,
+      showAs: 'free',
+      start: { dateTime: `${yyyy}-${mm}-${dd}T00:00:00`, timeZone: 'UTC' },
+      end: { dateTime: `${yyyy}-${mm}-${dd}T00:00:00`, timeZone: 'UTC' },
+      locations: [locatieNaarGraphLocation(waarde)],
+    })
+  }
+
+  await Promise.allSettled(
+    createBodies.map(body =>
+      fetch(
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(upn)}/events`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      )
+    )
   )
 }
 
@@ -419,7 +460,7 @@ export async function patchMailboxWorkHours(upn: string, wh: MailboxWorkHours): 
 
   const payload = {
     workingHours: {
-      daysOfWeek: wh.days,
+      daysOfWeek: wh.days.map(toGraphDayEnum),
       startTime: `${wh.startTime}:00.0000000`,
       endTime: `${wh.endTime}:00.0000000`,
       timeZone: { name: wh.timezone },
