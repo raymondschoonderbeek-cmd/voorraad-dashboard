@@ -77,10 +77,17 @@ export function isGraphConfigured(): boolean {
   )
 }
 
-/** Normaliseer tijd "09:00:00.0000000" → "09:00" */
+/**
+ * Normaliseer Graph timeOfDay-string naar "HH:MM".
+ * Graph stuurt: "09:00:00.0000000" — nooit via Date/UTC converteren, altijd plain string.
+ * Ondersteunt ook enkelvoudige uren ("9:00:00.0000000" → "09:00").
+ */
 function normTime(raw: string | null | undefined): string {
   if (!raw) return '09:00'
-  return raw.substring(0, 5)
+  // Match HH:MM of H:MM aan het begin van de string (Graph: "HH:MM:SS.fffffff")
+  const m = String(raw).match(/^(\d{1,2}):(\d{2})/)
+  if (!m) return '09:00'
+  return `${m[1].padStart(2, '0')}:${m[2]}`
 }
 
 /** Haal mailboxSettings op voor een gebruiker (via UPN/email). */
@@ -500,18 +507,46 @@ export async function patchMailboxOof(upn: string, oof: MailboxOof): Promise<voi
   }
 }
 
-/** Sla werktijden op via Microsoft Graph. Geeft verzonden waarden + wat Graph ná de PATCH teruggeeft. */
+/**
+ * Sla werktijden op via Microsoft Graph mailboxSettings.workingHours.
+ *
+ * BELANGRIJK: startTime en endTime zijn LOKALE kloktijden in de opgegeven tijdzone.
+ * Ze worden NOOIT via Date/UTC geconverteerd — altijd plain "HH:MM" strings.
+ * Graph verwacht: "HH:MM:SS.fffffff" formaat, bijv. "10:00:00.0000000".
+ *
+ * Geeft het exact verzonden payload terug voor debug-doeleinden.
+ * Leest NIET terug van Graph (eventual consistency: read-back na PATCH is onbetrouwbaar).
+ */
 export async function patchMailboxWorkHours(
   upn: string,
   wh: MailboxWorkHours,
-): Promise<{ sent: MailboxWorkHours; graphAfter: MailboxWorkHours | null }> {
+): Promise<{ sent: MailboxWorkHours; graphPayload: { startTime: string; endTime: string; daysOfWeek: string[] } }> {
+  // Valideer tijdformaat vóór verzenden — voorkomt stille fouten naar Graph
+  const TIME_RE = /^\d{2}:\d{2}$/
+  if (!TIME_RE.test(wh.startTime)) {
+    throw new Error(
+      `Ongeldig startTime formaat: "${wh.startTime}". Verwacht "HH:MM" (lokale tijd, geen UTC). ` +
+      `Controleer normTime() en weekSchemaToGraphHours().`
+    )
+  }
+  if (!TIME_RE.test(wh.endTime)) {
+    throw new Error(
+      `Ongeldig endTime formaat: "${wh.endTime}". Verwacht "HH:MM" (lokale tijd, geen UTC). ` +
+      `Controleer normTime() en weekSchemaToGraphHours().`
+    )
+  }
+
   const token = await getGraphToken()
+
+  const graphStartTime = `${wh.startTime}:00.0000000`
+  const graphEndTime = `${wh.endTime}:00.0000000`
+  const graphDays = wh.days.map(toGraphDayEnum)
 
   const payload = {
     workingHours: {
-      daysOfWeek: wh.days.map(toGraphDayEnum),
-      startTime: `${wh.startTime}:00.0000000`,
-      endTime: `${wh.endTime}:00.0000000`,
+      daysOfWeek: graphDays,
+      startTime: graphStartTime,
+      endTime: graphEndTime,
       timeZone: { name: wh.timezone },
     },
   }
@@ -529,11 +564,10 @@ export async function patchMailboxWorkHours(
     throw new Error(`Werktijden bijwerken mislukt (${res.status}): ${err.error?.message ?? res.statusText}`)
   }
 
-  // Lees direct terug: bevestigt of Graph de waarde echt heeft opgeslagen
-  try {
-    const readBack = await getMailboxSettings(upn)
-    return { sent: wh, graphAfter: readBack.workHours }
-  } catch {
-    return { sent: wh, graphAfter: null }
+  // Geen read-back: Graph heeft eventual consistency waardoor een directe read na PATCH
+  // de oude waarde teruggeeft. Dit veroorzaakte de schijn dat verkeerde tijden verstuurd werden.
+  return {
+    sent: wh,
+    graphPayload: { startTime: graphStartTime, endTime: graphEndTime, daysOfWeek: graphDays },
   }
 }

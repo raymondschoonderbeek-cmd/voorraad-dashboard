@@ -160,7 +160,7 @@ export async function PATCH(request: NextRequest) {
   const graphOk = isGraphConfigured()
   const upn = user.email
   const graphErrors: string[] = []
-  let workHoursDebug: { sent: unknown; graphAfter: unknown } | null = null
+  let workHoursDebug: { sent: unknown; graphPayload: unknown } | null = null
   const { searchParams } = new URL(request.url)
   const debug = searchParams.get('debug') === 'true'
   const verboseLog = process.env.AVAILABILITY_DEBUG_GRAPH === '1'
@@ -184,15 +184,29 @@ export async function PATCH(request: NextRequest) {
     if (body.workSchedule) {
       try {
         const { days, start, end } = weekSchemaToGraphHours(body.workSchedule)
+        const timezone = body.workTimezone ?? 'W. Europe Standard Time'
+        if (verboseLog || debug) {
+          console.info('[beschikbaarheid:patch] workHours → weekSchemaToGraphHours output', {
+            // Dit zijn de exacte waarden die naar Graph worden gestuurd
+            // start/end zijn LOKALE kloktijden — nooit via Date/UTC geconverteerd
+            startTimeNaarGraph: start,
+            endTimeNaarGraph: end,
+            dagen: days,
+            tijdzone: timezone,
+          })
+        }
         const result = await patchMailboxWorkHours(upn, {
           days,
           startTime: start,
           endTime: end,
-          timezone: body.workTimezone ?? 'W. Europe Standard Time',
+          timezone,
         })
         workHoursDebug = result
-        if (verboseLog) {
-          console.info('[beschikbaarheid:patch] workHours write result', result)
+        if (verboseLog || debug) {
+          console.info('[beschikbaarheid:patch] workHours Graph-PATCH verstuurd', {
+            graphPayload: result.graphPayload,
+            // NB: geen read-back — Graph heeft eventual consistency
+          })
         }
       } catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werktijden opslaan mislukt') }
     }
