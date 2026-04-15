@@ -13,8 +13,6 @@ import {
 } from '@/lib/microsoft-mailbox'
 import { DEFAULT_WEEK_SCHEMA, type WeekSchema, type DagNaam, ALLE_DAGEN } from '@/lib/beschikbaarheid'
 
-const SYNC_TTL_MS = 30 * 60 * 1000 // 30 minuten cache
-
 /** Converteer Graph work hours naar WeekSchema (alle actieve dagen krijgen dezelfde tijd). */
 function graphWorkHoursToWeekSchema(days: string[], start: string, end: string): WeekSchema {
   const schema = structuredClone(DEFAULT_WEEK_SCHEMA)
@@ -66,10 +64,7 @@ export async function GET(request: NextRequest) {
     .maybeSingle()
 
   const graphOk = isGraphConfigured()
-  const cacheOud = !row?.graph_synced_at ||
-    Date.now() - new Date(row.graph_synced_at).getTime() > SYNC_TTL_MS
-
-  if (graphOk && (force || cacheOud || !row)) {
+  if (graphOk) {
     try {
       const upn = user.email
       if (upn) {
