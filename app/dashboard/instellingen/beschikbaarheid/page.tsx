@@ -121,7 +121,7 @@ export default function BeschikbaarheidInstellingenPage() {
       const res = await fetch('/api/beschikbaarheid', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde, werklocatieSchema }),
+        body: JSON.stringify({ oof, werklocatie: werklocatieWaarde }),
       })
       const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean }
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
@@ -138,15 +138,7 @@ export default function BeschikbaarheidInstellingenPage() {
     finally { setSaving(false) }
   }
 
-  // Helper: zet één veld van een dag
-  const setDagVeld = (dag: DagNaam, veld: 'enabled' | 'start' | 'end', waarde: boolean | string) => {
-    setWorkSchedule(prev => ({
-      ...prev,
-      [dag]: { ...prev[dag], [veld]: waarde },
-    }))
-  }
-
-  // Kopieer tijden van één dag naar alle actieve dagen
+  // Kopieer tijden van één dag naar alle actieve dagen (ongebruikt na read-only)
   const kopieertijden = (bronDag: DagNaam) => {
     const bron = workSchedule[bronDag]
     setWorkSchedule(prev => {
@@ -299,148 +291,103 @@ export default function BeschikbaarheidInstellingenPage() {
 
             {/* ── Werktijden ─────────────────────────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden per dag</h2>
-                {/* Tijdzone */}
-                <select value={workTz} onChange={e => setWorkTz(e.target.value)}
-                  className={`${inputCls} text-xs`} style={{ ...inputStyle, fontSize: '12px' }}>
-                  {TIJDZONE_OPTIES.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden per dag</h2>
+                  <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
+                    Gesynchroniseerd vanuit Outlook. Wijzigen doe je in Outlook.
+                  </p>
+                </div>
+                <a
+                  href="https://outlook.cloud.microsoft/mail/options/calendar/workSchedule"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition hover:opacity-80"
+                  style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                  Aanpassen in Outlook
+                </a>
               </div>
 
-              {/* Per-dag rijen */}
+              {/* Read-only weergave van de gesynchroniseerde werktijden */}
               <div className="space-y-1">
-                {/* Header */}
-                <div className="grid items-center gap-2 px-1 pb-1"
-                  style={{ gridTemplateColumns: '1fr auto auto auto auto' }}>
-                  <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dashboardUi.textSubtle }}>Dag</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wide w-16 text-center" style={{ color: dashboardUi.textSubtle }}>Begin</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: dashboardUi.textSubtle }}>—</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wide w-16 text-center" style={{ color: dashboardUi.textSubtle }}>Eind</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wide w-8" style={{ color: dashboardUi.textSubtle }}></span>
-                </div>
-
-                {ALLE_DAGEN.map(dag => {
+                {ALLE_DAGEN.filter(dag => workSchedule[dag]?.enabled).map(dag => {
                   const d = workSchedule[dag]
                   return (
-                    <div
-                      key={dag}
-                      className="grid items-center gap-2 rounded-xl px-3 py-2 transition-colors"
-                      style={{
-                        gridTemplateColumns: '1fr auto auto auto auto',
-                        background: d.enabled ? 'rgba(45,69,124,0.04)' : 'transparent',
-                        opacity: d.enabled ? 1 : 0.45,
-                      }}
-                    >
-                      {/* Dag + toggle */}
-                      <label className="flex items-center gap-2.5 cursor-pointer min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={d.enabled}
-                          onChange={e => setDagVeld(dag, 'enabled', e.target.checked)}
-                          className="accent-[#2D457C] w-4 h-4 shrink-0"
-                        />
-                        <span className="text-sm font-semibold truncate" style={{ color: '#1e293b' }}>
-                          {DAG_LABELS[dag]}
-                        </span>
-                      </label>
-
-                      {/* Begintijd */}
-                      <input
-                        type="time"
-                        value={d.start}
-                        disabled={!d.enabled}
-                        onChange={e => setDagVeld(dag, 'start', e.target.value)}
-                        className={`${inputCls} w-24 text-center`}
-                        style={{ ...inputStyle, opacity: d.enabled ? 1 : 0.5 }}
-                      />
-
-                      <span className="text-sm text-gray-400 select-none">—</span>
-
-                      {/* Eindtijd */}
-                      <input
-                        type="time"
-                        value={d.end}
-                        disabled={!d.enabled}
-                        onChange={e => setDagVeld(dag, 'end', e.target.value)}
-                        className={`${inputCls} w-24 text-center`}
-                        style={{ ...inputStyle, opacity: d.enabled ? 1 : 0.5 }}
-                      />
-
-                      {/* Kopieer naar alle actieve dagen */}
-                      {d.enabled && (
-                        <button
-                          type="button"
-                          title="Kopieer naar alle actieve dagen"
-                          onClick={() => kopieertijden(dag)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[rgba(45,69,124,0.1)] transition-colors"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                            style={{ color: DYNAMO_BLUE }} aria-hidden>
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                          </svg>
-                        </button>
-                      )}
-                      {!d.enabled && <div className="w-7" />}
+                    <div key={dag} className="flex items-center gap-3 rounded-xl px-3 py-2"
+                      style={{ background: 'rgba(45,69,124,0.03)' }}>
+                      <span className="text-sm font-semibold w-24 shrink-0" style={{ color: '#1e293b' }}>
+                        {DAG_LABELS[dag]}
+                      </span>
+                      <span className="text-sm tabular-nums" style={{ color: dashboardUi.textSubtle }}>
+                        {d.start} – {d.end}
+                      </span>
                     </div>
                   )
                 })}
+                {ALLE_DAGEN.every(dag => !workSchedule[dag]?.enabled) && (
+                  <p className="text-sm text-center py-4" style={{ color: dashboardUi.textSubtle }}>
+                    Geen werktijden gesynchroniseerd — klik op &quot;Sync Microsoft&quot;.
+                  </p>
+                )}
               </div>
 
               <p className="text-xs" style={{ color: dashboardUi.textSubtle }}>
-                Klik op <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mx-0.5 -mt-0.5" aria-hidden><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> om de tijden van die dag naar alle actieve dagen te kopiëren.
+                Tijdzone: {workTz}
               </p>
             </section>
 
             {/* ── Standaard werklocatie per dag ─────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
-              <div>
-                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Standaard werklocatie per dag</h2>
-                <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
-                  Stel in waar je normaal gesproken per dag werkt. Gesynchroniseerd vanuit je Outlook-agenda.
-                </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Standaard werklocatie per dag</h2>
+                  <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
+                    Gesynchroniseerd vanuit Outlook. Wijzigen doe je in Outlook.
+                  </p>
+                </div>
+                <a
+                  href="https://outlook.cloud.microsoft/mail/options/calendar/workSchedule"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition hover:opacity-80"
+                  style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                  Aanpassen in Outlook
+                </a>
               </div>
 
+              {/* Read-only weergave */}
               <div className="space-y-1">
                 {ALLE_DAGEN.filter(dag => workSchedule[dag]?.enabled).map(dag => {
-                  const huidige = werklocatieSchema[dag] ?? ''
-                  const isAnders = huidige !== '' && huidige !== 'Thuis' && huidige !== 'Kantoor'
+                  const locatie = werklocatieSchema[dag]
                   return (
-                    <div key={dag} className="grid items-center gap-2 rounded-xl px-3 py-2"
-                      style={{ gridTemplateColumns: '120px 1fr', background: 'rgba(45,69,124,0.03)' }}>
-                      <span className="text-sm font-semibold" style={{ color: '#1e293b', fontFamily: F }}>
+                    <div key={dag} className="flex items-center gap-3 rounded-xl px-3 py-2"
+                      style={{ background: 'rgba(45,69,124,0.03)' }}>
+                      <span className="text-sm font-semibold w-24 shrink-0" style={{ color: '#1e293b' }}>
                         {DAG_LABELS[dag]}
                       </span>
-                      <div className="flex gap-1.5 flex-wrap items-center">
-                        {(['', 'Thuis', 'Kantoor'] as const).map(opt => (
-                          <button key={opt} type="button"
-                            onClick={() => setWerklocatieSchema(prev => ({ ...prev, [dag]: opt }))}
-                            className="rounded-lg px-2.5 py-1 text-xs font-semibold border transition"
-                            style={{
-                              background: huidige === opt ? DYNAMO_BLUE : 'white',
-                              color: huidige === opt ? 'white' : DYNAMO_BLUE,
-                              borderColor: huidige === opt ? DYNAMO_BLUE : 'rgba(45,69,124,0.2)',
-                              fontFamily: F,
-                            }}
-                          >
-                            {opt === '' ? '–' : opt === 'Thuis' ? '🏠 Thuis' : '🏢 Kantoor'}
-                          </button>
-                        ))}
-                        <input
-                          type="text"
-                          value={isAnders ? huidige : ''}
-                          onChange={e => setWerklocatieSchema(prev => ({ ...prev, [dag]: e.target.value }))}
-                          placeholder="Andere locatie"
-                          className={`${inputCls} text-xs`}
-                          style={{ ...inputStyle, width: '130px', fontSize: '12px' }}
-                        />
-                      </div>
+                      {locatie ? (
+                        <span className="text-sm" style={{ color: '#1e293b' }}>
+                          {locatie === 'Thuis' ? '🏠 ' : locatie === 'Kantoor' ? '🏢 ' : '📍 '}{locatie}
+                        </span>
+                      ) : (
+                        <span className="text-sm" style={{ color: dashboardUi.textSubtle }}>–</span>
+                      )}
                     </div>
                   )
                 })}
+                {Object.keys(werklocatieSchema).length === 0 && (
+                  <p className="text-sm text-center py-4" style={{ color: dashboardUi.textSubtle }}>
+                    Geen locaties gesynchroniseerd — klik op &quot;Sync Microsoft&quot;.
+                  </p>
+                )}
               </div>
             </section>
 
