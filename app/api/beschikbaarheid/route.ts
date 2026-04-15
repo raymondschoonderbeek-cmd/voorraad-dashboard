@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const force = searchParams.get('force') === 'true'
+  const debug = searchParams.get('debug') === 'true'
+  const verboseLog = process.env.AVAILABILITY_DEBUG_GRAPH === '1'
 
   const { data: row } = await supabase
     .from('gebruiker_beschikbaarheid')
@@ -76,6 +78,17 @@ export async function GET(request: NextRequest) {
 
         const workSchedule = graphWorkHoursToWeekSchema(ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime)
         const werklocatieSchema = Object.keys(locSchema).length > 0 ? locSchema : null
+
+        if (verboseLog || debug) {
+          console.info('[beschikbaarheid:get] graph sync', {
+            userId: user.id,
+            upn,
+            force,
+            graphWorkHours: ms.workHours,
+            graphOof: ms.oof,
+            graphWerklocatieSchema: locSchema,
+          })
+        }
 
         await supabase.from('gebruiker_beschikbaarheid').upsert(
           {
@@ -99,18 +112,28 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle()
-        return NextResponse.json({
+        const payload: Record<string, unknown> = {
           settings: fresh,
           graphConfigured: true,
           synced: true,
           debug: {
             workHours: ms.workHours,
             werklocatieSchema: locSchema,
+            oof: ms.oof,
           },
-        })
+        }
+        if (!debug) delete payload.debug
+        return NextResponse.json(payload)
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Graph-fout'
+      if (verboseLog || debug) {
+        console.error('[beschikbaarheid:get] graph sync failed', {
+          userId: user.id,
+          force,
+          error: msg,
+        })
+      }
       return NextResponse.json({ settings: row ?? null, graphConfigured: true, synced: false, syncError: msg })
     }
   }
@@ -136,8 +159,21 @@ export async function PATCH(request: NextRequest) {
   const graphOk = isGraphConfigured()
   const upn = user.email
   const graphErrors: string[] = []
+  const { searchParams } = new URL(request.url)
+  const debug = searchParams.get('debug') === 'true'
+  const verboseLog = process.env.AVAILABILITY_DEBUG_GRAPH === '1'
 
   if (graphOk && upn) {
+    if (verboseLog || debug) {
+      console.info('[beschikbaarheid:patch] requested update', {
+        userId: user.id,
+        upn,
+        hasOof: !!body.oof,
+        hasWorkSchedule: !!body.workSchedule,
+        hasWerklocatie: 'werklocatie' in body,
+        hasWerklocatieSchema: !!body.werklocatieSchema,
+      })
+    }
     if (body.oof) {
       try { await patchMailboxOof(upn, body.oof) }
       catch (e) { graphErrors.push(e instanceof Error ? e.message : 'OOF opslaan mislukt') }
@@ -196,10 +232,28 @@ export async function PATCH(request: NextRequest) {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  return NextResponse.json({
+  if (verboseLog || debug) {
+    console.info('[beschikbaarheid:patch] update result', {
+      userId: user.id,
+      graphConfigured: graphOk,
+      graphErrors,
+      savedRowWorkTimezone: opgeslagenRow?.work_timezone ?? null,
+      savedRowWorkSchedule: opgeslagenRow?.work_schedule ?? null,
+      savedRowWerklocatieSchema: opgeslagenRow?.werklocatie_schema ?? null,
+    })
+  }
+
+  const response: Record<string, unknown> = {
     ok: true,
     graphConfigured: graphOk,
     graphErrors: graphErrors.length ? graphErrors : undefined,
     settings: opgeslagenRow,
-  })
+  }
+  if (debug) {
+    response.debug = {
+      requestBody: body,
+      graphErrors,
+    }
+  }
+  return NextResponse.json(response)
 }
