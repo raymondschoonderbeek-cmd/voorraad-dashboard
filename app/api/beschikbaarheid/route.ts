@@ -7,7 +7,7 @@ import {
   patchMailboxOof,
   patchMailboxWorkHours,
   patchWerklocatieVandaag,
-  patchWerklocatieSchema as patchGraphWerklocatieSchema,
+
   patchPresenceWerklocatie,
   isGraphConfigured,
   type MailboxOof,
@@ -112,9 +112,10 @@ export async function GET(request: NextRequest) {
           updated_at: nu,
         }
         if (shouldSyncWorkSchedule) {
-          // Bij force of initialisatie: Graph-tijden als startpunt (alle werkdagen zelfde tijd)
+          // Bij force of initialisatie: Graph-waarden als startpunt
           upsertObj.work_schedule = workSchedule
           upsertObj.work_timezone = ms.workHours.timezone
+          upsertObj.werklocatie_schema = werklocatieSchema
         }
         await supabase.from('gebruiker_beschikbaarheid').upsert(upsertObj, { onConflict: 'user_id' })
         const { data: fresh } = await supabase
@@ -234,11 +235,7 @@ export async function PATCH(request: NextRequest) {
       // Kalender-event als fallback/aanvulling (best effort, fouten worden genegeerd)
       patchWerklocatieVandaag(upn, body.werklocatie ?? null).catch(() => undefined)
     }
-    // Werklocatie schema (per dag) → Outlook Calendar (PATCHt bestaande events)
-    if (body.werklocatieSchema && Object.keys(body.werklocatieSchema).length > 0) {
-      try { await patchGraphWerklocatieSchema(upn, body.werklocatieSchema) }
-      catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werklocatieschema opslaan mislukt') }
-    }
+    // Werklocatie schema (per dag) — Supabase is bron van waarheid, Graph niet bijwerken.
   }
 
   const nu = new Date().toISOString()

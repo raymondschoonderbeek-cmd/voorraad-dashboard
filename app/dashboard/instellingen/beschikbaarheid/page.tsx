@@ -158,10 +158,11 @@ export default function BeschikbaarheidInstellingenPage() {
       const werklocatieWaarde = werklocatie === 'anders'
         ? (werklocatieAndere.trim() || null)
         : (werklocatie || null)
-      const patchBody = { oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde }
+      const patchBody = { oof, workSchedule, workTimezone: workTz, werklocatieSchema, werklocatie: werklocatieWaarde }
       addLog('PATCH →  verstuurd naar server', {
         workSchedule,
         workTimezone: workTz,
+        werklocatieSchema,
         werklocatie: werklocatieWaarde,
         oofStatus,
       })
@@ -446,53 +447,62 @@ export default function BeschikbaarheidInstellingenPage() {
 
             {/* ── Standaard werklocatie per dag ─────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Standaard werklocatie per dag</h2>
-                  <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
-                    Gesynchroniseerd vanuit Outlook. Wijzigen doe je in Outlook.
-                  </p>
-                </div>
-                <a
-                  href="https://outlook.cloud.microsoft/mail/options/calendar/workSchedule"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition hover:opacity-80"
-                  style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                  </svg>
-                  Aanpassen in Outlook
-                </a>
+              <div>
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Standaard werklocatie per dag</h2>
+                <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
+                  Stel per werkdag je standaard locatie in.
+                </p>
               </div>
 
-              {/* Read-only weergave */}
-              <div className="space-y-1">
-                {ALLE_DAGEN.filter(dag => workSchedule[dag]?.enabled).map(dag => {
-                  const locatie = werklocatieSchema[dag]
-                  return (
-                    <div key={dag} className="flex items-center gap-3 rounded-xl px-3 py-2"
-                      style={{ background: 'rgba(45,69,124,0.03)' }}>
-                      <span className="text-sm font-semibold w-24 shrink-0" style={{ color: '#1e293b' }}>
-                        {DAG_LABELS[dag]}
-                      </span>
-                      {locatie ? (
-                        <span className="text-sm" style={{ color: '#1e293b' }}>
-                          {locatie === 'Thuis' ? '🏠 ' : locatie === 'Kantoor' ? '🏢 ' : '📍 '}{locatie}
+              {activeDagen.length === 0 ? (
+                <p className="text-sm" style={{ color: dashboardUi.textSubtle }}>
+                  Geen werkdagen actief — stel eerst je werktijden in.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {activeDagen.map(dag => {
+                    const huidig = werklocatieSchema[dag as DagNaam] ?? ''
+                    const isCustom = huidig !== '' && huidig !== 'Thuis' && huidig !== 'Kantoor' && huidig !== 'Extern'
+                    return (
+                      <div key={dag} className="flex items-center gap-3 flex-wrap">
+                        <span className="text-sm font-semibold w-20 shrink-0" style={{ color: '#1e293b' }}>
+                          {DAG_LABELS[dag as DagNaam]}
                         </span>
-                      ) : (
-                        <span className="text-sm" style={{ color: dashboardUi.textSubtle }}>–</span>
-                      )}
-                    </div>
-                  )
-                })}
-                {Object.keys(werklocatieSchema).length === 0 && (
-                  <p className="text-sm text-center py-4" style={{ color: dashboardUi.textSubtle }}>
-                    Geen locaties gesynchroniseerd — klik op &quot;Sync Microsoft&quot;.
-                  </p>
-                )}
-              </div>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {(['', 'Thuis', 'Kantoor', 'Extern'] as const).map(opt => (
+                            <button
+                              key={opt || 'geen'}
+                              type="button"
+                              onClick={() => setWerklocatieSchema(prev => {
+                                const nieuw = { ...prev }
+                                if (opt === '') { delete nieuw[dag as DagNaam] }
+                                else { nieuw[dag as DagNaam] = opt }
+                                return nieuw
+                              })}
+                              className="rounded-lg px-2.5 py-1 text-xs font-semibold border transition hover:opacity-80"
+                              style={{
+                                background: huidig === opt ? DYNAMO_BLUE : 'white',
+                                color: huidig === opt ? 'white' : DYNAMO_BLUE,
+                                borderColor: huidig === opt ? DYNAMO_BLUE : 'rgba(45,69,124,0.2)',
+                                fontFamily: F,
+                              }}
+                            >
+                              {opt === '' ? '–' : opt === 'Thuis' ? '🏠 Thuis' : opt === 'Kantoor' ? '🏢 Kantoor' : '📍 Extern'}
+                            </button>
+                          ))}
+                          {/* Toon custom waarde (gesynchroniseerd vanuit Outlook) als badge */}
+                          {isCustom && (
+                            <span className="rounded-lg px-2.5 py-1 text-xs font-semibold border"
+                              style={{ background: DYNAMO_BLUE, color: 'white', borderColor: DYNAMO_BLUE }}>
+                              📍 {huidig}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </section>
 
             {/* ── Werklocatie vandaag (override) ─────────────────── */}
