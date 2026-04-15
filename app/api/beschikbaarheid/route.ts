@@ -27,15 +27,20 @@ function graphWorkHoursToWeekSchema(days: string[], start: string, end: string):
   return schema
 }
 
-/** Bepaal representatieve uren voor Graph-write (eerste actieve dag). */
-function weekSchemaToGraphHours(schema: WeekSchema): { days: string[]; start: string; end: string } {
+/**
+ * Analyseer het weekschema voor Graph-write.
+ * Graph workingHours ondersteunt slechts één start/eindtijd voor alle werkdagen.
+ * `uniform = true` als alle actieve dagen dezelfde tijden hebben → Graph kan worden bijgewerkt.
+ * `uniform = false` → tijden verschillen per dag, alleen lokaal opslaan.
+ */
+function weekSchemaToGraphHours(schema: WeekSchema): { days: string[]; start: string; end: string; uniform: boolean } {
   const activeDays = ALLE_DAGEN.filter(d => schema[d as DagNaam]?.enabled)
-  const first = activeDays[0] as DagNaam | undefined
-  return {
-    days: activeDays,
-    start: first ? schema[first].start : '09:00',
-    end: first ? schema[first].end : '17:00',
-  }
+  if (activeDays.length === 0) return { days: [], start: '09:00', end: '17:00', uniform: true }
+  const first = activeDays[0] as DagNaam
+  const start = schema[first].start
+  const end = schema[first].end
+  const uniform = activeDays.every(d => schema[d as DagNaam].start === start && schema[d as DagNaam].end === end)
+  return { days: activeDays, start, end, uniform }
 }
 
 /**
@@ -91,23 +96,27 @@ export async function GET(request: NextRequest) {
           })
         }
 
-        await supabase.from('gebruiker_beschikbaarheid').upsert(
-          {
-            user_id: user.id,
-            // OOF altijd vanuit Graph (tijdgevoelig)
-            oof_status: ms.oof.status,
-            oof_start: ms.oof.start,
-            oof_end: ms.oof.end,
-            oof_internal_msg: ms.oof.internalMsg,
-            oof_external_msg: ms.oof.externalMsg,
-            work_schedule: workSchedule,
-            work_timezone: ms.workHours.timezone,
-            werklocatie_schema: werklocatieSchema,
-            graph_synced_at: nu,
-            updated_at: nu,
-          },
-          { onConflict: 'user_id' }
-        )
+        // OOF en werklocatie-schema altijd vanuit Graph (tijdgevoelig / read-only in portal).
+        // work_schedule: Supabase is bron van waarheid voor per-dag tijden.
+        // Alleen overschrijven bij force=true of als er nog geen rij bestaat (eerste keer).
+        const shouldSyncWorkSchedule = force || !row
+        const upsertObj: Record<string, unknown> = {
+          user_id: user.id,
+          oof_status: ms.oof.status,
+          oof_start: ms.oof.start,
+          oof_end: ms.oof.end,
+          oof_internal_msg: ms.oof.internalMsg,
+          oof_external_msg: ms.oof.externalMsg,
+          werklocatie_schema: werklocatieSchema,
+          graph_synced_at: nu,
+          updated_at: nu,
+        }
+        if (shouldSyncWorkSchedule) {
+          // Bij force of initialisatie: Graph-tijden als startpunt (alle werkdagen zelfde tijd)
+          upsertObj.work_schedule = workSchedule
+          upsertObj.work_timezone = ms.workHours.timezone
+        }
+        await supabase.from('gebruiker_beschikbaarheid').upsert(upsertObj, { onConflict: 'user_id' })
         const { data: fresh } = await supabase
           .from('gebruiker_beschikbaarheid')
           .select('*')
@@ -161,6 +170,11 @@ export async function PATCH(request: NextRequest) {
   const upn = user.email
   const graphErrors: string[] = []
   let workHoursDebug: { sent: unknown; graphPayload: unknown } | null = null
+  // 'bijgewerkt'          → Graph succesvol bijgewerkt (uniforme tijden)
+  // 'overgeslagen'        → tijden verschillen per dag, alleen lokaal opgeslagen
+  // 'niet_geconfigureerd' → Graph niet ingesteld
+  let graphSyncType: 'bijgewerkt' | 'overgeslagen' | 'niet_geconfigureerd' =
+    graphOk ? 'overgeslagen' : 'niet_geconfigureerd'
   const { searchParams } = new URL(request.url)
   const debug = searchParams.get('debug') === 'true'
   const verboseLog = process.env.AVAILABILITY_DEBUG_GRAPH === '1'
@@ -180,33 +194,36 @@ export async function PATCH(request: NextRequest) {
       try { await patchMailboxOof(upn, body.oof) }
       catch (e) { graphErrors.push(e instanceof Error ? e.message : 'OOF opslaan mislukt') }
     }
-    // Graph work hours sync: gebruik representatieve uren uit het week-schema
+    // Graph work hours sync — hybride model:
+    // Alleen bijwerken als alle actieve werkdagen dezelfde start/eindtijd hebben.
+    // Graph workingHours ondersteunt geen per-dag tijden; bij verschillende tijden
+    // slaan we alleen lokaal op in Supabase.
     if (body.workSchedule) {
       try {
-        const { days, start, end } = weekSchemaToGraphHours(body.workSchedule)
+        const { days, start, end, uniform } = weekSchemaToGraphHours(body.workSchedule)
         const timezone = body.workTimezone ?? 'W. Europe Standard Time'
         if (verboseLog || debug) {
-          console.info('[beschikbaarheid:patch] workHours → weekSchemaToGraphHours output', {
-            // Dit zijn de exacte waarden die naar Graph worden gestuurd
-            // start/end zijn LOKALE kloktijden — nooit via Date/UTC geconverteerd
+          console.info('[beschikbaarheid:patch] workHours analyse', {
+            uniform,
             startTimeNaarGraph: start,
             endTimeNaarGraph: end,
             dagen: days,
             tijdzone: timezone,
           })
         }
-        const result = await patchMailboxWorkHours(upn, {
-          days,
-          startTime: start,
-          endTime: end,
-          timezone,
-        })
-        workHoursDebug = result
-        if (verboseLog || debug) {
-          console.info('[beschikbaarheid:patch] workHours Graph-PATCH verstuurd', {
-            graphPayload: result.graphPayload,
-            // NB: geen read-back — Graph heeft eventual consistency
-          })
+        if (uniform && days.length > 0) {
+          const result = await patchMailboxWorkHours(upn, { days, startTime: start, endTime: end, timezone })
+          workHoursDebug = result
+          graphSyncType = 'bijgewerkt'
+          if (verboseLog || debug) {
+            console.info('[beschikbaarheid:patch] workHours Graph-PATCH verstuurd', { graphPayload: result.graphPayload })
+          }
+        } else {
+          // Tijden verschillen per dag → alleen Supabase, Graph niet bijwerken
+          graphSyncType = 'overgeslagen'
+          if (verboseLog || debug) {
+            console.info('[beschikbaarheid:patch] workHours Graph-PATCH overgeslagen — niet-uniforme tijden per dag')
+          }
         }
       } catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werktijden opslaan mislukt') }
     }
@@ -269,6 +286,7 @@ export async function PATCH(request: NextRequest) {
     ok: true,
     graphConfigured: graphOk,
     graphErrors: graphErrors.length ? graphErrors : undefined,
+    graphSyncType,
     settings: opgeslagenRow,
   }
   if (debug) {

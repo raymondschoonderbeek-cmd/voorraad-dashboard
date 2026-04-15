@@ -170,10 +170,11 @@ export default function BeschikbaarheidInstellingenPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchBody),
       })
-      const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean; debug?: unknown }
+      const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean; debug?: unknown; graphSyncType?: string }
       addLog('PATCH ← response van server', {
         httpStatus: res.status,
         ok: data.ok,
+        graphSyncType: data.graphSyncType,
         graphErrors: data.graphErrors,
         serverDebug: data.debug,
         savedWorkSchedule: data.settings?.work_schedule,
@@ -182,8 +183,12 @@ export default function BeschikbaarheidInstellingenPage() {
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
       if (data.graphErrors?.length) {
         addToast(`Opgeslagen, maar Microsoft-fout: ${data.graphErrors[0]}`, 'warning')
+      } else if (data.graphSyncType === 'bijgewerkt') {
+        addToast('Opgeslagen en gesynchroniseerd met Outlook', 'success')
+      } else if (data.graphSyncType === 'overgeslagen') {
+        addToast('Opgeslagen — Outlook niet bijgewerkt (tijden verschillen per dag)', 'success')
       } else {
-        addToast(graphConfigured ? 'Opgeslagen en gesynchroniseerd met Outlook' : 'Opgeslagen', 'success')
+        addToast('Opgeslagen', 'success')
       }
       if (data.settings) {
         fillForm(data.settings)
@@ -212,10 +217,13 @@ export default function BeschikbaarheidInstellingenPage() {
   const inputCls = 'rounded-lg border px-2 py-1.5 text-sm outline-none transition focus:border-[#2D457C] focus:ring-2 focus:ring-[#2D457C]/20'
   const inputStyle = { fontFamily: F, borderColor: 'rgba(45,69,124,0.2)', color: '#1e293b' }
 
-  // Gedeelde start/eindtijd voor Graph (één tijd voor alle actieve dagen)
-  const firstActiveDag = ALLE_DAGEN.find(d => workSchedule[d]?.enabled)
-  const sharedStart = firstActiveDag ? workSchedule[firstActiveDag].start : '09:00'
-  const sharedEnd = firstActiveDag ? workSchedule[firstActiveDag].end : '17:00'
+  // Graph sync status: uniforme tijden = Outlook kan worden bijgewerkt
+  const activeDagen = ALLE_DAGEN.filter(d => workSchedule[d]?.enabled)
+  const firstActiveDag = activeDagen[0] as DagNaam | undefined
+  const tijdenUniform = firstActiveDag !== undefined && activeDagen.every(d =>
+    workSchedule[d].start === workSchedule[firstActiveDag].start &&
+    workSchedule[d].end === workSchedule[firstActiveDag].end
+  )
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
@@ -339,72 +347,86 @@ export default function BeschikbaarheidInstellingenPage() {
               <div>
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden</h2>
                 <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
-                  Werkdagen en tijden worden gesynchroniseerd met Outlook (mailboxSettings).
+                  Stel per dag je begin- en eindtijd in. Tijden worden lokaal opgeslagen.
                 </p>
               </div>
 
-              {/* Werkdagen — checkboxes */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4">
-                {ALLE_DAGEN.map(dag => (
-                  <label key={dag} className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={workSchedule[dag]?.enabled ?? false}
-                      onChange={e => {
-                        const enabled = e.target.checked
-                        setWorkSchedule(prev => ({
-                          ...prev,
-                          [dag]: { ...prev[dag as DagNaam], enabled },
-                        }))
-                      }}
-                      className="accent-[#2D457C] w-4 h-4 rounded"
-                    />
-                    <span className="text-sm font-medium" style={{ color: '#1e293b' }}>{DAG_LABELS[dag]}</span>
-                  </label>
-                ))}
+              {/* Per-dag tijdinputs */}
+              <div className="space-y-1.5">
+                {ALLE_DAGEN.map(dag => {
+                  const d = workSchedule[dag as DagNaam]
+                  return (
+                    <div key={dag} className="flex items-center gap-3 min-h-[36px]">
+                      {/* Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={d?.enabled ?? false}
+                        onChange={e => {
+                          const enabled = e.target.checked
+                          setWorkSchedule(prev => ({
+                            ...prev,
+                            [dag]: { ...prev[dag as DagNaam], enabled },
+                          }))
+                        }}
+                        className="accent-[#2D457C] w-4 h-4 rounded shrink-0"
+                      />
+                      {/* Dagnaam */}
+                      <span
+                        className="text-sm font-semibold w-20 shrink-0 select-none"
+                        style={{ color: d?.enabled ? '#1e293b' : dashboardUi.textSubtle }}
+                      >
+                        {DAG_LABELS[dag as DagNaam]}
+                      </span>
+                      {/* Tijdinputs — alleen als dag actief */}
+                      {d?.enabled ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="time"
+                            value={d.start}
+                            onChange={e => setWorkSchedule(prev => ({
+                              ...prev,
+                              [dag]: { ...prev[dag as DagNaam], start: e.target.value },
+                            }))}
+                            className={`${inputCls} tabular-nums`}
+                            style={{ ...inputStyle, width: '7.5rem' }}
+                          />
+                          <span className="text-xs select-none" style={{ color: dashboardUi.textSubtle }}>–</span>
+                          <input
+                            type="time"
+                            value={d.end}
+                            onChange={e => setWorkSchedule(prev => ({
+                              ...prev,
+                              [dag]: { ...prev[dag as DagNaam], end: e.target.value },
+                            }))}
+                            className={`${inputCls} tabular-nums`}
+                            style={{ ...inputStyle, width: '7.5rem' }}
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-xs" style={{ color: dashboardUi.textSubtle }}>niet actief</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
-              {/* Gedeelde begin- en eindtijd */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Begintijd</label>
-                  <input
-                    type="time"
-                    value={sharedStart}
-                    onChange={e => {
-                      const t = e.target.value
-                      setWorkSchedule(prev => {
-                        const nieuw = { ...prev }
-                        for (const dag of ALLE_DAGEN) {
-                          if (nieuw[dag as DagNaam].enabled) nieuw[dag as DagNaam] = { ...nieuw[dag as DagNaam], start: t }
-                        }
-                        return nieuw
-                      })
-                    }}
-                    className={`${inputCls} w-full`}
-                    style={inputStyle}
-                  />
+              {/* Graph sync status */}
+              {activeDagen.length > 0 && (
+                <div
+                  className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs leading-relaxed"
+                  style={{
+                    background: tijdenUniform ? 'rgba(22,163,74,0.06)' : 'rgba(245,158,11,0.08)',
+                    color: tijdenUniform ? '#15803d' : '#92400e',
+                  }}
+                >
+                  <span className="mt-px shrink-0">{tijdenUniform ? '✓' : '⚠'}</span>
+                  <span>
+                    {tijdenUniform
+                      ? 'Alle werkdagen hebben dezelfde tijden — Outlook wordt bijgewerkt bij opslaan.'
+                      : 'Tijden verschillen per dag — bij opslaan worden ze lokaal bewaard. Outlook wordt niet bijgewerkt (Graph ondersteunt geen per-dag tijden).'}
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Eindtijd</label>
-                  <input
-                    type="time"
-                    value={sharedEnd}
-                    onChange={e => {
-                      const t = e.target.value
-                      setWorkSchedule(prev => {
-                        const nieuw = { ...prev }
-                        for (const dag of ALLE_DAGEN) {
-                          if (nieuw[dag as DagNaam].enabled) nieuw[dag as DagNaam] = { ...nieuw[dag as DagNaam], end: t }
-                        }
-                        return nieuw
-                      })
-                    }}
-                    className={`${inputCls} w-full`}
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Tijdzone */}
               <div>
