@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   const rolUserIds = new Set<string>((rollen ?? []).map((r: { user_id: string }) => r.user_id))
   const portalUsers = alleAuthUsers.filter(u => rolUserIds.has(u.id))
 
-  // Haal bestaande beschikbaarheidsrijen op zodat we work_schedule niet overschrijven
+  // Haal bestaande beschikbaarheidsrijen op zodat we weten welke gebruikers al een rij hebben
   const { data: bestaande } = await adminClient
     .from('gebruiker_beschikbaarheid')
     .select('user_id, work_schedule')
@@ -109,8 +109,7 @@ export async function POST(request: NextRequest) {
               getWerklocatie(u.email).catch(() => ({ type: null, label: null })),
               getWerklocatieSchema(u.email).catch(() => ({})),
             ])
-            // Behoudt bestaand per-dag-schema als dat al is ingesteld
-            const workSchedule = bestaandRij?.work_schedule ?? graphWorkHoursToWeekSchema(
+            const workSchedule = graphWorkHoursToWeekSchema(
               ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime
             )
             upsertData = {

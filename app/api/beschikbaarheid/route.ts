@@ -43,10 +43,11 @@ function weekSchemaToGraphHours(schema: WeekSchema): { days: string[]; start: st
  * GET: haal eigen beschikbaarheidsinstellingen op.
  *
  * Gedrag:
- * - ?force=true  → "Sync Microsoft"-knop: alles overschrijven vanuit Graph (werk­tijden + schema)
- * - (geen force)  → auto-sync bij paginaladen: alleen OOF vanuit Graph; werk­tijden en
- *                   werklocatie-schema blijven staan als de gebruiker ze in de portal heeft
- *                   opgeslagen (portal-wijzigingen worden niet overschreven).
+ * - ?force=true  → dwing direct een Graph-refresh af
+ * - (geen force) → refresh vanuit Graph als cache verlopen is
+ *
+ * Zowel OOF, werktijden als werklocatie-schema worden vanuit Graph ververst zodat
+ * portal en Outlook/Graph niet uit elkaar kunnen lopen.
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -78,15 +79,8 @@ export async function GET(request: NextRequest) {
         ])
         const nu = new Date().toISOString()
 
-        // werk­tijden: alleen overschrijven bij force-sync of bij eerste setup (geen rij)
-        const workSchedule = (force || !row?.work_schedule)
-          ? graphWorkHoursToWeekSchema(ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime)
-          : row.work_schedule as WeekSchema
-
-        // werklocatie-schema: zelfde logica
-        const werklocatieSchema = (force || !row?.werklocatie_schema)
-          ? (Object.keys(locSchema).length > 0 ? locSchema : null)
-          : row.werklocatie_schema
+        const workSchedule = graphWorkHoursToWeekSchema(ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime)
+        const werklocatieSchema = Object.keys(locSchema).length > 0 ? locSchema : null
 
         await supabase.from('gebruiker_beschikbaarheid').upsert(
           {
@@ -178,8 +172,6 @@ export async function PATCH(request: NextRequest) {
   }
 
   const nu = new Date().toISOString()
-  // Alleen updated_at — graph_synced_at wordt uitsluitend bijgewerkt door de GET-sync,
-  // zodat de auto-sync weet welke data vanuit Graph komt vs. vanuit de portal.
   const upsertData: Record<string, unknown> = { user_id: user.id, updated_at: nu }
 
   if (body.oof) {
@@ -193,6 +185,7 @@ export async function PATCH(request: NextRequest) {
   if (body.workTimezone) upsertData.work_timezone = body.workTimezone
   if ('werklocatie' in body) upsertData.werklocatie = body.werklocatie ?? null
   if ('werklocatieSchema' in body) upsertData.werklocatie_schema = body.werklocatieSchema ?? null
+  if (graphOk && graphErrors.length === 0) upsertData.graph_synced_at = nu
 
   const { error: dbErr } = await supabase
     .from('gebruiker_beschikbaarheid')
