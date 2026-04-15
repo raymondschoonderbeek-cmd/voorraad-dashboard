@@ -454,8 +454,11 @@ export async function patchMailboxOof(upn: string, oof: MailboxOof): Promise<voi
   }
 }
 
-/** Sla werktijden op via Microsoft Graph. */
-export async function patchMailboxWorkHours(upn: string, wh: MailboxWorkHours): Promise<void> {
+/** Sla werktijden op via Microsoft Graph. Geeft verzonden waarden + wat Graph ná de PATCH teruggeeft. */
+export async function patchMailboxWorkHours(
+  upn: string,
+  wh: MailboxWorkHours,
+): Promise<{ sent: MailboxWorkHours; graphAfter: MailboxWorkHours | null }> {
   const token = await getGraphToken()
 
   const payload = {
@@ -478,5 +481,13 @@ export async function patchMailboxWorkHours(upn: string, wh: MailboxWorkHours): 
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: { message?: string } }
     throw new Error(`Werktijden bijwerken mislukt (${res.status}): ${err.error?.message ?? res.statusText}`)
+  }
+
+  // Lees direct terug: bevestigt of Graph de waarde echt heeft opgeslagen
+  try {
+    const readBack = await getMailboxSettings(upn)
+    return { sent: wh, graphAfter: readBack.workHours }
+  } catch {
+    return { sent: wh, graphAfter: null }
   }
 }

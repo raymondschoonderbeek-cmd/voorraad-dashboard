@@ -159,6 +159,7 @@ export async function PATCH(request: NextRequest) {
   const graphOk = isGraphConfigured()
   const upn = user.email
   const graphErrors: string[] = []
+  let workHoursDebug: { sent: unknown; graphAfter: unknown } | null = null
   const { searchParams } = new URL(request.url)
   const debug = searchParams.get('debug') === 'true'
   const verboseLog = process.env.AVAILABILITY_DEBUG_GRAPH === '1'
@@ -182,12 +183,16 @@ export async function PATCH(request: NextRequest) {
     if (body.workSchedule) {
       try {
         const { days, start, end } = weekSchemaToGraphHours(body.workSchedule)
-        await patchMailboxWorkHours(upn, {
+        const result = await patchMailboxWorkHours(upn, {
           days,
           startTime: start,
           endTime: end,
           timezone: body.workTimezone ?? 'W. Europe Standard Time',
         })
+        workHoursDebug = result
+        if (verboseLog) {
+          console.info('[beschikbaarheid:patch] workHours write result', result)
+        }
       } catch (e) { graphErrors.push(e instanceof Error ? e.message : 'Werktijden opslaan mislukt') }
     }
     // Werklocatie vandaag (one-off override) → Outlook Calendar
@@ -253,6 +258,7 @@ export async function PATCH(request: NextRequest) {
     response.debug = {
       requestBody: body,
       graphErrors,
+      workHoursDebug: workHoursDebug ?? null,
     }
   }
   return NextResponse.json(response)
