@@ -380,7 +380,7 @@ export default function BeschikbaarheidInstellingenPage() {
                       </span>
                       {/* Tijdinputs — alleen als dag actief */}
                       {d?.enabled ? (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <input
                             type="time"
                             value={d.start}
@@ -402,6 +402,24 @@ export default function BeschikbaarheidInstellingenPage() {
                             className={`${inputCls} tabular-nums`}
                             style={{ ...inputStyle, width: '7.5rem' }}
                           />
+                          {/* Kopieer tijden van deze dag naar alle andere actieve dagen */}
+                          <button
+                            type="button"
+                            title="Kopieer tijden naar alle werkdagen"
+                            onClick={() => setWorkSchedule(prev => {
+                              const nieuw = { ...prev }
+                              for (const d2 of ALLE_DAGEN) {
+                                if (nieuw[d2 as DagNaam].enabled) {
+                                  nieuw[d2 as DagNaam] = { ...nieuw[d2 as DagNaam], start: d.start, end: d.end }
+                                }
+                              }
+                              return nieuw
+                            })}
+                            className="rounded-lg px-2 py-1.5 text-xs border transition hover:opacity-70 select-none"
+                            style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+                          >
+                            Kopieer naar alle
+                          </button>
                         </div>
                       ) : (
                         <span className="text-xs" style={{ color: dashboardUi.textSubtle }}>niet actief</span>
