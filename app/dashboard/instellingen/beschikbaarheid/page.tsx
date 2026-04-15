@@ -28,6 +28,16 @@ function localToIso(local: string): string {
   return new Date(local).toISOString()
 }
 
+type LogEntry = {
+  id: number
+  time: string
+  event: string
+  data: unknown
+  ok?: boolean
+}
+
+let logIdCounter = 0
+
 export default function BeschikbaarheidInstellingenPage() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
@@ -35,6 +45,21 @@ export default function BeschikbaarheidInstellingenPage() {
   const [syncing, setSyncing] = useState(false)
   const [graphConfigured, setGraphConfigured] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+
+  // Debug log
+  const [debugLog, setDebugLog] = useState<LogEntry[]>([])
+  const [showDebug, setShowDebug] = useState(false)
+
+  const addLog = useCallback((event: string, data: unknown, ok?: boolean) => {
+    const entry: LogEntry = {
+      id: ++logIdCounter,
+      time: new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }),
+      event,
+      data,
+      ok,
+    }
+    setDebugLog(prev => [entry, ...prev].slice(0, 30))
+  }, [])
 
   // OOF
   const [oofStatus, setOofStatus] = useState<'disabled' | 'alwaysEnabled' | 'scheduled'>('disabled')
@@ -75,25 +100,40 @@ export default function BeschikbaarheidInstellingenPage() {
 
   useEffect(() => {
     setLoading(true)
-    fetch('/api/beschikbaarheid')
+    fetch('/api/beschikbaarheid?debug=true')
       .then(r => r.json())
-      .then((data: { settings?: BeschikbaarheidRecord; graphConfigured?: boolean; syncError?: string }) => {
+      .then((data: { settings?: BeschikbaarheidRecord; graphConfigured?: boolean; syncError?: string; synced?: boolean; debug?: unknown }) => {
         setGraphConfigured(data.graphConfigured ?? false)
         setSyncError(data.syncError ?? null)
+        addLog('GET /api/beschikbaarheid (pagina-load)', {
+          graphConfigured: data.graphConfigured,
+          synced: data.synced,
+          syncError: data.syncError,
+          graphRaw: data.debug,
+          settingsWorkSchedule: data.settings?.work_schedule,
+          settingsWorkTimezone: data.settings?.work_timezone,
+        }, !data.syncError)
         if (data.settings) fillForm(data.settings)
       })
-      .catch(() => addToast('Instellingen ophalen mislukt', 'error'))
+      .catch((e) => { addToast('Instellingen ophalen mislukt', 'error'); addLog('GET fout', String(e), false) })
       .finally(() => setLoading(false))
-  }, [fillForm, addToast])
+  }, [fillForm, addToast, addLog])
 
   const syncFromGraph = useCallback(async (): Promise<boolean> => {
     // force=true: alles overschrijven vanuit Outlook (werktijden + schema)
-    const res = await fetch('/api/beschikbaarheid?force=true')
-    const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string }
+    const res = await fetch('/api/beschikbaarheid?force=true&debug=true')
+    const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string; synced?: boolean; debug?: unknown }
+    addLog('GET ?force=true (Sync Microsoft)', {
+      synced: data.synced,
+      syncError: data.syncError,
+      graphRaw: data.debug,
+      settingsWorkSchedule: data.settings?.work_schedule,
+      settingsWorkTimezone: data.settings?.work_timezone,
+    }, !data.syncError)
     if (data.syncError) { setSyncError(data.syncError); return false }
     if (data.settings) fillForm(data.settings)
     return true
-  }, [fillForm])
+  }, [fillForm, addLog])
 
   const handleSync = async () => {
     setSyncing(true); setSyncError(null)
@@ -118,23 +158,37 @@ export default function BeschikbaarheidInstellingenPage() {
       const werklocatieWaarde = werklocatie === 'anders'
         ? (werklocatieAndere.trim() || null)
         : (werklocatie || null)
-      const res = await fetch('/api/beschikbaarheid', {
+      const patchBody = { oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde }
+      addLog('PATCH →  verstuurd naar server', {
+        workSchedule,
+        workTimezone: workTz,
+        werklocatie: werklocatieWaarde,
+        oofStatus,
+      })
+      const res = await fetch('/api/beschikbaarheid?debug=true', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde }),
+        body: JSON.stringify(patchBody),
       })
-      const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean }
+      const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean; debug?: unknown }
+      addLog('PATCH ← response van server', {
+        httpStatus: res.status,
+        ok: data.ok,
+        graphErrors: data.graphErrors,
+        serverDebug: data.debug,
+        savedWorkSchedule: data.settings?.work_schedule,
+        savedWorkTimezone: data.settings?.work_timezone,
+      }, res.ok && !data.graphErrors?.length)
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
       if (data.graphErrors?.length) {
         addToast(`Opgeslagen, maar Microsoft-fout: ${data.graphErrors[0]}`, 'warning')
       } else {
         addToast(graphConfigured ? 'Opgeslagen en gesynchroniseerd met Outlook' : 'Opgeslagen', 'success')
       }
-      // Vul form met verse settings uit de response (na-sync vanuit Graph)
       if (data.settings) {
         fillForm(data.settings)
       }
-    } catch { addToast('Netwerkfout', 'error') }
+    } catch (e) { addToast('Netwerkfout', 'error'); addLog('PATCH fout', String(e), false) }
     finally { setSaving(false) }
   }
 
@@ -465,6 +519,67 @@ export default function BeschikbaarheidInstellingenPage() {
             </div>
           </>
         )}
+
+        {/* ── Debug log panel ──────────────────────────────── */}
+        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+          <button
+            type="button"
+            onClick={() => setShowDebug(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold"
+            style={{ background: '#1e1e2e', color: '#cdd6f4', fontFamily: 'monospace' }}
+          >
+            <span>🪲 Debug log  ({debugLog.length} events)</span>
+            <span style={{ opacity: 0.6 }}>{showDebug ? '▲ verberg' : '▼ toon'}</span>
+          </button>
+
+          {showDebug && (
+            <div style={{ background: '#1e1e2e', maxHeight: 520, overflowY: 'auto' }}>
+              {debugLog.length === 0 && (
+                <p className="text-center py-6 text-xs" style={{ color: '#6c7086', fontFamily: 'monospace' }}>
+                  Nog geen log-entries. Laad de pagina opnieuw of klik Opslaan / Sync.
+                </p>
+              )}
+              {debugLog.map(entry => (
+                <div key={entry.id} className="border-b" style={{ borderColor: '#313244' }}>
+                  <div className="flex items-center gap-2 px-4 py-2" style={{ background: '#181825' }}>
+                    <span className="text-xs tabular-nums" style={{ color: '#6c7086', fontFamily: 'monospace' }}>{entry.time}</span>
+                    <span
+                      className="rounded px-1.5 py-0.5 text-xs font-bold"
+                      style={{
+                        fontFamily: 'monospace',
+                        background: entry.ok === false ? '#45213a' : entry.ok === true ? '#1e3a2f' : '#2a2a3e',
+                        color: entry.ok === false ? '#f38ba8' : entry.ok === true ? '#a6e3a1' : '#89b4fa',
+                      }}
+                    >
+                      {entry.event}
+                    </span>
+                    {entry.ok === false && <span className="text-xs" style={{ color: '#f38ba8' }}>✗ fout</span>}
+                    {entry.ok === true && <span className="text-xs" style={{ color: '#a6e3a1' }}>✓ ok</span>}
+                  </div>
+                  <pre
+                    className="px-4 py-3 text-xs overflow-x-auto m-0"
+                    style={{ fontFamily: 'monospace', color: '#cdd6f4', background: '#1e1e2e', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+                  >
+                    {JSON.stringify(entry.data, null, 2)}
+                  </pre>
+                </div>
+              ))}
+              {debugLog.length > 0 && (
+                <div className="px-4 py-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDebugLog([])}
+                    className="text-xs px-3 py-1 rounded"
+                    style={{ background: '#313244', color: '#cdd6f4', fontFamily: 'monospace' }}
+                  >
+                    wis log
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
       </main>
     </div>
   )
