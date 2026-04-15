@@ -139,10 +139,10 @@ export async function GET(request: NextRequest) {
           updated_at: nu,
         }
         if (shouldSyncWorkSchedule) {
-          // Bij force of initialisatie: Graph-waarden als startpunt (portal heeft nog geen eigen data)
+          // Bij force of initialisatie: Graph-waarden als startpunt voor werktijden.
+          // werklocatie_schema wordt NOOIT vanuit Graph overschreven — altijd portal-beheerd.
           upsertObj.work_schedule = workSchedule
           upsertObj.work_timezone = ms.workHours.timezone
-          upsertObj.werklocatie_schema = werklocatieSchema
         }
         await supabase.from('gebruiker_beschikbaarheid').upsert(upsertObj, { onConflict: 'user_id' })
         const { data: fresh } = await supabase
