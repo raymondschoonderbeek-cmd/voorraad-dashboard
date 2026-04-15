@@ -121,7 +121,7 @@ export default function BeschikbaarheidInstellingenPage() {
       const res = await fetch('/api/beschikbaarheid', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oof, werklocatie: werklocatieWaarde }),
+        body: JSON.stringify({ oof, workSchedule, workTimezone: workTz, werklocatie: werklocatieWaarde }),
       })
       const data = await res.json() as { ok?: boolean; graphErrors?: string[]; error?: string; settings?: BeschikbaarheidRecord; synced?: boolean }
       if (!res.ok) { addToast(data.error ?? 'Opslaan mislukt', 'error'); return }
@@ -136,20 +136,6 @@ export default function BeschikbaarheidInstellingenPage() {
       }
     } catch { addToast('Netwerkfout', 'error') }
     finally { setSaving(false) }
-  }
-
-  // Kopieer tijden van één dag naar alle actieve dagen (ongebruikt na read-only)
-  const kopieertijden = (bronDag: DagNaam) => {
-    const bron = workSchedule[bronDag]
-    setWorkSchedule(prev => {
-      const nieuw = { ...prev }
-      for (const dag of ALLE_DAGEN) {
-        if (nieuw[dag].enabled) {
-          nieuw[dag] = { ...nieuw[dag], start: bron.start, end: bron.end }
-        }
-      }
-      return nieuw
-    })
   }
 
   // Live status preview
@@ -171,6 +157,11 @@ export default function BeschikbaarheidInstellingenPage() {
 
   const inputCls = 'rounded-lg border px-2 py-1.5 text-sm outline-none transition focus:border-[#2D457C] focus:ring-2 focus:ring-[#2D457C]/20'
   const inputStyle = { fontFamily: F, borderColor: 'rgba(45,69,124,0.2)', color: '#1e293b' }
+
+  // Gedeelde start/eindtijd voor Graph (één tijd voor alle actieve dagen)
+  const firstActiveDag = ALLE_DAGEN.find(d => workSchedule[d]?.enabled)
+  const sharedStart = firstActiveDag ? workSchedule[firstActiveDag].start : '09:00'
+  const sharedEnd = firstActiveDag ? workSchedule[firstActiveDag].end : '17:00'
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
@@ -291,53 +282,90 @@ export default function BeschikbaarheidInstellingenPage() {
 
             {/* ── Werktijden ─────────────────────────────────────── */}
             <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
-              <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden</h2>
+                <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
+                  Werkdagen en tijden worden gesynchroniseerd met Outlook (mailboxSettings).
+                </p>
+              </div>
+
+              {/* Werkdagen — checkboxes */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4">
+                {ALLE_DAGEN.map(dag => (
+                  <label key={dag} className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={workSchedule[dag]?.enabled ?? false}
+                      onChange={e => {
+                        const enabled = e.target.checked
+                        setWorkSchedule(prev => ({
+                          ...prev,
+                          [dag]: { ...prev[dag as DagNaam], enabled },
+                        }))
+                      }}
+                      className="accent-[#2D457C] w-4 h-4 rounded"
+                    />
+                    <span className="text-sm font-medium" style={{ color: '#1e293b' }}>{DAG_LABELS[dag]}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Gedeelde begin- en eindtijd */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden per dag</h2>
-                  <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
-                    Gesynchroniseerd vanuit Outlook. Wijzigen doe je in Outlook.
-                  </p>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Begintijd</label>
+                  <input
+                    type="time"
+                    value={sharedStart}
+                    onChange={e => {
+                      const t = e.target.value
+                      setWorkSchedule(prev => {
+                        const nieuw = { ...prev }
+                        for (const dag of ALLE_DAGEN) {
+                          if (nieuw[dag as DagNaam].enabled) nieuw[dag as DagNaam] = { ...nieuw[dag as DagNaam], start: t }
+                        }
+                        return nieuw
+                      })
+                    }}
+                    className={`${inputCls} w-full`}
+                    style={inputStyle}
+                  />
                 </div>
-                <a
-                  href="https://outlook.cloud.microsoft/mail/options/calendar/workSchedule"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition hover:opacity-80"
-                  style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Eindtijd</label>
+                  <input
+                    type="time"
+                    value={sharedEnd}
+                    onChange={e => {
+                      const t = e.target.value
+                      setWorkSchedule(prev => {
+                        const nieuw = { ...prev }
+                        for (const dag of ALLE_DAGEN) {
+                          if (nieuw[dag as DagNaam].enabled) nieuw[dag as DagNaam] = { ...nieuw[dag as DagNaam], end: t }
+                        }
+                        return nieuw
+                      })
+                    }}
+                    className={`${inputCls} w-full`}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+
+              {/* Tijdzone */}
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: dashboardUi.textSubtle }}>Tijdzone</label>
+                <select
+                  value={workTz}
+                  onChange={e => setWorkTz(e.target.value)}
+                  className={`${inputCls} w-full`}
+                  style={inputStyle}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                  </svg>
-                  Aanpassen in Outlook
-                </a>
+                  {TIJDZONE_OPTIES.map(tz => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
+                </select>
               </div>
-
-              {/* Read-only weergave van de gesynchroniseerde werktijden */}
-              <div className="space-y-1">
-                {ALLE_DAGEN.filter(dag => workSchedule[dag]?.enabled).map(dag => {
-                  const d = workSchedule[dag]
-                  return (
-                    <div key={dag} className="flex items-center gap-3 rounded-xl px-3 py-2"
-                      style={{ background: 'rgba(45,69,124,0.03)' }}>
-                      <span className="text-sm font-semibold w-24 shrink-0" style={{ color: '#1e293b' }}>
-                        {DAG_LABELS[dag]}
-                      </span>
-                      <span className="text-sm tabular-nums" style={{ color: dashboardUi.textSubtle }}>
-                        {d.start} – {d.end}
-                      </span>
-                    </div>
-                  )
-                })}
-                {ALLE_DAGEN.every(dag => !workSchedule[dag]?.enabled) && (
-                  <p className="text-sm text-center py-4" style={{ color: dashboardUi.textSubtle }}>
-                    Geen werktijden gesynchroniseerd — klik op &quot;Sync Microsoft&quot;.
-                  </p>
-                )}
-              </div>
-
-              <p className="text-xs" style={{ color: dashboardUi.textSubtle }}>
-                Tijdzone: {workTz}
-              </p>
             </section>
 
             {/* ── Standaard werklocatie per dag ─────────────────── */}
