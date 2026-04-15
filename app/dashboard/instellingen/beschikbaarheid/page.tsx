@@ -45,6 +45,7 @@ export default function BeschikbaarheidInstellingenPage() {
   const [syncing, setSyncing] = useState(false)
   const [graphConfigured, setGraphConfigured] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [graphMismatch, setGraphMismatch] = useState<{ portalStart: string; portalEnd: string; graphStart: string; graphEnd: string } | null>(null)
 
   // Debug log
   const [debugLog, setDebugLog] = useState<LogEntry[]>([])
@@ -102,13 +103,16 @@ export default function BeschikbaarheidInstellingenPage() {
     setLoading(true)
     fetch('/api/beschikbaarheid?debug=true')
       .then(r => r.json())
-      .then((data: { settings?: BeschikbaarheidRecord; graphConfigured?: boolean; syncError?: string; synced?: boolean; debug?: unknown }) => {
+      .then((data: { settings?: BeschikbaarheidRecord; graphConfigured?: boolean; syncError?: string; synced?: boolean; debug?: unknown; graphMismatch?: { portalStart: string; portalEnd: string; graphStart: string; graphEnd: string } | null; shouldSyncWorkSchedule?: boolean }) => {
         setGraphConfigured(data.graphConfigured ?? false)
         setSyncError(data.syncError ?? null)
+        setGraphMismatch(data.graphMismatch ?? null)
         addLog('GET /api/beschikbaarheid (pagina-load)', {
           graphConfigured: data.graphConfigured,
           synced: data.synced,
           syncError: data.syncError,
+          shouldSyncWorkSchedule: data.shouldSyncWorkSchedule,
+          graphMismatch: data.graphMismatch,
           graphRaw: data.debug,
           settingsWorkSchedule: data.settings?.work_schedule,
           settingsWorkTimezone: data.settings?.work_timezone,
@@ -122,7 +126,7 @@ export default function BeschikbaarheidInstellingenPage() {
   const syncFromGraph = useCallback(async (): Promise<boolean> => {
     // force=true: alles overschrijven vanuit Outlook (werktijden + schema)
     const res = await fetch('/api/beschikbaarheid?force=true&debug=true')
-    const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string; synced?: boolean; debug?: unknown }
+    const data = await res.json() as { settings?: BeschikbaarheidRecord; syncError?: string; synced?: boolean; debug?: unknown; graphMismatch?: null }
     addLog('GET ?force=true (Sync Microsoft)', {
       synced: data.synced,
       syncError: data.syncError,
@@ -131,6 +135,7 @@ export default function BeschikbaarheidInstellingenPage() {
       settingsWorkTimezone: data.settings?.work_timezone,
     }, !data.syncError)
     if (data.syncError) { setSyncError(data.syncError); return false }
+    setGraphMismatch(null) // na force-sync is portal in sync met Graph
     if (data.settings) fillForm(data.settings)
     return true
   }, [fillForm, addLog])
@@ -186,6 +191,7 @@ export default function BeschikbaarheidInstellingenPage() {
         addToast(`Opgeslagen, maar Microsoft-fout: ${data.graphErrors[0]}`, 'warning')
       } else if (data.graphSyncType === 'bijgewerkt') {
         addToast('Opgeslagen en gesynchroniseerd met Outlook', 'success')
+        setGraphMismatch(null) // Outlook is nu bijgewerkt met portal-tijden
       } else if (data.graphSyncType === 'overgeslagen') {
         addToast('Opgeslagen — Outlook niet bijgewerkt (tijden verschillen per dag)', 'success')
       } else {
@@ -277,6 +283,13 @@ export default function BeschikbaarheidInstellingenPage() {
         {syncError && (
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
             <strong>Let op:</strong> {syncError}
+          </div>
+        )}
+        {graphMismatch && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-1">
+            <p className="font-semibold m-0">Graph workingHours wijkt af van portal schema</p>
+            <p className="m-0">Portal: {graphMismatch.portalStart}–{graphMismatch.portalEnd} &nbsp;|&nbsp; Outlook: {graphMismatch.graphStart}–{graphMismatch.graphEnd}</p>
+            <p className="m-0 text-xs opacity-80">Portal-tijden zijn leidend. Klik <strong>Opslaan</strong> om Outlook bij te werken, of <strong>Sync Microsoft</strong> om Outlook-tijden over te nemen.</p>
           </div>
         )}
         {!graphConfigured && (

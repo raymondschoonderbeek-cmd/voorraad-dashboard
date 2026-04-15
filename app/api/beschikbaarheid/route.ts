@@ -85,21 +85,49 @@ export async function GET(request: NextRequest) {
         const workSchedule = graphWorkHoursToWeekSchema(ms.workHours.days, ms.workHours.startTime, ms.workHours.endTime)
         const werklocatieSchema = Object.keys(locSchema).length > 0 ? locSchema : null
 
+        // Sync-strategie:
+        // - OOF:              altijd vanuit Graph (tijdgevoelig, leidend in Outlook)
+        // - work_schedule:    Supabase is altijd bron van waarheid; alleen op force/init vanuit Graph
+        // - werklocatie_schema: idem — Supabase leidend; Graph alleen op force/init
+        // - werklocatie:      nooit overschreven vanuit Graph (eenmalige override per dag)
+        const shouldSyncWorkSchedule = force || !row
+
+        // Mismatch-detectie: vergelijk portal-schema met Graph work hours (alleen als portal al data heeft)
+        let graphMismatch: Record<string, unknown> | null = null
+        if (row?.work_schedule && !force) {
+          const portalSchema = row.work_schedule as WeekSchema
+          const { start: portalStart, end: portalEnd, uniform: isUniform } = weekSchemaToGraphHours(portalSchema)
+          if (isUniform) {
+            if (portalStart !== ms.workHours.startTime || portalEnd !== ms.workHours.endTime) {
+              graphMismatch = {
+                portalStart,
+                portalEnd,
+                graphStart: ms.workHours.startTime,
+                graphEnd: ms.workHours.endTime,
+              }
+              console.warn('[beschikbaarheid:get] Graph workingHours wijkt af van portal schema', {
+                userId: user.id,
+                ...graphMismatch,
+              })
+            }
+          }
+        }
+
         if (verboseLog || debug) {
           console.info('[beschikbaarheid:get] graph sync', {
             userId: user.id,
             upn,
             force,
+            shouldSyncWorkSchedule,
+            graphMismatch,
             graphWorkHours: ms.workHours,
             graphOof: ms.oof,
             graphWerklocatieSchema: locSchema,
           })
         }
 
-        // OOF en werklocatie-schema altijd vanuit Graph (tijdgevoelig / read-only in portal).
-        // work_schedule: Supabase is bron van waarheid voor per-dag tijden.
-        // Alleen overschrijven bij force=true of als er nog geen rij bestaat (eerste keer).
-        const shouldSyncWorkSchedule = force || !row
+        // Basisupsert: alleen OOF vanuit Graph (altijd leidend) + sync-timestamp.
+        // work_schedule en werklocatie_schema worden NIET overschreven tenzij force of init.
         const upsertObj: Record<string, unknown> = {
           user_id: user.id,
           oof_status: ms.oof.status,
@@ -107,12 +135,11 @@ export async function GET(request: NextRequest) {
           oof_end: ms.oof.end,
           oof_internal_msg: ms.oof.internalMsg,
           oof_external_msg: ms.oof.externalMsg,
-          werklocatie_schema: werklocatieSchema,
           graph_synced_at: nu,
           updated_at: nu,
         }
         if (shouldSyncWorkSchedule) {
-          // Bij force of initialisatie: Graph-waarden als startpunt
+          // Bij force of initialisatie: Graph-waarden als startpunt (portal heeft nog geen eigen data)
           upsertObj.work_schedule = workSchedule
           upsertObj.work_timezone = ms.workHours.timezone
           upsertObj.werklocatie_schema = werklocatieSchema
@@ -127,10 +154,14 @@ export async function GET(request: NextRequest) {
           settings: fresh,
           graphConfigured: true,
           synced: true,
+          shouldSyncWorkSchedule,
+          graphMismatch,
           debug: {
             workHours: ms.workHours,
             werklocatieSchema: locSchema,
             oof: ms.oof,
+            shouldSyncWorkSchedule,
+            graphMismatch,
           },
         }
         if (!debug) delete payload.debug
