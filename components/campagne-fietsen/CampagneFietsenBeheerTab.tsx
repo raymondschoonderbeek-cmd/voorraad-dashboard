@@ -118,7 +118,7 @@ export function CampagneFietsenBeheerTab() {
     })
   }
 
-  const inp = 'w-full rounded-xl px-3 py-2 text-sm border border-gray-200 focus:border-dynamo-blue focus:ring-1 focus:ring-dynamo-blue outline-none'
+  const inp = 'w-full rounded-xl px-3 py-2 text-sm border border-gray-200 focus:border-dynamo-blue focus:ring-1 focus:ring-dynamo-blue outline-none text-gray-900 placeholder:text-gray-400 bg-white'
   const label = 'block text-xs font-semibold text-gray-500 mb-1'
 
   return (
