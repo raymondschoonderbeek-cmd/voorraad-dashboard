@@ -151,6 +151,7 @@ export default function CampagneFietsenPage() {
   const [meta, setMeta] = useState<{ fietsCount: number; totalWinkels: number } | null>(null)
   const [progress, setProgress] = useState<ProgressState | null>(null)
   const [baselineSaving, setBaselineSaving] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   /** Snel: alleen snapshot uit Supabase */
@@ -505,7 +506,13 @@ export default function CampagneFietsenPage() {
                   <div className="shrink-0 w-full sm:w-44 aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
                     {f.foto_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={f.foto_url} alt="" className="w-full h-full object-contain" loading="lazy" />
+                      <img
+                        src={f.foto_url}
+                        alt=""
+                        className="w-full h-full object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
+                        loading="lazy"
+                        onClick={() => setLightboxUrl(f.foto_url)}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300">🚲</div>
                     )}
@@ -644,6 +651,32 @@ export default function CampagneFietsenPage() {
             )
           })}
       </main>
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setLightboxUrl(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt=""
+            className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+            style={{ maxHeight: '90vh', maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition text-xl"
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+            aria-label="Sluiten"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   )
 }
