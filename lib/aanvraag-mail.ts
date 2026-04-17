@@ -4,33 +4,89 @@ const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'DRG Portal'
 const DYNAMO_BLUE = '#2D457C'
 const SUPPORT_EMAIL = 'support@dynamoretailgroup.com'
 
+/**
+ * Outlook-compatibele e-mailbase.
+ * Gebruikt table-layout en volledig inline styles — geen <style> blok, geen CSS klassen.
+ * Outlook (2007-2021) gebruikt Word als HTML-renderer en ondersteunt alleen inline CSS + tables.
+ */
 function emailBase(inhoud: string): string {
   return `<!DOCTYPE html>
-<html lang="nl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  body{font-family:system-ui,-apple-system,Arial,sans-serif;line-height:1.6;color:#1e293b;background:#f0f3f8;margin:0;padding:0}
-  .wrap{max-width:540px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(45,69,124,.10)}
-  .hdr{background:${DYNAMO_BLUE};padding:24px 32px;color:#fff}
-  .hdr h1{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
-  .hdr p{margin:4px 0 0;font-size:13px;opacity:.7}
-  .body{padding:28px 32px}
-  .field{margin-bottom:14px}
-  .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(45,69,124,.5);margin-bottom:2px}
-  .value{font-size:15px;color:#1e293b}
-  .motivatie{background:#f8fafc;border-left:3px solid ${DYNAMO_BLUE};padding:12px 16px;border-radius:0 8px 8px 0;font-size:14px;color:#334155;margin:16px 0}
-  .btn{display:inline-block;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;margin:6px 8px 6px 0}
-  .btn-groen{background:#16a34a;color:#fff}
-  .btn-rood{background:#dc2626;color:#fff}
-  .btn-blauw{background:${DYNAMO_BLUE};color:#fff}
-  .status-badge{display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700}
-  .badge-ok{background:#dcfce7;color:#15803d}
-  .badge-nok{background:#fee2e2;color:#b91c1c}
-  .footer{background:#f8fafc;padding:16px 32px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0}
-</style>
+<html lang="nl" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+  <title>${APP_NAME}</title>
 </head>
-<body><div class="wrap">${inhoud}<div class="footer">${APP_NAME} · Dit is een automatisch bericht</div></div></body>
+<body style="margin:0;padding:0;background-color:#f0f3f8;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f3f8;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table width="540" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;width:100%;background-color:#ffffff;border-radius:8px;">
+          ${inhoud}
+          <tr>
+            <td style="padding:16px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;font-family:Arial,sans-serif;">
+              ${APP_NAME} &middot; Dit is een automatisch bericht
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
 </html>`
+}
+
+function hdr(titel: string): string {
+  return `<tr>
+    <td style="background-color:${DYNAMO_BLUE};padding:24px 32px;border-radius:8px 8px 0 0;">
+      <h1 style="margin:0;font-size:20px;font-weight:700;color:#ffffff;font-family:Arial,sans-serif;">${titel}</h1>
+      <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7);font-family:Arial,sans-serif;">${APP_NAME}</p>
+    </td>
+  </tr>`
+}
+
+function veld(label: string, waarde: string): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
+    <tr><td style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8094bc;font-family:Arial,sans-serif;padding-bottom:2px;">${label}</td></tr>
+    <tr><td style="font-size:15px;color:#1e293b;font-family:Arial,sans-serif;">${waarde}</td></tr>
+  </table>`
+}
+
+function motivatieBlok(tekst: string): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
+    <tr>
+      <td style="background-color:#f8fafc;border-left:3px solid ${DYNAMO_BLUE};padding:12px 16px;font-size:14px;color:#334155;font-family:Arial,sans-serif;">
+        ${tekst}
+      </td>
+    </tr>
+  </table>`
+}
+
+/** Bevestigingsmail aan medewerker: aanvraag ontvangen */
+export async function stuurAanvragerBevestigingMail(opts: {
+  aanvragerEmail: string
+  aanvragerNaam: string
+  productNaam: string
+  managerNaam: string | null
+}): Promise<void> {
+  const html = emailBase(`
+    ${hdr('Aanvraag ontvangen')}
+    <tr>
+      <td style="padding:28px 32px;font-family:Arial,sans-serif;color:#1e293b;">
+        <p style="margin:0 0 16px;font-size:15px;">Hallo ${opts.aanvragerNaam},</p>
+        <p style="margin:0 0 16px;font-size:15px;">Je aanvraag voor <strong>${opts.productNaam}</strong> is ingediend en wacht op goedkeuring${opts.managerNaam ? ` van <strong>${opts.managerNaam}</strong>` : ''}.</p>
+        <p style="margin:0 0 16px;font-size:15px;">Je ontvangt een bericht zodra er een beslissing is genomen.</p>
+        <p style="margin:24px 0 0;font-size:13px;color:#64748b;">Je kunt je aanvragen bekijken via <strong>Instellingen &rarr; Mijn aanvragen</strong> in het portaal.</p>
+      </td>
+    </tr>
+  `)
+  await sendMailgunHtmlEmail({
+    to: opts.aanvragerEmail,
+    subject: `Aanvraag ingediend: ${opts.productNaam}`,
+    html,
+  })
 }
 
 /** Mail aan manager: goedkeuren / afkeuren */
@@ -47,58 +103,32 @@ export async function stuurManagerApprovalMail(opts: {
 }): Promise<void> {
   const verloopdatum = opts.verlooptOp.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
   const html = emailBase(`
-    <div class="hdr">
-      <h1>Softwareaanvraag ter goedkeuring</h1>
-      <p>${APP_NAME}</p>
-    </div>
-    <div class="body">
-      <p>Hallo ${opts.managerNaam},</p>
-      <p><strong>${opts.aanvragerNaam}</strong> heeft een aanvraag ingediend voor:</p>
-
-      <div class="field"><div class="label">Product / Licentie</div><div class="value"><strong>${opts.productNaam}</strong></div></div>
-      <div class="field"><div class="label">Medewerker</div><div class="value">${opts.aanvragerNaam} &lt;${opts.aanvragerEmail}&gt;</div></div>
-      ${opts.motivatie ? `<div class="label" style="margin-bottom:4px">Motivatie</div><div class="motivatie">${opts.motivatie}</div>` : ''}
-
-      <p style="margin-top:24px">Klik op een knop om te beslissen:</p>
-      <div>
-        <a href="${opts.goedkeurUrl}" class="btn btn-groen">✓ Goedkeuren</a>
-        <a href="${opts.afkeurUrl}" class="btn btn-rood">✗ Afkeuren</a>
-      </div>
-      <p style="margin-top:20px;font-size:13px;color:#64748b">
-        Deze links zijn geldig tot <strong>${verloopdatum}</strong>.<br>
-        Een beslissing kan maar één keer worden gemaakt.
-      </p>
-    </div>
+    ${hdr('Softwareaanvraag ter goedkeuring')}
+    <tr>
+      <td style="padding:28px 32px;font-family:Arial,sans-serif;color:#1e293b;">
+        <p style="margin:0 0 16px;font-size:15px;">Hallo ${opts.managerNaam},</p>
+        <p style="margin:0 0 20px;font-size:15px;"><strong>${opts.aanvragerNaam}</strong> heeft een aanvraag ingediend voor:</p>
+        ${veld('Product / Licentie', `<strong>${opts.productNaam}</strong>`)}
+        ${veld('Medewerker', `${opts.aanvragerNaam} &lt;${opts.aanvragerEmail}&gt;`)}
+        ${opts.motivatie ? `<p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8094bc;font-family:Arial,sans-serif;">Motivatie</p>${motivatieBlok(opts.motivatie)}` : ''}
+        <p style="margin:24px 0 12px;font-size:15px;">Klik op een knop om te beslissen:</p>
+        <table cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding-right:8px;">
+              <a href="${opts.goedkeurUrl}" style="display:inline-block;padding:13px 28px;background-color:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;font-family:Arial,sans-serif;border-radius:6px;">&#10003; Goedkeuren</a>
+            </td>
+            <td>
+              <a href="${opts.afkeurUrl}" style="display:inline-block;padding:13px 28px;background-color:#dc2626;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;font-family:Arial,sans-serif;border-radius:6px;">&#10007; Afkeuren</a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:20px 0 0;font-size:13px;color:#64748b;">Deze links zijn geldig tot <strong>${verloopdatum}</strong>.<br>Een beslissing kan maar één keer worden gemaakt.</p>
+      </td>
+    </tr>
   `)
   await sendMailgunHtmlEmail({
     to: opts.managerEmail,
     subject: `Softwareaanvraag van ${opts.aanvragerNaam} — ${opts.productNaam}`,
-    html,
-  })
-}
-
-/** Bevestigingsmail aan medewerker: aanvraag ontvangen */
-export async function stuurAanvragerBevestigingMail(opts: {
-  aanvragerEmail: string
-  aanvragerNaam: string
-  productNaam: string
-  managerNaam: string | null
-}): Promise<void> {
-  const html = emailBase(`
-    <div class="hdr">
-      <h1>Aanvraag ontvangen</h1>
-      <p>${APP_NAME}</p>
-    </div>
-    <div class="body">
-      <p>Hallo ${opts.aanvragerNaam},</p>
-      <p>Je aanvraag voor <strong>${opts.productNaam}</strong> is ingediend en wacht op goedkeuring${opts.managerNaam ? ` van <strong>${opts.managerNaam}</strong>` : ''}.</p>
-      <p>Je ontvangt een bericht zodra er een beslissing is genomen.</p>
-      <p style="margin-top:24px;font-size:13px;color:#64748b">Je kunt je aanvragen bekijken via <strong>Instellingen → Mijn aanvragen</strong> in het portaal.</p>
-    </div>
-  `)
-  await sendMailgunHtmlEmail({
-    to: opts.aanvragerEmail,
-    subject: `Aanvraag ingediend: ${opts.productNaam}`,
     html,
   })
 }
@@ -114,25 +144,23 @@ export async function stuurSupportBeslissingMail(opts: {
   aanvraagId: string
 }): Promise<void> {
   const isOk = opts.beslissing === 'goedgekeurd'
+  const badgeStijl = isOk
+    ? 'display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;background-color:#dcfce7;color:#15803d;'
+    : 'display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;background-color:#fee2e2;color:#b91c1c;'
   const html = emailBase(`
-    <div class="hdr">
-      <h1>Softwareaanvraag ${isOk ? 'goedgekeurd' : 'afgekeurd'}</h1>
-      <p>${APP_NAME}</p>
-    </div>
-    <div class="body">
-      <p>Er is een beslissing genomen over een softwareaanvraag:</p>
-
-      <div class="field"><div class="label">Status</div>
-        <div class="value"><span class="status-badge ${isOk ? 'badge-ok' : 'badge-nok'}">${isOk ? '✓ Goedgekeurd' : '✗ Afgekeurd'}</span></div>
-      </div>
-      <div class="field"><div class="label">Product / Licentie</div><div class="value"><strong>${opts.productNaam}</strong></div></div>
-      <div class="field"><div class="label">Medewerker</div><div class="value">${opts.aanvragerNaam} &lt;${opts.aanvragerEmail}&gt;</div></div>
-      <div class="field"><div class="label">Besloten door</div><div class="value">${opts.managerNaam ?? 'Onbekend'}</div></div>
-      ${opts.managerNotitie ? `<div class="label" style="margin-bottom:4px">Notitie manager</div><div class="motivatie">${opts.managerNotitie}</div>` : ''}
-      <div class="field" style="margin-top:16px"><div class="label">Aanvraag ID</div><div class="value" style="font-family:monospace;font-size:13px">${opts.aanvraagId}</div></div>
-
-      ${isOk ? `<p style="margin-top:20px">Actie vereist: koppel de licentie aan de medewerker in het portaal.</p>` : ''}
-    </div>
+    ${hdr(`Softwareaanvraag ${isOk ? 'goedgekeurd' : 'afgekeurd'}`)}
+    <tr>
+      <td style="padding:28px 32px;font-family:Arial,sans-serif;color:#1e293b;">
+        <p style="margin:0 0 20px;font-size:15px;">Er is een beslissing genomen over een softwareaanvraag:</p>
+        ${veld('Status', `<span style="${badgeStijl}">${isOk ? '&#10003; Goedgekeurd' : '&#10007; Afgekeurd'}</span>`)}
+        ${veld('Product / Licentie', `<strong>${opts.productNaam}</strong>`)}
+        ${veld('Medewerker', `${opts.aanvragerNaam} &lt;${opts.aanvragerEmail}&gt;`)}
+        ${veld('Besloten door', opts.managerNaam ?? 'Onbekend')}
+        ${opts.managerNotitie ? `<p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8094bc;">Notitie manager</p>${motivatieBlok(opts.managerNotitie)}` : ''}
+        ${veld('Aanvraag ID', `<span style="font-family:Courier New,monospace;font-size:13px;">${opts.aanvraagId}</span>`)}
+        ${isOk ? '<p style="margin:20px 0 0;font-size:15px;">Actie vereist: koppel de licentie aan de medewerker in het portaal.</p>' : ''}
+      </td>
+    </tr>
   `)
   await sendMailgunHtmlEmail({
     to: SUPPORT_EMAIL,
@@ -150,17 +178,21 @@ export async function stuurAanvragerBeslissingMail(opts: {
   managerNotitie: string | null
 }): Promise<void> {
   const isOk = opts.beslissing === 'goedgekeurd'
+  const badgeStijl = isOk
+    ? 'display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;background-color:#dcfce7;color:#15803d;'
+    : 'display:inline-block;padding:4px 12px;border-radius:99px;font-size:13px;font-weight:700;background-color:#fee2e2;color:#b91c1c;'
   const html = emailBase(`
-    <div class="hdr">
-      <h1>Aanvraag ${isOk ? 'goedgekeurd' : 'afgekeurd'}</h1>
-      <p>${APP_NAME}</p>
-    </div>
-    <div class="body">
-      <p>Hallo ${opts.aanvragerNaam},</p>
-      <p>Je aanvraag voor <strong>${opts.productNaam}</strong> is <span class="status-badge ${isOk ? 'badge-ok' : 'badge-nok'}">${isOk ? '✓ goedgekeurd' : '✗ afgekeurd'}</span>.</p>
-      ${opts.managerNotitie ? `<div class="label" style="margin-bottom:4px;margin-top:16px">Opmerking van je manager</div><div class="motivatie">${opts.managerNotitie}</div>` : ''}
-      ${isOk ? '<p style="margin-top:16px">Support zal de licentie zo snel mogelijk voor je activeren.</p>' : '<p style="margin-top:16px">Als je vragen hebt, neem contact op met je manager of support.</p>'}
-    </div>
+    ${hdr(`Aanvraag ${isOk ? 'goedgekeurd' : 'afgekeurd'}`)}
+    <tr>
+      <td style="padding:28px 32px;font-family:Arial,sans-serif;color:#1e293b;">
+        <p style="margin:0 0 16px;font-size:15px;">Hallo ${opts.aanvragerNaam},</p>
+        <p style="margin:0 0 16px;font-size:15px;">Je aanvraag voor <strong>${opts.productNaam}</strong> is <span style="${badgeStijl}">${isOk ? '&#10003; goedgekeurd' : '&#10007; afgekeurd'}</span>.</p>
+        ${opts.managerNotitie ? `<p style="margin:16px 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#8094bc;">Opmerking van je manager</p>${motivatieBlok(opts.managerNotitie)}` : ''}
+        ${isOk
+          ? '<p style="margin:16px 0 0;font-size:15px;">Support zal de licentie zo snel mogelijk voor je activeren.</p>'
+          : '<p style="margin:16px 0 0;font-size:15px;">Als je vragen hebt, neem contact op met je manager of support.</p>'}
+      </td>
+    </tr>
   `)
   await sendMailgunHtmlEmail({
     to: opts.aanvragerEmail,
