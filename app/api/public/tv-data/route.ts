@@ -43,7 +43,7 @@ export async function GET() {
   // Nieuws (laatste 10 gepubliceerde berichten)
   const { data: newsData } = await supabase
     .from('drg_news_posts')
-    .select('id, title, excerpt, category, is_important, published_at')
+    .select('id, title, excerpt, body_html, category, is_important, published_at')
     .not('published_at', 'is', null)
     .lte('published_at', new Date().toISOString())
     .order('published_at', { ascending: false })

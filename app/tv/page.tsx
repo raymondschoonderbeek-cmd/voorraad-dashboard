@@ -13,6 +13,7 @@ type NewsItem = {
   id: string
   title: string
   excerpt: string | null
+  body_html: string | null
   category: string
   is_important: boolean
   published_at: string
@@ -231,18 +232,27 @@ export default function TvPage() {
                 {bericht.title}
               </h1>
 
-              {/* Samenvatting */}
-              {bericht.excerpt && (
-                <p style={{
-                  fontSize: 'clamp(1.8vh, 2.4vh, 3vh)',
-                  lineHeight: 1.65,
-                  color: 'rgba(255,255,255,0.72)',
-                  margin: 0,
+              {/* Inhoud: body_html als die er is, anders excerpt */}
+              {(bericht.body_html || bericht.excerpt) && (
+                <div style={{
+                  fontSize: 'clamp(1.6vh, 2.1vh, 2.6vh)',
+                  lineHeight: 1.7,
+                  color: 'rgba(255,255,255,0.75)',
                   fontWeight: 400,
-                  maxWidth: '90%',
+                  overflow: 'hidden',
+                  flex: 1,
+                  minHeight: 0,
                 }}>
-                  {bericht.excerpt}
-                </p>
+                  {bericht.body_html ? (
+                    <div
+                      className="tv-nieuws-body"
+                      dangerouslySetInnerHTML={{ __html: bericht.body_html }}
+                      style={{ maxHeight: '100%', overflow: 'hidden' }}
+                    />
+                  ) : (
+                    <p style={{ margin: 0 }}>{bericht.excerpt}</p>
+                  )}
+                </div>
               )}
 
               {/* Datum + paginering */}
@@ -432,6 +442,16 @@ export default function TvPage() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
+        .tv-nieuws-body p { margin: 0 0 1.2vh 0; }
+        .tv-nieuws-body p:last-child { margin-bottom: 0; }
+        .tv-nieuws-body ul, .tv-nieuws-body ol { margin: 0 0 1.2vh 2vw; padding: 0; }
+        .tv-nieuws-body li { margin-bottom: 0.4vh; }
+        .tv-nieuws-body strong, .tv-nieuws-body b { color: rgba(255,255,255,0.95); font-weight: 700; }
+        .tv-nieuws-body h1, .tv-nieuws-body h2, .tv-nieuws-body h3 { color: white; font-weight: 700; margin: 0 0 1vh 0; line-height: 1.2; }
+        .tv-nieuws-body a { color: #6691AE; text-decoration: none; }
+        .tv-nieuws-body img { display: none; }
+        .tv-nieuws-body hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5vh 0; }
+        .tv-nieuws-body blockquote { border-left: 3px solid #6691AE; padding-left: 1vw; margin: 0 0 1.2vh 0; color: rgba(255,255,255,0.6); }
       `}</style>
     </div>
   )
