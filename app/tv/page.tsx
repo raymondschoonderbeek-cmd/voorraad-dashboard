@@ -66,11 +66,15 @@ function categorieLabel(cat: string) {
   return map[cat] ?? cat
 }
 
+type ZijpanelView = 'verjaardagen' | 'hoogtepunten'
+
 export default function TvPage() {
   const [data, setData] = useState<TvData | null>(null)
   const [nu, setNu] = useState(new Date())
   const [nieuwsIdx, setNieuwsIdx] = useState(0)
   const [fade, setFade] = useState(true)
+  const [zijpanelView, setZijpanelView] = useState<ZijpanelView>('verjaardagen')
+  const [zijpanelFade, setZijpanelFade] = useState(true)
   const tickerRef = useRef<HTMLDivElement>(null)
 
   const laadData = useCallback(async () => {
@@ -105,6 +109,22 @@ export default function TvPage() {
     }, 12000)
     return () => clearInterval(t)
   }, [data?.nieuws?.length])
+
+  // Zijpanel rouleren: verjaardagen ↔ hoogtepunten elke 8 seconden
+  useEffect(() => {
+    const heeftVerjaardagen = (data?.jarigen?.length ?? 0) > 0
+    const heeftHoogtepunten = (data?.hoogtepunten?.length ?? 0) > 0
+    if (!heeftVerjaardagen || !heeftHoogtepunten) return
+    const views: ZijpanelView[] = ['verjaardagen', 'hoogtepunten']
+    const t = setInterval(() => {
+      setZijpanelFade(false)
+      setTimeout(() => {
+        setZijpanelView(v => views[(views.indexOf(v) + 1) % views.length])
+        setZijpanelFade(true)
+      }, 500)
+    }, 8000)
+    return () => clearInterval(t)
+  }, [data?.jarigen?.length, data?.hoogtepunten?.length])
 
   const bericht = data?.nieuws?.[nieuwsIdx] ?? null
   const vandaagJarig = data?.jarigen?.filter(j => j.vandaag) ?? []
@@ -392,90 +412,114 @@ export default function TvPage() {
             </div>
           )}
 
-          {/* Vandaag jarig */}
-          {vandaagJarig.length > 0 && (
+          {/* Roulerend zijpanel: verjaardagen ↔ hoogtepunten */}
+          {(vandaagJarig.length > 0 || komendJarig.length > 0 || hoogtepunten.length > 0) && (
             <div style={{
-              background: 'rgba(240,192,64,0.08)',
-              border: '1px solid rgba(240,192,64,0.25)',
-              borderRadius: '1.5vh',
-              padding: '1.6vh 1.8vw',
-              flexShrink: 0,
+              flex: 1,
+              minHeight: 0,
+              transition: 'opacity 0.5s ease',
+              opacity: zijpanelFade ? 1 : 0,
+              overflow: 'hidden',
             }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0c040', marginBottom: '0.8vh' }}>
-                🎂 Vandaag Jarig
-              </div>
-              {vandaagJarig.map(j => (
-                <div key={j.naam} style={{ fontSize: '2.6vh', fontWeight: 700, color: 'white', lineHeight: 1.3 }}>
-                  {j.naam}
+              {/* Verjaardagen */}
+              {(zijpanelView === 'verjaardagen' || hoogtepunten.length === 0) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5vh' }}>
+                  {vandaagJarig.length > 0 && (
+                    <div style={{
+                      background: 'rgba(240,192,64,0.08)',
+                      border: '1px solid rgba(240,192,64,0.25)',
+                      borderRadius: '1.5vh',
+                      padding: '1.6vh 1.8vw',
+                    }}>
+                      <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0c040', marginBottom: '0.8vh' }}>
+                        🎂 Vandaag Jarig
+                      </div>
+                      {vandaagJarig.map(j => (
+                        <div key={j.naam} style={{ fontSize: '2.6vh', fontWeight: 700, color: 'white', lineHeight: 1.3 }}>
+                          {j.naam}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {komendJarig.length > 0 && (
+                    <div style={{
+                      background: 'rgba(102,145,174,0.07)',
+                      border: '1px solid rgba(102,145,174,0.18)',
+                      borderRadius: '1.5vh',
+                      padding: '1.6vh 1.8vw',
+                    }}>
+                      <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '0.8vh' }}>
+                        Komende verjaardagen
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8vh' }}>
+                        {komendJarig.map(j => {
+                          const verjaardagDatum = new Date()
+                          verjaardagDatum.setDate(verjaardagDatum.getDate() + j.dagenTot)
+                          return (
+                            <div key={j.naam} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
+                              <span style={{ fontSize: '1.8vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{j.naam}</span>
+                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{DAGEN_LANG[verjaardagDatum.getDay()]}</div>
+                                <div style={{ fontSize: '1.2vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>{j.dag} {MAANDEN[j.maand - 1]}</div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Komende verjaardagen */}
-          {komendJarig.length > 0 && (
-            <div style={{
-              background: 'rgba(102,145,174,0.07)',
-              border: '1px solid rgba(102,145,174,0.18)',
-              borderRadius: '1.5vh',
-              padding: '1.6vh 1.8vw',
-              flexShrink: 0,
-            }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '0.8vh' }}>
-                Komende verjaardagen
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8vh' }}>
-                {komendJarig.slice(0, 3).map(j => {
-                  const verjaardagDatum = new Date()
-                  verjaardagDatum.setDate(verjaardagDatum.getDate() + j.dagenTot)
-                  const dagNaam = DAGEN_LANG[verjaardagDatum.getDay()]
-                  return (
-                    <div key={j.naam} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
-                      <span style={{ fontSize: '1.8vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{j.naam}</span>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{dagNaam}</div>
-                        <div style={{ fontSize: '1.2vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>{j.dag} {MAANDEN[j.maand - 1]}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+              {/* Hoogtepunten */}
+              {zijpanelView === 'hoogtepunten' && hoogtepunten.length > 0 && (
+                <div style={{
+                  background: 'rgba(102,145,174,0.07)',
+                  border: '1px solid rgba(102,145,174,0.18)',
+                  borderRadius: '1.5vh',
+                  padding: '1.6vh 1.8vw',
+                }}>
+                  <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '0.8vh' }}>
+                    Hoogtepunten
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7vh' }}>
+                    {hoogtepunten.map(h => {
+                      const d = new Date(h.datum + 'T00:00:00')
+                      const isVandaag = h.datum === new Date().toISOString().slice(0, 10)
+                      return (
+                        <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
+                          <span style={{ fontSize: '1.8vh', fontWeight: isVandaag ? 700 : 600, color: isVandaag ? 'white' : 'rgba(255,255,255,0.82)' }}>
+                            {h.icoon} {h.naam}
+                          </span>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: '1.4vh', color: isVandaag ? '#f0c040' : 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+                              {isVandaag ? 'vandaag' : DAGEN_LANG[d.getDay()]}
+                            </div>
+                            <div style={{ fontSize: '1.2vh', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>
+                              {d.getDate()} {MAANDEN[d.getMonth()]}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
-          {/* Maand hoogtepunten */}
-          {hoogtepunten.length > 0 && (
-            <div style={{
-              background: 'rgba(102,145,174,0.07)',
-              border: '1px solid rgba(102,145,174,0.18)',
-              borderRadius: '1.5vh',
-              padding: '1.6vh 1.8vw',
-              flexShrink: 0,
-            }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '0.8vh' }}>
-                Hoogtepunten
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7vh' }}>
-                {hoogtepunten.slice(0, 3).map(h => {
-                  const d = new Date(h.datum + 'T00:00:00')
-                  const isVandaag = h.datum === new Date().toISOString().slice(0, 10)
-                  return (
-                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
-                      <span style={{ fontSize: '1.8vh', fontWeight: isVandaag ? 700 : 600, color: isVandaag ? 'white' : 'rgba(255,255,255,0.82)' }}>
-                        {h.icoon} {h.naam}
-                      </span>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '1.4vh', color: isVandaag ? '#f0c040' : 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
-                          {isVandaag ? 'vandaag' : DAGEN_LANG[d.getDay()]}
-                        </div>
-                        <div style={{ fontSize: '1.2vh', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>
-                          {d.getDate()} {MAANDEN[d.getMonth()]}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              {/* Indicatordots als beide aanwezig */}
+              {(vandaagJarig.length > 0 || komendJarig.length > 0) && hoogtepunten.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5vw', marginTop: '1vh' }}>
+                  {(['verjaardagen', 'hoogtepunten'] as ZijpanelView[]).map(v => (
+                    <div key={v} style={{
+                      width: v === zijpanelView ? '1.5vw' : '0.5vw',
+                      height: '0.4vh',
+                      borderRadius: '100px',
+                      background: v === zijpanelView ? BLAUW_LICHT : 'rgba(255,255,255,0.2)',
+                      transition: 'all 0.4s ease',
+                    }} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
