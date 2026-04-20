@@ -30,7 +30,7 @@ type Jarige = {
   vandaag: boolean
 }
 
-type Weer = { temp: number; label: string; icon: string }
+type Weer = { stad: string; temp: number; label: string; icon: string }
 
 type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
@@ -39,7 +39,7 @@ type TvData = {
   mededelingen: Mededeling[]
   jarigen: Jarige[]
   hoogtepunten: Hoogtepunt[]
-  weer: Weer | null
+  weer: Weer[]
 }
 
 function tijdString(d: Date) {
@@ -160,13 +160,17 @@ export default function TvPage() {
         </div>
 
         {/* Weer */}
-        {data?.weer ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8vw', textAlign: 'right' }}>
-            <span style={{ fontSize: '4.5vh' }}>{data.weer.icon}</span>
-            <div>
-              <div style={{ fontSize: '3.5vh', fontWeight: 700, lineHeight: 1 }}>{data.weer.temp}°C</div>
-              <div style={{ fontSize: '1.3vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{data.weer.label}</div>
-            </div>
+        {(data?.weer?.length ?? 0) > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5vw' }}>
+            {data!.weer.map(w => (
+              <div key={w.stad} style={{ display: 'flex', alignItems: 'center', gap: '0.5vw', textAlign: 'right' }}>
+                <span style={{ fontSize: '3.5vh' }}>{w.icon}</span>
+                <div>
+                  <div style={{ fontSize: '2.8vh', fontWeight: 700, lineHeight: 1 }}>{w.temp}°C</div>
+                  <div style={{ fontSize: '1.1vh', color: 'rgba(255,255,255,0.55)', fontWeight: 600, letterSpacing: '0.04em' }}>{w.stad}</div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div style={{ width: '12vw' }} />
@@ -422,29 +426,6 @@ export default function TvPage() {
             <div style={{ flex: 1 }} />
           )}
 
-          {/* Weer detail */}
-          {data?.weer && (
-            <div style={{
-              background: 'rgba(45,69,124,0.25)',
-              border: '1px solid rgba(102,145,174,0.2)',
-              borderRadius: '1.5vh',
-              padding: '2vh 1.8vw',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1.5vw',
-              marginTop: 'auto',
-            }}>
-              <span style={{ fontSize: '5vh' }}>{data.weer.icon}</span>
-              <div>
-                <div style={{ fontSize: '4.5vh', fontWeight: 700, lineHeight: 1, color: 'white' }}>
-                  {data.weer.temp}°C
-                </div>
-                <div style={{ fontSize: '1.6vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500, marginTop: '0.3vh' }}>
-                  {data.weer.label} · Amsterdam
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

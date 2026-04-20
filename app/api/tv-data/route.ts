@@ -109,28 +109,32 @@ export async function GET() {
     })
     .sort((a, b) => a.dagenTot - b.dagenTot)
 
-  // Weer via Open-Meteo (Amsterdam — geen API-sleutel nodig)
-  let weer: { temp: number; label: string; icon: string } | null = null
-  try {
-    const weerRes = await fetch(
-      'https://api.open-meteo.com/v1/forecast?latitude=52.37&longitude=4.90&current=temperature_2m,weathercode&timezone=Europe/Amsterdam',
-      { next: { revalidate: 600 } }
-    )
-    if (weerRes.ok) {
-      const weerJson = await weerRes.json() as {
-        current: { temperature_2m: number; weathercode: number }
-      }
-      const { temperature_2m, weathercode } = weerJson.current
-      weer = { temp: Math.round(temperature_2m), ...weerInfo(weathercode) }
-    }
-  } catch { /* weer niet beschikbaar */ }
+  type WeerData = { stad: string; temp: number; label: string; icon: string } | null
+
+  async function fetchWeer(stad: string, lat: number, lon: number): Promise<WeerData> {
+    try {
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe/Amsterdam`,
+        { next: { revalidate: 600 } }
+      )
+      if (!res.ok) return null
+      const json = await res.json() as { current: { temperature_2m: number; weathercode: number } }
+      const { temperature_2m, weathercode } = json.current
+      return { stad, temp: Math.round(temperature_2m), ...weerInfo(weathercode) }
+    } catch { return null }
+  }
+
+  const [weerAmersfoort, weerTurnhout] = await Promise.all([
+    fetchWeer('Amersfoort', 52.155, 5.388),
+    fetchWeer('Turnhout', 51.323, 4.953),
+  ])
 
   return NextResponse.json({
     nieuws: newsData ?? [],
     mededelingen: mededelingenData ?? [],
     jarigen,
     hoogtepunten: hoogtepuntenData ?? [],
-    weer,
+    weer: [weerAmersfoort, weerTurnhout].filter(Boolean),
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })
