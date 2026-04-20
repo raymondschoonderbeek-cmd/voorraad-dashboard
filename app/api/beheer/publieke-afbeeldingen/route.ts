@@ -51,6 +51,36 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ afbeelding: data })
 }
 
+export async function PATCH(request: NextRequest) {
+  const rl = withRateLimit(request)
+  if (rl) return rl
+  const { user, supabase } = await requireAuth()
+  if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+  if (!(await isAdmin(supabase, user.id))) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+
+  let body: { id: string; naam?: string; breedte?: number | null; hoogte?: number | null; storage_path?: string; mime_type?: string; oud_storage_path?: string }
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'Ongeldige JSON' }, { status: 400 }) }
+
+  const { id, oud_storage_path, ...updates } = body
+  if (!id) return NextResponse.json({ error: 'id verplicht' }, { status: 400 })
+
+  const { data, error } = await supabase
+    .from('publieke_afbeeldingen')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Verwijder oude afbeelding uit storage als die vervangen is
+  if (oud_storage_path && updates.storage_path && oud_storage_path !== updates.storage_path) {
+    await supabase.storage.from('publieke-afbeeldingen').remove([oud_storage_path])
+  }
+
+  return NextResponse.json({ afbeelding: data })
+}
+
 export async function DELETE(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
