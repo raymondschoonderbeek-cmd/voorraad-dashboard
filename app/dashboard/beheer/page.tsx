@@ -1065,12 +1065,12 @@ export default function BeheerPage() {
       ? [
           { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
           { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
-          ...(!error ? [{ key: 'ips' as Tab, label: 'Vertrouwde IP\'s', icon: '🔒', count: trustedIps.length }] : []),
+          ...(!error ? [{ key: 'ips' as Tab, label: 'IP\'s', icon: '🔒', count: trustedIps.length }] : []),
           ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
-          { key: 'import', label: 'Excel Import', icon: '📊' },
-          { key: 'campagnefietsen', label: 'Campagnefietsen', icon: '🚲' },
+          { key: 'import', label: 'Import', icon: '📊' },
+          { key: 'campagnefietsen', label: 'Fietsen', icon: '🚲' },
           { key: 'nieuws', label: 'Nieuws', icon: '📰' },
-          { key: 'afbeeldingen', label: 'Publieke afbeeldingen', icon: '🖼️' },
+          { key: 'afbeeldingen', label: 'Afbeeldingen', icon: '🖼️' },
         ]
       : canManageInterneNieuws
         ? [
@@ -1138,35 +1138,41 @@ export default function BeheerPage() {
         {formError && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
         {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
-        <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', WebkitOverflowScrolling: 'touch' }}>
-{tabs.map(t => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => {
-                  setTab(t.key)
-                  setToonForm(false)
-                  setBewerkGebruiker(null)
-                  setToonWinkelForm(false)
-                  setBewerkWinkel(null)
-                  if (t.key === 'winkels' && isAdmin) {
-                    fetch('/api/gebruikers').then(r => r.json()).then(d => {
-                      setRollen(d.rollen ?? [])
-                      setProfileModulesToegang(d.profileModulesToegang ?? {})
-                      setProfileModulesResolved(d.profileModulesResolved ?? {})
-                      setProfileLandenRaw(d.profileLandenRaw ?? {})
-                      setWinkels(d.winkels ?? [])
-                      setMfaStatus(d.mfaStatus ?? {})
-                      setUserEmails(d.userEmails ?? {})
-                      setUserLastSignIns(d.userLastSignIns ?? {})
-                    }).catch(() => {})
-                  }
-                }}
-              className="flex-1 min-w-[100px] sm:min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2.5 text-xs sm:text-sm font-semibold transition-all shrink-0"
-              style={tab === t.key ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F } : { color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
-              <span>{t.icon}</span><span>{t.label}</span>
+        <div className="flex gap-0.5 p-1 rounded-2xl overflow-x-auto scrollbar-none" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', WebkitOverflowScrolling: 'touch' }}>
+          {tabs.map(t => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => {
+                setTab(t.key)
+                setToonForm(false)
+                setBewerkGebruiker(null)
+                setToonWinkelForm(false)
+                setBewerkWinkel(null)
+                if (t.key === 'winkels' && isAdmin) {
+                  fetch('/api/gebruikers').then(r => r.json()).then(d => {
+                    setRollen(d.rollen ?? [])
+                    setProfileModulesToegang(d.profileModulesToegang ?? {})
+                    setProfileModulesResolved(d.profileModulesResolved ?? {})
+                    setProfileLandenRaw(d.profileLandenRaw ?? {})
+                    setWinkels(d.winkels ?? [])
+                    setMfaStatus(d.mfaStatus ?? {})
+                    setUserEmails(d.userEmails ?? {})
+                    setUserLastSignIns(d.userLastSignIns ?? {})
+                  }).catch(() => {})
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap shrink-0"
+              style={tab === t.key
+                ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F }
+                : { color: 'rgba(45,69,124,0.5)', fontFamily: F, background: 'transparent' }}
+            >
+              <span className="text-sm leading-none">{t.icon}</span>
+              <span>{t.label}</span>
               {t.count !== undefined && (
-                <span className="rounded-full px-1.5 py-0.5 text-xs font-bold" style={tab === t.key ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(45,69,124,0.07)', color: 'rgba(45,69,124,0.5)' }}>{t.count}</span>
+                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none" style={tab === t.key ? { background: 'rgba(255,255,255,0.2)', color: 'white' } : { background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.6)' }}>
+                  {t.count}
+                </span>
               )}
             </button>
           ))}
