@@ -36,7 +36,7 @@ type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
 type Boeking = { van: string; tot: string }
 type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string; capacity: number; boekingen: Boeking[] }
-type BrancheNieuwsItem = { title: string; link: string; pubDate: string | null }
+type NieuwsItem = { title: string; link: string; pubDate: string | null }
 
 type TvData = {
   nieuws: NewsItem[]
@@ -45,7 +45,8 @@ type TvData = {
   hoogtepunten: Hoogtepunt[]
   weer: Weer[]
   ruimtes: Ruimte[]
-  brancheNieuws: BrancheNieuwsItem[]
+  brancheNieuws: NieuwsItem[]
+  nuNieuws: NieuwsItem[]
 }
 
 function tijdString(d: Date) {
@@ -150,9 +151,14 @@ export default function TvPage() {
   const hoogtepunten = data?.hoogtepunten ?? []
   const ruimtes = data?.ruimtes ?? []
   const brancheNieuws = data?.brancheNieuws ?? []
+  const nuNieuws = data?.nuNieuws ?? []
 
-  const tickerTekst = data?.mededelingen?.length
-    ? data.mededelingen.map(m => m.tekst).join('   •   ')
+  const tickerSegmenten: { tekst: string; label?: string }[] = [
+    ...(data?.mededelingen ?? []).map(m => ({ tekst: m.tekst })),
+    ...nuNieuws.map(n => ({ tekst: n.title, label: 'NU.NL' })),
+  ]
+  const tickerTekst = tickerSegmenten.length
+    ? tickerSegmenten.map(s => s.label ? `${s.label}  ${s.tekst}` : s.tekst).join('   ·   ')
     : ''
 
   return (
@@ -550,32 +556,56 @@ export default function TvPage() {
             background: 'rgba(0,0,0,0.15)',
             zIndex: 1,
           }}>
-            Mededelingen
+            {nuNieuws.length > 0 ? 'Nieuws & Mededelingen' : 'Mededelingen'}
           </div>
 
           {/* Scrollende tekst */}
           <div
             ref={tickerRef}
-            style={{
-              display: 'flex',
-              flex: 1,
-              overflow: 'hidden',
-            }}
+            style={{ display: 'flex', flex: 1, overflow: 'hidden' }}
           >
-            <div style={{
-              display: 'flex',
-              whiteSpace: 'nowrap',
-              animation: 'ticker-scroll 60s linear infinite',
-              fontSize: '2vh',
-              fontWeight: 500,
-              color: 'rgba(255,255,255,0.9)',
-              alignItems: 'center',
-              gap: '8vw',
-              paddingLeft: '3vw',
-            }}>
-              <span>{tickerTekst}</span>
-              <span aria-hidden>{tickerTekst}</span>
-            </div>
+            {(() => {
+              const items = tickerSegmenten
+              const renderItems = (ariaHidden?: boolean) => (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, whiteSpace: 'nowrap' }} aria-hidden={ariaHidden}>
+                  {items.map((s, i) => (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      {s.label && (
+                        <span style={{
+                          fontSize: '1vh',
+                          fontWeight: 800,
+                          letterSpacing: '0.1em',
+                          color: '#f0c040',
+                          background: 'rgba(240,192,64,0.12)',
+                          border: '1px solid rgba(240,192,64,0.3)',
+                          borderRadius: '0.3vh',
+                          padding: '0.1vh 0.5vw',
+                          marginRight: '0.8vw',
+                        }}>
+                          {s.label}
+                        </span>
+                      )}
+                      <span style={{ fontSize: '2vh', fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                        {s.tekst}
+                      </span>
+                      <span style={{ color: 'rgba(255,255,255,0.3)', margin: '0 3vw' }}>·</span>
+                    </span>
+                  ))}
+                </span>
+              )
+              return (
+                <div style={{
+                  display: 'flex',
+                  whiteSpace: 'nowrap',
+                  animation: `ticker-scroll ${Math.max(40, tickerSegmenten.length * 8)}s linear infinite`,
+                  alignItems: 'center',
+                  paddingLeft: '3vw',
+                }}>
+                  {renderItems()}
+                  {renderItems(true)}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

@@ -129,24 +129,24 @@ export async function GET() {
     } catch { return null }
   }
 
-  async function fetchBrancheNieuws(): Promise<BrancheNieuwsItem[]> {
+  async function fetchRss(url: string, limit: number): Promise<BrancheNieuwsItem[]> {
     try {
-      const rssUrl = process.env.NIEUWSFIETS_RSS_URL ?? 'https://nieuwsfiets.nu/category/nieuws/feed/'
-      const res = await fetch(rssUrl, {
+      const res = await fetch(url, {
         next: { revalidate: 600 },
         headers: { 'User-Agent': 'DynamoTV/1.0' },
         signal: AbortSignal.timeout(10000),
       })
       if (!res.ok) return []
-      return parseBrancheNieuwsRss(await res.text(), 6)
+      return parseBrancheNieuwsRss(await res.text(), limit)
     } catch { return [] }
   }
 
-  const [weerAmersfoort, weerTurnhout, { ruimtes }, brancheNieuws] = await Promise.all([
+  const [weerAmersfoort, weerTurnhout, { ruimtes }, brancheNieuws, nuNieuws] = await Promise.all([
     fetchWeer('Amersfoort', 52.155, 5.388),
     fetchWeer('Turnhout', 51.323, 4.953),
     getRoomAvailability(),
-    fetchBrancheNieuws(),
+    fetchRss(process.env.NIEUWSFIETS_RSS_URL ?? 'https://nieuwsfiets.nu/category/nieuws/feed/', 6),
+    fetchRss('https://www.nu.nl/rss/Algemeen', 8),
   ])
 
   return NextResponse.json({
@@ -157,6 +157,7 @@ export async function GET() {
     weer: [weerAmersfoort, weerTurnhout].filter(Boolean),
     ruimtes,
     brancheNieuws,
+    nuNieuws,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })
