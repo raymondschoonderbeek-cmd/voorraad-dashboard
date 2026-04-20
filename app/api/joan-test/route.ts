@@ -35,10 +35,10 @@ export async function GET() {
   const over2u = new Date(now.getTime() + 2 * 60 * 60 * 1000)
 
   const [roomsRes, eventsRes] = await Promise.all([
-    fetch('https://portal.getjoan.com/api/v1.0/rooms/', {
+    fetch('https://portal.getjoan.com/api/2.0/rooms/', {
       headers: { Authorization: `Bearer ${token}` },
     }),
-    fetch(`https://portal.getjoan.com/api/v1.0/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`, {
+    fetch(`https://portal.getjoan.com/api/2.0/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   ])
