@@ -65,6 +65,16 @@ export async function GET() {
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
 
+  // Hoogtepunten komende 31 dagen
+  const over31 = new Date(); over31.setDate(over31.getDate() + 31)
+  const { data: hoogtepuntenData } = await supabase
+    .from('tv_hoogtepunten')
+    .select('id, datum, naam, icoon')
+    .eq('actief', true)
+    .gte('datum', vandaag)
+    .lte('datum', over31.toISOString().slice(0, 10))
+    .order('datum', { ascending: true })
+
   // Verjaardagen: alle profielen met geboortedatum
   const { data: profielenData } = await supabase
     .from('profiles')
@@ -119,6 +129,7 @@ export async function GET() {
     nieuws: newsData ?? [],
     mededelingen: mededelingenData ?? [],
     jarigen,
+    hoogtepunten: hoogtepuntenData ?? [],
     weer,
   }, {
     headers: { 'Cache-Control': 'no-store' },

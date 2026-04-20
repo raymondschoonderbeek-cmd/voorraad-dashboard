@@ -16,6 +16,14 @@ type Mededeling = {
   created_at: string
 }
 
+type Hoogtepunt = {
+  id: string
+  datum: string
+  naam: string
+  icoon: string
+  actief: boolean
+}
+
 function statusLabel(m: Mededeling): { label: string; kleur: string; bg: string; border: string } {
   if (!m.actief) return { label: 'Inactief', kleur: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' }
   const vandaag = new Date().toISOString().slice(0, 10)
@@ -48,6 +56,18 @@ export function TvMededelingenTab() {
   const [bewerkVan, setBewerkVan] = useState('')
   const [bewerkTot, setBewerkTot] = useState('')
 
+  // Hoogtepunten
+  const [hoogtepunten, setHoogtepunten] = useState<Hoogtepunt[]>([])
+  const [hoogtepuntenLoading, setHoogtepuntenLoading] = useState(true)
+  const [hoogtepuntError, setHoogtepuntError] = useState<string | null>(null)
+  const [nieuwDatum, setNieuwDatum] = useState('')
+  const [nieuwNaam, setNieuwNaam] = useState('')
+  const [nieuwIcoon, setNieuwIcoon] = useState('📅')
+  const [hpBewerkId, setHpBewerkId] = useState<string | null>(null)
+  const [hpBewerkDatum, setHpBewerkDatum] = useState('')
+  const [hpBewerkNaam, setHpBewerkNaam] = useState('')
+  const [hpBewerkIcoon, setHpBewerkIcoon] = useState('')
+
   const laad = async () => {
     setLoading(true)
     const { data } = await supabase
@@ -59,7 +79,17 @@ export function TvMededelingenTab() {
     setLoading(false)
   }
 
-  useEffect(() => { void laad() }, [])
+  const laadHoogtepunten = async () => {
+    setHoogtepuntenLoading(true)
+    const { data } = await supabase
+      .from('tv_hoogtepunten')
+      .select('id, datum, naam, icoon, actief')
+      .order('datum', { ascending: true })
+    setHoogtepunten(data ?? [])
+    setHoogtepuntenLoading(false)
+  }
+
+  useEffect(() => { void laad(); void laadHoogtepunten() }, [])
 
   const voegToe = async () => {
     if (!nieuweTekst.trim()) return
@@ -120,6 +150,48 @@ export function TvMededelingenTab() {
     void laad()
   }
 
+  const voegHoogtepuntToe = async () => {
+    if (!nieuwDatum || !nieuwNaam.trim()) return
+    setSaving(true); setHoogtepuntError(null)
+    const { error: err } = await supabase
+      .from('tv_hoogtepunten')
+      .insert({ datum: nieuwDatum, naam: nieuwNaam.trim(), icoon: nieuwIcoon || '📅', actief: true })
+    if (err) setHoogtepuntError(err.message)
+    else { setNieuwDatum(''); setNieuwNaam(''); setNieuwIcoon('📅'); void laadHoogtepunten() }
+    setSaving(false)
+  }
+
+  const verwijderHoogtepunt = async (id: string) => {
+    if (!confirm('Hoogtepunt verwijderen?')) return
+    await supabase.from('tv_hoogtepunten').delete().eq('id', id)
+    void laadHoogtepunten()
+  }
+
+  const startHpBewerken = (h: Hoogtepunt) => {
+    setHpBewerkId(h.id)
+    setHpBewerkDatum(h.datum)
+    setHpBewerkNaam(h.naam)
+    setHpBewerkIcoon(h.icoon)
+  }
+
+  const slaHpBewerkt = async (id: string) => {
+    if (!hpBewerkDatum || !hpBewerkNaam.trim()) return
+    setSaving(true)
+    await supabase.from('tv_hoogtepunten').update({
+      datum: hpBewerkDatum,
+      naam: hpBewerkNaam.trim(),
+      icoon: hpBewerkIcoon || '📅',
+    }).eq('id', id)
+    setHpBewerkId(null)
+    setSaving(false)
+    void laadHoogtepunten()
+  }
+
+  const toggleHpActief = async (h: Hoogtepunt) => {
+    await supabase.from('tv_hoogtepunten').update({ actief: !h.actief }).eq('id', h.id)
+    void laadHoogtepunten()
+  }
+
   const inp = 'w-full rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-[#2D457C] focus:ring-1 focus:ring-[#2D457C] text-gray-900 bg-white placeholder:text-gray-400'
   const inpDate = `${inp} cursor-pointer`
 
@@ -142,7 +214,7 @@ export function TvMededelingenTab() {
         </a>
       </div>
 
-      {/* Nieuw formulier */}
+      {/* Nieuw mededeling formulier */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
         <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe mededeling toevoegen</h2>
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
@@ -176,7 +248,7 @@ export function TvMededelingenTab() {
         </button>
       </div>
 
-      {/* Lijst */}
+      {/* Mededelingen lijst */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
         <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Mededelingen op het scherm</h2>
         <p className="text-xs text-gray-400">Actieve mededelingen worden onderaan het TV-scherm getoond als scrollende ticker, binnen de ingestelde periode.</p>
@@ -262,6 +334,137 @@ export function TvMededelingenTab() {
                         >Wijzig</button>
                         <button
                           onClick={() => void verwijder(m.id)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition"
+                        >Verwijder</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Hoogtepunten — nieuw formulier */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div>
+          <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Maand hoogtepunten toevoegen</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Feestdagen, bedrijfsevenementen of andere bijzondere datums. Zichtbaar in de rechterkolom van het TV-scherm.</p>
+        </div>
+        {hoogtepuntError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{hoogtepuntError}</p>}
+        <div className="grid grid-cols-[auto_1fr_auto] gap-3 items-end">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Icoon</label>
+            <input
+              className="w-16 rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-[#2D457C] focus:ring-1 focus:ring-[#2D457C] text-center"
+              value={nieuwIcoon}
+              onChange={e => setNieuwIcoon(e.target.value)}
+              placeholder="📅"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Naam</label>
+            <input
+              className={inp}
+              value={nieuwNaam}
+              onChange={e => setNieuwNaam(e.target.value)}
+              placeholder="Bijv. Koningsdag"
+              onKeyDown={e => { if (e.key === 'Enter') void voegHoogtepuntToe() }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Datum</label>
+            <input type="date" className={inpDate} value={nieuwDatum} onChange={e => setNieuwDatum(e.target.value)} />
+          </div>
+        </div>
+        <button
+          onClick={() => void voegHoogtepuntToe()}
+          disabled={saving || !nieuwDatum || !nieuwNaam.trim()}
+          className="rounded-xl px-5 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40"
+          style={{ background: DYNAMO_BLUE, fontFamily: F }}
+        >
+          {saving ? 'Opslaan…' : 'Toevoegen'}
+        </button>
+      </div>
+
+      {/* Hoogtepunten lijst */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+        <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Hoogtepunten overzicht</h2>
+
+        {hoogtepuntenLoading ? (
+          <p className="text-sm text-gray-400">Laden…</p>
+        ) : hoogtepunten.length === 0 ? (
+          <p className="text-sm text-gray-400">Nog geen hoogtepunten. Voeg er een toe hierboven.</p>
+        ) : (
+          <div className="space-y-2">
+            {hoogtepunten.map(h => {
+              const isPast = h.datum < new Date().toISOString().slice(0, 10)
+              return (
+                <div key={h.id} className={`rounded-xl border overflow-hidden ${isPast && h.actief ? 'border-gray-100 opacity-50' : 'border-gray-100'}`}>
+                  {hpBewerkId === h.id ? (
+                    <div className="p-3 space-y-3 bg-gray-50">
+                      <div className="grid grid-cols-[auto_1fr_auto] gap-3 items-end">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Icoon</label>
+                          <input
+                            className="w-16 rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-[#2D457C] focus:ring-1 focus:ring-[#2D457C] text-center"
+                            value={hpBewerkIcoon}
+                            onChange={e => setHpBewerkIcoon(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Naam</label>
+                          <input
+                            className={inp}
+                            value={hpBewerkNaam}
+                            onChange={e => setHpBewerkNaam(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Escape') setHpBewerkId(null) }}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Datum</label>
+                          <input type="date" className={inpDate} value={hpBewerkDatum} onChange={e => setHpBewerkDatum(e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => void slaHpBewerkt(h.id)}
+                          disabled={saving || !hpBewerkDatum || !hpBewerkNaam.trim()}
+                          className="rounded-lg px-4 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+                          style={{ background: DYNAMO_BLUE }}
+                        >Opslaan</button>
+                        <button
+                          onClick={() => setHpBewerkId(null)}
+                          className="rounded-lg px-4 py-1.5 text-xs font-semibold border border-gray-200 text-gray-500"
+                        >Annuleer</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3">
+                      <span className="text-xl shrink-0">{h.icoon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-800 font-medium leading-snug">{h.naam}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{datumWeergave(h.datum)}</p>
+                      </div>
+                      <div className="flex gap-2 shrink-0 items-center">
+                        {!h.actief && (
+                          <span className="rounded-lg px-2.5 py-1 text-xs font-semibold border bg-gray-50 text-gray-500 border-gray-200">Inactief</span>
+                        )}
+                        <button
+                          onClick={() => void toggleHpActief(h)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-gray-200 text-gray-500 hover:bg-gray-100 transition"
+                        >
+                          {h.actief ? 'Zet uit' : 'Zet aan'}
+                        </button>
+                        <button
+                          onClick={() => startHpBewerken(h)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold border transition hover:opacity-80"
+                          style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+                        >Wijzig</button>
+                        <button
+                          onClick={() => void verwijderHoogtepunt(h.id)}
                           className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition"
                         >Verwijder</button>
                       </div>

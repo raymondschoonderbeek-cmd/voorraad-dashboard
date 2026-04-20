@@ -32,10 +32,13 @@ type Jarige = {
 
 type Weer = { temp: number; label: string; icon: string }
 
+type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
+
 type TvData = {
   nieuws: NewsItem[]
   mededelingen: Mededeling[]
   jarigen: Jarige[]
+  hoogtepunten: Hoogtepunt[]
   weer: Weer | null
 }
 
@@ -102,6 +105,7 @@ export default function TvPage() {
   const bericht = data?.nieuws?.[nieuwsIdx] ?? null
   const vandaagJarig = data?.jarigen?.filter(j => j.vandaag) ?? []
   const komendJarig = data?.jarigen?.filter(j => !j.vandaag) ?? []
+  const hoogtepunten = data?.hoogtepunten ?? []
 
   const tickerTekst = data?.mededelingen?.length
     ? data.mededelingen.map(m => m.tekst).join('   •   ')
@@ -378,8 +382,43 @@ export default function TvPage() {
             </div>
           )}
 
-          {/* Spacer als geen jarigen */}
-          {vandaagJarig.length === 0 && komendJarig.length === 0 && (
+          {/* Maand hoogtepunten */}
+          {hoogtepunten.length > 0 && (
+            <div style={{
+              background: 'rgba(102,145,174,0.07)',
+              border: '1px solid rgba(102,145,174,0.18)',
+              borderRadius: '1.5vh',
+              padding: '2vh 1.8vw',
+            }}>
+              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1.2vh' }}>
+                Hoogtepunten
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9vh' }}>
+                {hoogtepunten.slice(0, 4).map(h => {
+                  const d = new Date(h.datum + 'T00:00:00')
+                  const isVandaag = h.datum === new Date().toISOString().slice(0, 10)
+                  return (
+                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
+                      <span style={{ fontSize: '2vh', fontWeight: isVandaag ? 700 : 600, color: isVandaag ? 'white' : 'rgba(255,255,255,0.82)' }}>
+                        {h.icoon} {h.naam}
+                      </span>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: '1.6vh', color: isVandaag ? '#f0c040' : 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+                          {isVandaag ? 'vandaag' : DAGEN_LANG[d.getDay()]}
+                        </div>
+                        <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>
+                          {d.getDate()} {MAANDEN[d.getMonth()]}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Spacer als geen jarigen en geen hoogtepunten */}
+          {vandaagJarig.length === 0 && komendJarig.length === 0 && hoogtepunten.length === 0 && (
             <div style={{ flex: 1 }} />
           )}
 
