@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth'
 import { getRoomAvailability } from '@/lib/joan'
+import { parseBrancheNieuwsRss, type BrancheNieuwsItem } from '@/lib/branche-nieuws-rss'
 
 // WMO-weercode → leesbare omschrijving + icoon
 function weerInfo(code: number): { label: string; icon: string } {
@@ -125,10 +126,24 @@ export async function GET() {
     } catch { return null }
   }
 
-  const [weerAmersfoort, weerTurnhout, { ruimtes }] = await Promise.all([
+  async function fetchBrancheNieuws(): Promise<BrancheNieuwsItem[]> {
+    try {
+      const rssUrl = process.env.NIEUWSFIETS_RSS_URL ?? 'https://nieuwsfiets.nu/category/nieuws/feed/'
+      const res = await fetch(rssUrl, {
+        next: { revalidate: 600 },
+        headers: { 'User-Agent': 'DynamoTV/1.0' },
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!res.ok) return []
+      return parseBrancheNieuwsRss(await res.text(), 6)
+    } catch { return [] }
+  }
+
+  const [weerAmersfoort, weerTurnhout, { ruimtes }, brancheNieuws] = await Promise.all([
     fetchWeer('Amersfoort', 52.155, 5.388),
     fetchWeer('Turnhout', 51.323, 4.953),
     getRoomAvailability(),
+    fetchBrancheNieuws(),
   ])
 
   return NextResponse.json({
@@ -138,6 +153,7 @@ export async function GET() {
     hoogtepunten: hoogtepuntenData ?? [],
     weer: [weerAmersfoort, weerTurnhout].filter(Boolean),
     ruimtes,
+    brancheNieuws,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })

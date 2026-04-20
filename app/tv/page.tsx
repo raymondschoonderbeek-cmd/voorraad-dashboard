@@ -36,6 +36,7 @@ type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
 type Boeking = { van: string; tot: string }
 type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string; capacity: number; boekingen: Boeking[] }
+type BrancheNieuwsItem = { title: string; link: string; pubDate: string | null }
 
 type TvData = {
   nieuws: NewsItem[]
@@ -44,6 +45,7 @@ type TvData = {
   hoogtepunten: Hoogtepunt[]
   weer: Weer[]
   ruimtes: Ruimte[]
+  brancheNieuws: BrancheNieuwsItem[]
 }
 
 function tijdString(d: Date) {
@@ -67,12 +69,15 @@ function categorieLabel(cat: string) {
 }
 
 type ZijpanelView = 'verjaardagen' | 'hoogtepunten'
+type LinkerView = 'intern' | 'branche'
 
 export default function TvPage() {
   const [data, setData] = useState<TvData | null>(null)
   const [nu, setNu] = useState(new Date())
   const [nieuwsIdx, setNieuwsIdx] = useState(0)
   const [fade, setFade] = useState(true)
+  const [linkerView, setLinkerView] = useState<LinkerView>('intern')
+  const [linkerFade, setLinkerFade] = useState(true)
   const [zijpanelView, setZijpanelView] = useState<ZijpanelView>('verjaardagen')
   const [zijpanelFade, setZijpanelFade] = useState(true)
   const tickerRef = useRef<HTMLDivElement>(null)
@@ -110,6 +115,19 @@ export default function TvPage() {
     return () => clearInterval(t)
   }, [data?.nieuws?.length])
 
+  // Linkerkolom wisselen: intern ↔ branche nieuws elke 30 seconden
+  useEffect(() => {
+    if (!data?.brancheNieuws?.length) return
+    const t = setInterval(() => {
+      setLinkerFade(false)
+      setTimeout(() => {
+        setLinkerView(v => v === 'intern' ? 'branche' : 'intern')
+        setLinkerFade(true)
+      }, 600)
+    }, 30000)
+    return () => clearInterval(t)
+  }, [data?.brancheNieuws?.length])
+
   // Zijpanel rouleren: verjaardagen ↔ hoogtepunten elke 8 seconden
   useEffect(() => {
     const heeftVerjaardagen = (data?.jarigen?.length ?? 0) > 0
@@ -131,6 +149,7 @@ export default function TvPage() {
   const komendJarig = data?.jarigen?.filter(j => !j.vandaag) ?? []
   const hoogtepunten = data?.hoogtepunten ?? []
   const ruimtes = data?.ruimtes ?? []
+  const brancheNieuws = data?.brancheNieuws ?? []
 
   const tickerTekst = data?.mededelingen?.length
     ? data.mededelingen.map(m => m.tekst).join('   •   ')
@@ -210,7 +229,7 @@ export default function TvPage() {
         minHeight: 0,
       }}>
 
-        {/* LINKS: INTERN NIEUWS */}
+        {/* LINKS: INTERN NIEUWS ↔ BRANCHE NIEUWS */}
         <div style={{
           flex: '0 0 60%',
           display: 'flex',
@@ -219,132 +238,109 @@ export default function TvPage() {
           borderRight: '1px solid rgba(102,145,174,0.15)',
           overflow: 'hidden',
         }}>
-          <div style={{
-            fontSize: '1.2vh',
-            fontWeight: 700,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: BLAUW_LICHT,
-            marginBottom: '2vh',
-          }}>
-            Intern Nieuws
+          {/* Label + tab-indicators */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2vh' }}>
+            <div style={{ fontSize: '1.2vh', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: BLAUW_LICHT }}>
+              {linkerView === 'intern' ? 'Intern Nieuws' : 'Branche Nieuws'}
+            </div>
+            {brancheNieuws.length > 0 && (
+              <div style={{ display: 'flex', gap: '0.4vw' }}>
+                {(['intern', 'branche'] as LinkerView[]).map(v => (
+                  <div key={v} style={{
+                    width: v === linkerView ? '1.5vw' : '0.5vw',
+                    height: '0.4vh',
+                    borderRadius: '100px',
+                    background: v === linkerView ? BLAUW_LICHT : 'rgba(255,255,255,0.2)',
+                    transition: 'all 0.4s ease',
+                  }} />
+                ))}
+              </div>
+            )}
           </div>
 
-          {bericht ? (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              transition: 'opacity 0.6s ease',
-              opacity: fade ? 1 : 0,
-            }}>
-              {/* Categorie badge */}
-              <div style={{ marginBottom: '2vh' }}>
-                <span style={{
-                  display: 'inline-block',
-                  padding: '0.4vh 1.2vw',
-                  borderRadius: '100px',
-                  fontSize: '1.2vh',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  background: bericht.is_important
-                    ? 'rgba(240,192,64,0.18)'
-                    : 'rgba(102,145,174,0.18)',
-                  color: bericht.is_important ? '#f0c040' : BLAUW_LICHT,
-                  border: `1px solid ${bericht.is_important ? 'rgba(240,192,64,0.35)' : 'rgba(102,145,174,0.35)'}`,
-                }}>
-                  {bericht.is_important ? '⚡ Belangrijk · ' : ''}{categorieLabel(bericht.category)}
-                </span>
-              </div>
+          <div style={{ flex: 1, minHeight: 0, transition: 'opacity 0.6s ease', opacity: linkerFade ? 1 : 0, display: 'flex', flexDirection: 'column' }}>
 
-              {/* Titel */}
-              <h1 style={{
-                fontSize: 'clamp(2.8vh, 4.5vh, 5.5vh)',
-                fontWeight: 800,
-                lineHeight: 1.15,
-                margin: '0 0 2.5vh',
-                color: 'white',
-                letterSpacing: '-0.02em',
-              }}>
-                {bericht.title}
-              </h1>
-
-              {/* Scheidingslijn */}
-              <div style={{ height: '1px', background: 'rgba(102,145,174,0.25)', marginBottom: '2.5vh', flexShrink: 0 }} />
-
-              {/* Inhoud: body_html als die er is, anders excerpt */}
-              {(bericht.body_html || bericht.excerpt) && (
-                <div style={{
-                  fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)',
-                  lineHeight: 1.75,
-                  color: 'rgba(255,255,255,0.82)',
-                  fontWeight: 400,
-                  flex: 1,
-                  minHeight: 0,
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}>
-                  {bericht.body_html ? (
-                    <div
-                      className="tv-nieuws-body"
-                      dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }}
-                      style={{ maxHeight: '100%', overflow: 'hidden' }}
-                    />
-                  ) : (
-                    <p style={{ margin: 0 }}>{bericht.excerpt}</p>
-                  )}
-                  {/* Vervaagde onderkant zodat afgekapte tekst netjes verdwijnt */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '6vh',
-                    background: 'linear-gradient(to bottom, transparent, #1a2e5a)',
-                    pointerEvents: 'none',
-                  }} />
-                </div>
-              )}
-
-              {/* Datum + paginering */}
-              <div style={{
-                marginTop: '3vh',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1.5vw',
-              }}>
-                <span style={{ fontSize: '1.3vh', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
-                  {new Date(bericht.published_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}
-                </span>
-                {(data?.nieuws?.length ?? 0) > 1 && (
-                  <div style={{ display: 'flex', gap: '0.4vw' }}>
-                    {data!.nieuws.map((_, i) => (
-                      <div key={i} style={{
-                        width: i === nieuwsIdx ? '2vw' : '0.5vw',
-                        height: '0.5vh',
-                        borderRadius: '100px',
-                        background: i === nieuwsIdx ? BLAUW_LICHT : 'rgba(255,255,255,0.2)',
-                        transition: 'all 0.4s ease',
-                      }} />
-                    ))}
+            {/* INTERN NIEUWS */}
+            {linkerView === 'intern' && (
+              bericht ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'opacity 0.6s ease', opacity: fade ? 1 : 0 }}>
+                  <div style={{ marginBottom: '2vh' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '0.4vh 1.2vw',
+                      borderRadius: '100px',
+                      fontSize: '1.2vh',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      background: bericht.is_important ? 'rgba(240,192,64,0.18)' : 'rgba(102,145,174,0.18)',
+                      color: bericht.is_important ? '#f0c040' : BLAUW_LICHT,
+                      border: `1px solid ${bericht.is_important ? 'rgba(240,192,64,0.35)' : 'rgba(102,145,174,0.35)'}`,
+                    }}>
+                      {bericht.is_important ? '⚡ Belangrijk · ' : ''}{categorieLabel(bericht.category)}
+                    </span>
                   </div>
-                )}
+                  <h1 style={{ fontSize: 'clamp(2.8vh, 4.5vh, 5.5vh)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 2.5vh', color: 'white', letterSpacing: '-0.02em' }}>
+                    {bericht.title}
+                  </h1>
+                  <div style={{ height: '1px', background: 'rgba(102,145,174,0.25)', marginBottom: '2.5vh', flexShrink: 0 }} />
+                  {(bericht.body_html || bericht.excerpt) && (
+                    <div style={{ fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)', lineHeight: 1.75, color: 'rgba(255,255,255,0.82)', fontWeight: 400, flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+                      {bericht.body_html ? (
+                        <div className="tv-nieuws-body" dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }} style={{ maxHeight: '100%', overflow: 'hidden' }} />
+                      ) : (
+                        <p style={{ margin: 0 }}>{bericht.excerpt}</p>
+                      )}
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '6vh', background: 'linear-gradient(to bottom, transparent, #1a2e5a)', pointerEvents: 'none' }} />
+                    </div>
+                  )}
+                  <div style={{ marginTop: '3vh', display: 'flex', alignItems: 'center', gap: '1.5vw' }}>
+                    <span style={{ fontSize: '1.3vh', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                      {new Date(bericht.published_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}
+                    </span>
+                    {(data?.nieuws?.length ?? 0) > 1 && (
+                      <div style={{ display: 'flex', gap: '0.4vw' }}>
+                        {data!.nieuws.map((_, i) => (
+                          <div key={i} style={{ width: i === nieuwsIdx ? '2vw' : '0.5vw', height: '0.5vh', borderRadius: '100px', background: i === nieuwsIdx ? BLAUW_LICHT : 'rgba(255,255,255,0.2)', transition: 'all 0.4s ease' }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '2vh' }}>
+                  Geen nieuws beschikbaar
+                </div>
+              )
+            )}
+
+            {/* BRANCHE NIEUWS */}
+            {linkerView === 'branche' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2vh' }}>
+                {brancheNieuws.map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5vw', borderBottom: i < brancheNieuws.length - 1 ? '1px solid rgba(102,145,174,0.12)' : 'none', paddingBottom: i < brancheNieuws.length - 1 ? '2vh' : 0 }}>
+                    <div style={{ fontSize: '1.4vh', fontWeight: 700, color: BLAUW_LICHT, flexShrink: 0, minWidth: '2.5vw', lineHeight: 1.4, paddingTop: '0.2vh' }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 'clamp(1.6vh, 2vh, 2.4vh)', fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                        {item.title}
+                      </p>
+                      {item.pubDate && (
+                        <p style={{ margin: '0.4vh 0 0', fontSize: '1.2vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                          {new Date(item.pubDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ marginTop: '1vh' }}>
+                  <span style={{ fontSize: '1.1vh', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>Bron: NieuwsFiets.nu</span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'rgba(255,255,255,0.25)',
-              fontSize: '2vh',
-            }}>
-              Geen nieuws beschikbaar
-            </div>
-          )}
+            )}
+
+          </div>
         </div>
 
         {/* RECHTS */}
