@@ -54,11 +54,14 @@ export async function GET() {
     .order('published_at', { ascending: false })
     .limit(10)
 
-  // TV mededelingen (actief, gesorteerd)
+  // TV mededelingen (actief + geldigheidsperiode)
+  const vandaag = new Date().toISOString().slice(0, 10)
   const { data: mededelingenData } = await supabase
     .from('tv_mededelingen')
     .select('id, tekst, sort_order')
     .eq('actief', true)
+    .or(`geldig_van.is.null,geldig_van.lte.${vandaag}`)
+    .or(`geldig_tot.is.null,geldig_tot.gte.${vandaag}`)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
 
