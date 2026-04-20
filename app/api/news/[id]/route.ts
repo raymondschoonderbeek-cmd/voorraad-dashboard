@@ -43,6 +43,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     if (c && (await isValidNewsAfdelingSlug(auth.supabase, c))) update.category = c
   }
   if (typeof body.is_important === 'boolean') update.is_important = body.is_important
+  if (typeof body.toon_op_tv === 'boolean') update.toon_op_tv = body.toon_op_tv
   if (body.publish === true && !body.published_at) {
     update.published_at = new Date().toISOString()
   } else if (body.published_at === null) {

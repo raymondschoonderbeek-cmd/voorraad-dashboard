@@ -46,6 +46,7 @@ export async function GET() {
     .select('id, title, excerpt, body_html, category, is_important, published_at')
     .not('published_at', 'is', null)
     .lte('published_at', new Date().toISOString())
+    .eq('toon_op_tv', true)
     .order('published_at', { ascending: false })
     .limit(10)
 

@@ -43,6 +43,7 @@ export function NieuwsBeheerTab() {
   const [bodyHtml, setBodyHtml] = useState('')
   const [category, setCategory] = useState<string>('algemeen')
   const [isImportant, setIsImportant] = useState(false)
+  const [toonOpTv, setToonOpTv] = useState(false)
   const [publishMode, setPublishMode] = useState<PublishMode>('now')
   const [scheduledLocal, setScheduledLocal] = useState(defaultScheduledLocal)
 
@@ -218,6 +219,7 @@ export function NieuwsBeheerTab() {
     setBodyHtml('')
     setCategory(afdelingen[0]?.slug ?? 'algemeen')
     setIsImportant(false)
+    setToonOpTv(false)
     setPublishMode('now')
     setScheduledLocal(defaultScheduledLocal())
   }
@@ -230,6 +232,7 @@ export function NieuwsBeheerTab() {
     setBodyHtml(p.body_html ?? '')
     setCategory(p.category)
     setIsImportant(p.is_important)
+    setToonOpTv(p.toon_op_tv)
     if (!p.published_at) {
       setPublishMode('draft')
       setScheduledLocal(defaultScheduledLocal())
@@ -278,6 +281,7 @@ export function NieuwsBeheerTab() {
           body_html: bodyHtml,
           category,
           is_important: isImportant,
+          toon_op_tv: toonOpTv,
           published_at,
         }
         const res = await fetch(`/api/news/${editing.id}`, {
@@ -294,6 +298,7 @@ export function NieuwsBeheerTab() {
           body_html: bodyHtml,
           category,
           is_important: isImportant,
+          toon_op_tv: toonOpTv,
         }
         if (published_at) body.published_at = published_at
         const res = await fetch('/api/news', {
@@ -391,10 +396,14 @@ export function NieuwsBeheerTab() {
                 )}
               </select>
             </div>
-            <div className="flex items-end pb-1">
+            <div className="flex flex-col gap-2 pb-1">
               <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                 <input type="checkbox" checked={isImportant} onChange={e => setIsImportant(e.target.checked)} className="accent-[#2D457C]" />
                 Belangrijk
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                <input type="checkbox" checked={toonOpTv} onChange={e => setToonOpTv(e.target.checked)} className="accent-[#2D457C]" />
+                📺 Tonen op TV-scherm
               </label>
             </div>
           </div>
@@ -678,6 +687,11 @@ export function NieuwsBeheerTab() {
                     {p.published_at && new Date(p.published_at).getTime() > Date.now() + 30_000 && (
                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,88,12,0.12)', color: '#c2410c' }}>
                         Gepland
+                      </span>
+                    )}
+                    {p.toon_op_tv && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.1)', color: DYNAMO_BLUE }}>
+                        📺 TV
                       </span>
                     )}
                     <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)' }}>

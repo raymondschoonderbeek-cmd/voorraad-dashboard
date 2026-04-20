@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     }
   }
   const is_important = body.is_important === true
+  const toon_op_tv = body.toon_op_tv === true
   let published_at: string | null = null
   if (typeof body.published_at === 'string' && body.published_at.trim() !== '') {
     published_at = body.published_at.trim()
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
       excerpt,
       category,
       is_important,
+      toon_op_tv,
       published_at,
       created_by: auth.user.id,
       updated_at: new Date().toISOString(),
