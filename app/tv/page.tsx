@@ -68,7 +68,7 @@ export default function TvPage() {
 
   const laadData = useCallback(async () => {
     try {
-      const res = await fetch('/api/public/tv-data', { cache: 'no-store' })
+      const res = await fetch('/api/tv-data', { cache: 'no-store' })
       if (res.ok) setData(await res.json() as TvData)
     } catch { /* stil falen */ }
   }, [])

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth } from '@/lib/auth'
 
 // WMO-weercode → leesbare omschrijving + icoon
 function weerInfo(code: number): { label: string; icon: string } {
@@ -38,6 +39,9 @@ function dagenTotVerjaardag(geboortedatum: string): number {
 }
 
 export async function GET() {
+  const { user } = await requireAuth()
+  if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+
   const supabase = createAdminClient()
 
   // Nieuws (laatste 10 gepubliceerde berichten)
@@ -65,8 +69,8 @@ export async function GET() {
     .not('geboortedatum', 'is', null)
 
   // Emails ophalen voor weergave_naam fallback
-  const userIds = (profielenData ?? []).map(p => p.user_id)
   let emailMap: Record<string, string> = {}
+  const userIds = (profielenData ?? []).map(p => p.user_id)
   if (userIds.length > 0) {
     const { data: usersData } = await supabase.auth.admin.listUsers({ perPage: 1000 })
     for (const u of usersData?.users ?? []) {
@@ -92,7 +96,7 @@ export async function GET() {
     })
     .sort((a, b) => a.dagenTot - b.dagenTot)
 
-  // Weer via Open-Meteo (Amsterdam als standaard — geen API-sleutel nodig)
+  // Weer via Open-Meteo (Amsterdam — geen API-sleutel nodig)
   let weer: { temp: number; label: string; icon: string } | null = null
   try {
     const weerRes = await fetch(
