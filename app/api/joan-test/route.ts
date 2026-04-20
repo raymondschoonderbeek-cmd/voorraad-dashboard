@@ -3,6 +3,18 @@ import { requireAuth } from '@/lib/auth'
 
 const JOAN_BASE = 'https://portal.getjoan.com/api/v1.0'
 
+async function tryToken(url: string, method: string, headers: Record<string, string>, body?: string) {
+  try {
+    const res = await fetch(url, { method, headers, body })
+    const text = await res.text()
+    let json: unknown
+    try { json = JSON.parse(text) } catch { json = text }
+    return { url, method, status: res.status, json }
+  } catch (e) {
+    return { url, method, error: String(e) }
+  }
+}
+
 export async function GET() {
   const { user } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
@@ -14,53 +26,51 @@ export async function GET() {
     return NextResponse.json({ error: 'JOAN_CLIENT_ID of JOAN_CLIENT_SECRET niet ingesteld' })
   }
 
-  // Stap 1: token ophalen
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-  let token: string | null = null
-  let tokenRaw: unknown = null
-  try {
-    const tokenRes = await fetch(`${JOAN_BASE}/auth/token/`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    })
-    tokenRaw = await tokenRes.json()
-    token = (tokenRaw as { access_token?: string })?.access_token ?? null
-  } catch (e) {
-    return NextResponse.json({ stap: 'token', error: String(e) })
+
+  // Probeer meerdere token-varianten parallel
+  const results = await Promise.all([
+    tryToken(`${JOAN_BASE}/auth/token/`, 'GET', { Authorization: `Basic ${credentials}` }),
+    tryToken(`${JOAN_BASE}/oauth/token/`, 'POST', {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }, 'grant_type=client_credentials'),
+    tryToken(`${JOAN_BASE}/token/`, 'POST', {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }, 'grant_type=client_credentials'),
+    tryToken(`${JOAN_BASE}/auth/token/`, 'POST', {
+      'Content-Type': 'application/json',
+    }, JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' })),
+  ])
+
+  // Zoek welke variant een access_token teruggaf
+  const werkend = results.find(r => (r as { json?: { access_token?: string } }).json?.access_token)
+
+  if (!werkend) {
+    return NextResponse.json({ bericht: 'Geen van de token-varianten werkte', resultaten: results })
   }
 
-  if (!token) {
-    return NextResponse.json({ stap: 'token_mislukt', tokenRaw })
-  }
+  const token = (werkend as { json: { access_token: string } }).json.access_token
 
-  // Stap 2: rooms ophalen
-  let roomsRaw: unknown = null
-  try {
-    const roomsRes = await fetch(`${JOAN_BASE}/rooms/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    roomsRaw = await roomsRes.json()
-  } catch (e) {
-    return NextResponse.json({ stap: 'rooms', tokenOk: true, error: String(e) })
-  }
+  // Rooms ophalen
+  const roomsRes = await fetch(`${JOAN_BASE}/rooms/`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const roomsRaw = await roomsRes.json()
 
-  // Stap 3: events ophalen (komende 2 uur)
+  // Events ophalen
   const now = new Date()
   const over2u = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-  let eventsRaw: unknown = null
-  try {
-    const eventsRes = await fetch(
-      `${JOAN_BASE}/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    eventsRaw = await eventsRes.json()
-  } catch (e) {
-    eventsRaw = { error: String(e) }
-  }
+  const eventsRes = await fetch(
+    `${JOAN_BASE}/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  const eventsRaw = await eventsRes.json()
 
-  return NextResponse.json({ tokenOk: true, rooms: roomsRaw, events: eventsRaw })
+  return NextResponse.json({
+    tokenVariant: { url: werkend.url, method: werkend.method },
+    rooms: roomsRaw,
+    events: eventsRaw,
+  })
 }
