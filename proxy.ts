@@ -54,6 +54,7 @@ export async function proxy(request: NextRequest) {
     '/api/campagne-fietsen/voorraad/sync',
     '/api/news/digest-cron',
     '/api/webhooks/',
+    '/api/public/',
   ]
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {
