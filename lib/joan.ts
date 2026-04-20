@@ -29,12 +29,37 @@ async function getToken(): Promise<string | null> {
   } catch { return null }
 }
 
+type JoanEvent = {
+  id: string
+  summary: string
+  start: string
+  end: string
+  organizer?: { displayName?: string; email?: string }
+}
+
+type JoanEventGroup = {
+  room: { name: string; email: string }
+  events: JoanEvent[]
+}
+
+type JoanRoomRaw = {
+  name: string
+  email: string
+  capacity: number
+  status: number
+}
+
 export type JoanRoom = {
   id: string
   naam: string
   bezet: boolean
   tot?: string
   geboektDoor?: string
+  capacity: number
+}
+
+function stripBedrijfsnaam(naam: string): string {
+  return naam.replace(/\s*-\s*Dynamo Retail Group$/i, '').trim()
 }
 
 export async function getRoomAvailability(): Promise<JoanRoom[]> {
@@ -43,6 +68,7 @@ export async function getRoomAvailability(): Promise<JoanRoom[]> {
 
   const now = new Date()
   const over2u = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  const nowIso = now.toISOString()
 
   const [roomsRes, eventsRes] = await Promise.all([
     fetch(`${JOAN_BASE}/rooms/`, {
@@ -57,25 +83,26 @@ export async function getRoomAvailability(): Promise<JoanRoom[]> {
 
   if (!roomsRes.ok) return []
 
-  const rooms = await roomsRes.json() as Array<{ id: string; name: string }>
-  const events = eventsRes.ok
-    ? await eventsRes.json() as Array<{
-        room?: { id: string }
-        start: string
-        end: string
-        organizer?: { displayName?: string; email?: string }
-        summary?: string
-      }>
-    : []
+  const roomsJson = await roomsRes.json() as { results: JoanRoomRaw[] }
+  const rooms = roomsJson.results ?? []
 
-  const nowIso = now.toISOString()
-  const actieveEvents = events.filter(e => e.start <= nowIso && e.end > nowIso)
+  const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
+
+  // Bouw map: room email → actief event op dit moment
+  const actiefPerRuimte = new Map<string, JoanEvent>()
+  for (const group of eventGroups) {
+    const actief = group.events.find(e => e.start <= nowIso && e.end > nowIso)
+    if (actief) actiefPerRuimte.set(group.room.email, actief)
+  }
 
   return rooms.map(r => {
-    const event = actieveEvents.find(e => e.room?.id === r.id)
-    if (!event) return { id: r.id, naam: r.name, bezet: false }
-    const tot = new Date(event.end).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-    const geboektDoor = event.organizer?.displayName ?? event.organizer?.email?.split('@')[0]
-    return { id: r.id, naam: r.name, bezet: true, tot, geboektDoor }
+    const event = actiefPerRuimte.get(r.email)
+    if (!event) return { id: r.email, naam: r.name, bezet: false, capacity: r.capacity }
+
+    const tot = new Date(event.end).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
+    const rawNaam = event.organizer?.displayName ?? event.organizer?.email?.split('@')[0] ?? ''
+    const geboektDoor = stripBedrijfsnaam(rawNaam)
+
+    return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity }
   })
 }

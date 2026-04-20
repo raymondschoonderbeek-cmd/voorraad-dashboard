@@ -34,7 +34,7 @@ type Weer = { stad: string; temp: number; label: string; icon: string }
 
 type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
-type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string }
+type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string; capacity: number }
 
 type TvData = {
   nieuws: NewsItem[]
