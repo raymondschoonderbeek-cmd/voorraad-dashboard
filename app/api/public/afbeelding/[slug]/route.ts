@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Geen auth vereist — volledig publieke route
+// Geen auth vereist — volledig publieke route. Proxyt de afbeelding zodat de Supabase-URL verborgen blijft.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -11,7 +11,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('publieke_afbeeldingen')
-    .select('storage_path')
+    .select('storage_path, mime_type')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -23,9 +23,15 @@ export async function GET(
     .from('publieke-afbeeldingen')
     .getPublicUrl(data.storage_path)
 
-  return NextResponse.redirect(urlData.publicUrl, {
-    status: 302,
+  const upstream = await fetch(urlData.publicUrl, { cache: 'no-store' })
+  if (!upstream.ok) {
+    return NextResponse.json({ error: 'Afbeelding niet beschikbaar' }, { status: 502 })
+  }
+
+  return new NextResponse(upstream.body, {
+    status: 200,
     headers: {
+      'Content-Type': data.mime_type || upstream.headers.get('Content-Type') || 'image/jpeg',
       'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
     },
   })
