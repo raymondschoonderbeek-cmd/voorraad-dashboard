@@ -1,3 +1,4 @@
+const JOAN_TOKEN_URL = 'https://portal.getjoan.com/api/token/'
 const JOAN_BASE = 'https://portal.getjoan.com/api/v1.0'
 
 let cachedToken: string | null = null
@@ -12,7 +13,7 @@ async function getToken(): Promise<string | null> {
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
   try {
-    const res = await fetch(`${JOAN_BASE}/auth/token/`, {
+    const res = await fetch(JOAN_TOKEN_URL, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${credentials}`,
