@@ -232,16 +232,20 @@ export default function TvPage() {
                 {bericht.title}
               </h1>
 
+              {/* Scheidingslijn */}
+              <div style={{ height: '1px', background: 'rgba(102,145,174,0.25)', marginBottom: '2.5vh', flexShrink: 0 }} />
+
               {/* Inhoud: body_html als die er is, anders excerpt */}
               {(bericht.body_html || bericht.excerpt) && (
                 <div style={{
-                  fontSize: 'clamp(1.6vh, 2.1vh, 2.6vh)',
-                  lineHeight: 1.7,
-                  color: 'rgba(255,255,255,0.75)',
+                  fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)',
+                  lineHeight: 1.75,
+                  color: 'rgba(255,255,255,0.82)',
                   fontWeight: 400,
-                  overflow: 'hidden',
                   flex: 1,
                   minHeight: 0,
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}>
                   {bericht.body_html ? (
                     <div
@@ -252,6 +256,16 @@ export default function TvPage() {
                   ) : (
                     <p style={{ margin: 0 }}>{bericht.excerpt}</p>
                   )}
+                  {/* Vervaagde onderkant zodat afgekapte tekst netjes verdwijnt */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '6vh',
+                    background: 'linear-gradient(to bottom, transparent, #1a2e5a)',
+                    pointerEvents: 'none',
+                  }} />
                 </div>
               )}
 
@@ -335,15 +349,25 @@ export default function TvPage() {
               <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1.2vh' }}>
                 Komende verjaardagen
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8vh' }}>
-                {komendJarig.slice(0, 5).map(j => (
-                  <div key={j.naam} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '2vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{j.naam}</span>
-                    <span style={{ fontSize: '1.6vh', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
-                      {j.dag} {MAANDEN[j.maand - 1]}
-                    </span>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1vh' }}>
+                {komendJarig.slice(0, 5).map(j => {
+                  const verjaardagDatum = new Date()
+                  verjaardagDatum.setDate(verjaardagDatum.getDate() + j.dagenTot)
+                  const dagNaam = DAGEN_LANG[verjaardagDatum.getDay()]
+                  return (
+                    <div key={j.naam} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
+                      <span style={{ fontSize: '2vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{j.naam}</span>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: '1.6vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>
+                          {dagNaam}
+                        </div>
+                        <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                          {j.dag} {MAANDEN[j.maand - 1]}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -442,16 +466,26 @@ export default function TvPage() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
-        .tv-nieuws-body p { margin: 0 0 1.2vh 0; }
+        .tv-nieuws-body { font-size: inherit; line-height: inherit; }
+        .tv-nieuws-body p { margin: 0 0 1.8vh 0; }
         .tv-nieuws-body p:last-child { margin-bottom: 0; }
-        .tv-nieuws-body ul, .tv-nieuws-body ol { margin: 0 0 1.2vh 2vw; padding: 0; }
-        .tv-nieuws-body li { margin-bottom: 0.4vh; }
-        .tv-nieuws-body strong, .tv-nieuws-body b { color: rgba(255,255,255,0.95); font-weight: 700; }
-        .tv-nieuws-body h1, .tv-nieuws-body h2, .tv-nieuws-body h3 { color: white; font-weight: 700; margin: 0 0 1vh 0; line-height: 1.2; }
+        .tv-nieuws-body br + br { display: block; margin-top: 1.4vh; }
+        .tv-nieuws-body ul { margin: 0 0 1.8vh 0; padding: 0; list-style: none; }
+        .tv-nieuws-body ol { margin: 0 0 1.8vh 0; padding: 0; list-style: none; counter-reset: tv-ol; }
+        .tv-nieuws-body ul li { padding-left: 1.4em; position: relative; margin-bottom: 0.8vh; }
+        .tv-nieuws-body ul li::before { content: '—'; position: absolute; left: 0; color: #6691AE; }
+        .tv-nieuws-body ol li { padding-left: 1.8em; position: relative; margin-bottom: 0.8vh; counter-increment: tv-ol; }
+        .tv-nieuws-body ol li::before { content: counter(tv-ol) '.'; position: absolute; left: 0; color: #6691AE; font-weight: 700; }
+        .tv-nieuws-body strong, .tv-nieuws-body b { color: white; font-weight: 700; }
+        .tv-nieuws-body em, .tv-nieuws-body i { color: rgba(255,255,255,0.7); font-style: italic; }
+        .tv-nieuws-body h1, .tv-nieuws-body h2, .tv-nieuws-body h3 { color: white; font-weight: 700; margin: 0 0 1.2vh 0; line-height: 1.2; }
+        .tv-nieuws-body h2 { font-size: 1.15em; }
+        .tv-nieuws-body h3 { font-size: 1.05em; }
         .tv-nieuws-body a { color: #6691AE; text-decoration: none; }
         .tv-nieuws-body img { display: none; }
-        .tv-nieuws-body hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5vh 0; }
-        .tv-nieuws-body blockquote { border-left: 3px solid #6691AE; padding-left: 1vw; margin: 0 0 1.2vh 0; color: rgba(255,255,255,0.6); }
+        .tv-nieuws-body hr { border: none; border-top: 1px solid rgba(255,255,255,0.12); margin: 2vh 0; }
+        .tv-nieuws-body blockquote { border-left: 3px solid #6691AE; padding-left: 1.2vw; margin: 0 0 1.8vh 0; color: rgba(255,255,255,0.65); font-style: italic; }
+        .tv-nieuws-body table { display: none; }
       `}</style>
     </div>
   )
