@@ -24,35 +24,34 @@ export async function GET() {
   }
 
   const b64 = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-  const bases = [
-    'https://portal.getjoan.com/api/v1.0',
-    'https://portal.getjoan.com/api/v2.0',
-    'https://portal.getjoan.com/api',
-  ]
-  const tokenPaths = ['/oauth/token/', '/auth/token/', '/token/']
-
-  // Probeer GET op /oauth/token/ (soms accepteert het GET ipv POST)
-  // Probeer directe Bearer met de secret (sommige APIs, geen token exchange)
-  // Probeer alle base + path combis
 
   const tests = await Promise.all([
-    // GET varianten
-    ...bases.flatMap(base => tokenPaths.map(path =>
-      probe(`${base}${path}`, 'GET', { Authorization: `Basic ${b64}` })
-    )),
-    // Direct Bearer met client_secret als token
-    probe('https://portal.getjoan.com/api/v1.0/rooms/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
-    probe('https://portal.getjoan.com/api/v2.0/rooms/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
-    // Token auth
-    probe('https://portal.getjoan.com/api/v1.0/rooms/', 'GET', { Authorization: `Token ${clientSecret}` }),
-    probe('https://portal.getjoan.com/api/v2.0/rooms/', 'GET', { Authorization: `Token ${clientSecret}` }),
-    // Me endpoint om base URL te vinden
-    probe('https://portal.getjoan.com/api/v1.0/me/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
-    probe('https://portal.getjoan.com/api/v2.0/me/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    // v2 token endpoints
+    probe('https://portal.getjoan.com/api/v2/oauth/token/', 'POST', {
+      Authorization: `Basic ${b64}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }, 'grant_type=client_credentials'),
+    probe('https://portal.getjoan.com/api/v2/auth/token/', 'POST', {
+      Authorization: `Basic ${b64}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }, 'grant_type=client_credentials'),
+    probe('https://portal.getjoan.com/api/v2/token/', 'POST', {
+      Authorization: `Basic ${b64}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }, 'grant_type=client_credentials'),
+    // v2 direct bearer
+    probe('https://portal.getjoan.com/api/v2/rooms/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    probe('https://portal.getjoan.com/api/v2/me/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    probe('https://portal.getjoan.com/api/v2/rooms/', 'GET', { Authorization: `Token ${clientSecret}` }),
+    // OpenAPI spec ophalen met credentials
+    probe('https://portal.getjoan.com/api/docs/v2/openapi.json', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    probe('https://portal.getjoan.com/api/v2/schema/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    // v1 direct bearer (nog een keer met juiste secret)
+    probe('https://portal.getjoan.com/api/v1.0/rooms/', 'GET', { Authorization: `Bearer ${clientId}` }),
+    probe('https://portal.getjoan.com/api/v1.0/me/', 'GET', { Authorization: `Token ${clientId}` }),
   ])
 
-  // Filter interessante responses (niet 404 op onbekende paden)
-  const interessant = tests.filter(t => t.status !== 404 || String(t.json).includes('token') || String(t.json).includes('room'))
+  const interessant = tests.filter(t => t.status !== 404)
 
   return NextResponse.json({ interessant, alle: tests })
 }
