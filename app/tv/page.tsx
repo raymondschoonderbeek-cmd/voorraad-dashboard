@@ -134,15 +134,13 @@ export default function TvPage() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/dynamo-retail-group-logo.png"
+            src="/dynamo-retail-group-logo-tv.png"
             alt="Dynamo Retail Group"
             style={{
               objectFit: 'contain',
-              height: '5.5vh',
+              height: '6vh',
               width: 'auto',
               display: 'block',
-              filter: 'invert(1)',
-              mixBlendMode: 'screen',
             }}
           />
         </div>
