@@ -326,15 +326,50 @@ export default function TvPage() {
           )}
         </div>
 
-        {/* RECHTS: JARIGEN + WEER */}
+        {/* RECHTS */}
         <div style={{
           flex: '0 0 40%',
           display: 'flex',
           flexDirection: 'column',
-          padding: '3vh 2.5vw 2vh 2vw',
-          gap: '2.5vh',
+          padding: '2vh 2.5vw 2vh 2vw',
+          gap: '1.8vh',
           overflow: 'hidden',
         }}>
+
+          {/* Ruimtes beschikbaarheid — altijd bovenaan */}
+          {ruimtes.length > 0 && (
+            <div style={{
+              background: 'rgba(102,145,174,0.07)',
+              border: '1px solid rgba(102,145,174,0.18)',
+              borderRadius: '1.5vh',
+              padding: '1.6vh 1.8vw',
+              flexShrink: 0,
+            }}>
+              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1vh' }}>
+                Ruimtes
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7vh' }}>
+                {ruimtes.map(r => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
+                    <div style={{
+                      width: '0.9vh',
+                      height: '0.9vh',
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: r.bezet ? '#ef4444' : '#22c55e',
+                      boxShadow: r.bezet ? '0 0 5px rgba(239,68,68,0.6)' : '0 0 5px rgba(34,197,94,0.6)',
+                    }} />
+                    <span style={{ fontSize: '1.7vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.naam}
+                    </span>
+                    <span style={{ fontSize: '1.3vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? 'rgba(239,68,68,0.85)' : 'rgba(34,197,94,0.85)' }}>
+                      {r.bezet ? (r.tot ? `bezet t/m ${r.tot}` : 'bezet') : 'vrij'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Vandaag jarig */}
           {vandaagJarig.length > 0 && (
@@ -342,13 +377,14 @@ export default function TvPage() {
               background: 'rgba(240,192,64,0.08)',
               border: '1px solid rgba(240,192,64,0.25)',
               borderRadius: '1.5vh',
-              padding: '2vh 1.8vw',
+              padding: '1.6vh 1.8vw',
+              flexShrink: 0,
             }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0c040', marginBottom: '1.2vh' }}>
+              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0c040', marginBottom: '0.8vh' }}>
                 🎂 Vandaag Jarig
               </div>
               {vandaagJarig.map(j => (
-                <div key={j.naam} style={{ fontSize: '3vh', fontWeight: 700, color: 'white', lineHeight: 1.3 }}>
+                <div key={j.naam} style={{ fontSize: '2.6vh', fontWeight: 700, color: 'white', lineHeight: 1.3 }}>
                   {j.naam}
                 </div>
               ))}
@@ -361,27 +397,23 @@ export default function TvPage() {
               background: 'rgba(102,145,174,0.07)',
               border: '1px solid rgba(102,145,174,0.18)',
               borderRadius: '1.5vh',
-              padding: '2vh 1.8vw',
-              flex: vandaagJarig.length === 0 ? 'none' : undefined,
+              padding: '1.6vh 1.8vw',
+              flexShrink: 0,
             }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1.2vh' }}>
+              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '0.8vh' }}>
                 Komende verjaardagen
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1vh' }}>
-                {komendJarig.slice(0, 5).map(j => {
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8vh' }}>
+                {komendJarig.slice(0, 3).map(j => {
                   const verjaardagDatum = new Date()
                   verjaardagDatum.setDate(verjaardagDatum.getDate() + j.dagenTot)
                   const dagNaam = DAGEN_LANG[verjaardagDatum.getDay()]
                   return (
                     <div key={j.naam} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
-                      <span style={{ fontSize: '2vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{j.naam}</span>
+                      <span style={{ fontSize: '1.8vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{j.naam}</span>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '1.6vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>
-                          {dagNaam}
-                        </div>
-                        <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
-                          {j.dag} {MAANDEN[j.maand - 1]}
-                        </div>
+                        <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{dagNaam}</div>
+                        <div style={{ fontSize: '1.2vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>{j.dag} {MAANDEN[j.maand - 1]}</div>
                       </div>
                     </div>
                   )
@@ -396,25 +428,26 @@ export default function TvPage() {
               background: 'rgba(102,145,174,0.07)',
               border: '1px solid rgba(102,145,174,0.18)',
               borderRadius: '1.5vh',
-              padding: '2vh 1.8vw',
+              padding: '1.6vh 1.8vw',
+              flexShrink: 0,
             }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1.2vh' }}>
+              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '0.8vh' }}>
                 Hoogtepunten
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9vh' }}>
-                {hoogtepunten.slice(0, 4).map(h => {
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7vh' }}>
+                {hoogtepunten.slice(0, 3).map(h => {
                   const d = new Date(h.datum + 'T00:00:00')
                   const isVandaag = h.datum === new Date().toISOString().slice(0, 10)
                   return (
                     <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1vw' }}>
-                      <span style={{ fontSize: '2vh', fontWeight: isVandaag ? 700 : 600, color: isVandaag ? 'white' : 'rgba(255,255,255,0.82)' }}>
+                      <span style={{ fontSize: '1.8vh', fontWeight: isVandaag ? 700 : 600, color: isVandaag ? 'white' : 'rgba(255,255,255,0.82)' }}>
                         {h.icoon} {h.naam}
                       </span>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '1.6vh', color: isVandaag ? '#f0c040' : 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+                        <div style={{ fontSize: '1.4vh', color: isVandaag ? '#f0c040' : 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
                           {isVandaag ? 'vandaag' : DAGEN_LANG[d.getDay()]}
                         </div>
-                        <div style={{ fontSize: '1.4vh', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>
+                        <div style={{ fontSize: '1.2vh', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>
                           {d.getDate()} {MAANDEN[d.getMonth()]}
                         </div>
                       </div>
@@ -423,45 +456,6 @@ export default function TvPage() {
                 })}
               </div>
             </div>
-          )}
-
-          {/* Ruimtes beschikbaarheid */}
-          {ruimtes.length > 0 && (
-            <div style={{
-              background: 'rgba(102,145,174,0.07)',
-              border: '1px solid rgba(102,145,174,0.18)',
-              borderRadius: '1.5vh',
-              padding: '2vh 1.8vw',
-            }}>
-              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1.2vh' }}>
-                Ruimtes
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8vh' }}>
-                {ruimtes.map(r => (
-                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
-                    <div style={{
-                      width: '1vh',
-                      height: '1vh',
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: r.bezet ? '#ef4444' : '#22c55e',
-                      boxShadow: r.bezet ? '0 0 6px rgba(239,68,68,0.5)' : '0 0 6px rgba(34,197,94,0.5)',
-                    }} />
-                    <span style={{ fontSize: '1.8vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.naam}
-                    </span>
-                    <span style={{ fontSize: '1.4vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? 'rgba(239,68,68,0.85)' : 'rgba(34,197,94,0.85)' }}>
-                      {r.bezet ? (r.tot ? `bezet t/m ${r.tot}` : 'bezet') : 'vrij'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Spacer als geen content */}
-          {vandaagJarig.length === 0 && komendJarig.length === 0 && hoogtepunten.length === 0 && ruimtes.length === 0 && (
-            <div style={{ flex: 1 }} />
           )}
 
         </div>
