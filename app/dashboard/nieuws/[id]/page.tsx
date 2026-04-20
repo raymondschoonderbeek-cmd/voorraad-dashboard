@@ -7,6 +7,7 @@ import useSWR, { useSWRConfig } from 'swr'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
 import type { DrgNewsPost } from '@/lib/news-types'
+import { normalizeBodyHtml } from '@/lib/news-body'
 
 async function fetcherNews(url: string) {
   const r = await fetch(url)
@@ -136,7 +137,7 @@ export default function NieuwsDetailPage() {
             )}
             <div
               className="news-body-html mt-6"
-              dangerouslySetInnerHTML={{ __html: post.body_html || '<p><em>Geen inhoud.</em></p>' }}
+              dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(post.body_html) || '<p><em>Geen inhoud.</em></p>' }}
             />
             <div className="mt-8 pt-6 border-t" style={{ borderColor: dashboardUi.sectionDivider }}>
               <p className="text-xs m-0 mb-2" style={{ color: dashboardUi.textMuted }}>

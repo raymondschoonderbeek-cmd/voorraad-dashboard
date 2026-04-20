@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { normalizeBodyHtml } from '@/lib/news-body'
 import { DYNAMO_BLUE, dashboardUi } from '@/lib/theme'
 import type { DrgNewsPost } from '@/lib/news-types'
 import type { DrgNewsAfdeling } from '@/lib/news-afdelingen'
@@ -616,7 +617,7 @@ export function NieuwsBeheerTab() {
               <div
                 className="news-body-html mt-6"
                 dangerouslySetInnerHTML={{
-                  __html: bodyHtml.trim() ? bodyHtml : '<p><em>Geen inhoud — typ hierboven HTML of plak tekst.</em></p>',
+                  __html: bodyHtml.trim() ? normalizeBodyHtml(bodyHtml) : '<p><em>Geen inhoud — typ hierboven HTML of plak tekst.</em></p>',
                 }}
               />
             </div>

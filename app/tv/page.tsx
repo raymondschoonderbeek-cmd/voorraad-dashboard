@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { normalizeBodyHtml } from '@/lib/news-body'
 
 const BLAUW = '#2D457C'
 const BLAUW_LICHT = '#6691AE'
@@ -250,7 +251,7 @@ export default function TvPage() {
                   {bericht.body_html ? (
                     <div
                       className="tv-nieuws-body"
-                      dangerouslySetInnerHTML={{ __html: bericht.body_html }}
+                      dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }}
                       style={{ maxHeight: '100%', overflow: 'hidden' }}
                     />
                   ) : (
