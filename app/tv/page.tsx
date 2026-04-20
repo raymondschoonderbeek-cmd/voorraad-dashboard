@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import Image from 'next/image'
 
 const BLAUW = '#2D457C'
 const BLAUW_LICHT = '#6691AE'
@@ -131,13 +130,11 @@ export default function TvPage() {
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/dynamo-retail-group-logo.png"
             alt="Dynamo Retail Group"
-            width={160}
-            height={48}
-            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', height: '5vh', width: 'auto' }}
-            priority
+            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', height: '5vh', width: 'auto', display: 'block' }}
           />
         </div>
 
