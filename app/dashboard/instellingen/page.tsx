@@ -81,6 +81,8 @@ export default function InstellingenPage() {
   const { data: profileData, mutate: mutateProfile } = useSWR<{
     lunch_module_enabled?: boolean
     lunch_reminder_opt_out?: boolean
+    geboortedatum?: string | null
+    weergave_naam?: string | null
   }>('/api/profile', fetcher)
   const { data: newsPrefData, mutate: mutateNewsPref } = useSWR<{ weekly_digest_enabled: boolean }>(
     '/api/news/preferences',
@@ -119,6 +121,32 @@ export default function InstellingenPage() {
   const lunchReminderOptOut = profileData?.lunch_reminder_opt_out === true
   const weeklyDigestEnabled = newsPrefData?.weekly_digest_enabled !== false
   const [newsPrefSaving, setNewsPrefSaving] = useState(false)
+  const [weergaveNaam, setWeergaveNaam] = useState('')
+  const [geboortedatum, setGeboortedatum] = useState('')
+  const [profielSaving, setProfielSaving] = useState(false)
+  useEffect(() => {
+    if (profileData) {
+      setWeergaveNaam(profileData.weergave_naam ?? '')
+      setGeboortedatum(profileData.geboortedatum ?? '')
+    }
+  }, [profileData?.weergave_naam, profileData?.geboortedatum])
+
+  async function slaProfielOp() {
+    setProfielSaving(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weergave_naam: weergaveNaam, geboortedatum: geboortedatum || null }),
+      })
+      if (!res.ok) throw new Error('Opslaan mislukt')
+      mutateProfile({ ...profileData, weergave_naam: weergaveNaam || null, geboortedatum: geboortedatum || null })
+      toast('Profiel opgeslagen.', 'success')
+    } catch {
+      toast('Profiel kon niet worden opgeslagen.', 'error')
+    }
+    setProfielSaving(false)
+  }
 
   async function toggleLunchModule(enabled: boolean) {
     setLunchSaving(true)
@@ -571,6 +599,46 @@ export default function InstellingenPage() {
             </div>
           </div>
         )}
+
+        {/* Mijn profiel (TV-scherm) */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-bold">👤 Mijn profiel</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Je naam en verjaardag worden getoond op het TV-scherm in het kantoor.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Weergavenaam</label>
+              <input
+                type="text"
+                value={weergaveNaam}
+                onChange={e => setWeergaveNaam(e.target.value)}
+                placeholder="Bijv. Jan de Vries"
+                className="w-full rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-900 bg-white placeholder:text-gray-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Geboortedatum</label>
+              <input
+                type="date"
+                value={geboortedatum}
+                onChange={e => setGeboortedatum(e.target.value)}
+                className="w-full rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-900 bg-white"
+              />
+              <p className="text-xs text-gray-400 mt-1">Alleen dag en maand worden op het TV-scherm getoond.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => void slaProfielOp()}
+            disabled={profielSaving}
+            className="rounded-xl px-5 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40"
+            style={{ background: DYNAMO_BLUE }}
+          >
+            {profielSaving ? 'Opslaan…' : 'Profiel opslaan'}
+          </button>
+        </div>
 
         {/* Lunch module */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">

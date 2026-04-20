@@ -55,6 +55,7 @@ export async function proxy(request: NextRequest) {
     '/api/news/digest-cron',
     '/api/webhooks/',
     '/api/public/',
+    '/tv',
   ]
   const isPublic = publicPaths.some(p => path.startsWith(p))
   if (!user && !isPublic) {

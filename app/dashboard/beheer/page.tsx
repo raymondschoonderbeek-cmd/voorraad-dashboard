@@ -10,6 +10,7 @@ import { TrustedIpsTab } from '@/components/beheer/TrustedIpsTab'
 import { BekendeMerkenTab } from '@/components/beheer/BekendeMerkenTab'
 import { ImportTab } from '@/components/beheer/ImportTab'
 import { PubliekeAfbeeldingenTab } from '@/components/beheer/PubliekeAfbeeldingenTab'
+import { TvMededelingenTab } from '@/components/beheer/TvMededelingenTab'
 import { DASHBOARD_MODULE_ORDER, type DashboardModuleId, type LandCode } from '@/lib/dashboard-modules'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
@@ -54,7 +55,7 @@ type Winkel = {
   vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
 }
-type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen' | 'nieuws' | 'afbeeldingen'
+type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen' | 'nieuws' | 'afbeeldingen' | 'tv'
 
 const IconArrowLeft = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1071,6 +1072,7 @@ export default function BeheerPage() {
           { key: 'campagnefietsen', label: 'Fietsen', icon: '🚲' },
           { key: 'nieuws', label: 'Nieuws', icon: '📰' },
           { key: 'afbeeldingen', label: 'Afbeeldingen', icon: '🖼️' },
+          { key: 'tv', label: 'TV', icon: '📺' },
         ]
       : canManageInterneNieuws
         ? [
@@ -2230,6 +2232,7 @@ export default function BeheerPage() {
         {tab === 'campagnefietsen' && isAdmin && <CampagneFietsenBeheerTab />}
         {tab === 'nieuws' && (isAdmin || canManageInterneNieuws) && <NieuwsBeheerTab />}
         {tab === 'afbeeldingen' && isAdmin && <PubliekeAfbeeldingenTab />}
+        {tab === 'tv' && isAdmin && <TvMededelingenTab />}
 
         {/* ── TAB: BEKENDE MERKEN (alleen admin) ── */}
         {tab === 'merken' && <BekendeMerkenTab />}
