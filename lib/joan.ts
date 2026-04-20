@@ -59,6 +59,8 @@ type JoanRoomRaw = {
   status: number
 }
 
+export type Boeking = { van: string; tot: string }
+
 export type JoanRoom = {
   id: string
   naam: string
@@ -66,10 +68,15 @@ export type JoanRoom = {
   tot?: string
   geboektDoor?: string
   capacity: number
+  boekingen: Boeking[]
 }
 
 function stripBedrijfsnaam(naam: string): string {
   return naam.replace(/\s*-\s*Dynamo Retail Group$/i, '').trim()
+}
+
+function tijdLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
 }
 
 export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joanDebug: string }> {
@@ -77,8 +84,11 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
   if (!token) return { ruimtes: [], joanDebug: tokenDebug }
 
   const now = new Date()
-  const over2u = new Date(now.getTime() + 2 * 60 * 60 * 1000)
   const nowIso = now.toISOString()
+
+  // Haal events op voor de rest van vandaag
+  const eindVanDag = new Date()
+  eindVanDag.setHours(23, 59, 59, 999)
 
   try {
     const [roomsRes, eventsRes] = await Promise.all([
@@ -86,7 +96,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
-      fetch(`${JOAN_BASE}/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`, {
+      fetch(`${JOAN_BASE}/events/?start=${nowIso}&end=${eindVanDag.toISOString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
@@ -101,22 +111,29 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
     const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
 
-    const actiefPerRuimte = new Map<string, JoanEvent>()
+    // Bouw map: room email → gesorteerde events van vandaag
+    const eventsPerRuimte = new Map<string, JoanEvent[]>()
     for (const group of eventGroups) {
-      const actief = group.events.find(e => e.start <= nowIso && e.end > nowIso)
-      if (actief) actiefPerRuimte.set(group.room.email, actief)
+      const gesorteerd = [...group.events].sort((a, b) => a.start.localeCompare(b.start))
+      eventsPerRuimte.set(group.room.email, gesorteerd)
     }
 
     const ruimtes = rooms.map(r => {
-      const event = actiefPerRuimte.get(r.email)
-      if (!event) return { id: r.email, naam: r.name, bezet: false, capacity: r.capacity }
-      const tot = new Date(event.end).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
-      const rawNaam = event.organizer?.displayName ?? event.organizer?.email?.split('@')[0] ?? ''
+      const events = eventsPerRuimte.get(r.email) ?? []
+      const actief = events.find(e => e.start <= nowIso && e.end > nowIso)
+      const boekingen: Boeking[] = events.map(e => ({ van: tijdLabel(e.start), tot: tijdLabel(e.end) }))
+
+      if (!actief) {
+        return { id: r.email, naam: r.name, bezet: false, capacity: r.capacity, boekingen }
+      }
+
+      const tot = tijdLabel(actief.end)
+      const rawNaam = actief.organizer?.displayName ?? actief.organizer?.email?.split('@')[0] ?? ''
       const geboektDoor = stripBedrijfsnaam(rawNaam)
-      return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity }
+      return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity, boekingen }
     })
 
-    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, ${actiefPerRuimte.size} bezet` }
+    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, ${ruimtes.filter(r => r.bezet).length} bezet` }
   } catch (e) {
     return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }

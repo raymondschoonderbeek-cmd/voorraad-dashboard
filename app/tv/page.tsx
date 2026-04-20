@@ -34,7 +34,8 @@ type Weer = { stad: string; temp: number; label: string; icon: string }
 
 type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
-type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string; capacity: number }
+type Boeking = { van: string; tot: string }
+type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string; capacity: number; boekingen: Boeking[] }
 
 type TvData = {
   nieuws: NewsItem[]
@@ -346,25 +347,45 @@ export default function TvPage() {
               flexShrink: 0,
             }}>
               <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1vh' }}>
-                Ruimtes
+                Ruimtes vandaag
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7vh' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9vh' }}>
                 {ruimtes.map(r => (
-                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
-                    <div style={{
-                      width: '0.9vh',
-                      height: '0.9vh',
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: r.bezet ? '#ef4444' : '#22c55e',
-                      boxShadow: r.bezet ? '0 0 5px rgba(239,68,68,0.6)' : '0 0 5px rgba(34,197,94,0.6)',
-                    }} />
-                    <span style={{ fontSize: '1.7vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.naam}
-                    </span>
-                    <span style={{ fontSize: '1.3vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? 'rgba(239,68,68,0.85)' : 'rgba(34,197,94,0.85)' }}>
-                      {r.bezet ? (r.tot ? `bezet t/m ${r.tot}` : 'bezet') : 'vrij'}
-                    </span>
+                  <div key={r.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7vw', marginBottom: '0.3vh' }}>
+                      <div style={{
+                        width: '0.85vh',
+                        height: '0.85vh',
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        background: r.bezet ? '#ef4444' : '#22c55e',
+                        boxShadow: r.bezet ? '0 0 5px rgba(239,68,68,0.6)' : '0 0 5px rgba(34,197,94,0.6)',
+                      }} />
+                      <span style={{ fontSize: '1.6vh', fontWeight: 700, color: 'white', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.naam}
+                      </span>
+                      <span style={{ fontSize: '1.3vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? '#f87171' : '#4ade80' }}>
+                        {r.bezet ? `bezet t/m ${r.tot}` : 'vrij'}
+                      </span>
+                    </div>
+                    {r.boekingen.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4vw', paddingLeft: '1.5vw' }}>
+                        {r.boekingen.map((b, i) => (
+                          <span key={i} style={{
+                            fontSize: '1.1vh',
+                            fontWeight: 500,
+                            padding: '0.15vh 0.5vw',
+                            borderRadius: '0.4vh',
+                            background: 'rgba(239,68,68,0.15)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            color: 'rgba(248,113,113,0.9)',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {b.van}–{b.tot}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
