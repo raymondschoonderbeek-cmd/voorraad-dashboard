@@ -131,12 +131,18 @@ export default function TvPage() {
         flexShrink: 0,
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1vw' }}>
+        <div style={{
+          background: 'rgba(255,255,255,0.92)',
+          borderRadius: '1vh',
+          padding: '0.8vh 1.4vw',
+          display: 'flex',
+          alignItems: 'center',
+        }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/dynamo-retail-group-logo.png"
             alt="Dynamo Retail Group"
-            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', height: '5vh', width: 'auto', display: 'block' }}
+            style={{ objectFit: 'contain', height: '4vh', width: 'auto', display: 'block' }}
           />
         </div>
 
