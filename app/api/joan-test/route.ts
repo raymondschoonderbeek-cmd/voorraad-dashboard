@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 
-const JOAN_BASE = 'https://portal.getjoan.com/api/v1.0'
-
-async function tryToken(url: string, method: string, headers: Record<string, string>, body?: string) {
+async function probe(url: string, method: string, headers: Record<string, string>, body?: string) {
   try {
     const res = await fetch(url, { method, headers, body })
     const text = await res.text()
@@ -11,7 +9,7 @@ async function tryToken(url: string, method: string, headers: Record<string, str
     try { json = JSON.parse(text) } catch { json = text }
     return { url, method, status: res.status, json }
   } catch (e) {
-    return { url, method, error: String(e) }
+    return { url, method, status: 0, json: String(e) }
   }
 }
 
@@ -21,56 +19,40 @@ export async function GET() {
 
   const clientId = process.env.JOAN_CLIENT_ID
   const clientSecret = process.env.JOAN_CLIENT_SECRET
-
   if (!clientId || !clientSecret) {
     return NextResponse.json({ error: 'JOAN_CLIENT_ID of JOAN_CLIENT_SECRET niet ingesteld' })
   }
 
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  const b64 = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  const bases = [
+    'https://portal.getjoan.com/api/v1.0',
+    'https://portal.getjoan.com/api/v2.0',
+    'https://portal.getjoan.com/api',
+  ]
+  const tokenPaths = ['/oauth/token/', '/auth/token/', '/token/']
 
-  // Probeer meerdere token-varianten parallel
-  const results = await Promise.all([
-    tryToken(`${JOAN_BASE}/auth/token/`, 'GET', { Authorization: `Basic ${credentials}` }),
-    tryToken(`${JOAN_BASE}/oauth/token/`, 'POST', {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }, 'grant_type=client_credentials'),
-    tryToken(`${JOAN_BASE}/token/`, 'POST', {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }, 'grant_type=client_credentials'),
-    tryToken(`${JOAN_BASE}/auth/token/`, 'POST', {
-      'Content-Type': 'application/json',
-    }, JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' })),
+  // Probeer GET op /oauth/token/ (soms accepteert het GET ipv POST)
+  // Probeer directe Bearer met de secret (sommige APIs, geen token exchange)
+  // Probeer alle base + path combis
+
+  const tests = await Promise.all([
+    // GET varianten
+    ...bases.flatMap(base => tokenPaths.map(path =>
+      probe(`${base}${path}`, 'GET', { Authorization: `Basic ${b64}` })
+    )),
+    // Direct Bearer met client_secret als token
+    probe('https://portal.getjoan.com/api/v1.0/rooms/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    probe('https://portal.getjoan.com/api/v2.0/rooms/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    // Token auth
+    probe('https://portal.getjoan.com/api/v1.0/rooms/', 'GET', { Authorization: `Token ${clientSecret}` }),
+    probe('https://portal.getjoan.com/api/v2.0/rooms/', 'GET', { Authorization: `Token ${clientSecret}` }),
+    // Me endpoint om base URL te vinden
+    probe('https://portal.getjoan.com/api/v1.0/me/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
+    probe('https://portal.getjoan.com/api/v2.0/me/', 'GET', { Authorization: `Bearer ${clientSecret}` }),
   ])
 
-  // Zoek welke variant een access_token teruggaf
-  const werkend = results.find(r => (r as { json?: { access_token?: string } }).json?.access_token)
+  // Filter interessante responses (niet 404 op onbekende paden)
+  const interessant = tests.filter(t => t.status !== 404 || String(t.json).includes('token') || String(t.json).includes('room'))
 
-  if (!werkend) {
-    return NextResponse.json({ bericht: 'Geen van de token-varianten werkte', resultaten: results })
-  }
-
-  const token = (werkend as { json: { access_token: string } }).json.access_token
-
-  // Rooms ophalen
-  const roomsRes = await fetch(`${JOAN_BASE}/rooms/`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const roomsRaw = await roomsRes.json()
-
-  // Events ophalen
-  const now = new Date()
-  const over2u = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-  const eventsRes = await fetch(
-    `${JOAN_BASE}/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-  const eventsRaw = await eventsRes.json()
-
-  return NextResponse.json({
-    tokenVariant: { url: werkend.url, method: werkend.method },
-    rooms: roomsRaw,
-    events: eventsRaw,
-  })
+  return NextResponse.json({ interessant, alle: tests })
 }
