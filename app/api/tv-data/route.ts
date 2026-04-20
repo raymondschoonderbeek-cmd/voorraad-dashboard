@@ -46,12 +46,15 @@ export async function GET() {
 
   const supabase = createAdminClient()
 
-  // Nieuws (laatste 10 gepubliceerde berichten)
+  // Nieuws (gepubliceerd, toon_op_tv, max 7 dagen oud)
+  const zeven_dagen_geleden = new Date()
+  zeven_dagen_geleden.setDate(zeven_dagen_geleden.getDate() - 7)
   const { data: newsData } = await supabase
     .from('drg_news_posts')
     .select('id, title, excerpt, body_html, category, is_important, published_at')
     .not('published_at', 'is', null)
     .lte('published_at', new Date().toISOString())
+    .gte('published_at', zeven_dagen_geleden.toISOString())
     .eq('toon_op_tv', true)
     .order('published_at', { ascending: false })
     .limit(10)
