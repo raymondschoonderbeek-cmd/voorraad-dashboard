@@ -1,5 +1,5 @@
 const JOAN_TOKEN_URL = 'https://portal.getjoan.com/api/token/'
-const JOAN_BASE = 'https://portal.getjoan.com/api/2.0'
+const JOAN_BASE = 'https://portal.getjoan.com/api/2.0/portal'
 
 let cachedToken: string | null = null
 let tokenExpiry = 0
