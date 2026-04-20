@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth'
+import { getRoomAvailability } from '@/lib/joan'
 
 // WMO-weercode → leesbare omschrijving + icoon
 function weerInfo(code: number): { label: string; icon: string } {
@@ -124,9 +125,10 @@ export async function GET() {
     } catch { return null }
   }
 
-  const [weerAmersfoort, weerTurnhout] = await Promise.all([
+  const [weerAmersfoort, weerTurnhout, ruimtes] = await Promise.all([
     fetchWeer('Amersfoort', 52.155, 5.388),
     fetchWeer('Turnhout', 51.323, 4.953),
+    getRoomAvailability(),
   ])
 
   return NextResponse.json({
@@ -135,6 +137,7 @@ export async function GET() {
     jarigen,
     hoogtepunten: hoogtepuntenData ?? [],
     weer: [weerAmersfoort, weerTurnhout].filter(Boolean),
+    ruimtes,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })

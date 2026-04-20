@@ -34,12 +34,15 @@ type Weer = { stad: string; temp: number; label: string; icon: string }
 
 type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
+type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string }
+
 type TvData = {
   nieuws: NewsItem[]
   mededelingen: Mededeling[]
   jarigen: Jarige[]
   hoogtepunten: Hoogtepunt[]
   weer: Weer[]
+  ruimtes: Ruimte[]
 }
 
 function tijdString(d: Date) {
@@ -106,6 +109,7 @@ export default function TvPage() {
   const vandaagJarig = data?.jarigen?.filter(j => j.vandaag) ?? []
   const komendJarig = data?.jarigen?.filter(j => !j.vandaag) ?? []
   const hoogtepunten = data?.hoogtepunten ?? []
+  const ruimtes = data?.ruimtes ?? []
 
   const tickerTekst = data?.mededelingen?.length
     ? data.mededelingen.map(m => m.tekst).join('   •   ')
@@ -421,8 +425,42 @@ export default function TvPage() {
             </div>
           )}
 
-          {/* Spacer als geen jarigen en geen hoogtepunten */}
-          {vandaagJarig.length === 0 && komendJarig.length === 0 && hoogtepunten.length === 0 && (
+          {/* Ruimtes beschikbaarheid */}
+          {ruimtes.length > 0 && (
+            <div style={{
+              background: 'rgba(102,145,174,0.07)',
+              border: '1px solid rgba(102,145,174,0.18)',
+              borderRadius: '1.5vh',
+              padding: '2vh 1.8vw',
+            }}>
+              <div style={{ fontSize: '1.1vh', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: BLAUW_LICHT, marginBottom: '1.2vh' }}>
+                Ruimtes
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8vh' }}>
+                {ruimtes.map(r => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8vw' }}>
+                    <div style={{
+                      width: '1vh',
+                      height: '1vh',
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: r.bezet ? '#ef4444' : '#22c55e',
+                      boxShadow: r.bezet ? '0 0 6px rgba(239,68,68,0.5)' : '0 0 6px rgba(34,197,94,0.5)',
+                    }} />
+                    <span style={{ fontSize: '1.8vh', fontWeight: 600, color: 'rgba(255,255,255,0.85)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.naam}
+                    </span>
+                    <span style={{ fontSize: '1.4vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? 'rgba(239,68,68,0.85)' : 'rgba(34,197,94,0.85)' }}>
+                      {r.bezet ? (r.tot ? `bezet t/m ${r.tot}` : 'bezet') : 'vrij'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Spacer als geen content */}
+          {vandaagJarig.length === 0 && komendJarig.length === 0 && hoogtepunten.length === 0 && ruimtes.length === 0 && (
             <div style={{ flex: 1 }} />
           )}
 
