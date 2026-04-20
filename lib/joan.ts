@@ -4,12 +4,18 @@ const JOAN_BASE = 'https://portal.getjoan.com/api/2.0'
 let cachedToken: string | null = null
 let tokenExpiry = 0
 
-async function getToken(): Promise<string | null> {
-  if (cachedToken && Date.now() < tokenExpiry) return cachedToken
+type TokenResult = { token: string; debug: string } | { token: null; debug: string }
+
+async function getToken(): Promise<TokenResult> {
+  if (cachedToken && Date.now() < tokenExpiry) {
+    return { token: cachedToken, debug: 'cached' }
+  }
 
   const clientId = process.env.JOAN_CLIENT_ID
   const clientSecret = process.env.JOAN_CLIENT_SECRET
-  if (!clientId || !clientSecret) return null
+  if (!clientId || !clientSecret) {
+    return { token: null, debug: 'env vars missing: ' + (!clientId ? 'JOAN_CLIENT_ID ' : '') + (!clientSecret ? 'JOAN_CLIENT_SECRET' : '') }
+  }
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
   try {
@@ -21,12 +27,16 @@ async function getToken(): Promise<string | null> {
       },
       body: 'grant_type=client_credentials',
     })
-    if (!res.ok) return null
-    const json = await res.json() as { access_token: string; expires_in: number }
+    const json = await res.json() as { access_token?: string; expires_in?: number; detail?: string }
+    if (!res.ok || !json.access_token) {
+      return { token: null, debug: `token HTTP ${res.status}: ${JSON.stringify(json)}` }
+    }
     cachedToken = json.access_token
-    tokenExpiry = Date.now() + (json.expires_in - 60) * 1000
-    return cachedToken
-  } catch { return null }
+    tokenExpiry = Date.now() + ((json.expires_in ?? 3600) - 60) * 1000
+    return { token: cachedToken, debug: 'new token ok' }
+  } catch (e) {
+    return { token: null, debug: `token fetch exception: ${String(e)}` }
+  }
 }
 
 type JoanEvent = {
@@ -62,47 +72,52 @@ function stripBedrijfsnaam(naam: string): string {
   return naam.replace(/\s*-\s*Dynamo Retail Group$/i, '').trim()
 }
 
-export async function getRoomAvailability(): Promise<JoanRoom[]> {
-  const token = await getToken()
-  if (!token) return []
+export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joanDebug: string }> {
+  const { token, debug: tokenDebug } = await getToken()
+  if (!token) return { ruimtes: [], joanDebug: tokenDebug }
 
   const now = new Date()
   const over2u = new Date(now.getTime() + 2 * 60 * 60 * 1000)
   const nowIso = now.toISOString()
 
-  const [roomsRes, eventsRes] = await Promise.all([
-    fetch(`${JOAN_BASE}/rooms/`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 0 },
-    }),
-    fetch(`${JOAN_BASE}/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 0 },
-    }),
-  ])
+  try {
+    const [roomsRes, eventsRes] = await Promise.all([
+      fetch(`${JOAN_BASE}/rooms/`, {
+        headers: { Authorization: `Bearer ${token}` },
+        next: { revalidate: 0 },
+      }),
+      fetch(`${JOAN_BASE}/events/?start=${now.toISOString()}&end=${over2u.toISOString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        next: { revalidate: 0 },
+      }),
+    ])
 
-  if (!roomsRes.ok) return []
+    if (!roomsRes.ok) {
+      return { ruimtes: [], joanDebug: `rooms HTTP ${roomsRes.status}` }
+    }
 
-  const roomsJson = await roomsRes.json() as { results: JoanRoomRaw[] }
-  const rooms = roomsJson.results ?? []
+    const roomsJson = await roomsRes.json() as { results?: JoanRoomRaw[] } | JoanRoomRaw[]
+    const rooms = Array.isArray(roomsJson) ? roomsJson : (roomsJson.results ?? [])
 
-  const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
+    const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
 
-  // Bouw map: room email → actief event op dit moment
-  const actiefPerRuimte = new Map<string, JoanEvent>()
-  for (const group of eventGroups) {
-    const actief = group.events.find(e => e.start <= nowIso && e.end > nowIso)
-    if (actief) actiefPerRuimte.set(group.room.email, actief)
+    const actiefPerRuimte = new Map<string, JoanEvent>()
+    for (const group of eventGroups) {
+      const actief = group.events.find(e => e.start <= nowIso && e.end > nowIso)
+      if (actief) actiefPerRuimte.set(group.room.email, actief)
+    }
+
+    const ruimtes = rooms.map(r => {
+      const event = actiefPerRuimte.get(r.email)
+      if (!event) return { id: r.email, naam: r.name, bezet: false, capacity: r.capacity }
+      const tot = new Date(event.end).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
+      const rawNaam = event.organizer?.displayName ?? event.organizer?.email?.split('@')[0] ?? ''
+      const geboektDoor = stripBedrijfsnaam(rawNaam)
+      return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity }
+    })
+
+    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, ${actiefPerRuimte.size} bezet` }
+  } catch (e) {
+    return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }
-
-  return rooms.map(r => {
-    const event = actiefPerRuimte.get(r.email)
-    if (!event) return { id: r.email, naam: r.name, bezet: false, capacity: r.capacity }
-
-    const tot = new Date(event.end).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
-    const rawNaam = event.organizer?.displayName ?? event.organizer?.email?.split('@')[0] ?? ''
-    const geboektDoor = stripBedrijfsnaam(rawNaam)
-
-    return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity }
-  })
 }
