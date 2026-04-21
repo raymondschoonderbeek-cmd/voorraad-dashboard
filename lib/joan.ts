@@ -81,25 +81,48 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
   const eindVanDag = new Date(); eindVanDag.setHours(23, 59, 59, 999)
 
   try {
-    const [roomsRes, eventsRes] = await Promise.all([
-      fetch(`${JOAN_PORTAL}/rooms/`, {
-        headers: { Authorization: `Bearer ${token}` },
-        next: { revalidate: 0 },
-      }),
-      fetch(`${JOAN_PORTAL}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        next: { revalidate: 0 },
-      }),
-    ])
+    const roomsRes = await fetch(`${JOAN_PORTAL}/rooms/`, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 0 },
+    })
 
     if (!roomsRes.ok) return { ruimtes: [], joanDebug: `rooms HTTP ${roomsRes.status}` }
 
     const roomsJson = await roomsRes.json() as { results?: JoanRoomRaw[] } | JoanRoomRaw[]
     const rooms = Array.isArray(roomsJson) ? roomsJson : (roomsJson.results ?? [])
 
-    const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
+    if (rooms.length === 0) return { ruimtes: [], joanDebug: 'geen ruimtes' }
 
-    // Rooms worden geïdentificeerd via email of key (v1=email, v2=key)
+    // Zoek werkend events endpoint via eerste kamer
+    const eerste = rooms[0] as JoanRoomRaw & { calendar?: { id?: string } }
+    const calId = (eerste as { calendar?: { id?: string } }).calendar?.id
+    const roomId = eerste.id
+
+    const kandidaten = [
+      `${JOAN_PORTAL}/rooms/${roomId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      ...(calId ? [`${JOAN_PORTAL}/calendars/${calId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`] : []),
+      `${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+    ]
+
+    const probes: string[] = []
+    let werkendPattern: string | null = null
+    let eventsRaw: unknown = null
+
+    for (const url of kandidaten) {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 0 } })
+      probes.push(`${url.replace(/https:\/\/portal\.getjoan\.com\/api\/2\.0\/?/, '').split('?')[0]}=${r.status}`)
+      if (r.ok && !eventsRaw) {
+        eventsRaw = await r.json()
+        werkendPattern = url
+      }
+    }
+
+    if (!werkendPattern) {
+      return { ruimtes: rooms.map(r => ({ id: r.email ?? r.key, naam: r.name, bezet: false, capacity: r.capacity, boekingen: [] })), joanDebug: `rooms ok, events niet gevonden: ${probes.join(' | ')} | eerste: ${JSON.stringify(eerste).slice(0, 200)}` }
+    }
+
+    const eventGroups: JoanEventGroup[] = Array.isArray(eventsRaw) ? eventsRaw : []
+
     const eventsPerRuimte = new Map<string, JoanEvent[]>()
     for (const group of eventGroups) {
       const roomKey = group.room.email ?? group.room.key ?? ''
@@ -120,7 +143,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       return { id: roomKey, naam: r.name, bezet: true, tot, geboektDoor: stripBedrijfsnaam(rawNaam), capacity: r.capacity, boekingen }
     })
 
-    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, events HTTP ${eventsRes.status}, ${ruimtes.filter(r => r.bezet).length} bezet` }
+    return { ruimtes, joanDebug: `ok via ${werkendPattern?.split('?')[0].replace('https://portal.getjoan.com/api/2.0/', '')} | ${rooms.length} rooms, ${ruimtes.filter(r => r.bezet).length} bezet` }
   } catch (e) {
     return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }
