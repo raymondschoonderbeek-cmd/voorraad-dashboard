@@ -1,21 +1,15 @@
 const JOAN_TOKEN_URL = 'https://portal.getjoan.com/api/token/'
-const JOAN_BASE = 'https://portal.getjoan.com/api/2.0/portal'
+const JOAN_BASE = 'https://portal.getjoan.com/api/2.0'
 
 let cachedToken: string | null = null
 let tokenExpiry = 0
 
-type TokenResult = { token: string; debug: string } | { token: null; debug: string }
-
-async function getToken(): Promise<TokenResult> {
-  if (cachedToken && Date.now() < tokenExpiry) {
-    return { token: cachedToken, debug: 'cached' }
-  }
+async function getToken(): Promise<string | null> {
+  if (cachedToken && Date.now() < tokenExpiry) return cachedToken
 
   const clientId = process.env.JOAN_CLIENT_ID
   const clientSecret = process.env.JOAN_CLIENT_SECRET
-  if (!clientId || !clientSecret) {
-    return { token: null, debug: 'env vars missing: ' + (!clientId ? 'JOAN_CLIENT_ID ' : '') + (!clientSecret ? 'JOAN_CLIENT_SECRET' : '') }
-  }
+  if (!clientId || !clientSecret) return null
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
   try {
@@ -27,16 +21,12 @@ async function getToken(): Promise<TokenResult> {
       },
       body: 'grant_type=client_credentials',
     })
-    const json = await res.json() as { access_token?: string; expires_in?: number; detail?: string }
-    if (!res.ok || !json.access_token) {
-      return { token: null, debug: `token HTTP ${res.status}: ${JSON.stringify(json)}` }
-    }
+    if (!res.ok) return null
+    const json = await res.json() as { access_token: string; expires_in: number }
     cachedToken = json.access_token
     tokenExpiry = Date.now() + ((json.expires_in ?? 3600) - 60) * 1000
-    return { token: cachedToken, debug: 'new token ok' }
-  } catch (e) {
-    return { token: null, debug: `token fetch exception: ${String(e)}` }
-  }
+    return cachedToken
+  } catch { return null }
 }
 
 type JoanEvent = {
@@ -48,15 +38,16 @@ type JoanEvent = {
 }
 
 type JoanEventGroup = {
-  room: { name: string; email: string }
+  room: { name: string; email?: string; key?: string }
   events: JoanEvent[]
 }
 
 type JoanRoomRaw = {
+  id: number
+  key: string
   name: string
-  email: string
   capacity: number
-  status: number
+  email?: string
 }
 
 export type Boeking = { van: string; tot: string }
@@ -80,17 +71,13 @@ function tijdLabel(iso: string): string {
 }
 
 export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joanDebug: string }> {
-  const { token, debug: tokenDebug } = await getToken()
-  if (!token) return { ruimtes: [], joanDebug: tokenDebug }
+  const token = await getToken()
+  if (!token) return { ruimtes: [], joanDebug: 'geen token' }
 
   const now = new Date()
   const nowIso = now.toISOString()
-
-  // Hele dag ophalen zodat lopende boekingen (gestart voor nu) ook meekomen
-  const beginVanDag = new Date()
-  beginVanDag.setHours(0, 0, 0, 0)
-  const eindVanDag = new Date()
-  eindVanDag.setHours(23, 59, 59, 999)
+  const beginVanDag = new Date(); beginVanDag.setHours(0, 0, 0, 0)
+  const eindVanDag = new Date(); eindVanDag.setHours(23, 59, 59, 999)
 
   try {
     const [roomsRes, eventsRes] = await Promise.all([
@@ -104,68 +91,35 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       }),
     ])
 
-    if (!roomsRes.ok) {
-      return { ruimtes: [], joanDebug: `rooms HTTP ${roomsRes.status}` }
-    }
+    if (!roomsRes.ok) return { ruimtes: [], joanDebug: `rooms HTTP ${roomsRes.status}` }
 
-    const roomsJson = await roomsRes.json() as unknown
-    const roomsArr: unknown[] = Array.isArray(roomsJson) ? roomsJson
-      : (roomsJson as { results?: unknown[] })?.results ?? []
+    const roomsJson = await roomsRes.json() as { results?: JoanRoomRaw[] } | JoanRoomRaw[]
+    const rooms = Array.isArray(roomsJson) ? roomsJson : (roomsJson.results ?? [])
 
-    const eersteRuimte = roomsArr[0] as { id?: number; key?: string; calendar?: { id?: string } }
-    const firstCalendarId = eersteRuimte?.calendar?.id
-    const firstRoomId = eersteRuimte?.id
+    const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
 
-    const endpointCandidates = [
-      ...(firstCalendarId ? [
-        `calendars/${firstCalendarId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-        `calendars/${firstCalendarId}/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-        `calendars/${firstCalendarId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      ] : []),
-      ...(firstRoomId ? [
-        `rooms/${firstRoomId}/calendar/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      ] : []),
-    ]
-    const probeResults: Record<string, number> = {}
-    let eventsRaw: unknown = null
-
-    for (const ep of endpointCandidates) {
-      const r = await fetch(`${JOAN_BASE}/${ep}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        next: { revalidate: 0 },
-      })
-      probeResults[ep.split('?')[0]] = r.status
-      if (r.ok && !eventsRaw) {
-        eventsRaw = await r.json()
-      }
-    }
-
-    const rooms = roomsArr as JoanRoomRaw[]
-    const eventGroups: JoanEventGroup[] = Array.isArray(eventsRaw) ? eventsRaw : []
-
-    // Bouw map: room email → gesorteerde events van vandaag
+    // Rooms worden geïdentificeerd via email of key (v1=email, v2=key)
     const eventsPerRuimte = new Map<string, JoanEvent[]>()
     for (const group of eventGroups) {
+      const roomKey = group.room.email ?? group.room.key ?? ''
       const gesorteerd = [...group.events].sort((a, b) => a.start.localeCompare(b.start))
-      eventsPerRuimte.set(group.room.email, gesorteerd)
+      eventsPerRuimte.set(roomKey, gesorteerd)
     }
 
     const ruimtes = rooms.map(r => {
-      const events = eventsPerRuimte.get(r.email) ?? []
+      const roomKey = r.email ?? r.key
+      const events = eventsPerRuimte.get(roomKey) ?? []
       const actief = events.find(e => e.start <= nowIso && e.end > nowIso)
       const boekingen: Boeking[] = events.map(e => ({ van: tijdLabel(e.start), tot: tijdLabel(e.end) }))
 
-      if (!actief) {
-        return { id: r.email, naam: r.name, bezet: false, capacity: r.capacity, boekingen }
-      }
+      if (!actief) return { id: roomKey, naam: r.name, bezet: false, capacity: r.capacity, boekingen }
 
       const tot = tijdLabel(actief.end)
       const rawNaam = actief.organizer?.displayName ?? actief.organizer?.email?.split('@')[0] ?? ''
-      const geboektDoor = stripBedrijfsnaam(rawNaam)
-      return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity, boekingen }
+      return { id: roomKey, naam: r.name, bezet: true, tot, geboektDoor: stripBedrijfsnaam(rawNaam), capacity: r.capacity, boekingen }
     })
 
-    return { ruimtes, joanDebug: `eersteRuimte: ${JSON.stringify(eersteRuimte)} | probes: ${JSON.stringify(probeResults)} | eventsRaw: ${JSON.stringify(eventsRaw).slice(0, 400)}` }
+    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, events HTTP ${eventsRes.status}, ${ruimtes.filter(r => r.bezet).length} bezet` }
   } catch (e) {
     return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }
