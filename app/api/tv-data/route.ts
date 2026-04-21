@@ -141,7 +141,7 @@ export async function GET() {
     } catch { return [] }
   }
 
-  const [weerAmersfoort, weerTurnhout, { ruimtes }, brancheNieuws, nuNieuws] = await Promise.all([
+  const [weerAmersfoort, weerTurnhout, { ruimtes, joanDebug }, brancheNieuws, nuNieuws] = await Promise.all([
     fetchWeer('Amersfoort', 52.155, 5.388),
     fetchWeer('Turnhout', 51.323, 4.953),
     getRoomAvailability(),
@@ -158,6 +158,7 @@ export async function GET() {
     ruimtes,
     brancheNieuws,
     nuNieuws,
+    _joanDebug: joanDebug,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   })
