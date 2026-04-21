@@ -1,4 +1,5 @@
 const JOAN_TOKEN_URL = 'https://portal.getjoan.com/api/token/'
+const JOAN_PORTAL = 'https://portal.getjoan.com/api/2.0/portal'
 const JOAN_BASE = 'https://portal.getjoan.com/api/2.0'
 
 let cachedToken: string | null = null
@@ -81,7 +82,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
   try {
     const [roomsRes, eventsRes] = await Promise.all([
-      fetch(`${JOAN_BASE}/rooms/`, {
+      fetch(`${JOAN_PORTAL}/rooms/`, {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
