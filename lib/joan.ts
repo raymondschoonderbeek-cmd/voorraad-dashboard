@@ -86,7 +86,9 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
   const now = new Date()
   const nowIso = now.toISOString()
 
-  // Haal events op voor de rest van vandaag
+  // Hele dag ophalen zodat lopende boekingen (gestart voor nu) ook meekomen
+  const beginVanDag = new Date()
+  beginVanDag.setHours(0, 0, 0, 0)
   const eindVanDag = new Date()
   eindVanDag.setHours(23, 59, 59, 999)
 
@@ -96,7 +98,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
-      fetch(`${JOAN_BASE}/events/?start=${nowIso}&end=${eindVanDag.toISOString()}`, {
+      fetch(`${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
