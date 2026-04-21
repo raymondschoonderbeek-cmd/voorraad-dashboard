@@ -531,7 +531,7 @@ export default function TvPage() {
       {/* TICKER ONDERAAN */}
       {tickerTekst && (
         <div style={{
-          height: '6.5vh',
+          height: '8vh',
           background: `linear-gradient(90deg, ${BLAUW} 0%, #1e3a6e 100%)`,
           borderTop: '1px solid rgba(102,145,174,0.25)',
           display: 'flex',
@@ -539,6 +539,7 @@ export default function TvPage() {
           overflow: 'hidden',
           flexShrink: 0,
           position: 'relative',
+          paddingBottom: '0.5vh',
         }}>
           {/* Label links */}
           <div style={{
