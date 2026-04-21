@@ -82,6 +82,8 @@ export default function TvPage() {
   const [zijpanelView, setZijpanelView] = useState<ZijpanelView>('verjaardagen')
   const [zijpanelFade, setZijpanelFade] = useState(true)
   const tickerRef = useRef<HTMLDivElement>(null)
+  const newsContainerRef = useRef<HTMLDivElement>(null)
+  const newsContentRef = useRef<HTMLDivElement>(null)
 
   const laadData = useCallback(async () => {
     try {
@@ -103,18 +105,51 @@ export default function TvPage() {
     return () => clearInterval(t)
   }, [laadData])
 
-  // Nieuws wisselen elke 12 seconden met fade
+  // Nieuws: content-aware cycling met auto-scroll voor lange berichten
   useEffect(() => {
     if (!data?.nieuws?.length) return
-    const t = setInterval(() => {
+    const container = newsContainerRef.current
+    const content = newsContentRef.current
+    if (content) content.style.transform = 'translateY(0px)'
+
+    let timer: ReturnType<typeof setTimeout>
+    let rafId: number
+    let cancelled = false
+
+    const goNext = () => {
       setFade(false)
-      setTimeout(() => {
+      timer = setTimeout(() => {
         setNieuwsIdx(i => (i + 1) % data.nieuws.length)
         setFade(true)
       }, 600)
-    }, 12000)
-    return () => clearInterval(t)
-  }, [data?.nieuws?.length])
+    }
+
+    timer = setTimeout(() => {
+      if (cancelled || !container || !content) { timer = setTimeout(goNext, 10000); return }
+      const overflow = content.scrollHeight - container.clientHeight
+      if (overflow <= 40) {
+        timer = setTimeout(goNext, 10000)
+        return
+      }
+      // Lang bericht: 2.5s lezen, dan scrollen, dan 2s pauze
+      timer = setTimeout(() => {
+        if (cancelled) return
+        const duration = (overflow / 35) * 1000 // ~35px/s
+        const startTime = performance.now()
+        const animate = (now: number) => {
+          if (cancelled) return
+          const p = Math.min((now - startTime) / duration, 1)
+          content.style.transform = `translateY(-${p * overflow}px)`
+          if (p < 1) { rafId = requestAnimationFrame(animate) }
+          else { timer = setTimeout(goNext, 2000) }
+        }
+        rafId = requestAnimationFrame(animate)
+      }, 2500)
+    }, 150)
+
+    return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nieuwsIdx, data?.nieuws?.length])
 
   // Linkerkolom wisselen: intern ↔ branche nieuws elke 30 seconden
   useEffect(() => {
@@ -291,13 +326,13 @@ export default function TvPage() {
                   </h1>
                   <div style={{ height: '1px', background: 'rgba(102,145,174,0.25)', marginBottom: '2.5vh', flexShrink: 0 }} />
                   {(bericht.body_html || bericht.excerpt) && (
-                    <div style={{ fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)', lineHeight: 1.75, color: 'rgba(255,255,255,0.82)', fontWeight: 400, flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+                    <div ref={newsContainerRef} style={{ fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)', lineHeight: 1.75, color: 'rgba(255,255,255,0.82)', fontWeight: 400, flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
                       {bericht.body_html ? (
-                        <div className="tv-nieuws-body" dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }} style={{ maxHeight: '100%', overflow: 'hidden' }} />
+                        <div ref={newsContentRef} className="tv-nieuws-body" dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }} style={{ willChange: 'transform' }} />
                       ) : (
-                        <p style={{ margin: 0 }}>{bericht.excerpt}</p>
+                        <p ref={newsContentRef} style={{ margin: 0 }}>{bericht.excerpt}</p>
                       )}
-                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '6vh', background: 'linear-gradient(to bottom, transparent, #1a2e5a)', pointerEvents: 'none' }} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '8vh', background: 'linear-gradient(to bottom, transparent, #1a2e5a)', pointerEvents: 'none' }} />
                     </div>
                   )}
                   <div style={{ marginTop: '3vh', display: 'flex', alignItems: 'center', gap: '1.5vw' }}>
