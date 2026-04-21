@@ -103,14 +103,14 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       `${JOAN_PORTAL}/rooms/${roomId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_PORTAL}/rooms/${roomId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_PORTAL}/rooms/${roomId}/schedule/?date=${d}`,
+      `${JOAN_PORTAL}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_PORTAL}/reservations/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       ...(calId ? [
         `${JOAN_PORTAL}/calendars/${calId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-        `${JOAN_PORTAL}/calendars/${calId}/events/?date=${d}`,
+        `${JOAN_BASE}/calendars/${calId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       ] : []),
       `${JOAN_PORTAL}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      `${JOAN_PORTAL}/events/?date=${d}`,
       `${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      `${JOAN_BASE}/portal/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
     ]
 
     const probes: string[] = []
@@ -127,7 +127,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     }
 
     if (!werkendPattern) {
-      return { ruimtes: rooms.map(r => ({ id: r.email ?? r.key, naam: r.name, bezet: false, capacity: r.capacity, boekingen: [] })), joanDebug: `rooms ok, events niet gevonden: ${probes.join(' | ')} | eerste: ${JSON.stringify(eerste).slice(0, 200)}` }
+      return { ruimtes: rooms.map(r => ({ id: r.email ?? r.key, naam: r.name, bezet: false, capacity: r.capacity, boekingen: [] })), joanDebug: `events niet gevonden: ${probes.join(' | ')} | eerste: ${JSON.stringify(eerste).slice(0, 600)}` }
     }
 
     const eventGroups: JoanEventGroup[] = Array.isArray(eventsRaw) ? eventsRaw : []
