@@ -86,7 +86,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
-      fetch(`${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`, {
+      fetch(`${JOAN_PORTAL}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       }),
