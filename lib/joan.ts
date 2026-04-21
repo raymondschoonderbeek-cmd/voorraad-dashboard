@@ -108,28 +108,40 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       return { ruimtes: [], joanDebug: `rooms HTTP ${roomsRes.status}` }
     }
 
-    const roomsJson = await roomsRes.json() as { results?: JoanRoomRaw[] } | JoanRoomRaw[]
-    const rooms = Array.isArray(roomsJson) ? roomsJson : (roomsJson.results ?? [])
+    const roomsJson = await roomsRes.json() as unknown
+    const roomsArr: unknown[] = Array.isArray(roomsJson) ? roomsJson
+      : (roomsJson as { results?: unknown[] })?.results ?? []
 
-    // Probeer meerdere endpoint-namen voor boekingen
-    const endpointCandidates = ['events', 'schedules', 'bookings', 'reservations', 'calendar']
+    // Eerste ruimte volledig tonen voor debug
+    const eersteRuimte = roomsArr[0]
+
+    // Probeer globale endpoints + per-room endpoints met eerste room ID
+    const firstId = (eersteRuimte as { id?: unknown })?.id
+    const endpointCandidates = [
+      `events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `schedules/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      ...(firstId ? [
+        `rooms/${firstId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+        `rooms/${firstId}/schedule/`,
+        `rooms/${firstId}/bookings/`,
+      ] : []),
+    ]
     const probeResults: Record<string, number> = {}
     let eventsRaw: unknown = null
-    let eventsStatus = 404
 
     for (const ep of endpointCandidates) {
-      const r = await fetch(`${JOAN_BASE}/${ep}/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`, {
+      const r = await fetch(`${JOAN_BASE}/${ep}`, {
         headers: { Authorization: `Bearer ${token}` },
         next: { revalidate: 0 },
       })
-      probeResults[ep] = r.status
-      if (r.ok) {
+      probeResults[ep.split('?')[0]] = r.status
+      if (r.ok && !eventsRaw) {
         eventsRaw = await r.json()
-        eventsStatus = r.status
-        break
       }
     }
 
+    const rooms = roomsArr as JoanRoomRaw[]
     const eventGroups: JoanEventGroup[] = Array.isArray(eventsRaw) ? eventsRaw : []
 
     // Bouw map: room email → gesorteerde events van vandaag
@@ -154,7 +166,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity, boekingen }
     })
 
-    return { ruimtes, joanDebug: `probes: ${JSON.stringify(probeResults)} | eventsRaw: ${JSON.stringify(eventsRaw).slice(0, 400)}` }
+    return { ruimtes, joanDebug: `eersteRuimte: ${JSON.stringify(eersteRuimte)} | probes: ${JSON.stringify(probeResults)} | eventsRaw: ${JSON.stringify(eventsRaw).slice(0, 400)}` }
   } catch (e) {
     return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }
