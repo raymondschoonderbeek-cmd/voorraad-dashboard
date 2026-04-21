@@ -111,7 +111,9 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     const roomsJson = await roomsRes.json() as { results?: JoanRoomRaw[] } | JoanRoomRaw[]
     const rooms = Array.isArray(roomsJson) ? roomsJson : (roomsJson.results ?? [])
 
-    const eventGroups: JoanEventGroup[] = eventsRes.ok ? await eventsRes.json() : []
+    const eventsRaw = eventsRes.ok ? await eventsRes.json() : null
+    const eventsStatus = eventsRes.status
+    const eventGroups: JoanEventGroup[] = Array.isArray(eventsRaw) ? eventsRaw : []
 
     // Bouw map: room email → gesorteerde events van vandaag
     const eventsPerRuimte = new Map<string, JoanEvent[]>()
@@ -135,7 +137,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       return { id: r.email, naam: r.name, bezet: true, tot, geboektDoor, capacity: r.capacity, boekingen }
     })
 
-    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, ${ruimtes.filter(r => r.bezet).length} bezet` }
+    return { ruimtes, joanDebug: `ok: ${rooms.length} rooms, ${ruimtes.filter(r => r.bezet).length} bezet | events HTTP ${eventsStatus} | eventsRaw: ${JSON.stringify(eventsRaw).slice(0, 300)}` }
   } catch (e) {
     return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }
