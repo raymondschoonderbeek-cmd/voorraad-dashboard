@@ -112,19 +112,18 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     const roomsArr: unknown[] = Array.isArray(roomsJson) ? roomsJson
       : (roomsJson as { results?: unknown[] })?.results ?? []
 
-    // Eerste ruimte volledig tonen voor debug
-    const eersteRuimte = roomsArr[0]
+    const eersteRuimte = roomsArr[0] as { id?: number; key?: string; calendar?: { id?: string } }
+    const firstCalendarId = eersteRuimte?.calendar?.id
+    const firstRoomId = eersteRuimte?.id
 
-    // Probeer globale endpoints + per-room endpoints met eerste room ID
-    const firstId = (eersteRuimte as { id?: unknown })?.id
     const endpointCandidates = [
-      `events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      `schedules/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      `bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      ...(firstId ? [
-        `rooms/${firstId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-        `rooms/${firstId}/schedule/`,
-        `rooms/${firstId}/bookings/`,
+      ...(firstCalendarId ? [
+        `calendars/${firstCalendarId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+        `calendars/${firstCalendarId}/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+        `calendars/${firstCalendarId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      ] : []),
+      ...(firstRoomId ? [
+        `rooms/${firstRoomId}/calendar/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       ] : []),
     ]
     const probeResults: Record<string, number> = {}
