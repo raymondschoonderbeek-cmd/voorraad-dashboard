@@ -1,6 +1,7 @@
 const JOAN_TOKEN_URL = 'https://portal.getjoan.com/api/token/'
 const JOAN_PORTAL = 'https://portal.getjoan.com/api/2.0/portal'
 const JOAN_BASE = 'https://portal.getjoan.com/api/2.0'
+const JOAN_V1 = 'https://portal.getjoan.com/api/v1.0'
 
 let cachedToken: string | null = null
 let tokenExpiry = 0
@@ -111,6 +112,8 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       ] : []),
       `${JOAN_PORTAL}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_V1}/events?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_V1}/events?start=${d}&end=${d}`,
     ]
 
     const probes: string[] = []
