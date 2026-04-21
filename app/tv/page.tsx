@@ -109,8 +109,7 @@ export default function TvPage() {
   useEffect(() => {
     if (!data?.nieuws?.length) return
     const container = newsContainerRef.current
-    const content = newsContentRef.current
-    if (content) content.style.transform = 'translateY(0px)'
+    if (container) container.scrollTop = 0
 
     let timer: ReturnType<typeof setTimeout>
     let rafId: number
@@ -124,28 +123,30 @@ export default function TvPage() {
       }, 600)
     }
 
+    // Wacht tot layout stabiel is (na fade-in van 600ms)
     timer = setTimeout(() => {
-      if (cancelled || !container || !content) { timer = setTimeout(goNext, 10000); return }
-      const overflow = content.scrollHeight - container.clientHeight
+      if (cancelled) return
+      if (!container) { timer = setTimeout(goNext, 10000); return }
+      const overflow = container.scrollHeight - container.clientHeight
       if (overflow <= 40) {
         timer = setTimeout(goNext, 10000)
         return
       }
-      // Lang bericht: 2.5s lezen, dan scrollen, dan 2s pauze
+      // Lang bericht: 2.5s lezen, dan scrollen (~35px/s), dan 2s pauze
       timer = setTimeout(() => {
         if (cancelled) return
-        const duration = (overflow / 35) * 1000 // ~35px/s
+        const duration = (overflow / 35) * 1000
         const startTime = performance.now()
         const animate = (now: number) => {
           if (cancelled) return
           const p = Math.min((now - startTime) / duration, 1)
-          content.style.transform = `translateY(-${p * overflow}px)`
+          container.scrollTop = p * overflow
           if (p < 1) { rafId = requestAnimationFrame(animate) }
           else { timer = setTimeout(goNext, 2000) }
         }
         rafId = requestAnimationFrame(animate)
       }, 2500)
-    }, 150)
+    }, 700)
 
     return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -326,13 +327,13 @@ export default function TvPage() {
                   </h1>
                   <div style={{ height: '1px', background: 'rgba(102,145,174,0.25)', marginBottom: '2.5vh', flexShrink: 0 }} />
                   {(bericht.body_html || bericht.excerpt) && (
-                    <div ref={newsContainerRef} style={{ fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)', lineHeight: 1.75, color: 'rgba(255,255,255,0.82)', fontWeight: 400, flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+                    <div ref={newsContainerRef} className="tv-nieuws-scroll" style={{ fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)', lineHeight: 1.75, color: 'rgba(255,255,255,0.82)', fontWeight: 400, flex: 1, minHeight: 0, position: 'relative', overflowY: 'auto' }}>
                       {bericht.body_html ? (
-                        <div ref={newsContentRef} className="tv-nieuws-body" dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }} style={{ willChange: 'transform' }} />
+                        <div className="tv-nieuws-body" dangerouslySetInnerHTML={{ __html: normalizeBodyHtml(bericht.body_html) }} />
                       ) : (
-                        <p ref={newsContentRef} style={{ margin: 0 }}>{bericht.excerpt}</p>
+                        <p style={{ margin: 0 }}>{bericht.excerpt}</p>
                       )}
-                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '8vh', background: 'linear-gradient(to bottom, transparent, #1a2e5a)', pointerEvents: 'none' }} />
+                      <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, height: '8vh', background: 'linear-gradient(to bottom, transparent, #1a2e5a)', pointerEvents: 'none' }} />
                     </div>
                   )}
                   <div style={{ marginTop: '3vh', display: 'flex', alignItems: 'center', gap: '1.5vw' }}>
@@ -651,6 +652,8 @@ export default function TvPage() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
+        .tv-nieuws-scroll::-webkit-scrollbar { display: none; }
+        .tv-nieuws-scroll { scrollbar-width: none; }
         .tv-nieuws-body { font-size: inherit; line-height: inherit; }
         .tv-nieuws-body p { margin: 0 0 1.8vh 0; }
         .tv-nieuws-body p:last-child { margin-bottom: 0; }
