@@ -98,10 +98,19 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     const calId = (eerste as { calendar?: { id?: string } }).calendar?.id
     const roomId = eerste.id
 
+    const d = beginVanDag.toISOString().slice(0, 10)
     const kandidaten = [
       `${JOAN_PORTAL}/rooms/${roomId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      ...(calId ? [`${JOAN_PORTAL}/calendars/${calId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`] : []),
+      `${JOAN_PORTAL}/rooms/${roomId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_PORTAL}/rooms/${roomId}/schedule/?date=${d}`,
+      ...(calId ? [
+        `${JOAN_PORTAL}/calendars/${calId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+        `${JOAN_PORTAL}/calendars/${calId}/events/?date=${d}`,
+      ] : []),
+      `${JOAN_PORTAL}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_PORTAL}/events/?date=${d}`,
       `${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_BASE}/portal/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
     ]
 
     const probes: string[] = []
