@@ -42,10 +42,11 @@ function dagenTotVerjaardag(geboortedatum: string): number {
 
 export async function GET(request: Request) {
   const tvKey = process.env.TV_API_KEY
-  const authHeader = request.headers.get('x-tv-key') ?? new URL(request.url).searchParams.get('key')
-  const isTvKey = tvKey && authHeader === tvKey
+  const cookie = request.headers.get('cookie') ?? ''
+  const tvCookie = cookie.split(';').find(c => c.trim().startsWith('tv_access='))?.split('=')[1]
+  const isTvSession = tvKey && tvCookie === tvKey
 
-  if (!isTvKey) {
+  if (!isTvSession) {
     const { user } = await requireAuth()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
   }
