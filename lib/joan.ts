@@ -39,11 +39,6 @@ type JoanEvent = {
   organizer?: { displayName?: string; email?: string }
 }
 
-type JoanEventGroup = {
-  room: { name: string; email?: string; key?: string }
-  events: JoanEvent[]
-}
-
 type JoanRoomRaw = {
   id: number
   key: string
@@ -72,12 +67,24 @@ function tijdLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
 }
 
+// Pak een array uit ongeacht of de response een array, { results }, { data } of { items } is
+function toArray(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v
+  if (v && typeof v === 'object') {
+    const obj = v as Record<string, unknown>
+    if (Array.isArray(obj.results)) return obj.results
+    if (Array.isArray(obj.data)) return obj.data
+    if (Array.isArray(obj.items)) return obj.items
+  }
+  return []
+}
+
 export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joanDebug: string }> {
   const token = await getToken()
   if (!token) return { ruimtes: [], joanDebug: 'geen token' }
 
   const now = new Date()
-  const nowIso = now.toISOString()
+  const nowMs = now.getTime()
   const beginVanDag = new Date(); beginVanDag.setHours(0, 0, 0, 0)
   const eindVanDag = new Date(); eindVanDag.setHours(23, 59, 59, 999)
 
@@ -94,7 +101,6 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
     if (rooms.length === 0) return { ruimtes: [], joanDebug: 'geen ruimtes' }
 
-    // Zoek werkend events endpoint via eerste kamer
     const eerste = rooms[0] as JoanRoomRaw & { calendar?: { id?: string } }
     const calId = (eerste as { calendar?: { id?: string } }).calendar?.id
     const roomId = eerste.id
@@ -102,12 +108,9 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     const d = beginVanDag.toISOString().slice(0, 10)
     const tz = 'Europe/Amsterdam'
     const kandidaten = [
-      // Bevestigd werkend door Joan support (2.0 API)
       `${JOAN_PORTAL}/rooms/reservations/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}&tz=${encodeURIComponent(tz)}`,
-      // v1.0 events — trailing slash verplicht (bevestigd door Joan support)
       `${JOAN_V1}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_V1}/events/?start=${d}&end=${d}`,
-      // Overige 2.0 kandidaten als fallback
       `${JOAN_PORTAL}/rooms/${roomId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_PORTAL}/rooms/${roomId}/schedule/?date=${d}`,
       `${JOAN_PORTAL}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
@@ -126,7 +129,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
     for (const url of kandidaten) {
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 0 } })
-      probes.push(`${url.replace(/https:\/\/portal\.getjoan\.com\/api\/2\.0\/?/, '').split('?')[0]}=${r.status}`)
+      probes.push(`${url.replace(/https:\/\/portal\.getjoan\.com\/api\/(2\.0\/?|v1\.0\/)?(portal\/)?/, '').split('?')[0]}=${r.status}`)
       if (r.ok && !eventsRaw) {
         eventsRaw = await r.json()
         werkendPattern = url
@@ -134,23 +137,48 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     }
 
     if (!werkendPattern) {
-      return { ruimtes: rooms.map(r => ({ id: r.email ?? r.key, naam: r.name, bezet: false, capacity: r.capacity, boekingen: [] })), joanDebug: `events niet gevonden: ${probes.join(' | ')} | eerste: ${JSON.stringify(eerste).slice(0, 600)}` }
+      return {
+        ruimtes: rooms.map(r => ({ id: r.email ?? r.key, naam: r.name, bezet: false, capacity: r.capacity, boekingen: [] })),
+        joanDebug: `events niet gevonden: ${probes.join(' | ')} | eerste: ${JSON.stringify(eerste).slice(0, 400)}`,
+      }
     }
 
-    const rawArray: unknown[] = Array.isArray(eventsRaw) ? eventsRaw : []
+    const rawArray = toArray(eventsRaw)
 
-    const eventsPerRuimte = new Map<string, JoanEvent[]>()
+    // Bouw multi-key lookup: email / key / numeriek id → index in rooms[]
+    const roomByKey = new Map<string, number>()
+    rooms.forEach((r, i) => {
+      if (r.email) roomByKey.set(r.email, i)
+      if (r.key) roomByKey.set(r.key, i)
+      if (r.id != null) roomByKey.set(String(r.id), i)
+    })
+
+    const eventsPerIdx = new Map<number, JoanEvent[]>()
+
     for (const group of rawArray) {
       if (!group || typeof group !== 'object') continue
       const g = group as Record<string, unknown>
 
-      // Haal room-key op (meerdere veldnamen proberen)
       const room = (g.room ?? g.space ?? {}) as Record<string, unknown>
-      const roomKey = String(room.email ?? room.key ?? room.id ?? g.room_id ?? g.space_id ?? '')
-      if (!roomKey) continue
+      const kandidatenKeys = [
+        room.email, room.key, room.id != null ? String(room.id) : null,
+        g.room_id != null ? String(g.room_id) : null,
+        g.space_id != null ? String(g.space_id) : null,
+      ].filter((k): k is string => k != null && k !== '')
 
-      // events / reservations / bookings — Joan gebruikt wisselende namen
-      const eventList = (Array.isArray(g.events) ? g.events : Array.isArray(g.reservations) ? g.reservations : Array.isArray(g.bookings) ? g.bookings : []) as unknown[]
+      let roomIdx: number | undefined
+      for (const k of kandidatenKeys) {
+        const idx = roomByKey.get(k)
+        if (idx !== undefined) { roomIdx = idx; break }
+      }
+      if (roomIdx === undefined) continue
+
+      const eventList = (
+        Array.isArray(g.events) ? g.events
+        : Array.isArray(g.reservations) ? g.reservations
+        : Array.isArray(g.bookings) ? g.bookings
+        : []
+      ) as unknown[]
 
       const parsed: JoanEvent[] = eventList.flatMap(ev => {
         if (!ev || typeof ev !== 'object') return []
@@ -162,15 +190,18 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
         return [{ id: String(e.id ?? ''), summary: String(e.summary ?? e.title ?? e.subject ?? ''), start, end, organizer: { displayName: String(org.displayName ?? org.name ?? ''), email: String(org.email ?? '') } }]
       })
 
-      const gesorteerd = parsed.sort((a, b) => a.start.localeCompare(b.start))
-      eventsPerRuimte.set(roomKey, gesorteerd)
+      eventsPerIdx.set(roomIdx, parsed.sort((a, b) => a.start.localeCompare(b.start)))
     }
 
-    const ruimtes = rooms.map(r => {
-      const roomKey = r.email ?? r.key
-      const events = eventsPerRuimte.get(roomKey) ?? []
-      const actief = events.find(e => e.start <= nowIso && e.end > nowIso)
+    const ruimtes = rooms.map((r, i) => {
+      const events = eventsPerIdx.get(i) ?? []
+      // Gebruik Date.getTime() — niet string-vergelijking — zodat tijdzones correct werken
+      const actief = events.find(e => {
+        try { return new Date(e.start).getTime() <= nowMs && new Date(e.end).getTime() > nowMs }
+        catch { return false }
+      })
       const boekingen: Boeking[] = events.map(e => ({ van: tijdLabel(e.start), tot: tijdLabel(e.end) }))
+      const roomKey = r.email ?? r.key
 
       if (!actief) return { id: roomKey, naam: r.name, bezet: false, capacity: r.capacity, boekingen }
 
@@ -179,7 +210,13 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       return { id: roomKey, naam: r.name, bezet: true, tot, geboektDoor: stripBedrijfsnaam(rawNaam), capacity: r.capacity, boekingen }
     })
 
-    return { ruimtes, joanDebug: `ok via ${werkendPattern?.split('?')[0].replace('https://portal.getjoan.com/api/2.0/', '')} | ${rooms.length} rooms, ${ruimtes.filter(r => r.bezet).length} bezet` }
+    const bezet = ruimtes.filter(r => r.bezet).length
+    const eersteGroep = rawArray[0]
+    const debugRaw = eersteGroep ? JSON.stringify(eersteGroep).slice(0, 300) : 'leeg'
+    return {
+      ruimtes,
+      joanDebug: `ok via ${werkendPattern.split('?')[0].replace(/https:\/\/portal\.getjoan\.com\/api\/(2\.0\/?|v1\.0\/)?(portal\/)?/, '')} | ${rooms.length} rooms, ${bezet} bezet | rawArray: ${rawArray.length} | eersteGroep: ${debugRaw}`,
+    }
   } catch (e) {
     return { ruimtes: [], joanDebug: `exception: ${String(e)}` }
   }
