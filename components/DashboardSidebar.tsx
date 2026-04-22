@@ -56,6 +56,9 @@ function IconLunch() {
 function IconSettings() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 }
+function IconBeheer() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+}
 
 function Badge({ count }: { count: number | string }) {
   return (
@@ -148,6 +151,7 @@ export function DashboardSidebar() {
   const [gebruiker, setGebruiker] = useState('')
   const [rol, setRol] = useState('')
   const [modules, setModules] = useState<string[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
   const [nieuwsBadge, setNieuwsBadge] = useState(0)
   const [brancheBadge, setBrancheBadge] = useState(0)
   const [initials, setInitials] = useState('?')
@@ -168,6 +172,7 @@ export function DashboardSidebar() {
       const naam = rolData?.naam || user.email?.split('@')[0] || ''
       setGebruiker(naam)
       setRol(rolData?.rol === 'admin' ? 'Beheerder' : rolData?.rol || '')
+      setIsAdmin(rolData?.rol === 'admin')
       setInitials(naam.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?')
 
       const session = await sessionRes.json().catch(() => ({}))
@@ -213,12 +218,8 @@ export function DashboardSidebar() {
 
         {/* Hoofdnavigatie */}
         <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={isActive('/dashboard')} />
-
-        {heeftModule('voorraad') && (
-          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard?module=voorraad', icon: <IconBox /> }} active={false} />
-        )}
         {heeftModule('brand-groep') && (
-          <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard?module=brand-groep', icon: <IconChart /> }} active={false} />
+          <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard/brand-groep', icon: <IconChart /> }} active={isActive('/dashboard/brand-groep')} />
         )}
         {heeftModule('campagne-fietsen') && (
           <NavLink item={{ id: 'campagne', label: 'Campagnefietsen', href: '/dashboard/campagne-fietsen', icon: <IconBike /> }} active={isActive('/dashboard/campagne-fietsen')} />
@@ -229,7 +230,7 @@ export function DashboardSidebar() {
           <>
             <SectionLabel label="Communicatie" />
             {heeftModule('branche-nieuws') && (
-              <NavLink item={{ id: 'branche', label: 'Branche nieuws', href: '/dashboard?module=branche-nieuws', icon: <IconNewspaper />, badge: brancheBadge || null }} active={false} />
+              <NavLink item={{ id: 'branche', label: 'Branche nieuws', href: '/dashboard', icon: <IconNewspaper />, badge: brancheBadge || null }} active={isActive('/dashboard')} />
             )}
             {(heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur')) && (
               <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} />
@@ -253,6 +254,14 @@ export function DashboardSidebar() {
             {heeftModule('beschikbaarheid') && (
               <NavLink item={{ id: 'beschikbaar', label: 'Beschikbaarheid', href: '/dashboard/beschikbaarheid', icon: <IconUsers /> }} active={isActive('/dashboard/beschikbaarheid')} />
             )}
+          </>
+        )}
+
+        {/* Admin */}
+        {isAdmin && (
+          <>
+            <SectionLabel label="Beheer" />
+            <NavLink item={{ id: 'beheer', label: 'Beheer', href: '/dashboard/beheer', icon: <IconBeheer /> }} active={isActive('/dashboard/beheer')} />
           </>
         )}
 
