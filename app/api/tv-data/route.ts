@@ -40,9 +40,15 @@ function dagenTotVerjaardag(geboortedatum: string): number {
   return Math.floor((volgende.getTime() - vandaag.setHours(0, 0, 0, 0)) / 86400000)
 }
 
-export async function GET() {
-  const { user } = await requireAuth()
-  if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+export async function GET(request: Request) {
+  const tvKey = process.env.TV_API_KEY
+  const authHeader = request.headers.get('x-tv-key') ?? new URL(request.url).searchParams.get('key')
+  const isTvKey = tvKey && authHeader === tvKey
+
+  if (!isTvKey) {
+    const { user } = await requireAuth()
+    if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+  }
 
   const supabase = createAdminClient()
 

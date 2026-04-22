@@ -87,7 +87,8 @@ export default function TvPage() {
 
   const laadData = useCallback(async () => {
     try {
-      const res = await fetch('/api/tv-data', { cache: 'no-store' })
+      const tvKey = process.env.NEXT_PUBLIC_TV_API_KEY ?? ''
+      const res = await fetch(`/api/tv-data${tvKey ? `?key=${encodeURIComponent(tvKey)}` : ''}`, { cache: 'no-store' })
       if (res.ok) setData(await res.json() as TvData)
     } catch { /* stil falen */ }
   }, [])
