@@ -49,6 +49,48 @@ export async function requireInterneNieuwsBeheer() {
   return { ok: false as const, status: 403 }
 }
 
+export type NewsPermission = {
+  canManage: boolean
+  /** Mag alle afdelingen zien/bewerken (admin of nieuws-redacteur module). */
+  alleAfdelingen: boolean
+  /** Eigen afdeling van de gebruiker (uit Azure sync), of null. */
+  eigenAfdeling: string | null
+}
+
+/**
+ * Bepaal nieuwsrechten voor een gebruiker:
+ * - admin → alles
+ * - nieuws-redacteur module → alle afdelingen zien/bewerken
+ * - interne-nieuws module → alleen eigen afdeling
+ */
+export async function getNewsPermission(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<NewsPermission> {
+  const { data: rolData } = await supabase
+    .from('gebruiker_rollen')
+    .select('rol, afdeling')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (rolData?.rol === 'admin') {
+    return { canManage: true, alleAfdelingen: true, eigenAfdeling: rolData.afdeling ?? null }
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('modules_toegang, lunch_module_enabled, campagne_fietsen_toegang')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const modules = resolveDashboardModules(rolData?.rol, profile as ProfileModuleInput | null, false)
+  const canManage = modules.includes('interne-nieuws') || modules.includes('nieuws-redacteur')
+  const alleAfdelingen = modules.includes('nieuws-redacteur')
+  const eigenAfdeling = (rolData?.afdeling as string | null | undefined) ?? null
+
+  return { canManage, alleAfdelingen, eigenAfdeling }
+}
+
 /** Admin of dashboardmodule it-cmdb (IT-hardware CMDB). */
 export async function canAccessItCmdb(
   supabase: Awaited<ReturnType<typeof createClient>>,

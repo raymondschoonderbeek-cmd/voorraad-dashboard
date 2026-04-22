@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
+import { getNewsPermission, requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 import { slugifyAfdelingLabel, type DrgNewsAfdeling } from '@/lib/news-afdelingen'
 
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data, error }, { data: rollenData }] = await Promise.all([
+  const [{ data, error }, { data: rollenData }, perm] = await Promise.all([
     supabase
       .from('drg_news_afdelingen')
       .select('*')
@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       .from('gebruiker_rollen')
       .select('afdeling')
       .not('afdeling', 'is', null),
+    getNewsPermission(supabase, user.id),
   ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -54,7 +55,22 @@ export async function GET(request: NextRequest) {
     .filter((a): a is DrgNewsAfdeling => a !== null)
     .sort((a, b) => a.label.localeCompare(b.label, 'nl'))
 
-  return NextResponse.json({ afdelingen: [...bestaandeAfdelingen, ...extraAfdelingen] })
+  const alleAfdelingen = [...bestaandeAfdelingen, ...extraAfdelingen]
+
+  // Beperkte gebruiker: toon alleen eigen afdeling in de lijst
+  const zichtbareAfdelingen = perm.alleAfdelingen
+    ? alleAfdelingen
+    : perm.eigenAfdeling
+      ? alleAfdelingen.filter(a => a.slug === slugifyAfdelingLabel(perm.eigenAfdeling!))
+      : alleAfdelingen
+
+  return NextResponse.json({
+    afdelingen: zichtbareAfdelingen,
+    permission: {
+      alleAfdelingen: perm.alleAfdelingen,
+      eigenAfdeling: perm.eigenAfdeling,
+    },
+  })
 }
 
 /**

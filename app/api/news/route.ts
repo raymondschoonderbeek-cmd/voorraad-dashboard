@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { canManageInterneNieuws, requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
+import { canManageInterneNieuws, getNewsPermission, requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
-import { isValidNewsAfdelingSlug } from '@/lib/news-afdelingen'
+import { isValidNewsAfdelingSlug, slugifyAfdelingLabel } from '@/lib/news-afdelingen'
 
 /**
  * GET: lijst berichten.
@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '20', 10) || 20, 1), 100)
   const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0)
 
-  if (beheer && !(await canManageInterneNieuws(supabase, user.id))) {
+  const perm = await getNewsPermission(supabase, user.id)
+
+  if (beheer && !perm.canManage) {
     return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
   }
 
@@ -39,7 +41,11 @@ export async function GET(request: NextRequest) {
     qy = qy.not('published_at', 'is', null).lte('published_at', nowIso)
   }
 
-  if (category && (await isValidNewsAfdelingSlug(supabase, category))) {
+  // Beheermodus: beperkte gebruikers zien alleen hun eigen afdeling
+  if (beheer && !perm.alleAfdelingen && perm.eigenAfdeling) {
+    const eigenSlug = slugifyAfdelingLabel(perm.eigenAfdeling)
+    if (eigenSlug) qy = qy.eq('category', eigenSlug)
+  } else if (category && (await isValidNewsAfdelingSlug(supabase, category))) {
     qy = qy.eq('category', category)
   }
   if (importantOnly) {
@@ -66,6 +72,8 @@ export async function POST(request: NextRequest) {
   const auth = await requireInterneNieuwsBeheer()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
 
+  const perm = await getNewsPermission(auth.supabase, auth.user.id)
+
   let body: Record<string, unknown>
   try {
     body = await request.json()
@@ -79,8 +87,11 @@ export async function POST(request: NextRequest) {
   const body_html = typeof body.body_html === 'string' ? body.body_html : ''
   const excerpt = typeof body.excerpt === 'string' ? body.excerpt.trim() || null : null
 
+  // Beperkte gebruiker: afdeling geforceerd naar eigen afdeling
   let category = 'algemeen'
-  if (typeof body.category === 'string') {
+  if (!perm.alleAfdelingen && perm.eigenAfdeling) {
+    category = slugifyAfdelingLabel(perm.eigenAfdeling) || 'algemeen'
+  } else if (typeof body.category === 'string') {
     const c = body.category.trim()
     if (c && (await isValidNewsAfdelingSlug(auth.supabase, c))) category = c
     else {

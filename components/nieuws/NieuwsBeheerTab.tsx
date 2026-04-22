@@ -55,6 +55,8 @@ export function NieuwsBeheerTab() {
   const [previewOpen, setPreviewOpen] = useState(false)
 
   const [afdelingen, setAfdelingen] = useState<DrgNewsAfdeling[]>([])
+  const [alleAfdelingenToegang, setAlleAfdelingenToegang] = useState(false)
+  const [eigenAfdeling, setEigenAfdeling] = useState<string | null>(null)
   /** Lege string = alle afdelingen tonen */
   const [listFilterAfdeling, setListFilterAfdeling] = useState('')
 
@@ -63,6 +65,10 @@ export function NieuwsBeheerTab() {
       const res = await fetch('/api/news/afdelingen')
       const d = await res.json().catch(() => ({}))
       if (res.ok && Array.isArray(d.afdelingen)) setAfdelingen(d.afdelingen)
+      if (res.ok && d.permission) {
+        setAlleAfdelingenToegang(!!d.permission.alleAfdelingen)
+        setEigenAfdeling(d.permission.eigenAfdeling ?? null)
+      }
     } catch {
       /* keep list */
     }
@@ -385,17 +391,23 @@ export function NieuwsBeheerTab() {
               <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>
                 Afdeling
               </label>
-              <select className={inputClass} style={inputStyle} value={category} onChange={e => setCategory(e.target.value)}>
-                {afdelingen.length === 0 ? (
-                  <option value={category}>{category}</option>
-                ) : (
-                  afdelingen.map(a => (
-                    <option key={a.id} value={a.slug}>
-                      {a.label}
-                    </option>
-                  ))
-                )}
-              </select>
+              {alleAfdelingenToegang ? (
+                <select className={inputClass} style={inputStyle} value={category} onChange={e => setCategory(e.target.value)}>
+                  {afdelingen.length === 0 ? (
+                    <option value={category}>{category}</option>
+                  ) : (
+                    afdelingen.map(a => (
+                      <option key={a.id} value={a.slug}>
+                        {a.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              ) : (
+                <div className={inputClass} style={{ ...inputStyle, cursor: 'default', opacity: 0.7 }}>
+                  {eigenAfdeling ?? category}
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2 pb-1">
               <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
@@ -641,23 +653,25 @@ export function NieuwsBeheerTab() {
               style={{ borderColor: 'rgba(45,69,124,0.08)', background: 'rgba(45,69,124,0.02)' }}
             >
               <label className="text-xs font-semibold shrink-0" style={{ color: 'rgba(45,69,124,0.65)', fontFamily: F }}>
-                Filter op afdeling
+                {alleAfdelingenToegang ? 'Filter op afdeling' : (eigenAfdeling ?? 'Afdeling')}
               </label>
               <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-                <select
-                  className={`${inputClass} max-w-xs`}
-                  style={inputStyle}
-                  value={listFilterAfdeling}
-                  onChange={e => setListFilterAfdeling(e.target.value)}
-                  aria-label="Filter berichten op afdeling"
-                >
-                  <option value="">Alle afdelingen</option>
-                  {afdelingFilterOptions.map(a => (
-                    <option key={a.slug} value={a.slug}>
-                      {a.label}
-                    </option>
-                  ))}
-                </select>
+                {alleAfdelingenToegang && (
+                  <select
+                    className={`${inputClass} max-w-xs`}
+                    style={inputStyle}
+                    value={listFilterAfdeling}
+                    onChange={e => setListFilterAfdeling(e.target.value)}
+                    aria-label="Filter berichten op afdeling"
+                  >
+                    <option value="">Alle afdelingen</option>
+                    {afdelingFilterOptions.map(a => (
+                      <option key={a.slug} value={a.slug}>
+                        {a.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
                   {filteredPosts.length === posts.length
                     ? `${posts.length} bericht${posts.length === 1 ? '' : 'en'}`
