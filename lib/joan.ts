@@ -100,8 +100,14 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     const roomId = eerste.id
 
     const d = beginVanDag.toISOString().slice(0, 10)
+    const tz = 'Europe/Amsterdam'
     const kandidaten = [
-      `${JOAN_PORTAL}/rooms/${roomId}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      // Bevestigd werkend door Joan support (2.0 API)
+      `${JOAN_PORTAL}/rooms/reservations/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}&tz=${encodeURIComponent(tz)}`,
+      // v1.0 events — trailing slash verplicht (bevestigd door Joan support)
+      `${JOAN_V1}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
+      `${JOAN_V1}/events/?start=${d}&end=${d}`,
+      // Overige 2.0 kandidaten als fallback
       `${JOAN_PORTAL}/rooms/${roomId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_PORTAL}/rooms/${roomId}/schedule/?date=${d}`,
       `${JOAN_PORTAL}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
@@ -112,8 +118,6 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       ] : []),
       `${JOAN_PORTAL}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_BASE}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      `${JOAN_V1}/events?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
-      `${JOAN_V1}/events?start=${d}&end=${d}`,
     ]
 
     const probes: string[] = []
@@ -133,12 +137,32 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
       return { ruimtes: rooms.map(r => ({ id: r.email ?? r.key, naam: r.name, bezet: false, capacity: r.capacity, boekingen: [] })), joanDebug: `events niet gevonden: ${probes.join(' | ')} | eerste: ${JSON.stringify(eerste).slice(0, 600)}` }
     }
 
-    const eventGroups: JoanEventGroup[] = Array.isArray(eventsRaw) ? eventsRaw : []
+    const rawArray: unknown[] = Array.isArray(eventsRaw) ? eventsRaw : []
 
     const eventsPerRuimte = new Map<string, JoanEvent[]>()
-    for (const group of eventGroups) {
-      const roomKey = group.room.email ?? group.room.key ?? ''
-      const gesorteerd = [...group.events].sort((a, b) => a.start.localeCompare(b.start))
+    for (const group of rawArray) {
+      if (!group || typeof group !== 'object') continue
+      const g = group as Record<string, unknown>
+
+      // Haal room-key op (meerdere veldnamen proberen)
+      const room = (g.room ?? g.space ?? {}) as Record<string, unknown>
+      const roomKey = String(room.email ?? room.key ?? room.id ?? g.room_id ?? g.space_id ?? '')
+      if (!roomKey) continue
+
+      // events / reservations / bookings — Joan gebruikt wisselende namen
+      const eventList = (Array.isArray(g.events) ? g.events : Array.isArray(g.reservations) ? g.reservations : Array.isArray(g.bookings) ? g.bookings : []) as unknown[]
+
+      const parsed: JoanEvent[] = eventList.flatMap(ev => {
+        if (!ev || typeof ev !== 'object') return []
+        const e = ev as Record<string, unknown>
+        const start = String(e.start ?? e.start_time ?? e.dtstart ?? '')
+        const end = String(e.end ?? e.end_time ?? e.dtend ?? '')
+        if (!start || !end) return []
+        const org = (e.organizer ?? e.organiser ?? {}) as Record<string, unknown>
+        return [{ id: String(e.id ?? ''), summary: String(e.summary ?? e.title ?? e.subject ?? ''), start, end, organizer: { displayName: String(org.displayName ?? org.name ?? ''), email: String(org.email ?? '') } }]
+      })
+
+      const gesorteerd = parsed.sort((a, b) => a.start.localeCompare(b.start))
       eventsPerRuimte.set(roomKey, gesorteerd)
     }
 
