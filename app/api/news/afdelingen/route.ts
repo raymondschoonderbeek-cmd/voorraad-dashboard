@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getNewsPermission, requireAuth, requireInterneNieuwsBeheer } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { withRateLimit } from '@/lib/api-middleware'
 import { slugifyAfdelingLabel, type DrgNewsAfdeling } from '@/lib/news-afdelingen'
 
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const admin = createAdminClient()
   const [{ data: rollenData }, { data: handmatigData }, perm] = await Promise.all([
-    supabase.from('gebruiker_rollen').select('afdeling').not('afdeling', 'is', null),
+    admin.from('gebruiker_rollen').select('afdeling').not('afdeling', 'is', null),
     supabase.from('drg_news_afdelingen').select('*').order('sort_order').order('label'),
     getNewsPermission(supabase, user.id),
   ])
