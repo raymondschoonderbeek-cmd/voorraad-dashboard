@@ -156,7 +156,6 @@ export function DashboardSidebar() {
   const [modules, setModules] = useState<string[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
   const [nieuwsBadge, setNieuwsBadge] = useState(0)
-  const [brancheBadge, setBrancheBadge] = useState(0)
   const [initials, setInitials] = useState('?')
 
   useEffect(() => {
@@ -219,11 +218,11 @@ export function DashboardSidebar() {
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 0', scrollbarWidth: 'none' }}>
 
-        {/* Hoofdnavigatie */}
-        <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={isActive('/dashboard')} />
-        {heeftModule('voorraad') && (
-          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard', icon: <IconBox /> }} active={pathname === '/dashboard'} />
-        )}
+        {/* Hoofdnavigatie — toon Voorraad als module actief is, anders Home */}
+        {heeftModule('voorraad')
+          ? <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard', icon: <IconBox /> }} active={pathname === '/dashboard'} />
+          : <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={pathname === '/dashboard'} />
+        }
         {heeftModule('brand-groep') && (
           <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard/brand-groep', icon: <IconChart /> }} active={isActive('/dashboard/brand-groep')} />
         )}
@@ -235,9 +234,6 @@ export function DashboardSidebar() {
         {(heeftModule('branche-nieuws') || heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur') || heeftModule('lunch')) && (
           <>
             <SectionLabel label="Communicatie" />
-            {heeftModule('branche-nieuws') && (
-              <NavLink item={{ id: 'branche', label: 'Branche nieuws', href: '/dashboard', icon: <IconNewspaper />, badge: brancheBadge || null }} active={isActive('/dashboard')} />
-            )}
             {(heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur')) && (
               <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} />
             )}
