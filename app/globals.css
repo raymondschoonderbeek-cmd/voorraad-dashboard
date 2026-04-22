@@ -3,6 +3,42 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Dashboard thema — light */
+  --drg-page-bg: #f0f3f8;
+  --drg-topbar-bg: #ffffff;
+  --drg-topbar-border: rgba(102,145,174,0.2);
+  --drg-card-bg: #ffffff;
+  --drg-card-border: rgba(102,145,174,0.42);
+  --drg-card-shadow: 0 4px 22px rgba(45,69,124,0.07);
+  --drg-text: #1a2540;
+  --drg-text-muted: rgba(45,69,124,0.52);
+  --drg-text-subtle: rgba(45,69,124,0.35);
+  --drg-divider: rgba(102,145,174,0.2);
+  --drg-input-bg: rgba(45,69,124,0.04);
+  --drg-hover-bg: rgba(45,69,124,0.05);
+  --drg-section-label: rgba(45,69,124,0.4);
+  --drg-tag-bg: rgba(45,69,124,0.07);
+}
+
+[data-theme="dark"] {
+  --background: #0f1729;
+  --foreground: #e8edf5;
+
+  --drg-page-bg: #0f1729;
+  --drg-topbar-bg: #131e35;
+  --drg-topbar-border: rgba(255,255,255,0.07);
+  --drg-card-bg: #1a2540;
+  --drg-card-border: rgba(102,145,174,0.15);
+  --drg-card-shadow: 0 4px 22px rgba(0,0,0,0.25);
+  --drg-text: #e8edf5;
+  --drg-text-muted: rgba(200,215,235,0.6);
+  --drg-text-subtle: rgba(200,215,235,0.35);
+  --drg-divider: rgba(255,255,255,0.08);
+  --drg-input-bg: rgba(255,255,255,0.05);
+  --drg-hover-bg: rgba(255,255,255,0.05);
+  --drg-section-label: rgba(200,215,235,0.4);
+  --drg-tag-bg: rgba(255,255,255,0.08);
 }
 
 @theme inline {
@@ -40,6 +76,33 @@ body {
 /* Horizontaal scrollen op mobiel voor tabellen */
 .overflow-auto {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Dark mode: structurele overrides voor dashboard */
+[data-theme="dark"] body {
+  background: var(--drg-page-bg);
+}
+
+/* Kaarten, panels, modals in dark mode */
+[data-theme="dark"] .drg-card {
+  background: var(--drg-card-bg) !important;
+  border-color: var(--drg-card-border) !important;
+  box-shadow: var(--drg-card-shadow) !important;
+}
+[data-theme="dark"] .drg-page {
+  background: var(--drg-page-bg) !important;
+}
+[data-theme="dark"] .drg-topbar {
+  background: var(--drg-topbar-bg) !important;
+  border-color: var(--drg-topbar-border) !important;
+}
+
+/* Tabel striping in dark mode */
+[data-theme="dark"] tr:nth-child(even) {
+  background: rgba(255,255,255,0.02) !important;
+}
+[data-theme="dark"] tr:hover {
+  background: rgba(255,255,255,0.04) !important;
 }
 
 /* Intern nieuws: HTML-inhoud (body_html) netjes weergeven — zelfde klasse in artikel + voorbeeld in beheer */
