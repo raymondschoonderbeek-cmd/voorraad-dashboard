@@ -45,11 +45,12 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // TV kiosk: ?access=<key> zet cookie en redirect naar /tv
-  if (path.startsWith('/tv')) {
-    const tvKey = process.env.TV_API_KEY
-    const accessParam = request.nextUrl.searchParams.get('access')
-    const tvCookie = request.cookies.get('tv_access')?.value
+  const tvKey = process.env.TV_API_KEY
+  const tvCookie = request.cookies.get('tv_access')?.value
+  const isTvSession = tvKey && tvCookie === tvKey
 
+  if (path.startsWith('/tv')) {
+    const accessParam = request.nextUrl.searchParams.get('access')
     if (tvKey && accessParam === tvKey) {
       const res = NextResponse.redirect(new URL('/tv', request.url))
       applyHeaders(res)
@@ -59,8 +60,11 @@ export async function proxy(request: NextRequest) {
       })
       return res
     }
-    if (tvKey && tvCookie === tvKey) return response
+    if (isTvSession) return response
   }
+
+  // TV kiosk heeft ook toegang tot de data-API
+  if (path === '/api/tv-data' && isTvSession) return response
 
   /** Cron/webhooks: geen browser-sessie; route valideert zelf (bijv. Authorization: Bearer CRON_SECRET). */
   const publicPaths = [
