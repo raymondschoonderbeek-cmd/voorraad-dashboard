@@ -94,6 +94,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // icon / apple-icon: Next.js metadata-routes (favicon); niet door auth laten lopen
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon|apple-icon).*)'],
+  // Statische assets en Next.js internals uitsluiten van auth-middleware
+  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|icon|apple-icon|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|otf|eot)).*)'],
 }

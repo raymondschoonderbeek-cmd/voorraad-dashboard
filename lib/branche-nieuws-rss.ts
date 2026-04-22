@@ -4,6 +4,8 @@ export type BrancheNieuwsItem = {
   title: string
   link: string
   pubDate: string | null
+  description: string | null
+  content: string | null
 }
 
 function decodeXmlEntities(s: string): string {
@@ -33,6 +35,25 @@ function extractTag(block: string, tag: string): string {
  * Parseert RSS 2.0 XML tot titel/link/pubDate per item.
  * @param limit max aantal items (default 8)
  */
+function extractContentEncoded(block: string): string {
+  const cdata = block.match(/<content:encoded>\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*<\/content:encoded>/i)
+  if (cdata) return decodeXmlEntities(cdata[1].trim())
+  const plain = block.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i)
+  if (!plain) return ''
+  return decodeXmlEntities(plain[1].replace(/<[^>]+>/g, '').trim())
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+}
+
 export function parseBrancheNieuwsRss(xml: string, limit = 8): BrancheNieuwsItem[] {
   const out: BrancheNieuwsItem[] = []
   const re = /<item>([\s\S]*?)<\/item>/gi
@@ -43,8 +64,12 @@ export function parseBrancheNieuwsRss(xml: string, limit = 8): BrancheNieuwsItem
     const link = extractTag(block, 'link').trim()
     const pubRaw = extractTag(block, 'pubDate')
     const pubDate = pubRaw || null
+    const descRaw = extractTag(block, 'description')
+    const description = descRaw ? descRaw.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300) || null : null
+    const contentRaw = extractContentEncoded(block)
+    const content = contentRaw ? htmlToText(contentRaw) || null : null
     if (title && link.startsWith('http')) {
-      out.push({ title, link, pubDate })
+      out.push({ title, link, pubDate, description, content })
     }
   }
   return out

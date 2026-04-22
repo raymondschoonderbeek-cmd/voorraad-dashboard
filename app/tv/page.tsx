@@ -36,7 +36,7 @@ type Hoogtepunt = { id: string; datum: string; naam: string; icoon: string }
 
 type Boeking = { van: string; tot: string }
 type Ruimte = { id: string; naam: string; bezet: boolean; tot?: string; geboektDoor?: string; capacity: number; boekingen: Boeking[] }
-type NieuwsItem = { title: string; link: string; pubDate: string | null }
+type NieuwsItem = { title: string; link: string; pubDate: string | null; description?: string | null; content?: string | null }
 
 type TvData = {
   nieuws: NewsItem[]
@@ -77,12 +77,15 @@ export default function TvPage() {
   const [nu, setNu] = useState(new Date())
   const [nieuwsIdx, setNieuwsIdx] = useState(0)
   const [fade, setFade] = useState(true)
+  const [brancheIdx, setBrancheIdx] = useState(0)
+  const [brancheFade, setBrancheFade] = useState(true)
   const [linkerView, setLinkerView] = useState<LinkerView>('intern')
   const [linkerFade, setLinkerFade] = useState(true)
   const [zijpanelView, setZijpanelView] = useState<ZijpanelView>('verjaardagen')
   const [zijpanelFade, setZijpanelFade] = useState(true)
   const tickerRef = useRef<HTMLDivElement>(null)
   const newsContainerRef = useRef<HTMLDivElement>(null)
+  const brancheContainerRef = useRef<HTMLDivElement>(null)
   const newsContentRef = useRef<HTMLDivElement>(null)
 
   const laadData = useCallback(async () => {
@@ -165,6 +168,51 @@ export default function TvPage() {
     return () => clearInterval(t)
   }, [data?.brancheNieuws?.length])
 
+  // Branche nieuws: content-aware cycling met auto-scroll voor lange artikelen
+  useEffect(() => {
+    if (!data?.brancheNieuws?.length) return
+    const container = brancheContainerRef.current
+    if (container) container.scrollTop = 0
+
+    let timer: ReturnType<typeof setTimeout>
+    let rafId: number
+    let cancelled = false
+
+    const goNext = () => {
+      setBrancheFade(false)
+      timer = setTimeout(() => {
+        setBrancheIdx(i => (i + 1) % data.brancheNieuws.length)
+        setBrancheFade(true)
+      }, 600)
+    }
+
+    timer = setTimeout(() => {
+      if (cancelled) return
+      if (!container) { timer = setTimeout(goNext, 12000); return }
+      const overflow = container.scrollHeight - container.clientHeight
+      if (overflow <= 40) {
+        timer = setTimeout(goNext, 12000)
+        return
+      }
+      timer = setTimeout(() => {
+        if (cancelled) return
+        const duration = (overflow / 35) * 1000
+        const startTime = performance.now()
+        const animate = (now: number) => {
+          if (cancelled) return
+          const p = Math.min((now - startTime) / duration, 1)
+          container.scrollTop = p * overflow
+          if (p < 1) { rafId = requestAnimationFrame(animate) }
+          else { timer = setTimeout(goNext, 2000) }
+        }
+        rafId = requestAnimationFrame(animate)
+      }, 2500)
+    }, 700)
+
+    return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brancheIdx, data?.brancheNieuws?.length])
+
   // Zijpanel rouleren: verjaardagen ↔ hoogtepunten elke 8 seconden
   useEffect(() => {
     const heeftVerjaardagen = (data?.jarigen?.length ?? 0) > 0
@@ -229,6 +277,7 @@ export default function TvPage() {
             style={{
               objectFit: 'contain',
               height: '6vh',
+              maxWidth: '30vw',
               width: 'auto',
               display: 'block',
             }}
@@ -357,30 +406,46 @@ export default function TvPage() {
             )}
 
             {/* BRANCHE NIEUWS */}
-            {linkerView === 'branche' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2vh' }}>
-                {brancheNieuws.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5vw', borderBottom: i < brancheNieuws.length - 1 ? '1px solid rgba(102,145,174,0.12)' : 'none', paddingBottom: i < brancheNieuws.length - 1 ? '2vh' : 0 }}>
-                    <div style={{ fontSize: '1.4vh', fontWeight: 700, color: BLAUW_LICHT, flexShrink: 0, minWidth: '2.5vw', lineHeight: 1.4, paddingTop: '0.2vh' }}>
-                      {String(i + 1).padStart(2, '0')}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 'clamp(1.6vh, 2vh, 2.4vh)', fontWeight: 600, color: 'rgba(255,255,255,0.9)', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                        {item.title}
-                      </p>
-                      {item.pubDate && (
-                        <p style={{ margin: '0.4vh 0 0', fontSize: '1.2vh', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
-                          {new Date(item.pubDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}
-                        </p>
+            {linkerView === 'branche' && (() => {
+              const brancheItem = brancheNieuws[brancheIdx] ?? null
+              return (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', opacity: brancheFade ? 1 : 0, transition: 'opacity 0.6s ease' }}>
+                  {brancheItem ? (
+                    <>
+                      <h1 style={{ fontSize: 'clamp(2.8vh, 4.5vh, 5.5vh)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 2.5vh', color: 'white', letterSpacing: '-0.02em' }}>
+                        {brancheItem.title}
+                      </h1>
+                      <div style={{ height: '1px', background: 'rgba(102,145,174,0.25)', marginBottom: '2.5vh', flexShrink: 0 }} />
+                      {(brancheItem.content || brancheItem.description) && (
+                        <div ref={brancheContainerRef} className="tv-nieuws-scroll" style={{ fontSize: 'clamp(1.8vh, 2.3vh, 2.8vh)', lineHeight: 1.75, color: 'rgba(255,255,255,0.82)', fontWeight: 400, flex: 1, minHeight: 0, position: 'relative', overflowY: 'auto' }}>
+                          <p style={{ margin: 0, whiteSpace: 'pre-line' }}>{brancheItem.content ?? brancheItem.description}</p>
+                          <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, height: '8vh', background: 'linear-gradient(to bottom, transparent, #1a2e5a)', pointerEvents: 'none' }} />
+                        </div>
                       )}
+                      <div style={{ marginTop: '3vh', display: 'flex', alignItems: 'center', gap: '1.5vw' }}>
+                        {brancheItem.pubDate && (
+                          <span style={{ fontSize: '1.3vh', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                            {new Date(brancheItem.pubDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '1.3vh', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>Bron: NieuwsFiets.nu</span>
+                        {brancheNieuws.length > 1 && (
+                          <div style={{ display: 'flex', gap: '0.4vw', marginLeft: 'auto' }}>
+                            {brancheNieuws.map((_, i) => (
+                              <div key={i} style={{ width: i === brancheIdx ? '2vw' : '0.5vw', height: '0.5vh', borderRadius: '100px', background: i === brancheIdx ? BLAUW_LICHT : 'rgba(255,255,255,0.2)', transition: 'all 0.4s ease' }} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '2vh' }}>
+                      Geen branche nieuws beschikbaar
                     </div>
-                  </div>
-                ))}
-                <div style={{ marginTop: '1vh' }}>
-                  <span style={{ fontSize: '1.1vh', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>Bron: NieuwsFiets.nu</span>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
           </div>
         </div>
