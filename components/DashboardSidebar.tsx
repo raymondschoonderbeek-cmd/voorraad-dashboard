@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT, DYNAMO_GOLD, FONT_FAMILY as F } from '@/lib/theme'
 import { useTheme } from '@/components/ThemeProvider'
 
-const SIDEBAR_BG = '#1a2540'
-const SIDEBAR_ACTIVE = 'rgba(102,145,174,0.18)'
+const SIDEBAR_BG = '#0f172a'
+const SIDEBAR_ACTIVE = 'rgba(255,255,255,0.09)'
 const SIDEBAR_HOVER = 'rgba(255,255,255,0.05)'
 const TEXT_DIM = 'rgba(255,255,255,0.45)'
 const TEXT_NORMAL = 'rgba(255,255,255,0.82)'
@@ -202,10 +202,9 @@ export function DashboardSidebar() {
       fontFamily: F,
     }}>
       {/* Logo */}
-      <div style={{ padding: '16px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+      <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/dynamo-retail-group-logo.png" alt="Dynamo" style={{ height: 22, width: 'auto', objectFit: 'contain' }} />
+          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.18em', color: '#ffffff', fontFamily: F, textTransform: 'uppercase', lineHeight: 1 }}>DYNAMO</span>
         </Link>
       </div>
 
