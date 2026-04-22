@@ -85,8 +85,17 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
   const now = new Date()
   const nowMs = now.getTime()
-  const beginVanDag = new Date(); beginVanDag.setHours(0, 0, 0, 0)
-  const eindVanDag = new Date(); eindVanDag.setHours(23, 59, 59, 999)
+
+  // Daggrens in Amsterdam-tijd — de server draait UTC (Vercel), setHours() werkt op lokale TZ
+  const datumAms = now.toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' }) // 'YYYY-MM-DD'
+  // Bepaal UTC-offset Amsterdam (CEST=+2, CET=+1): vergelijk 12:00 UTC met 12:00 Amsterdam
+  const ref = new Date(`${datumAms}T12:00:00Z`)
+  const amsUur = parseInt(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Amsterdam', hour: 'numeric', hour12: false, hourCycle: 'h23',
+  }).format(ref), 10) // bijv. 14 bij CEST
+  const offsetH = amsUur - 12 // +2 CEST, +1 CET
+  const beginVanDag = new Date(new Date(`${datumAms}T00:00:00Z`).getTime() - offsetH * 3_600_000)
+  const eindVanDag = new Date(beginVanDag.getTime() + 24 * 60 * 60 * 1000 - 1)
 
   try {
     const roomsRes = await fetch(`${JOAN_PORTAL}/rooms/`, {
@@ -105,7 +114,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     const calId = (eerste as { calendar?: { id?: string } }).calendar?.id
     const roomId = eerste.id
 
-    const d = beginVanDag.toISOString().slice(0, 10)
+    const d = datumAms
     const tz = 'Europe/Amsterdam'
     const kandidaten = [
       `${JOAN_PORTAL}/rooms/reservations/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}&tz=${encodeURIComponent(tz)}`,
@@ -175,6 +184,7 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
       const eventList = (
         Array.isArray(g.events) ? g.events
+        : Array.isArray(g.schedule) ? g.schedule
         : Array.isArray(g.reservations) ? g.reservations
         : Array.isArray(g.bookings) ? g.bookings
         : []
