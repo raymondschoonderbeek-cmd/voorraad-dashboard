@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT, DYNAMO_GOLD, FONT_FAMILY as F } from '@/lib/theme'
+import { useTheme } from '@/components/ThemeProvider'
 
 const SIDEBAR_BG = '#1a2540'
 const SIDEBAR_ACTIVE = 'rgba(102,145,174,0.18)'
@@ -104,6 +105,39 @@ function SectionLabel({ label }: { label: string }) {
       color: TEXT_DIM, fontFamily: F, padding: '14px 10px 4px',
     }}>
       {label}
+    </div>
+  )
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  const dark = theme === 'dark'
+  return (
+    <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: dark ? TEXT_DIM : DYNAMO_GOLD, flexShrink: 0 }} aria-hidden>
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <button
+        role="switch"
+        aria-checked={dark}
+        aria-label="Dark mode aan/uit"
+        onClick={() => setTheme(dark ? 'light' : 'dark')}
+        style={{
+          width: 36, height: 20, borderRadius: 100, border: 'none', cursor: 'pointer',
+          background: dark ? DYNAMO_BLUE_LIGHT : 'rgba(255,255,255,0.15)',
+          position: 'relative', transition: 'background 0.25s', padding: 0, flexShrink: 0,
+        }}
+      >
+        <span style={{
+          position: 'absolute', top: 2, left: dark ? 18 : 2,
+          width: 16, height: 16, borderRadius: '50%',
+          background: 'white', transition: 'left 0.25s',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        }} />
+      </button>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: dark ? DYNAMO_BLUE_LIGHT : TEXT_DIM, flexShrink: 0 }} aria-hidden>
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
     </div>
   )
 }
@@ -226,6 +260,8 @@ export function DashboardSidebar() {
         <SectionLabel label="" />
         <NavLink item={{ id: 'instellingen', label: 'Instellingen', href: '/dashboard/instellingen', icon: <IconSettings /> }} active={isActive('/dashboard/instellingen')} />
       </nav>
+
+      <ThemeToggle />
 
       {/* User profiel onderaan */}
       <div style={{

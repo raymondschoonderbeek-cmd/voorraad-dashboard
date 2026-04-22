@@ -3,10 +3,10 @@
 import { usePathname } from 'next/navigation'
 import { DYNAMO_BLUE_LIGHT, FONT_FAMILY as F } from '@/lib/theme'
 
-const TOPBAR_BG = '#ffffff'
-const BORDER = 'rgba(102,145,174,0.2)'
-const TEXT_MUTED = 'rgba(45,69,124,0.45)'
-const TEXT_MAIN = '#1a2540'
+const TOPBAR_BG = 'var(--drg-topbar-bg)'
+const BORDER = 'var(--drg-topbar-border)'
+const TEXT_MUTED = 'var(--drg-text-muted)'
+const TEXT_MAIN = 'var(--drg-text)'
 
 const PAGINA_TITELS: Record<string, string> = {
   '/dashboard': 'Home — overzicht',
@@ -35,7 +35,7 @@ export function DashboardTopbar() {
   const titel = paginaTitel(pathname)
 
   return (
-    <header style={{
+    <header className="drg-topbar" style={{
       height: 52, background: TOPBAR_BG,
       borderBottom: `1px solid ${BORDER}`,
       display: 'flex', alignItems: 'center',
@@ -57,7 +57,7 @@ export function DashboardTopbar() {
       {/* Zoekbalk */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        background: 'rgba(45,69,124,0.04)',
+        background: 'var(--drg-input-bg)',
         border: `1px solid ${BORDER}`,
         borderRadius: 8, padding: '6px 12px',
         width: 280, flexShrink: 0,
@@ -69,7 +69,7 @@ export function DashboardTopbar() {
         <span style={{ fontSize: 12, color: TEXT_MUTED, flex: 1 }}>Zoek module, winkel, artikel…</span>
         <kbd style={{
           fontSize: 10, fontWeight: 600, color: TEXT_MUTED,
-          background: 'rgba(45,69,124,0.06)', border: `1px solid ${BORDER}`,
+          background: 'var(--drg-tag-bg)', border: `1px solid ${BORDER}`,
           borderRadius: 4, padding: '1px 5px', lineHeight: '16px',
         }}>⌘K</kbd>
       </div>
@@ -82,7 +82,7 @@ export function DashboardTopbar() {
           background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: TEXT_MUTED, transition: 'background 0.15s',
         }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(45,69,124,0.06)')}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--drg-hover-bg)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           title="Notificaties"
           aria-label="Notificaties"
