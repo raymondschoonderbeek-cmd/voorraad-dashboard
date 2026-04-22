@@ -14,12 +14,7 @@ export async function GET(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data, error }, { data: rollenData }, perm] = await Promise.all([
-    supabase
-      .from('drg_news_afdelingen')
-      .select('*')
-      .order('sort_order', { ascending: true })
-      .order('label', { ascending: true }),
+  const [{ data: rollenData }, perm] = await Promise.all([
     supabase
       .from('gebruiker_rollen')
       .select('afdeling')
@@ -27,35 +22,22 @@ export async function GET(request: NextRequest) {
     getNewsPermission(supabase, user.id),
   ])
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const bestaandeAfdelingen = (data ?? []) as DrgNewsAfdeling[]
-  const bestaandeSlugs = new Set(bestaandeAfdelingen.map(a => a.slug))
-
-  // Distinct Azure-afdelingen die nog niet in drg_news_afdelingen staan
-  const azureLabels = [...new Set(
+  // Alleen afdelingen die aan gebruikers hangen (Azure sync)
+  const alleAfdelingen: DrgNewsAfdeling[] = [...new Set(
     (rollenData ?? [])
       .map((r: { afdeling: string | null }) => r.afdeling?.trim())
       .filter((a): a is string => !!a)
   )]
-
-  const extraAfdelingen: DrgNewsAfdeling[] = azureLabels
-    .map(label => {
-      const slug = slugifyAfdelingLabel(label)
-      if (!slug || bestaandeSlugs.has(slug)) return null
-      return {
-        id: `azure-${slug}`,
-        slug,
-        label,
-        sort_order: 999,
-        created_at: '',
-        updated_at: '',
-      } satisfies DrgNewsAfdeling
-    })
-    .filter((a): a is DrgNewsAfdeling => a !== null)
-    .sort((a, b) => a.label.localeCompare(b.label, 'nl'))
-
-  const alleAfdelingen = [...bestaandeAfdelingen, ...extraAfdelingen]
+    .sort((a, b) => a.localeCompare(b, 'nl'))
+    .map(label => ({
+      id: `azure-${slugifyAfdelingLabel(label)}`,
+      slug: slugifyAfdelingLabel(label),
+      label,
+      sort_order: 0,
+      created_at: '',
+      updated_at: '',
+    } satisfies DrgNewsAfdeling))
+    .filter(a => !!a.slug)
 
   // Beperkte gebruiker: toon alleen eigen afdeling in de lijst
   const zichtbareAfdelingen = perm.alleAfdelingen
