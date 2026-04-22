@@ -76,10 +76,10 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '6px 10px', borderRadius: 7,
+        padding: '6px 10px', borderRadius: 6,
         color: active ? '#ffffff' : TEXT_NORMAL,
         background: active ? SIDEBAR_ACTIVE : 'transparent',
-        fontSize: 13, fontWeight: active ? 600 : 400,
+        fontSize: 13, fontWeight: active ? 600 : 500,
         fontFamily: F, textDecoration: 'none',
         transition: 'background 0.15s, color 0.15s',
         position: 'relative',
@@ -198,7 +198,7 @@ export function DashboardSidebar() {
       width: 220, flexShrink: 0, background: SIDEBAR_BG,
       display: 'flex', flexDirection: 'column',
       borderRight: '1px solid rgba(45,69,124,0.12)',
-      height: '100vh', position: 'sticky', top: 0, overflow: 'hidden',
+      height: '100%', overflow: 'hidden',
       fontFamily: F,
     }}>
       {/* Logo */}

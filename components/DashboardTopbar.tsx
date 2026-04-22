@@ -36,15 +36,17 @@ export function DashboardTopbar() {
 
   return (
     <header className="drg-topbar" style={{
-      height: 52, background: TOPBAR_BG,
+      height: 48, background: TOPBAR_BG,
       borderBottom: `1px solid ${BORDER}`,
       display: 'flex', alignItems: 'center',
       padding: '0 20px', gap: 16,
-      position: 'sticky', top: 0, zIndex: 50,
-      fontFamily: F, flexShrink: 0,
+      flexShrink: 0, zIndex: 50,
+      fontFamily: F,
     }}>
-      {/* Breadcrumb / paginatitel */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+      {/* Merk + Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.15em', color: '#ffffff', textTransform: 'uppercase', flexShrink: 0 }}>DYNAMO</span>
+        <span style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>|</span>
         <span style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 500, flexShrink: 0 }}>DRG Portal</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: TEXT_MUTED, flexShrink: 0 }} aria-hidden>
           <polyline points="9 18 15 12 9 6"/>
