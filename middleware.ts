@@ -19,7 +19,7 @@ export function middleware(request: NextRequest) {
         secure: true,
         sameSite: 'strict',
         maxAge: TV_COOKIE_MAX_AGE,
-        path: '/tv',
+        path: '/',
       })
       return res
     }
@@ -34,5 +34,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/tv/:path*'],
+  matcher: ['/tv', '/tv/:path*'],
 }
