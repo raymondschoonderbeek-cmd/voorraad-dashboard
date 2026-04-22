@@ -38,6 +38,8 @@
   --drg-success-bg: #E8F6ED;
   --drg-danger-bg: #FCEAEA;
   --drg-info-bg: #EEF3FB;
+  --drg-admin-bg: #F4EFE0;
+  --drg-admin: #8B6A00;
 }
 
 [data-theme="dark"] {
@@ -76,6 +78,8 @@
   --drg-success-bg: rgba(34,197,94,0.12);
   --drg-danger-bg: rgba(248,113,113,0.12);
   --drg-info-bg: rgba(99,144,210,0.12);
+  --drg-admin-bg: rgba(201,161,74,0.15);
+  --drg-admin: #c9a14a;
 }
 
 @theme inline {

@@ -1,8 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DYNAMO_BLUE } from '@/lib/theme'
+import {
+  IconStore, IconUsers, IconLock, IconBox, IconUpload,
+  IconBike, IconNewspaper, IconImage, IconMonitor,
+} from '@/components/DashboardIcons'
 import { CampagneFietsenBeheerTab } from '@/components/campagne-fietsen/CampagneFietsenBeheerTab'
 import { NieuwsBeheerTab } from '@/components/nieuws/NieuwsBeheerTab'
 import { TrustedIpsTab } from '@/components/beheer/TrustedIpsTab'
@@ -1061,25 +1066,25 @@ export default function BeheerPage() {
   const inputStyle = { background: 'var(--drg-input-bg)', border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
 
-  const tabs: { key: Tab; label: string; icon: string; count?: number }[] =
+  const tabs: { key: Tab; label: string; icon: ReactNode; count?: number }[] =
     isAdmin === true
       ? [
-          { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
-          { key: 'gebruikers', label: 'Gebruikers', icon: '👤', count: rollen.length },
-          ...(!error ? [{ key: 'ips' as Tab, label: 'IP\'s', icon: '🔒', count: trustedIps.length }] : []),
-          ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: '🏷️', count: bekendeMerken.length }] : []),
-          { key: 'import', label: 'Import', icon: '📊' },
-          { key: 'campagnefietsen', label: 'Fietsen', icon: '🚲' },
-          { key: 'nieuws', label: 'Nieuws', icon: '📰' },
-          { key: 'afbeeldingen', label: 'Afbeeldingen', icon: '🖼️' },
-          { key: 'tv', label: 'TV', icon: '📺' },
+          { key: 'winkels', label: 'Winkels', icon: <IconStore size={14} />, count: winkels.length },
+          { key: 'gebruikers', label: 'Gebruikers', icon: <IconUsers size={14} />, count: rollen.length },
+          ...(!error ? [{ key: 'ips' as Tab, label: 'IP\'s', icon: <IconLock size={14} />, count: trustedIps.length }] : []),
+          ...(!error ? [{ key: 'merken' as Tab, label: 'Merken', icon: <IconBox size={14} />, count: bekendeMerken.length }] : []),
+          { key: 'import', label: 'Import', icon: <IconUpload size={14} /> },
+          { key: 'campagnefietsen', label: 'Fietsen', icon: <IconBike size={14} /> },
+          { key: 'nieuws', label: 'Nieuws', icon: <IconNewspaper size={14} /> },
+          { key: 'afbeeldingen', label: 'Afbeeldingen', icon: <IconImage size={14} /> },
+          { key: 'tv', label: 'TV', icon: <IconMonitor size={14} /> },
         ]
       : canManageInterneNieuws
         ? [
-            { key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length },
-            { key: 'nieuws', label: 'Nieuws', icon: '📰' },
+            { key: 'winkels', label: 'Winkels', icon: <IconStore size={14} />, count: winkels.length },
+            { key: 'nieuws', label: 'Nieuws', icon: <IconNewspaper size={14} /> },
           ]
-        : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
+        : [{ key: 'winkels', label: 'Winkels', icon: <IconStore size={14} />, count: winkels.length }]
 
   return (
     <div className="p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
@@ -1087,7 +1092,7 @@ export default function BeheerPage() {
         {/* Page head */}
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', fontFamily: F, marginBottom: 6 }}>Beheer</p>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Portaalbeheer</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Gebruikers, winkels en data</h1>
           <p style={{ fontSize: 13, color: 'var(--drg-text-2)', fontFamily: F, marginTop: 4 }}>{isAdmin ? 'Beheer gebruikers, winkels en importeer data via Excel' : 'Bekijk winkels en API-status'}</p>
         </div>
 
@@ -1107,7 +1112,7 @@ export default function BeheerPage() {
               <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Admins</div>
             </div>
             <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-success)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : Object.values(mfaStatus).filter(Boolean).length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : Object.values(mfaStatus).filter(Boolean).length}</div>
               <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>MFA actief</div>
             </div>
           </>}
@@ -1161,7 +1166,7 @@ export default function BeheerPage() {
                 flexShrink: 0,
               }}
             >
-              <span style={{ fontSize: 14 }}>{t.icon}</span>
+              {t.icon}
               {t.label}
               {t.count !== undefined && (
                 <span style={{
@@ -1623,14 +1628,17 @@ export default function BeheerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm" style={{ color: 'var(--drg-ink)', fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'var(--drg-info-bg)', color: 'var(--drg-ink-2)' } : rol.rol === 'lunch' ? { background: 'var(--drg-success-bg)', color: 'var(--drg-success)' } : { background: 'var(--drg-line)', color: 'var(--drg-text-2)' }}>
-                            {rol.rol === 'admin' ? '👑 Admin' : rol.rol === 'lunch' ? '🥪 Lunch' : '👁 Viewer'}
-                          </span>
+                          {rol.rol === 'admin'
+                            ? <span style={{ background: 'var(--drg-admin-bg)', color: 'var(--drg-admin)', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 8px', height: 20, lineHeight: '20px', borderRadius: 999, display: 'inline-flex', alignItems: 'center' }}>Admin</span>
+                            : rol.rol === 'lunch'
+                            ? <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-success-bg)', color: 'var(--drg-success)' }}>🥪 Lunch</span>
+                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-line)', color: 'var(--drg-text-2)' }}>👁 Viewer</span>
+                          }
                           {mfaStatus[rol.user_id] === true && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-success-bg)', color: 'var(--drg-success)' }} title="MFA ingeschakeld">✓ MFA</span>
                           )}
                           {mfaStatus[rol.user_id] === false && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-line)', color: 'var(--drg-text-3)' }} title="MFA uitgeschakeld">— MFA</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-line-2)', color: 'var(--drg-text-3)' }} title="MFA niet ingesteld">Geen MFA</span>
                           )}
                           {rol.mfa_verplicht && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-danger-bg)', color: 'var(--drg-danger)' }} title="MFA verplicht">MFA verplicht</span>
