@@ -354,7 +354,7 @@ export default function TvPage() {
             {/* INTERN NIEUWS */}
             {linkerView === 'intern' && (
               bericht ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'opacity 0.6s ease', opacity: fade ? 1 : 0 }}>
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', transition: 'opacity 0.6s ease', opacity: fade ? 1 : 0 }}>
                   <div style={{ marginBottom: '2vh' }}>
                     <span style={{
                       display: 'inline-block',
