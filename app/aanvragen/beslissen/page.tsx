@@ -258,7 +258,7 @@ function BeslissenInner() {
 
 export default function BeslissenPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#f0f3f8', padding: '24px 16px', fontFamily: F }}>
+    <div style={{ minHeight: '100vh', background: '#F7F7F4', padding: '24px 16px', fontFamily: F }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');`}</style>
       <Suspense>
         <BeslissenInner />
