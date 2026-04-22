@@ -218,11 +218,11 @@ export function DashboardSidebar() {
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 0', scrollbarWidth: 'none' }}>
 
-        {/* Hoofdnavigatie — toon Voorraad als module actief is, anders Home */}
-        {heeftModule('voorraad')
-          ? <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard', icon: <IconBox /> }} active={pathname === '/dashboard'} />
-          : <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={pathname === '/dashboard'} />
-        }
+        {/* Hoofdnavigatie */}
+        <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={pathname === '/dashboard'} />
+        {heeftModule('voorraad') && (
+          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard', icon: <IconBox /> }} active={pathname === '/dashboard'} />
+        )}
         {heeftModule('brand-groep') && (
           <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard/brand-groep', icon: <IconChart /> }} active={isActive('/dashboard/brand-groep')} />
         )}
