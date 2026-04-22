@@ -129,26 +129,26 @@ export default function TvPage() {
     // Wacht tot layout stabiel is (na fade-in van 600ms)
     timer = setTimeout(() => {
       if (cancelled) return
-      if (!container) { timer = setTimeout(goNext, 10000); return }
+      if (!container) { timer = setTimeout(goNext, 15000); return }
       const overflow = container.scrollHeight - container.clientHeight
       if (overflow <= 40) {
-        timer = setTimeout(goNext, 10000)
+        timer = setTimeout(goNext, 15000)
         return
       }
-      // Lang bericht: 2.5s lezen, dan scrollen (~35px/s), dan 2s pauze
+      // Lang bericht: 4s lezen, dan scrollen (~20px/s), dan 4s pauze
       timer = setTimeout(() => {
         if (cancelled) return
-        const duration = (overflow / 35) * 1000
+        const duration = (overflow / 20) * 1000
         const startTime = performance.now()
         const animate = (now: number) => {
           if (cancelled) return
           const p = Math.min((now - startTime) / duration, 1)
           container.scrollTop = p * overflow
           if (p < 1) { rafId = requestAnimationFrame(animate) }
-          else { timer = setTimeout(goNext, 2000) }
+          else { timer = setTimeout(goNext, 4000) }
         }
         rafId = requestAnimationFrame(animate)
-      }, 2500)
+      }, 4000)
     }, 700)
 
     return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
@@ -188,25 +188,25 @@ export default function TvPage() {
 
     timer = setTimeout(() => {
       if (cancelled) return
-      if (!container) { timer = setTimeout(goNext, 12000); return }
+      if (!container) { timer = setTimeout(goNext, 15000); return }
       const overflow = container.scrollHeight - container.clientHeight
       if (overflow <= 40) {
-        timer = setTimeout(goNext, 12000)
+        timer = setTimeout(goNext, 15000)
         return
       }
       timer = setTimeout(() => {
         if (cancelled) return
-        const duration = (overflow / 35) * 1000
+        const duration = (overflow / 20) * 1000
         const startTime = performance.now()
         const animate = (now: number) => {
           if (cancelled) return
           const p = Math.min((now - startTime) / duration, 1)
           container.scrollTop = p * overflow
           if (p < 1) { rafId = requestAnimationFrame(animate) }
-          else { timer = setTimeout(goNext, 2000) }
+          else { timer = setTimeout(goNext, 4000) }
         }
         rafId = requestAnimationFrame(animate)
-      }, 2500)
+      }, 4000)
     }, 700)
 
     return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
