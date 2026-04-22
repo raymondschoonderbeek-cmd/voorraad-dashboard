@@ -479,7 +479,7 @@ export default function TvPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9vh' }}>
                 {ruimtes.map(r => (
                   <div key={r.id}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7vw', marginBottom: '0.3vh' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7vw', marginBottom: r.boekingen.length > 0 ? '0.4vh' : 0 }}>
                       <div style={{
                         width: '0.85vh',
                         height: '0.85vh',
@@ -492,11 +492,16 @@ export default function TvPage() {
                         {r.naam}
                       </span>
                       <span style={{ fontSize: '1.3vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? '#f87171' : '#4ade80' }}>
-                        {r.bezet ? `bezet t/m ${r.tot}` : 'vrij'}
+                        {r.bezet
+                          ? `bezet t/m ${r.tot}`
+                          : r.boekingen.length === 0 ? 'vrij vandaag' : ''}
                       </span>
                     </div>
                     {r.boekingen.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4vw', paddingLeft: '1.5vw' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4vw', paddingLeft: '1.5vw' }}>
+                        <span style={{ fontSize: '1.0vh', fontWeight: 600, color: 'rgba(248,113,113,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: '0.2vw', flexShrink: 0 }}>
+                          Bezet:
+                        </span>
                         {r.boekingen.map((b, i) => (
                           <span key={i} style={{
                             fontSize: '1.1vh',
