@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
+import { DYNAMO_BLUE, FONT_FAMILY } from '@/lib/theme'
 import { reminderHtmlContainsLoginPlaceholder } from '@/lib/lunch-reminder-placeholders'
 import { WEEKDAYS_NL } from '@/lib/lunch-schedule'
 
@@ -67,9 +66,8 @@ export default function LunchBeheerPage() {
   const supabase = createClient()
   const [tab, setTab] = useState<'orders' | 'products' | 'instellingen'>('orders')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
   const isAdmin = sessionData?.isAdmin === true
-  const lunchOnly = sessionData?.lunchOnly === true
 
   useEffect(() => {
     if (sessionData && !sessionData.isAdmin) {
@@ -141,22 +139,13 @@ export default function LunchBeheerPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    <>
+      <style>{`
         input, select { color: #0d1f4e !important; }
         input::placeholder { color: #6b7280 !important; }
       `}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← {lunchOnly ? 'Lunch' : 'Portal'}
-          </Link>
-          <span className="text-white/50 text-xs select-none">Lunch beheer</span>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
         {!isAdmin && sessionData && (
           <div className="rounded-xl p-4 text-center" style={{ background: '#fef2f2', color: '#991b1b' }}>
             Geen toegang. Alleen beheerders kunnen deze pagina bekijken.
@@ -343,8 +332,8 @@ export default function LunchBeheerPage() {
         )}
         </>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   )
 }
 

@@ -73,11 +73,6 @@ export default function InstellingenPage() {
   const toast = useToast()
   const supabase = createClient()
 
-  const { data: sessionData } = useSWR<{ lunchOnly?: boolean }>(
-    '/api/auth/session-info', fetcher, { revalidateOnFocus: false }
-  )
-  const isLunchOnly = sessionData?.lunchOnly === true
-
   const { data: profileData, mutate: mutateProfile } = useSWR<{
     lunch_module_enabled?: boolean
     lunch_reminder_opt_out?: boolean
@@ -292,26 +287,7 @@ export default function InstellingenPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Sticky header met terugnavigatie */}
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none">Mijn instellingen</span>
-          {isLunchOnly && (
-            <Link
-              href="/dashboard/lunch"
-              className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10 transition-colors"
-            >
-              🥪 Lunch bestellen
-            </Link>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6">
+    <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-bold text-gray-900">Mijn instellingen</h1>
           <p className="text-sm text-gray-500">Voorkeuren voor het DRG-portal, beveiliging en je toegewezen IT-middelen.</p>
@@ -814,6 +790,5 @@ export default function InstellingenPage() {
           )}
         </div>
       </div>
-    </div>
   )
 }

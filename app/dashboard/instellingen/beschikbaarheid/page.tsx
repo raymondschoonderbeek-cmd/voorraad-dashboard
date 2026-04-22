@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 import { BeschikbaarheidBadge } from '@/components/BeschikbaarheidBadge'
 import {
@@ -233,18 +232,7 @@ export default function BeschikbaarheidInstellingenPage() {
   )
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      {/* Header */}
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard/instellingen" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Instellingen
-          </Link>
-          <span className="text-white/50 text-xs select-none">Beschikbaarheid</span>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
+    <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
         {/* Paginakop */}
         <div className="flex items-start justify-between gap-4">
@@ -643,7 +631,6 @@ export default function BeschikbaarheidInstellingenPage() {
           )}
         </div>
 
-      </main>
-    </div>
+      </div>
   )
 }

@@ -111,7 +111,7 @@ export default function FtpKoppelingPage() {
 
   if (allowed === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm" style={{ background: dashboardUi.pageBg, fontFamily: F, color: dashboardUi.textMuted }}>
+      <div className="flex items-center justify-center text-sm" style={{ padding: '80px 28px', fontFamily: F, color: dashboardUi.textMuted }}>
         Laden…
       </div>
     )
@@ -119,19 +119,7 @@ export default function FtpKoppelingPage() {
   if (!allowed) return null
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
-
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-3 min-h-[52px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white text-sm font-semibold">Freshdesk → FTP koppelingen</span>
-        </div>
-      </header>
-
-      <main className="flex-1 p-4 sm:p-6 max-w-3xl mx-auto w-full space-y-5">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto w-full space-y-5">
 
         <div className="flex items-center justify-between">
           <div>
@@ -233,7 +221,6 @@ export default function FtpKoppelingPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </div>
   )
 }

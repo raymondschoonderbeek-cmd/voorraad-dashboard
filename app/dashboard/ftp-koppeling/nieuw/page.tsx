@@ -64,7 +64,7 @@ export default function NieuweFtpTaakPage() {
 
   if (allowed === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm" style={{ background: dashboardUi.pageBg, fontFamily: F, color: dashboardUi.textMuted }}>
+      <div className="flex items-center justify-center text-sm" style={{ padding: '80px 28px', fontFamily: F, color: dashboardUi.textMuted }}>
         Laden…
       </div>
     )
@@ -77,19 +77,7 @@ export default function NieuweFtpTaakPage() {
   const labelStyle = { color: 'rgba(45,69,124,0.55)', fontFamily: F }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
-
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-3 min-h-[52px]">
-          <Link href="/dashboard/ftp-koppeling" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Overzicht
-          </Link>
-          <span className="text-white text-sm font-semibold">Nieuwe FTP-taak</span>
-        </div>
-      </header>
-
-      <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full">
         <form onSubmit={e => void maakAan(e)} className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Nieuwe taak aanmaken</h2>
@@ -154,7 +142,6 @@ export default function NieuweFtpTaakPage() {
             </Link>
           </div>
         </form>
-      </main>
-    </div>
+      </div>
   )
 }

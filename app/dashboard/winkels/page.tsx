@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import Link from 'next/link'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
-import { DYNAMO_BLUE, DYNAMO_LOGO, dashboardUi } from '@/lib/theme'
+import { DYNAMO_BLUE, dashboardUi } from '@/lib/theme'
 import { WinkelKaart, WinkelKaartItem } from '@/components/WinkelKaart'
 import type { Winkel } from '@/lib/types'
 
@@ -122,19 +121,7 @@ export default function WinkelsPage() {
   const WINKEL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777'] as const
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
-
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none">Winkels &amp; vestigingen</span>
-        </div>
-      </header>
-
-      <main className="flex-1 p-3 sm:p-5 max-w-[1400px] mx-auto w-full space-y-6">
+    <div className="p-3 sm:p-5 max-w-[1400px] mx-auto w-full space-y-6">
 
         {/* Kop + statistieken */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -306,7 +293,6 @@ export default function WinkelsPage() {
           </div>
         ) : null}
 
-      </main>
-    </div>
+      </div>
   )
 }

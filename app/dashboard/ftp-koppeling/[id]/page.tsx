@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { DYNAMO_BLUE, dashboardUi, FONT_FAMILY } from '@/lib/theme'
 
@@ -181,7 +180,7 @@ export default function FtpTaakPage() {
 
   if (allowed === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm" style={{ background: dashboardUi.pageBg, fontFamily: F, color: dashboardUi.textMuted }}>
+      <div className="flex items-center justify-center text-sm" style={{ padding: '80px 28px', fontFamily: F, color: dashboardUi.textMuted }}>
         Laden…
       </div>
     )
@@ -198,19 +197,7 @@ export default function FtpTaakPage() {
   const labelStyle = { color: 'rgba(45,69,124,0.55)', fontFamily: F }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
-
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-3 min-h-[52px]">
-          <Link href="/dashboard/ftp-koppeling" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Overzicht
-          </Link>
-          <span className="text-white text-sm font-semibold">{laden ? 'Laden…' : naam || 'FTP Taak'}</span>
-        </div>
-      </header>
-
-      <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full space-y-5">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full space-y-5">
 
         {laden ? (
           <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</p>
@@ -463,7 +450,6 @@ export default function FtpTaakPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
   )
 }

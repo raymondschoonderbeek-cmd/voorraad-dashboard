@@ -2,10 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
-import { DYNAMO_BLUE, DYNAMO_GOLD, FONT_FAMILY } from '@/lib/theme'
+import { DYNAMO_BLUE, FONT_FAMILY } from '@/lib/theme'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -40,37 +38,17 @@ function formatDate(s: string) {
 }
 
 export default function LunchOverzichtPage() {
-  const router = useRouter()
-  const supabase = createClient()
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const { data: orders = [], isLoading } = useSWR<Order[]>(`/api/lunch/orders?date=${date}`, fetcher)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
-  const isAdmin = sessionData?.isAdmin === true
-  const lunchOnly = sessionData?.lunchOnly === true
 
   return (
-    <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    <>
+      <style>{`
         input, select { color: #2D457C !important; }
         input::placeholder { color: #6b7280 !important; }
       `}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← {lunchOnly ? 'Lunch' : 'Portal'}
-          </Link>
-          <span className="text-white/50 text-xs select-none">Mijn bestellingen</span>
-          <div className="flex-1" />
-          {isAdmin && (
-            <Link href="/dashboard/lunch/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10 shrink-0">
-              Beheer
-            </Link>
-          )}
-        </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
+      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-3">
           <label className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Datum:</label>
           <input
@@ -129,7 +107,7 @@ export default function LunchOverzichtPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   )
 }

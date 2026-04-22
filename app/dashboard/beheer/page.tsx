@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
+import { DYNAMO_BLUE } from '@/lib/theme'
 import { CampagneFietsenBeheerTab } from '@/components/campagne-fietsen/CampagneFietsenBeheerTab'
 import { NieuwsBeheerTab } from '@/components/nieuws/NieuwsBeheerTab'
 import { TrustedIpsTab } from '@/components/beheer/TrustedIpsTab'
@@ -1083,33 +1082,7 @@ export default function BeheerPage() {
         : [{ key: 'winkels', label: 'Winkels', icon: '🏪', count: winkels.length }]
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb', fontFamily: F }}>
-
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
-
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0" style={{ fontFamily: F }}>
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none" style={{ fontFamily: F }}>Beheer</span>
-          <div className="flex-1" />
-          <div className="flex items-center gap-2 shrink-0">
-            {isAdmin && (
-              <Link href="/dashboard/vendit-api-tester" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80" style={{ background: 'rgba(59,130,246,0.2)', color: 'rgba(255,255,255,0.95)', border: '1px solid rgba(59,130,246,0.4)', fontFamily: F }} title="Vendit Public API testen">
-                Vendit API
-              </Link>
-            )}
-            {isAdmin && (
-              <Link href="/dashboard/ftp-koppeling" className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80" style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', fontFamily: F }} title="Freshdesk → FTP koppeling">
-                FTP-koppeling
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
+    <div className="p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
 
         <div className="relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
@@ -2241,7 +2214,6 @@ export default function BeheerPage() {
         {/* ── TAB: EXCEL IMPORT ── */}
         {tab === 'import' && <ImportTab winkels={winkels} onRefreshGebruikers={haalGebruikersOp} />}
 
-      </main>
-    </div>
+      </div>
   )
 }

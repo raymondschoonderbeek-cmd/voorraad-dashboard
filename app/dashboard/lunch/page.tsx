@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, FONT_FAMILY } from '@/lib/theme'
 import { formatOrderEndTimeNl, isOrderClosedForDate, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
 import { checkOrderDateAllowed, normalizeOrderWeekdays } from '@/lib/lunch-schedule'
@@ -35,14 +32,6 @@ function formatPrice(cents: number) {
 }
 
 export default function LunchPage() {
-  const router = useRouter()
-  const supabase = createClient()
-
-  async function uitloggen() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
-
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10))
 
@@ -67,7 +56,6 @@ export default function LunchPage() {
   const toastClearRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
-  const { data: sessionData } = useSWR<{ isAdmin?: boolean; lunchOnly?: boolean }>('/api/auth/session-info', fetcher)
   const { data: lunchSettings } = useSWR<{
     order_weekdays?: number[]
     closed_dates?: string[]
@@ -100,8 +88,6 @@ export default function LunchPage() {
     [dateCheck.ok, orderDate, now, orderEndTime]
   )
   const canPlaceOrder = dateCheck.ok && !orderDeadlineClosed
-  const isAdmin = sessionData?.isAdmin === true
-  const lunchOnly = sessionData?.lunchOnly === true
 
   const addToCart = useCallback((product: LunchProduct, qty = 1) => {
     setCart(prev => {
@@ -199,39 +185,11 @@ export default function LunchPage() {
   }, {})
 
   return (
-    <div className="min-h-screen" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    <>
+      <style>{`
         input, select { color: #2D457C !important; }
         input::placeholder { color: #6b7280 !important; }
       `}</style>
-
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href={lunchOnly ? '/dashboard/lunch' : '/dashboard'} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none">Lunch bestellen</span>
-          <div className="flex-1" />
-          <div className="flex items-center gap-2 shrink-0">
-            <Link href="/dashboard/lunch/overzicht" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90">
-              Mijn bestellingen
-            </Link>
-            {isAdmin && (
-              <Link href="/dashboard/lunch/beheer" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10">
-                Beheer
-              </Link>
-            )}
-            <Link href="/dashboard/instellingen" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10">
-              Mijn instellingen
-            </Link>
-            {lunchOnly && (
-              <button onClick={uitloggen} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10">
-                Uitloggen
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
 
       {cartToast && (
         <div
@@ -253,7 +211,7 @@ export default function LunchPage() {
         </div>
       )}
 
-      <main
+      <div
         className={`max-w-4xl mx-auto p-4 sm:p-6 space-y-6 ${cart.length > 0 ? 'pb-24 lg:pb-6' : ''}`}
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -547,7 +505,7 @@ export default function LunchPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {cart.length > 0 && (
         <div
@@ -579,6 +537,6 @@ export default function LunchPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
