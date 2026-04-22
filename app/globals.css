@@ -5,19 +5,19 @@
   --foreground: #171717;
 
   /* Dashboard thema — light */
-  --drg-page-bg: #f0f3f8;
+  --drg-page-bg: #f5f6f8;
   --drg-topbar-bg: #1a2540;
   --drg-topbar-border: rgba(255,255,255,0.06);
   --drg-card-bg: #ffffff;
-  --drg-card-border: rgba(102,145,174,0.42);
-  --drg-card-shadow: 0 4px 22px rgba(45,69,124,0.07);
+  --drg-card-border: #e8eaed;
+  --drg-card-shadow: 0 1px 3px rgba(0,0,0,0.04);
   --drg-text: #1a2540;
   --drg-text-muted: rgba(45,69,124,0.52);
   --drg-text-subtle: rgba(45,69,124,0.35);
-  --drg-divider: rgba(102,145,174,0.2);
+  --drg-divider: #e8eaed;
   --drg-input-bg: rgba(45,69,124,0.04);
   --drg-hover-bg: rgba(45,69,124,0.05);
-  --drg-section-label: rgba(45,69,124,0.4);
+  --drg-section-label: #9ca3af;
   --drg-tag-bg: rgba(45,69,124,0.07);
 }
 

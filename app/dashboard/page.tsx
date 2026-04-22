@@ -449,91 +449,61 @@ export default function Dashboard() {
         loading={winkelModalOpen && winkelsLoading}
       />
 
-      <div className="p-3 sm:p-5 pb-6 sm:pb-5 space-y-4 sm:space-y-6">
+      <div style={{ padding: '24px 28px', boxSizing: 'border-box' }}>
           {!geselecteerdeWinkel ? (
-            <div className="space-y-8">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
               {/* Pagina-kop */}
               <section className="s1" aria-labelledby="dashboard-heading-welcome">
-                <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.09em', color: 'var(--drg-text-muted)', fontFamily: F, margin: 0 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--drg-section-label)', fontFamily: F, margin: 0 }}>
                   {getDatum()}
                 </p>
-                <div className="flex flex-wrap items-center justify-between gap-3 mt-1">
-                  <h1 id="dashboard-heading-welcome" style={{ fontFamily: F, color: 'var(--drg-text)', fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2, margin: 0 }}>
-                    Home — overzicht
-                  </h1>
-                  {!lunchOnly && winkelsVoorGebruiker.length > 0 && (
-                    <div className="flex items-center gap-4 sm:gap-5" role="group" aria-label="Overzicht winkels en favorieten">
-                      {[{ label: 'Winkels', value: winkelsLoading ? '…' : winkelsVoorGebruiker.length }, { label: 'Favorieten', value: winkelsLoading ? '…' : favorieten.length }].map((s, i) => (
-                        <div key={s.label} className="flex items-center gap-2">
-                          {i > 0 && <div className="w-px h-4" style={{ background: 'var(--drg-divider)' }} aria-hidden />}
-                          <div>
-                            <div style={{ color: 'var(--drg-text-muted)', fontSize: 10, fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{s.label}</div>
-                            <div style={{ color: 'var(--drg-text)', fontSize: 16, fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{s.value}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <h1 id="dashboard-heading-welcome" style={{ fontFamily: F, color: 'var(--drg-text)', fontSize: 'clamp(22px, 2.5vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2, margin: '4px 0 0' }}>
+                  Home — overzicht
+                </h1>
                 {!lunchOnly && !winkelsLoading && winkelsVoorGebruiker.length === 0 && (
-                  <p className="mt-2 max-w-xl rounded-lg px-3 py-2 text-xs leading-snug" style={{ background: 'rgba(45,69,124,0.06)', color: 'var(--drg-text-muted)', fontFamily: F, border: '1px solid rgba(102,145,174,0.2)' }}>
-                    Er zijn nog geen winkels gekoppeld aan jouw account of land-rechten.
-                    {isAdmin ? (
-                      <> <Link href="/dashboard/beheer" className="font-semibold underline underline-offset-2" style={{ color: DYNAMO_BLUE }}>Open Beheer</Link> om winkels te koppelen.</>
-                    ) : (
-                      ' Neem contact op met een beheerder.'
-                    )}
+                  <p style={{ marginTop: 8, maxWidth: 480, borderRadius: 8, padding: '8px 12px', fontSize: 12, lineHeight: 1.6, background: 'rgba(45,69,124,0.05)', color: 'var(--drg-text-muted)', fontFamily: F, border: '1px solid var(--drg-divider)' }}>
+                    Er zijn nog geen winkels gekoppeld aan jouw account.{isAdmin ? <> <Link href="/dashboard/beheer" style={{ color: DYNAMO_BLUE, fontWeight: 600 }}>Open Beheer</Link> om winkels te koppelen.</> : ' Neem contact op met een beheerder.'}
                   </p>
                 )}
               </section>
 
-              {(newsUnreadData?.count ?? 0) > 0 && (
-                <Link
-                  href="/dashboard/nieuws"
-                  className="block rounded-xl px-4 py-3 text-sm font-semibold transition hover:opacity-95"
-                  style={{
-                    background: 'rgba(45,69,124,0.06)',
-                    border: '1px solid rgba(45,69,124,0.15)',
-                    color: DYNAMO_BLUE,
-                    fontFamily: F,
-                  }}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full text-xs font-bold" style={{ background: DYNAMO_GOLD, color: DYNAMO_BLUE }}>
-                      {newsUnreadData?.count ?? 0}
-                    </span>
-                    Ongelezen nieuwsberichten — open het overzicht
-                  </span>
-                </Link>
+              {/* Stat-rij */}
+              {!lunchOnly && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }} className="s1">
+                  {[
+                    { label: 'Winkels', value: winkelsLoading ? '…' : winkelsVoorGebruiker.length, sub: 'vestigingen', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg> },
+                    { label: 'Ongelezen nieuws', value: newsUnreadData?.count ?? 0, sub: 'berichten', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+                    { label: 'Actieve modules', value: sessionData === undefined ? '…' : orderedModules.length, sub: 'beschikbaar', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
+                    { label: 'Favorieten', value: winkelsLoading ? '…' : favorieten.length, sub: 'winkels', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '18px 20px', boxShadow: 'var(--drg-card-shadow)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--drg-section-label)', fontFamily: F }}>{s.label}</span>
+                        <span style={{ color: 'var(--drg-section-label)' }}>{s.icon}</span>
+                      </div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-text)', fontFamily: F, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontSize: 12, color: 'var(--drg-section-label)', fontFamily: F }}>{s.sub}</div>
+                    </div>
+                  ))}
+                </div>
               )}
 
-              <p className="text-pretty text-sm leading-relaxed max-w-2xl m-0" style={{ color: 'var(--drg-text-muted)', fontFamily: F }}>
-                {lunchOnly
-                  ? 'Kies hieronder een module om verder te gaan.'
-                  : 'Selecteer hieronder een module. Voor voorraad per vestiging kies je daarna een winkel.'}
-              </p>
-
-              {/* MODULES — primaire portal-laag */}
+              {/* MODULES */}
               <section className="s2" aria-labelledby="dashboard-heading-modules">
-                <div className="flex flex-col gap-2 mb-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 id="dashboard-heading-modules" className="m-0" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--drg-text-muted)', fontFamily: F }}>{lunchOnly ? 'Modules' : 'Jouw modules'}</h2>
-                    <div className="flex-1 min-w-[2rem] h-px" style={{ background: 'var(--drg-divider)' }} aria-hidden />
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <h2 id="dashboard-heading-modules" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--drg-section-label)', fontFamily: F, margin: 0 }}>{lunchOnly ? 'Modules' : 'Jouw modules'}</h2>
+                  <div style={{ flex: 1, height: 1, background: 'var(--drg-divider)' }} aria-hidden />
                   {!lunchOnly && (
-                    <p id="dashboard-modules-hint" className="m-0 text-pretty max-w-3xl" style={{ fontSize: '11px', color: 'var(--drg-text-muted)', fontFamily: F }}>
-                      Sleep een tegel om de volgorde aan te passen (opgeslagen in je profiel).
-                      {' '}
-                      <Link href="/dashboard/instellingen" className="font-semibold underline underline-offset-2" style={{ color: DYNAMO_BLUE }}>Mijn instellingen</Link>
-                      {' '}voor MFA, lunch en je IT-apparaten.
+                    <p id="dashboard-modules-hint" style={{ fontSize: 11, color: 'var(--drg-section-label)', fontFamily: F, margin: 0, whiteSpace: 'nowrap' }}>
+                      Sleep om volgorde aan te passen
                     </p>
                   )}
                 </div>
                 {sessionData === undefined ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch" aria-busy="true" aria-label="Modules laden">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }} aria-busy="true" aria-label="Modules laden">
                     {[1, 2, 3, 4, 5, 6].map(i => (
-                      <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ minHeight: 170, background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
+                      <div key={i} className="overflow-hidden animate-pulse" style={{ minHeight: 170, background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10 }}>
                         <div className="p-6">
                           <div className="w-10 h-10 rounded-xl mb-5" style={{ background: 'rgba(45,69,124,0.08)' }} />
                           <div className="h-4 rounded mb-2" style={{ background: 'rgba(45,69,124,0.08)', width: '55%' }} />
@@ -543,29 +513,31 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : sessionData !== undefined && orderedModules.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed px-5 py-8 text-center" style={{ borderColor: 'rgba(45,69,124,0.22)', background: 'var(--drg-card-bg)' }}>
-                    <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen modules ingeschakeld</p>
-                    <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--drg-text-muted)', fontFamily: F }}>
-                      Vraag een beheerder om modules te activeren, of open Beheer als je zelf rechten hebt.
+                  <div style={{ borderRadius: 10, border: '1px dashed rgba(45,69,124,0.22)', padding: '32px 20px', textAlign: 'center', background: 'var(--drg-card-bg)' }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: DYNAMO_BLUE, fontFamily: F }}>Geen modules ingeschakeld</p>
+                    <p style={{ marginTop: 8, fontSize: 13, color: 'var(--drg-text-muted)', fontFamily: F }}>
+                      Vraag een beheerder om modules te activeren.
                     </p>
                     {isAdmin && (
-                      <Link href="/dashboard/beheer" className="mt-4 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                      <Link href="/dashboard/beheer" style={{ display: 'inline-flex', marginTop: 16, padding: '8px 16px', borderRadius: 8, background: DYNAMO_BLUE, color: 'white', fontSize: 13, fontWeight: 600, fontFamily: F, textDecoration: 'none' }}>
                         Naar Beheer
                       </Link>
                     )}
                   </div>
                 ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
                   {orderedModules.map((id, idx) => {
+                    const isFirst = idx === 0
                     const modCardMax = 'max-h-[270px]'
-                    const modCard = `mod-card rounded-2xl overflow-hidden ${modCardMax}`
-                    const tileSurface = { background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' } as const
+                    const modCard = `mod-card overflow-hidden ${modCardMax}`
+                    const tileSurface = { background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)', borderRadius: 10 } as const
                     const tileIconWrap = { background: 'rgba(45,69,124,0.07)' } as const
-                    const tileFooter = { background: 'rgba(45,69,124,0.03)', borderTop: '1px solid rgba(102,145,174,0.16)' } as const
-                    const modTitleStyle = { fontFamily: F, color: 'var(--drg-text)', fontSize: '16px', fontWeight: 600, letterSpacing: '-0.01em' } as const
+                    const tileFooter = { background: 'rgba(45,69,124,0.03)', borderTop: '1px solid var(--drg-divider)' } as const
+                    const modTitleStyle = { fontFamily: F, color: 'var(--drg-text)', fontSize: '15px', fontWeight: 600, letterSpacing: '-0.01em' } as const
                     const modSubStyle = { color: 'var(--drg-text-muted)', fontSize: '12px', marginTop: 6, lineHeight: 1.55, fontFamily: F } as const
                     const modFooterLink = { color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F } as const
                     const modFooterIcon = { color: 'rgba(45,69,124,0.3)' } as const
+                    const colSpan = isFirst ? { gridColumn: 'span 2' } : {}
                     const dragHandle = !lunchOnly ? (
                       <div
                         draggable
@@ -583,7 +555,7 @@ export default function Dashboard() {
                     ) : null
                     if (id === 'voorraad') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <div
                             className={`${modCard} cursor-pointer flex flex-col h-full`}
                             style={{ ...tileSurface }}
@@ -611,7 +583,7 @@ export default function Dashboard() {
                     }
                     if (id === 'lunch') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/lunch" aria-label="Module Lunch bestellen: broodjes bestellen voor op kantoor" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -631,7 +603,7 @@ export default function Dashboard() {
                     }
                     if (id === 'brand-groep') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/brand-groep" aria-label="Module Merk en groep: voorraadanalyse per merk" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -651,7 +623,7 @@ export default function Dashboard() {
                     }
                     if (id === 'campagne-fietsen') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/campagne-fietsen" aria-label="Module Campagnefietsen: landelijk voorraadoverzicht" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -671,7 +643,7 @@ export default function Dashboard() {
                     }
                     if (id === 'branche-nieuws') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <div
                             className={`${modCard} h-full flex flex-col`}
                             style={{ ...tileSurface }}
@@ -708,7 +680,7 @@ export default function Dashboard() {
                     }
                     if (id === 'interne-nieuws') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/nieuws/beheer" aria-label="Intern nieuws: berichten beheren" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -730,7 +702,7 @@ export default function Dashboard() {
                     }
                     if (id === 'it-cmdb') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/it-cmdb" aria-label="IT-hardware CMDB: interne voorraad" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -752,7 +724,7 @@ export default function Dashboard() {
                     }
                     if (id === 'beschikbaarheid') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/beschikbaarheid" aria-label="Beschikbaarheid team" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -776,7 +748,7 @@ export default function Dashboard() {
                     }
                     if (id === 'winkels') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
                           <Link href="/dashboard/winkels" aria-label="Winkels & vestigingen" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
@@ -798,8 +770,8 @@ export default function Dashboard() {
                     }
                     if (id === 'meer') {
                       return (
-                        <div key={id} className="relative h-full" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
-                          <div className={`mod-card rounded-2xl overflow-hidden flex flex-col h-full ${modCardMax}`} style={{ ...tileSurface, border: '1px dashed rgba(102,145,174,0.35)' }}>
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <div className={`mod-card overflow-hidden flex flex-col h-full ${modCardMax}`} style={{ ...tileSurface, border: '1px dashed rgba(102,145,174,0.35)' }}>
                             {dragHandle}
                             <div className="p-6 flex-1">
                               <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...tileIconWrap }}>
