@@ -1,7 +1,10 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { DYNAMO_BLUE_LIGHT, FONT_FAMILY as F } from '@/lib/theme'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { DYNAMO_BLUE, FONT_FAMILY as F } from '@/lib/theme'
 
 const TOPBAR_BG = 'var(--drg-topbar-bg)'
 const BORDER = 'var(--drg-topbar-border)'
@@ -13,13 +16,19 @@ const PAGINA_TITELS: Record<string, string> = {
   '/dashboard/nieuws': 'Intern nieuws',
   '/dashboard/nieuws/beheer': 'Nieuwsberichten beheer',
   '/dashboard/lunch': 'Lunch',
+  '/dashboard/lunch/beheer': 'Lunch beheer',
+  '/dashboard/lunch/overzicht': 'Mijn bestellingen',
   '/dashboard/it-cmdb': 'IT-hardware (CMDB)',
+  '/dashboard/it-cmdb/catalogus': 'IT-hardware catalogus',
+  '/dashboard/it-cmdb/gebruikers': 'IT-hardware gebruikers',
   '/dashboard/winkels': 'Winkels & vestigingen',
   '/dashboard/beschikbaarheid': 'Beschikbaarheid team',
   '/dashboard/beheer': 'Beheer',
   '/dashboard/instellingen': 'Instellingen',
+  '/dashboard/instellingen/beschikbaarheid': 'Beschikbaarheid',
   '/dashboard/campagne-fietsen': 'Campagnefietsen',
   '/dashboard/brand-groep': 'Merk / Groep',
+  '/dashboard/ftp-koppeling': 'FTP-koppelingen',
 }
 
 function paginaTitel(pathname: string): string {
@@ -30,9 +39,29 @@ function paginaTitel(pathname: string): string {
   return 'DRG Portal'
 }
 
+function initialen(naam: string): string {
+  const delen = naam.trim().split(/\s+/)
+  if (delen.length >= 2) return (delen[0][0] + delen[delen.length - 1][0]).toUpperCase()
+  return naam.slice(0, 2).toUpperCase() || '?'
+}
+
 export function DashboardTopbar() {
   const pathname = usePathname()
   const titel = paginaTitel(pathname)
+  const [naam, setNaam] = useState('')
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('gebruiker_rollen').select('naam').eq('user_id', user.id).single()
+        .then(({ data }) => {
+          setNaam(data?.naam || user.email?.split('@')[0] || '')
+        })
+    })
+  }, [])
+
+  const avatar = naam ? initialen(naam) : '?'
 
   return (
     <header className="drg-topbar" style={{
@@ -76,15 +105,15 @@ export function DashboardTopbar() {
         }}>⌘K</kbd>
       </div>
 
-      {/* Rechts: acties */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      {/* Rechts: notificaties + avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         {/* Notificatie */}
         <button style={{
           width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
           background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: TEXT_MUTED, transition: 'background 0.15s',
         }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--drg-hover-bg)')}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           title="Notificaties"
           aria-label="Notificaties"
@@ -93,6 +122,26 @@ export function DashboardTopbar() {
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
         </button>
+
+        {/* Avatar */}
+        <Link
+          href="/dashboard/instellingen"
+          title={naam || 'Instellingen'}
+          style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, color: '#ffffff',
+            textDecoration: 'none', flexShrink: 0,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.22)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+          aria-label="Mijn instellingen"
+        >
+          {avatar}
+        </Link>
       </div>
     </header>
   )

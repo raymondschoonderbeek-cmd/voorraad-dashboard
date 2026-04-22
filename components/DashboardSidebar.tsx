@@ -200,7 +200,7 @@ export function DashboardSidebar() {
 
   return (
     <aside style={{
-      width: 220, flexShrink: 0, background: SIDEBAR_BG,
+      width: 240, flexShrink: 0, background: SIDEBAR_BG,
       display: 'flex', flexDirection: 'column',
       borderRight: '1px solid rgba(45,69,124,0.12)',
       height: '100%', overflow: 'hidden',

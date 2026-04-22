@@ -822,7 +822,7 @@ export default function Dashboard() {
                   { label: 'Fietsen op voorraad', value: stats.fietsen, color: '#16a34a' },
                   { label: 'Merken', value: stats.merken, color: DYNAMO_BLUE },
                 ].map(s => (
-                  <div key={s.label} className="rounded-2xl px-3 sm:px-5 py-3 sm:py-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+                  <div key={s.label} className="rounded-[10px] px-3 sm:px-5 py-3 sm:py-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
                     <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(45,69,124,0.4)', letterSpacing: '0.08em', fontFamily: F }}>{s.label}</div>
                     <div className="flex items-baseline gap-1">
                       <div className="text-2xl font-bold" style={{ color: s.color, fontFamily: F, letterSpacing: '-0.03em' }}>{loading ? '...' : s.value.toLocaleString('nl-NL')}</div>
@@ -833,7 +833,7 @@ export default function Dashboard() {
               </div>
 
               {/* Zoekbalk */}
-              <div className="rounded-2xl p-3 sm:p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="rounded-[10px] p-3 sm:p-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -908,7 +908,7 @@ export default function Dashboard() {
                         ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
-                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-2xl bg-white shadow-xl p-4 z-20" style={{ border: '1px solid rgba(45,69,124,0.1)' }}>
+                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-[10px] bg-white shadow-xl p-4 z-20" style={{ border: '1px solid rgba(45,69,124,0.1)' }}>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Kolommen</span>
                             <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none" aria-label="Sluiten">✕</button>
@@ -938,7 +938,7 @@ export default function Dashboard() {
               </div>
 
               {foutmelding && (
-                <div className="rounded-2xl p-4" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)' }} role="alert">
+                <div className="rounded-[10px] p-4" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)' }} role="alert">
                   <div className="flex items-start gap-3">
                     <span className="text-lg shrink-0" aria-hidden>
                       {foutmelding.type === 'netwerk' ? '📡' : foutmelding.type === 'auth' ? '🔒' : '⚠️'}
@@ -973,7 +973,7 @@ export default function Dashboard() {
                       ))}
                     </div>
                   ) : gefilterdEnGesorteerd.length === 0 ? (
-                    <div className="rounded-2xl px-6 py-16 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)' }}>
+                    <div className="rounded-[10px] px-6 py-16 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)' }}>
                       <div className="text-3xl mb-3" aria-hidden>🔍</div>
                       <div className="font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
                         {zoekterm.trim() !== '' || zoekKolom !== 'ALL'
@@ -1035,7 +1035,7 @@ export default function Dashboard() {
               )}
 
               {/* Tabel */}
-              {weergave === 'tabel' && <div className="rounded-2xl overflow-hidden -mx-3 sm:mx-0" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              {weergave === 'tabel' && <div className="rounded-[10px] overflow-hidden -mx-3 sm:mx-0" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
                 <div
                   ref={tableContainerRef}
                   className="overflow-x-auto overflow-y-auto"
