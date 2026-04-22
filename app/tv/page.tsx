@@ -409,7 +409,7 @@ export default function TvPage() {
             {linkerView === 'branche' && (() => {
               const brancheItem = brancheNieuws[brancheIdx] ?? null
               return (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', opacity: brancheFade ? 1 : 0, transition: 'opacity 0.6s ease' }}>
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', opacity: brancheFade ? 1 : 0, transition: 'opacity 0.6s ease' }}>
                   {brancheItem ? (
                     <>
                       <h1 style={{ fontSize: 'clamp(2.8vh, 4.5vh, 5.5vh)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 2.5vh', color: 'white', letterSpacing: '-0.02em' }}>
@@ -641,6 +641,8 @@ export default function TvPage() {
           flexShrink: 0,
           position: 'relative',
           paddingBottom: '0.5vh',
+          zIndex: 10,
+          isolation: 'isolate',
         }}>
           {/* Label links */}
           <div style={{
