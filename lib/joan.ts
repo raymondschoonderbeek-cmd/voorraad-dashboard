@@ -199,6 +199,11 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
         const start = String(e.start ?? e.start_time ?? e.dtstart ?? '')
         const end = String(e.end ?? e.end_time ?? e.dtend ?? '')
         if (!start || !end) return []
+        // V1 negeert de datumfilter — filter zelf op vandaag (Amsterdam daggrens)
+        try {
+          if (new Date(end).getTime() <= beginVanDag.getTime()) return []   // al voorbij
+          if (new Date(start).getTime() >= eindVanDag.getTime()) return []  // volgende dag(en)
+        } catch { return [] }
         const org = (e.organizer ?? e.organiser ?? {}) as Record<string, unknown>
         return [{ id: String(e.id ?? ''), summary: String(e.summary ?? e.title ?? e.subject ?? ''), start, end, organizer: { displayName: String(org.displayName ?? org.name ?? ''), email: String(org.email ?? '') } }]
       })
