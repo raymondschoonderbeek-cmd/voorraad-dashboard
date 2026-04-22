@@ -5,8 +5,8 @@ import { DYNAMO_BLUE_LIGHT, FONT_FAMILY as F } from '@/lib/theme'
 
 const TOPBAR_BG = 'var(--drg-topbar-bg)'
 const BORDER = 'var(--drg-topbar-border)'
-const TEXT_MUTED = 'var(--drg-text-muted)'
-const TEXT_MAIN = 'var(--drg-text)'
+const TEXT_MUTED = 'rgba(255,255,255,0.42)'
+const TEXT_MAIN = 'rgba(255,255,255,0.88)'
 
 const PAGINA_TITELS: Record<string, string> = {
   '/dashboard': 'Home — overzicht',
@@ -57,8 +57,8 @@ export function DashboardTopbar() {
       {/* Zoekbalk */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        background: 'var(--drg-input-bg)',
-        border: `1px solid ${BORDER}`,
+        background: 'rgba(255,255,255,0.07)',
+        border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: 8, padding: '6px 12px',
         width: 280, flexShrink: 0,
         cursor: 'text',
@@ -69,7 +69,7 @@ export function DashboardTopbar() {
         <span style={{ fontSize: 12, color: TEXT_MUTED, flex: 1 }}>Zoek module, winkel, artikel…</span>
         <kbd style={{
           fontSize: 10, fontWeight: 600, color: TEXT_MUTED,
-          background: 'var(--drg-tag-bg)', border: `1px solid ${BORDER}`,
+          background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
           borderRadius: 4, padding: '1px 5px', lineHeight: '16px',
         }}>⌘K</kbd>
       </div>

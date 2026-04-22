@@ -6,8 +6,8 @@
 
   /* Dashboard thema — light */
   --drg-page-bg: #f0f3f8;
-  --drg-topbar-bg: #ffffff;
-  --drg-topbar-border: rgba(102,145,174,0.2);
+  --drg-topbar-bg: #1a2540;
+  --drg-topbar-border: rgba(255,255,255,0.06);
   --drg-card-bg: #ffffff;
   --drg-card-border: rgba(102,145,174,0.42);
   --drg-card-shadow: 0 4px 22px rgba(45,69,124,0.07);
