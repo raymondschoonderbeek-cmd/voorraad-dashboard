@@ -300,24 +300,8 @@ export default function CampagneFietsenPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-gray-900" style={{ background: '#f4f6fb', fontFamily: FONT_FAMILY }}>
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none">Campagne fietsen</span>
-          <div className="flex-1" />
-          <Link
-            href="/dashboard/beheer?tab=campagnefietsen"
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/20 hover:bg-white/10"
-          >
-            Beheer
-          </Link>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-5xl mx-auto w-full p-4 sm:p-6 space-y-6">
+    <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }} className="text-gray-900">
+      <div className="max-w-5xl mx-auto w-full space-y-6" style={{ padding: '24px 28px' }}>
         {!sessionLoading && !mayViewCampagneFietsen && (
           <div className="rounded-2xl p-6 bg-white border border-gray-200 shadow-sm text-center space-y-3">
             <p className="text-gray-800 font-semibold" style={{ fontFamily: F }}>
@@ -650,7 +634,7 @@ export default function CampagneFietsenPage() {
               </article>
             )
           })}
-      </main>
+      </div>
 
       {/* Lightbox */}
       {lightboxUrl && (

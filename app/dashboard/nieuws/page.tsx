@@ -81,42 +81,21 @@ export default function NieuwsOverzichtPage() {
   const unread = unreadData?.count ?? 0
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: FONT_FAMILY }}>
+    <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-3 sm:px-5 flex flex-wrap items-center gap-2 py-2 min-h-[56px]">
-          <Link
-            href="/dashboard"
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90"
-            style={{ fontFamily: FONT_FAMILY }}
-          >
-            ← Portal
-          </Link>
-          <span className="text-white text-sm font-semibold" style={{ fontFamily: FONT_FAMILY }}>
-            Nieuws
-          </span>
-          {unread > 0 && (
-            <span
-              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(240,192,64,0.95)', color: DYNAMO_BLUE }}
-            >
-              {unread} ongelezen
-            </span>
-          )}
-          {sessionInfo?.canManageInterneNieuws && (
+      <div className="max-w-3xl mx-auto w-full space-y-5" style={{ padding: '24px 28px' }}>
+        {sessionInfo?.canManageInterneNieuws && (
+          <div className="flex justify-end">
             <Link
               href="/dashboard/nieuws/beheer"
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-white/25 text-white hover:bg-white/10 ml-auto sm:ml-0"
-              style={{ fontFamily: FONT_FAMILY }}
+              className="text-xs font-semibold hover:underline"
+              style={{ color: DYNAMO_BLUE, fontFamily: FONT_FAMILY }}
             >
-              Beheer nieuwsberichten
+              Beheer nieuwsberichten →
             </Link>
-          )}
-        </div>
-      </header>
-
-      <main className="flex-1 p-3 sm:p-5 max-w-3xl mx-auto w-full space-y-5">
+          </div>
+        )}
         <div>
           <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>
             Intern nieuws
@@ -249,7 +228,7 @@ export default function NieuwsOverzichtPage() {
             Alle {total} berichten geladen.
           </p>
         )}
-      </main>
+      </div>
     </div>
   )
 }

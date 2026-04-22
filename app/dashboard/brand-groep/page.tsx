@@ -1,11 +1,10 @@
 'use client'
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { WinkelSelect } from '@/components/WinkelSelect'
 import { WinkelModal } from '@/components/WinkelModal'
-import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO } from '@/lib/theme'
+import { DYNAMO_BLUE, DYNAMO_GOLD } from '@/lib/theme'
 import type { Winkel } from '@/lib/types'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 type Product = { [key: string]: any }
@@ -356,50 +355,7 @@ export default function BrandGroepPage() {
     'w-full rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 focus:border-dynamo-blue focus:outline-none focus:ring-2 focus:ring-dynamo-blue/30'
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f4f6fb' }}>
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100] shadow-lg">
-        <div className="px-3 sm:px-5 flex flex-wrap items-stretch gap-2 sm:gap-0 py-2 sm:py-0 min-h-[56px]">
-          <Link href="/dashboard" onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }} className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-white/10 shrink-0 hover:opacity-90 transition">
-            <img src={DYNAMO_LOGO} alt="Dynamo Retail Group" className="h-7 sm:h-8 w-auto object-contain" />
-          </Link>
-
-          <div className="flex items-center px-3 sm:px-5 border-r border-white/10 gap-2 flex-1 min-w-0">
-            <span className="text-white text-xs uppercase tracking-widest font-semibold hidden sm:block shrink-0">Winkel</span>
-            <WinkelSelect
-              winkels={winkels}
-              value={geselecteerdeWinkel}
-              onChange={w => selecteerWinkel(w)}
-              placeholder="Kies winkel..."
-              id="winkel-select"
-              aria-label="Selecteer winkel"
-              className="min-w-0 flex-1 max-w-[180px] sm:min-w-[140px]"
-              style={{ background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-          </div>
-
-          <div className="flex items-center px-3 sm:px-5 shrink-0">
-            <span className="text-white text-xs sm:text-sm font-semibold truncate">Merk / Groep</span>
-          </div>
-
-          <div className="flex-1 hidden sm:block" />
-
-          <div className="flex items-center gap-2 sm:gap-4 pl-2 sm:pl-5 shrink-0 w-full sm:w-auto justify-end">
-            <span className="text-xs truncate max-w-[140px] flex items-center gap-2" style={loading ? { color: 'white', fontWeight: 600 } : { color: 'white' }}>
-              {loading && <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: 'currentColor' }} />}
-              {loading ? 'Laden...' : geselecteerdeWinkel ? `${productenMetVoorraad.length} producten` : ''}
-            </span>
-            <Link
-              href="/dashboard"
-              onClick={() => { try { localStorage.removeItem(WINKEL_STORAGE_KEY) } catch {} }}
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0"
-            >
-              ← Portal
-            </Link>
-          </div>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.2)', height: '3px' }} />
-      </header>
-
+    <div style={{ minHeight: '100%' }}>
       <WinkelModal
         open={winkelModalOpen}
         onClose={() => setWinkelModalOpen(false)}
@@ -408,7 +364,7 @@ export default function BrandGroepPage() {
         loading={winkelModalOpen && winkelsLoading}
       />
 
-      <main className="flex-1 p-3 sm:p-5 space-y-4 overflow-x-hidden">
+      <div className="space-y-4 overflow-x-hidden" style={{ padding: '24px 28px' }}>
         {!geselecteerdeWinkel ? (
           searchParams.get('winkel') && winkelsLoading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -775,7 +731,7 @@ export default function BrandGroepPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }

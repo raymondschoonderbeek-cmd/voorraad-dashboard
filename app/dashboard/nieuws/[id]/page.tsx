@@ -65,25 +65,10 @@ export default function NieuwsDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: FONT_FAMILY }}>
+    <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-3 sm:px-5 flex flex-wrap items-center gap-2 py-2 min-h-[56px]">
-          <Link
-            href="/dashboard/nieuws"
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90"
-            style={{ fontFamily: FONT_FAMILY }}
-          >
-            ← Overzicht
-          </Link>
-          <Link href="/dashboard" className="text-xs text-white/80 hover:text-white ml-auto">
-            Portal
-          </Link>
-        </div>
-      </header>
-
-      <main className="flex-1 p-3 sm:p-5 max-w-3xl mx-auto w-full pb-10">
+      <div className="max-w-3xl mx-auto w-full" style={{ padding: '24px 28px 40px' }}>
         {isLoading && (
           <div className="rounded-2xl p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
             Laden…
@@ -165,7 +150,7 @@ export default function NieuwsDetailPage() {
             </div>
           </article>
         )}
-      </main>
+      </div>
     </div>
   )
 }
