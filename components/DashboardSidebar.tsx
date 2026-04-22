@@ -7,12 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT, DYNAMO_GOLD, FONT_FAMILY as F } from '@/lib/theme'
 import { useTheme } from '@/components/ThemeProvider'
 
-const SIDEBAR_BG = '#1C2E4A'
+const SIDEBAR_BG = '#ffffff'
 const SIDEBAR_ACTIVE = '#2D457C'
-const SIDEBAR_HOVER = 'rgba(255,255,255,0.05)'
-const TEXT_DIM = 'rgba(255,255,255,0.45)'
-const TEXT_NORMAL = 'rgba(255,255,255,0.82)'
-const TEXT_BRIGHT = '#ffffff'
+const SIDEBAR_HOVER = 'rgba(45,69,124,0.06)'
+const TEXT_DIM = '#6691AE'
+const TEXT_NORMAL = '#2D457C'
+const TEXT_BRIGHT = '#2D457C'
 
 type NavItem = {
   id: string
@@ -77,7 +77,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '6px 10px', borderRadius: 7,
-        color: active ? TEXT_BRIGHT : TEXT_NORMAL,
+        color: active ? '#ffffff' : TEXT_NORMAL,
         background: active ? SIDEBAR_ACTIVE : 'transparent',
         fontSize: 13, fontWeight: active ? 600 : 400,
         fontFamily: F, textDecoration: 'none',
@@ -87,7 +87,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
       onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
     >
-      <span style={{ color: active ? DYNAMO_BLUE_LIGHT : TEXT_DIM, flexShrink: 0, display: 'flex' }}>
+      <span style={{ color: active ? '#ffffff' : TEXT_DIM, flexShrink: 0, display: 'flex' }}>
         {item.icon}
       </span>
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -113,8 +113,8 @@ function ThemeToggle() {
   const { theme, setTheme } = useTheme()
   const dark = theme === 'dark'
   return (
-    <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: dark ? TEXT_DIM : DYNAMO_GOLD, flexShrink: 0 }} aria-hidden>
+    <div style={{ padding: '8px 10px', borderTop: '1px solid rgba(45,69,124,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: dark ? DYNAMO_BLUE_LIGHT : DYNAMO_GOLD, flexShrink: 0 }} aria-hidden>
         <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
       </svg>
       <button
@@ -135,7 +135,7 @@ function ThemeToggle() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
         }} />
       </button>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: dark ? DYNAMO_BLUE_LIGHT : TEXT_DIM, flexShrink: 0 }} aria-hidden>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: dark ? DYNAMO_BLUE_LIGHT : '#6691AE', flexShrink: 0 }} aria-hidden>
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
       </svg>
     </div>
@@ -197,14 +197,14 @@ export function DashboardSidebar() {
     <aside style={{
       width: 220, flexShrink: 0, background: SIDEBAR_BG,
       display: 'flex', flexDirection: 'column',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
+      borderRight: '1px solid rgba(45,69,124,0.12)',
       height: '100vh', position: 'sticky', top: 0, overflow: 'hidden',
       fontFamily: F,
     }}>
       {/* Logo */}
-      <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+      <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid rgba(45,69,124,0.1)', flexShrink: 0 }}>
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.18em', color: '#ffffff', fontFamily: F, textTransform: 'uppercase', lineHeight: 1 }}>DYNAMO</span>
+          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.18em', color: '#2D457C', fontFamily: F, textTransform: 'uppercase', lineHeight: 1 }}>DYNAMO</span>
         </Link>
       </div>
 
@@ -265,7 +265,7 @@ export function DashboardSidebar() {
       {/* User profiel onderaan */}
       <div style={{
         padding: '10px 10px 12px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderTop: '1px solid rgba(45,69,124,0.1)',
         flexShrink: 0, display: 'flex', alignItems: 'center', gap: 9,
       }}>
         <div style={{
