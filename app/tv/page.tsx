@@ -224,7 +224,7 @@ export default function TvPage() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/dynamo-retail-group-logo-tv.png"
+            src="/dynamo-retail-group-2025.png"
             alt="Dynamo Retail Group"
             style={{
               objectFit: 'contain',
