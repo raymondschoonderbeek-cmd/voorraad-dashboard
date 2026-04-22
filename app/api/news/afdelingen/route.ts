@@ -14,30 +14,29 @@ export async function GET(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data: rollenData }, perm] = await Promise.all([
-    supabase
-      .from('gebruiker_rollen')
-      .select('afdeling')
-      .not('afdeling', 'is', null),
+  const [{ data: rollenData }, { data: handmatigData }, perm] = await Promise.all([
+    supabase.from('gebruiker_rollen').select('afdeling').not('afdeling', 'is', null),
+    supabase.from('drg_news_afdelingen').select('*').order('sort_order').order('label'),
     getNewsPermission(supabase, user.id),
   ])
 
-  // Alleen afdelingen die aan gebruikers hangen (Azure sync)
-  const alleAfdelingen: DrgNewsAfdeling[] = [...new Set(
+  // Gebruiker-afdelingen uit Azure sync (primaire bron)
+  const gebruikerLabels = [...new Set(
     (rollenData ?? [])
       .map((r: { afdeling: string | null }) => r.afdeling?.trim())
       .filter((a): a is string => !!a)
-  )]
-    .sort((a, b) => a.localeCompare(b, 'nl'))
-    .map(label => ({
-      id: `azure-${slugifyAfdelingLabel(label)}`,
-      slug: slugifyAfdelingLabel(label),
-      label,
-      sort_order: 0,
-      created_at: '',
-      updated_at: '',
-    } satisfies DrgNewsAfdeling))
+  )].sort((a, b) => a.localeCompare(b, 'nl'))
+
+  const gebruikerAfdelingen: DrgNewsAfdeling[] = gebruikerLabels
+    .map(label => ({ id: `azure-${slugifyAfdelingLabel(label)}`, slug: slugifyAfdelingLabel(label), label, sort_order: 0, created_at: '', updated_at: '' } satisfies DrgNewsAfdeling))
     .filter(a => !!a.slug)
+
+  // Handmatige afdelingen als aanvulling (voor slugs die nog niet via Azure bestaan)
+  const gebruikerSlugs = new Set(gebruikerAfdelingen.map(a => a.slug))
+  const handmatigExtra = ((handmatigData ?? []) as DrgNewsAfdeling[])
+    .filter(a => !gebruikerSlugs.has(a.slug))
+
+  const alleAfdelingen: DrgNewsAfdeling[] = [...gebruikerAfdelingen, ...handmatigExtra]
 
   // Beperkte gebruiker: toon alleen eigen afdeling in de lijst
   const zichtbareAfdelingen = perm.alleAfdelingen
