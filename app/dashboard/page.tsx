@@ -168,13 +168,18 @@ export default function Dashboard() {
   const supabase = createClient()
 
 
-  // Herstel geselecteerde winkel alleen uit URL (?winkel=); zonder param toon startpagina
+  // Herstel geselecteerde winkel uit URL (?winkel=ID); open modal bij ?kies-winkel=1
   useEffect(() => {
     if (winkelsVoorGebruiker.length === 0) return
     if (sessionData === undefined) return
     if (lunchOnly) {
       if (searchParams.get('winkel')) router.replace('/dashboard')
       setGeselecteerdeWinkel(null)
+      return
+    }
+    if (searchParams.get('kies-winkel')) {
+      router.replace('/dashboard')
+      setWinkelModalOpen(true)
       return
     }
     const idParam = searchParams.get('winkel')

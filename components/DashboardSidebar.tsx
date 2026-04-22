@@ -221,7 +221,7 @@ export function DashboardSidebar() {
         {/* Hoofdnavigatie */}
         <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={pathname === '/dashboard'} />
         {heeftModule('voorraad') && (
-          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard', icon: <IconBox /> }} active={pathname === '/dashboard'} />
+          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard?kies-winkel=1', icon: <IconBox /> }} active={pathname === '/dashboard'} />
         )}
         {heeftModule('brand-groep') && (
           <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard/brand-groep', icon: <IconChart /> }} active={isActive('/dashboard/brand-groep')} />
