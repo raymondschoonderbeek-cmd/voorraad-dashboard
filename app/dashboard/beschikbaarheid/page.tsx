@@ -76,11 +76,12 @@ function PersonCard({ g, now }: { g: GebruikerStatus; now: Date }) {
 
   return (
     <div
-      className="bg-white rounded-2xl overflow-hidden flex flex-col"
+      className="rounded-[10px] overflow-hidden flex flex-col"
       style={{
-        border: '1px solid rgba(0,0,0,0.07)',
+        background: 'var(--drg-card-bg)',
+        border: '1px solid var(--drg-card-border)',
         borderLeft: `3px solid ${borderColor}`,
-        boxShadow: '0 1px 6px rgba(45,69,124,0.05)',
+        boxShadow: 'var(--drg-card-shadow)',
       }}
     >
       <div className="flex items-start gap-3 p-4">
@@ -146,7 +147,7 @@ function PersonRow({ g }: { g: GebruikerStatus }) {
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50/80 transition-colors border-b last:border-b-0"
+      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors border-b last:border-b-0"
       style={{ borderColor: 'rgba(0,0,0,0.06)', borderLeft: `3px solid ${borderColor}` }}
     >
       <div
@@ -408,7 +409,7 @@ export default function BeschikbaarheidDashboardPage() {
         {/* Kop */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
-            <h1 className="text-xl font-bold m-0" style={{ color: DYNAMO_BLUE }}>Beschikbaarheid team</h1>
+            <h1 className="text-xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>Beschikbaarheid team</h1>
             <p className="text-sm m-0 mt-0.5" style={{ color: dashboardUi.textMuted }}>
               Wie is er vandaag beschikbaar?
             </p>
@@ -698,7 +699,7 @@ export default function BeschikbaarheidDashboardPage() {
         ) : statussen.length === 0 ? (
           <EmptyState isAdmin={isAdmin} onSync={() => void handleBulkSync()} />
         ) : gefilterd.length === 0 ? (
-          <div className="bg-white rounded-2xl border p-10 text-center" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+          <div className="bg-white rounded-[10px] border p-10 text-center" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
             <p className="text-sm" style={{ color: dashboardUi.textMuted, fontFamily: F }}>
               Geen resultaten voor &ldquo;{zoek}&rdquo;
             </p>
@@ -727,7 +728,7 @@ export default function BeschikbaarheidDashboardPage() {
                     {items.map(g => <PersonCard key={g.user_id} g={g} now={now} />)}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl overflow-hidden border" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+                  <div className="bg-white rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
                     {items.map(g => <PersonRow key={g.user_id} g={g} />)}
                   </div>
                 )}
@@ -748,7 +749,7 @@ export default function BeschikbaarheidDashboardPage() {
 
 function EmptyState({ isAdmin, onSync }: { isAdmin: boolean; onSync: () => void }) {
   return (
-    <div className="bg-white rounded-2xl border p-10 text-center space-y-3" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+    <div className="bg-white rounded-[10px] border p-10 text-center space-y-3" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
       <div className="text-4xl">👥</div>
       <p className="text-sm font-semibold m-0" style={{ color: '#1e293b', fontFamily: FONT_FAMILY }}>
         Nog geen beschikbaarheidsdata

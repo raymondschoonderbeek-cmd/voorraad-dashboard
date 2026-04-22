@@ -1084,7 +1084,7 @@ export default function BeheerPage() {
   return (
     <div className="p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
 
-        <div className="relative rounded-2xl overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
+        <div className="relative rounded-[10px] overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'rgba(255,255,255,0.2)' }} />
           <div className="relative p-4 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
@@ -1110,11 +1110,11 @@ export default function BeheerPage() {
           </div>
         </div>
 
-        {error && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{error}</div>}
-        {formError && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
-        {formSuccess && <div className="rounded-2xl p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
+        {error && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{error}</div>}
+        {formError && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
+        {formSuccess && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
-        <div className="flex gap-0.5 p-1 rounded-2xl overflow-x-auto scrollbar-none" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex gap-0.5 p-1 rounded-[10px] overflow-x-auto scrollbar-none" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)', WebkitOverflowScrolling: 'touch' }}>
           {tabs.map(t => (
             <button
               key={t.key}
@@ -1284,7 +1284,7 @@ export default function BeheerPage() {
 
             {/* Bulk module toewijzen */}
             {bulkModulePanel && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Modules bulk toewijzen / ontkoppelen</h2>
                   <button type="button" onClick={() => setBulkModulePanel(false)} className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>✕ Sluiten</button>
@@ -1403,7 +1403,7 @@ export default function BeheerPage() {
             )}
 
             {toonForm && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe gebruiker aanmaken</h2>
                 <form onSubmit={voegGebruikerToe} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1494,7 +1494,7 @@ export default function BeheerPage() {
                 style={{ background: 'rgba(0,0,0,0.45)' }}
                 onClick={e => { if (e.target === e.currentTarget) { setBewerkGebruiker(null); setBewerkEmail('') } }}
               >
-                <div className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-y-auto" style={{ background: 'white', maxHeight: 'calc(100dvh - 2rem)' }}>
+                <div className="w-full max-w-2xl rounded-[10px] shadow-2xl overflow-y-auto" style={{ background: 'white', maxHeight: 'calc(100dvh - 2rem)' }}>
                   <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.1)', background: 'white', zIndex: 1 }}>
                     <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkGebruiker.naam} bewerken</h2>
                     <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-lg w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition" style={{ color: 'rgba(45,69,124,0.4)' }}>✕</button>
@@ -1579,7 +1579,7 @@ export default function BeheerPage() {
               </div>
             )}
 
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+            <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
               <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Gebruikersoverzicht</div>
                 <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>
@@ -1665,7 +1665,7 @@ export default function BeheerPage() {
             )}
 
             {isAdmin && toonWinkelForm && (
-              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="rounded-[10px] p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</h2>
                 <form onSubmit={voegWinkelToe} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1796,7 +1796,7 @@ export default function BeheerPage() {
             )}
 
             {isAdmin && bewerkWinkel && (
-              <div className="rounded-2xl p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="rounded-[10px] p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
                 <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkWinkel.naam} bewerken</h2>
                 <form onSubmit={slaWinkelOp} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2033,7 +2033,7 @@ export default function BeheerPage() {
               </div>
             )}
 
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+            <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
               <div className="p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                 <div className="min-w-0">
                   <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Winkeloverzicht</div>

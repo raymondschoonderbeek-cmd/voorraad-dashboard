@@ -393,14 +393,14 @@ export default function BrandGroepPage() {
               </div>
             )}
             {authRequired && (
-              <div className="rounded-2xl p-4 text-sm" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.2)' }}>
+              <div className="rounded-[10px] p-4 text-sm" style={{ background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.2)' }}>
                 <p className="font-semibold" style={{ color: DYNAMO_BLUE }}>Toestemming vereist</p>
                 <p className="mt-1" style={{ color: 'rgba(45,69,124,0.6)' }}>{authRequired.message}</p>
               </div>
             )}
             <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-4">
               {/* Groepen */}
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+              <div className="rounded-[10px] shadow-sm overflow-hidden flex flex-col" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div>
@@ -469,7 +469,7 @@ export default function BrandGroepPage() {
               </div>
 
               {/* Merken */}
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+              <div className="rounded-[10px] shadow-sm overflow-hidden flex flex-col" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
@@ -574,7 +574,7 @@ export default function BrandGroepPage() {
 
             {/* Producten + details */}
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4">
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="rounded-[10px] shadow-sm overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
                 <div className="p-4 border-b border-gray-200" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
@@ -656,7 +656,7 @@ export default function BrandGroepPage() {
               </div>
 
               {/* Details */}
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="rounded-[10px] shadow-sm overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
                 <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3" style={{ borderTop: `3px solid ${DYNAMO_BLUE}` }}>
                   <div>
                     <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE }}>Product details</div>

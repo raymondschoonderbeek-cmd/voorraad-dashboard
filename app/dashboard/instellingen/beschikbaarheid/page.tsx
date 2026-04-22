@@ -237,7 +237,7 @@ export default function BeschikbaarheidInstellingenPage() {
         {/* Paginakop */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold m-0" style={{ color: DYNAMO_BLUE }}>Beschikbaarheid</h1>
+            <h1 className="text-xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>Beschikbaarheid</h1>
             <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
               Stel per dag je werktijden en out-of-office in.
             </p>
@@ -293,7 +293,7 @@ export default function BeschikbaarheidInstellingenPage() {
         ) : (
           <>
             {/* ── Out of Office ──────────────────────────────────── */}
-            <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+            <section className="rounded-[10px] border p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', borderColor: 'var(--drg-card-border)' }}>
               <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Out of office</h2>
 
               <div className="flex flex-col gap-2">
@@ -345,7 +345,7 @@ export default function BeschikbaarheidInstellingenPage() {
             </section>
 
             {/* ── Werktijden ─────────────────────────────────────── */}
-            <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+            <section className="rounded-[10px] border p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', borderColor: 'var(--drg-card-border)' }}>
               <div>
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werktijden</h2>
                 <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
@@ -465,7 +465,7 @@ export default function BeschikbaarheidInstellingenPage() {
             </section>
 
             {/* ── Standaard werklocatie per dag ─────────────────── */}
-            <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+            <section className="rounded-[10px] border p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', borderColor: 'var(--drg-card-border)' }}>
               <div>
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Standaard werklocatie per dag</h2>
                 <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
@@ -525,7 +525,7 @@ export default function BeschikbaarheidInstellingenPage() {
             </section>
 
             {/* ── Werklocatie vandaag (override) ─────────────────── */}
-            <section className="bg-white rounded-2xl border p-5 space-y-4" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+            <section className="rounded-[10px] border p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', borderColor: 'var(--drg-card-border)' }}>
               <div>
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Werklocatie vandaag</h2>
                 <p className="text-xs mt-1 m-0" style={{ color: dashboardUi.textMuted }}>
@@ -572,7 +572,7 @@ export default function BeschikbaarheidInstellingenPage() {
         )}
 
         {/* ── Debug log panel ──────────────────────────────── */}
-        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+        <div className="rounded-[10px] border overflow-hidden" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
           <button
             type="button"
             onClick={() => setShowDebug(v => !v)}

@@ -66,17 +66,16 @@ export default function NieuwsDetailPage() {
 
   return (
     <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
       <div className="max-w-3xl mx-auto w-full" style={{ padding: '24px 28px 40px' }}>
         {isLoading && (
-          <div className="rounded-2xl p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
+          <div className="rounded-[10px] p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
             Laden…
           </div>
         )}
 
         {error && (
-          <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
+          <div className="rounded-[10px] p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
             Bericht niet gevonden of geen toegang.
             <Link href="/dashboard/nieuws" className="block mt-2 font-semibold underline" style={{ color: DYNAMO_BLUE }}>
               Terug naar nieuws
@@ -90,11 +89,11 @@ export default function NieuwsDetailPage() {
 
         {post && (
           <article
-            className="rounded-2xl p-5 sm:p-8"
+            className="rounded-[10px] p-5 sm:p-8"
             style={{
-              background: dashboardUi.cardWhite.background,
-              border: dashboardUi.cardWhite.border,
-              boxShadow: dashboardUi.cardWhite.boxShadow,
+              background: 'var(--drg-card-bg)',
+              border: '1px solid var(--drg-card-border)',
+              boxShadow: 'var(--drg-card-shadow)',
             }}
           >
             <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -112,7 +111,7 @@ export default function NieuwsDetailPage() {
                 </time>
               )}
             </div>
-            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>
+            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: 'var(--drg-ink)' }}>
               {post.title}
             </h1>
             {post.excerpt && (

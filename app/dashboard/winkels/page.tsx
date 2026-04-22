@@ -126,7 +126,7 @@ export default function WinkelsPage() {
         {/* Kop + statistieken */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>Winkels &amp; vestigingen</h1>
+            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: 'var(--drg-ink)' }}>Winkels &amp; vestigingen</h1>
             <p className="m-0 mt-1 text-sm" style={{ color: dashboardUi.textMuted }}>
               Kies een vestiging om de voorraad te bekijken, of markeer winkels als favoriet.
             </p>
@@ -219,7 +219,7 @@ export default function WinkelsPage() {
         </div>
 
         {/* Kaart */}
-        <div className="rounded-2xl overflow-hidden bg-white" style={{ boxShadow: '0 4px 24px rgba(45,69,124,0.08)', border: `1px solid ${dashboardUi.borderSoft}` }}>
+        <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', boxShadow: 'var(--drg-card-shadow)', border: '1px solid var(--drg-card-border)' }}>
           {showKaartFilterEmpty && (
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: 'rgba(45,69,124,0.06)', borderColor: 'rgba(45,69,124,0.1)' }}>
               <p className="m-0 text-sm font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Geen locaties met deze filters</p>
@@ -256,7 +256,7 @@ export default function WinkelsPage() {
           <div aria-busy="true">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1,2,3,4,5,6,7,8].map(i => (
-                <div key={i} className="rounded-2xl animate-pulse" style={{ height: 112, background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.08)' }} />
+                <div key={i} className="rounded-[10px] animate-pulse" style={{ height: 112, background: 'rgba(45,69,124,0.06)', border: '1px solid rgba(45,69,124,0.08)' }} />
               ))}
             </div>
           </div>

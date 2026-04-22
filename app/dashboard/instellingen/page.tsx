@@ -296,7 +296,7 @@ export default function InstellingenPage() {
         {/* Beschikbaarheid */}
         <Link
           href="/dashboard/instellingen/beschikbaarheid"
-          className="flex items-center justify-between bg-white border border-gray-200 rounded-2xl shadow-sm p-6 hover:border-[#2D457C]/40 hover:shadow-md transition-shadow group"
+          className="flex items-center justify-between rounded-[10px] shadow-sm p-6 hover:shadow-md transition-shadow group" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}
         >
           <div>
             <h2 className="text-lg font-bold text-gray-900 group-hover:text-[#2D457C] transition-colors">🕐 Beschikbaarheid</h2>
@@ -311,7 +311,7 @@ export default function InstellingenPage() {
         </Link>
 
         {/* IT-hardware aan deze gebruiker */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+        <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">💻 Mijn IT-apparaten</h2>
@@ -355,7 +355,7 @@ export default function InstellingenPage() {
         </div>
 
         {/* Producten & licenties */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+        <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">📦 Mijn producten &amp; licenties</h2>
@@ -424,7 +424,7 @@ export default function InstellingenPage() {
         </div>
 
         {/* Mijn aanvragen */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+        <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <h2 className="text-lg font-bold mb-1">📋 Mijn software-aanvragen</h2>
           <p className="text-sm text-gray-500 mb-4">
             Overzicht van jouw ingediende licentie-aanvragen. Je kunt alleen voor jezelf een aanvraag indienen.
@@ -539,7 +539,7 @@ export default function InstellingenPage() {
         {aanvraagModalItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
             onClick={e => { if (e.target === e.currentTarget) sluitAanvraagModal() }}>
-            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-7 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-md rounded-[10px] bg-white shadow-2xl p-7 max-h-[90vh] overflow-y-auto">
               <div className="flex items-start justify-between mb-1">
                 <h3 className="text-lg font-bold" style={{ color: '#2D457C' }}>Licentie aanvragen</h3>
                 <button type="button" onClick={sluitAanvraagModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1">✕</button>
@@ -577,7 +577,7 @@ export default function InstellingenPage() {
         )}
 
         {/* Mijn profiel (TV-scherm) */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
+        <div className="rounded-[10px] shadow-sm p-6 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div>
             <h2 className="text-lg font-bold">👤 Mijn profiel</h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -617,7 +617,7 @@ export default function InstellingenPage() {
         </div>
 
         {/* Lunch module */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+        <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">🥪 Lunch bestellingen</h2>
@@ -682,7 +682,7 @@ export default function InstellingenPage() {
         </div>
 
         {/* Intern nieuws — e-mail digest */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+        <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">📰 Intern nieuws</h2>
@@ -716,7 +716,7 @@ export default function InstellingenPage() {
         </div>
 
         {/* MFA */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 space-y-4">
+        <div className="rounded-[10px] shadow-sm p-6 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-lg font-bold">🔐 Twee-factor authenticatie</h1>

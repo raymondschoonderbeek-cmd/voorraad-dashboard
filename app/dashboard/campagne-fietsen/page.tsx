@@ -303,7 +303,7 @@ export default function CampagneFietsenPage() {
     <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }} className="text-gray-900">
       <div className="max-w-5xl mx-auto w-full space-y-6" style={{ padding: '24px 28px' }}>
         {!sessionLoading && !mayViewCampagneFietsen && (
-          <div className="rounded-2xl p-6 bg-white border border-gray-200 shadow-sm text-center space-y-3">
+          <div className="rounded-[10px] p-6 bg-white border border-gray-200 shadow-sm text-center space-y-3">
             <p className="text-gray-800 font-semibold" style={{ fontFamily: F }}>
               Je hebt geen toegang tot deze pagina.
             </p>
@@ -321,7 +321,7 @@ export default function CampagneFietsenPage() {
         )}
 
         {mayViewCampagneFietsen && (
-          <div className="rounded-2xl p-5 sm:p-6 text-white shadow-lg" style={{ background: DYNAMO_BLUE }}>
+          <div className="rounded-[10px] p-5 sm:p-6 text-white shadow-lg" style={{ background: DYNAMO_BLUE }}>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ fontFamily: F }}>
               Campagnefietsen — landelijk overzicht
             </h1>
@@ -395,7 +395,7 @@ export default function CampagneFietsenPage() {
 
         {mayViewCampagneFietsen && isSyncing && (
           <div
-            className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm space-y-3"
+            className="rounded-[10px] border p-4 shadow-sm space-y-3" style={{ background: 'var(--drg-card-bg)', borderColor: 'var(--drg-card-border)' }}
             role="status"
             aria-live="polite"
             aria-busy="true"
@@ -441,19 +441,19 @@ export default function CampagneFietsenPage() {
         {mayViewCampagneFietsen && isLoading && !data && (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-48 rounded-2xl bg-white border border-gray-100 animate-pulse" />
+              <div key={i} className="h-48 rounded-[10px] bg-white border border-gray-100 animate-pulse" />
             ))}
           </div>
         )}
 
         {mayViewCampagneFietsen && error && (
-          <div className="rounded-2xl p-4 bg-red-50 border border-red-100 text-red-800 text-sm">
+          <div className="rounded-[10px] p-4 bg-red-50 border border-red-100 text-red-800 text-sm">
             {error}
           </div>
         )}
 
         {mayViewCampagneFietsen && !isLoading && !isSyncing && data && fietsenSorted.length === 0 && (
-          <div className="rounded-2xl p-8 text-center bg-white border border-gray-100 text-gray-600">
+          <div className="rounded-[10px] p-8 text-center bg-white border border-gray-100 text-gray-600">
             Geen actieve campagnefietsen. Voeg fietsen toe onder{' '}
             <Link href="/dashboard/beheer?tab=campagnefietsen" className="font-semibold text-dynamo-blue underline">
               Beheer → Campagnefietsen
@@ -484,7 +484,7 @@ export default function CampagneFietsenPage() {
             return (
               <article
                 key={f.id}
-                className="rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-[10px] overflow-hidden border shadow-sm hover:shadow-md transition-shadow" style={{ background: 'var(--drg-card-bg)', borderColor: 'var(--drg-card-border)' }}
               >
                 <div className="flex flex-col sm:flex-row gap-4 p-4 sm:p-5">
                   <div className="shrink-0 w-full sm:w-44 aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
@@ -647,7 +647,7 @@ export default function CampagneFietsenPage() {
           <img
             src={lightboxUrl}
             alt=""
-            className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+            className="max-w-full max-h-full rounded-[10px] shadow-2xl object-contain"
             style={{ maxHeight: '90vh', maxWidth: '90vw' }}
             onClick={e => e.stopPropagation()}
           />

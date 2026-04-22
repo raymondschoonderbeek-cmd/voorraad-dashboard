@@ -78,7 +78,7 @@ export default function NieuweFtpTaakPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full">
-        <form onSubmit={e => void maakAan(e)} className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+        <form onSubmit={e => void maakAan(e)} className="rounded-[10px] p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Nieuwe taak aanmaken</h2>
             <label className="flex items-center gap-2 cursor-pointer select-none">

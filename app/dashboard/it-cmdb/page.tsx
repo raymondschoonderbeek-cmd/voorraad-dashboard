@@ -113,7 +113,7 @@ function StatCard({ label, value, color, icon }: { label: string; value: number;
   }
   const c = palette[color]
   return (
-    <div className="rounded-2xl p-4 flex flex-col gap-1" style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+    <div className="rounded-[10px] p-4 flex flex-col gap-1" style={{ background: c.bg, border: `1px solid ${c.border}` }}>
       <span className="text-xl">{icon}</span>
       <span className="text-2xl font-bold tabular-nums" style={{ color: c.fg, fontFamily: F }}>{value}</span>
       <span className="text-xs font-semibold" style={{ color: c.fg, opacity: 0.7, fontFamily: F }}>{label}</span>
@@ -423,17 +423,30 @@ export default function ItCmdbPage() {
 
   return (
     <div style={{ minHeight: '100%', fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
       <div className="max-w-[1400px] mx-auto w-full space-y-5" style={{ padding: '24px 28px', color: TABLE_TEXT }}>
 
         {/* ── Title + primary actions ── */}
         <div className="flex flex-col sm:flex-row sm:items-start gap-4 justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: DYNAMO_BLUE }}>Interne IT-voorraad</h1>
+            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>Interne IT-voorraad</h1>
             <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>Hardware, serienummers, Intune &amp; locaties.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link
+              href="/dashboard/it-cmdb/catalogus"
+              className="rounded-[8px] px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
+            >
+              Catalogus
+            </Link>
+            <Link
+              href="/dashboard/it-cmdb/gebruikers"
+              className="rounded-[8px] px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
+            >
+              Gebruikers
+            </Link>
             <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" className="sr-only" tabIndex={-1} onChange={onImportFile} />
             <button
               type="button"
@@ -485,28 +498,28 @@ export default function ItCmdbPage() {
 
         {/* ── Notification messages ── */}
         {importMsg && (
-          <div className="rounded-2xl p-4 text-sm whitespace-pre-wrap" style={{ background: importMsg.ok ? '#f0fdf4' : '#fef2f2', border: importMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)', color: importMsg.ok ? '#15803d' : '#b91c1c' }}>
+          <div className="rounded-[10px] p-4 text-sm whitespace-pre-wrap" style={{ background: importMsg.ok ? '#f0fdf4' : '#fef2f2', border: importMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)', color: importMsg.ok ? '#15803d' : '#b91c1c' }}>
             {importMsg.text}
           </div>
         )}
         {intuneMsg && (
-          <div className="rounded-2xl p-4 text-sm whitespace-pre-wrap" style={{ background: intuneMsg.ok ? '#f0fdf4' : '#fef2f2', border: intuneMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)', color: intuneMsg.ok ? '#15803d' : '#b91c1c' }}>
+          <div className="rounded-[10px] p-4 text-sm whitespace-pre-wrap" style={{ background: intuneMsg.ok ? '#f0fdf4' : '#fef2f2', border: intuneMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)', color: intuneMsg.ok ? '#15803d' : '#b91c1c' }}>
             {intuneMsg.text}
           </div>
         )}
         {freshdeskMsg && (
-          <div className="rounded-2xl p-4 text-sm whitespace-pre-wrap break-all" style={{ background: freshdeskMsg.ok ? '#f0fdf4' : '#fef2f2', border: freshdeskMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)', color: freshdeskMsg.ok ? '#15803d' : '#b91c1c' }}>
+          <div className="rounded-[10px] p-4 text-sm whitespace-pre-wrap break-all" style={{ background: freshdeskMsg.ok ? '#f0fdf4' : '#fef2f2', border: freshdeskMsg.ok ? '1px solid rgba(22,163,74,0.25)' : '1px solid rgba(220,38,38,0.2)', color: freshdeskMsg.ok ? '#15803d' : '#b91c1c' }}>
             {freshdeskMsg.text}
           </div>
         )}
         {error && (
-          <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
+          <div className="rounded-[10px] p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
             Kon gegevens niet laden.
           </div>
         )}
 
         {/* ── Filter bar ── */}
-        <div className="bg-white rounded-2xl p-4 flex flex-wrap gap-3 items-end" style={{ border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 1px 4px rgba(45,69,124,0.05)' }}>
+        <div className="rounded-[10px] p-4 flex flex-wrap gap-3 items-end" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           {/* Search */}
           <div className="flex-1 min-w-[200px]">
             <label className="text-[11px] font-bold uppercase tracking-wide block mb-1.5" style={{ color: 'rgba(45,69,124,0.5)' }}>Zoeken</label>
@@ -583,7 +596,7 @@ export default function ItCmdbPage() {
         </div>
 
         {/* ── Desktop table ── */}
-        <div className="hidden sm:block rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 1px 4px rgba(45,69,124,0.05)' }}>
+        <div className="hidden sm:block rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           {isLoading && !data ? (
             <p className="p-8 text-center text-sm m-0" style={{ color: dashboardUi.textMuted }}>Laden…</p>
           ) : (
@@ -737,7 +750,7 @@ export default function ItCmdbPage() {
                 <div
                   key={row.id}
                   onClick={() => setDeviceDetailId(row.id)}
-                  className={`rounded-2xl p-4 cursor-pointer transition-colors ${nonCompliant ? 'bg-red-50 border-l-4 border-l-red-400' : 'bg-white hover:bg-gray-50'}`}
+                  className={`rounded-[10px] p-4 cursor-pointer transition-colors ${nonCompliant ? 'bg-red-50 border-l-4 border-l-red-400' : 'bg-white hover:bg-gray-50'}`}
                   style={{ border: nonCompliant ? '1px solid rgba(220,38,38,0.2)' : '1px solid rgba(45,69,124,0.1)', boxShadow: '0 1px 4px rgba(45,69,124,0.05)' }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -781,7 +794,7 @@ export default function ItCmdbPage() {
 
         {/* ── Intune section (collapsible) ── */}
         {items.length > 0 && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 1px 4px rgba(45,69,124,0.05)' }}>
+          <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
             <button
               type="button"
               onClick={() => setIntuneOpen(o => !o)}
@@ -876,7 +889,7 @@ export default function ItCmdbPage() {
       {/* ── Device detail modal ── */}
       {deviceDetailId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center p-3" style={{ background: 'rgba(15,23,42,0.5)' }} role="dialog" aria-modal="true" aria-labelledby="it-cmdb-device-detail-heading" onClick={() => setDeviceDetailId(null)}>
-          <div className="w-full max-w-lg max-h-[min(90vh,720px)] overflow-y-auto rounded-2xl p-5 space-y-4 shadow-2xl" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }} onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-lg max-h-[min(90vh,720px)] overflow-y-auto rounded-[10px] p-5 space-y-4 shadow-2xl" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }} onClick={e => e.stopPropagation()}>
             {fdDetailLoading && !detailRow ? (
               <p className="text-sm m-0" style={{ color: dashboardUi.textMuted, fontFamily: F }}>Laden…</p>
             ) : !detailRow ? (
@@ -1007,7 +1020,7 @@ export default function ItCmdbPage() {
       {/* ── Statistiek modal ── */}
       {statsOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-3" style={{ background: 'rgba(15,23,42,0.45)' }} role="dialog" aria-modal="true" aria-labelledby="it-cmdb-stats-heading" onClick={() => setStatsOpen(false)}>
-          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }} onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-[10px] p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <h2 id="it-cmdb-stats-heading" className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Statistiek per type</h2>
               <button type="button" className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ border: `1px solid ${DYNAMO_BLUE}`, color: DYNAMO_BLUE, fontFamily: F }} onClick={() => setStatsOpen(false)}>Sluiten</button>
@@ -1042,7 +1055,7 @@ export default function ItCmdbPage() {
       {/* ── Add / Edit modal ── */}
       {modalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-3" style={{ background: 'rgba(15,23,42,0.45)' }} role="dialog" aria-modal="true" aria-label={editing ? 'Hardware bewerken' : 'Hardware toevoegen'}>
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[10px] p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)' }}>
             <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{editing ? 'Apparaat bewerken' : 'Nieuw apparaat'}</h2>
             {formError && <div className="rounded-xl p-3 text-sm" style={{ background: '#fef2f2', color: '#b91c1c', fontFamily: F }}>{formError}</div>}
             <form onSubmit={saveForm} className="space-y-3">

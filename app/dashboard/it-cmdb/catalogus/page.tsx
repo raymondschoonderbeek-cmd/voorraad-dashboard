@@ -973,7 +973,7 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
       </div>
 
       {/* Tabel */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+      <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
         {isLoading ? (
           <div className="p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</div>
         ) : gefilterd.length === 0 ? (
@@ -1047,7 +1047,7 @@ function AanvragenTab({ items }: { items: CatalogusItem[] }) {
       </div>
 
       {/* Aanvraag knop per product */}
-      <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+      <div className="rounded-[10px] p-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
         <div className="text-sm font-bold mb-3" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe aanvraag indienen</div>
         <div className="flex flex-wrap gap-2">
           {items.filter(i => i.type === 'licentie').map(item => (
@@ -1181,8 +1181,6 @@ export default function CatalogusPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
-
       <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
         {/* Top bar */}
         <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
@@ -1222,7 +1220,7 @@ export default function CatalogusPage() {
         {/* Kop */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>
+            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: 'var(--drg-ink)' }}>
               Product &amp; licentie catalogus
             </h1>
             <p className="m-0 mt-1 text-sm" style={{ color: dashboardUi.textMuted }}>
@@ -1281,7 +1279,7 @@ export default function CatalogusPage() {
           return (
             <div className={`grid gap-3 ${heeftKosten ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
               {stats.map(s => (
-                <div key={s.label} className="rounded-2xl px-4 py-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+                <div key={s.label} className="rounded-[10px] px-4 py-3" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
                   <div className="text-xs font-semibold uppercase mb-1" style={{ color: 'rgba(45,69,124,0.4)', letterSpacing: '0.08em' }}>{s.label}</div>
                   <div className="text-xl font-bold leading-tight" style={{ color: DYNAMO_BLUE, letterSpacing: '-0.02em' }}>
                     {isLoading ? '…' : s.value}
@@ -1296,7 +1294,7 @@ export default function CatalogusPage() {
         })()}
 
         {/* Tab balk */}
-        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)', display: 'inline-flex' }}>
+        <div className="flex gap-1 p-1 rounded-[10px]" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)', display: 'inline-flex' }}>
           {([
             { key: 'catalogus', label: '📦 Catalogus' },
             { key: 'aanvragen', label: '📋 Aanvragen' },
@@ -1319,12 +1317,12 @@ export default function CatalogusPage() {
 
         {/* Sync resultaat / fout */}
         {syncError && (
-          <div className="rounded-2xl px-4 py-3 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>
+          <div className="rounded-[10px] px-4 py-3 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>
             {syncError}
           </div>
         )}
         {syncResultaat && (
-          <div className="rounded-2xl px-4 py-3 text-sm space-y-1" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', fontFamily: F }}>
+          <div className="rounded-[10px] px-4 py-3 text-sm space-y-1" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', fontFamily: F }}>
             <div className="font-semibold" style={{ color: '#15803d' }}>
               Microsoft sync geslaagd — {syncResultaat.skus_verwerkt} SKU&apos;s verwerkt
             </div>
@@ -1371,7 +1369,7 @@ export default function CatalogusPage() {
         </div>
 
         {/* Tabel */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.07)', boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+        <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           {isLoading ? (
             <div className="p-8 text-center text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</div>
           ) : error ? (

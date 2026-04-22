@@ -123,7 +123,7 @@ export default function FtpKoppelingPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: DYNAMO_BLUE }}>FTP-koppelingen</h1>
+            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>FTP-koppelingen</h1>
             <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
               Bijlagen van Freshdesk-tickets automatisch uploaden naar FTP.
             </p>
@@ -142,7 +142,7 @@ export default function FtpKoppelingPage() {
         {laden ? (
           <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</p>
         ) : taken.length === 0 ? (
-          <div className="rounded-2xl p-10 text-center" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+          <div className="rounded-[10px] p-10 text-center" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
             <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Nog geen taken aangemaakt.</p>
             <button type="button" onClick={() => void maakNieuweTaak()} disabled={nieuwBezig} className="mt-3 inline-block text-sm font-semibold disabled:opacity-60" style={{ color: DYNAMO_BLUE, background: 'none', border: 'none', cursor: 'pointer' }}>
               {nieuwBezig ? 'Aanmaken…' : 'Maak je eerste taak aan →'}
@@ -151,7 +151,7 @@ export default function FtpKoppelingPage() {
         ) : (
           <div className="space-y-3">
             {taken.map(taak => (
-              <div key={taak.id} className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+              <div key={taak.id} className="rounded-[10px] p-5" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
                 <div className="flex items-start gap-3">
                   {/* Actief/inactief indicator */}
                   <div className="mt-0.5 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: taak.actief ? '#22c55e' : 'rgba(45,69,124,0.2)', marginTop: 6 }} />

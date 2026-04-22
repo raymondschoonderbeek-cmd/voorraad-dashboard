@@ -198,7 +198,7 @@ export default function LunchPage() {
           aria-live="polite"
         >
           <div
-            className="pointer-events-auto rounded-2xl px-4 py-3.5 shadow-lg border text-center"
+            className="pointer-events-auto rounded-[10px] px-4 py-3.5 shadow-lg border text-center"
             style={{
               background: DYNAMO_BLUE,
               color: 'white',
@@ -232,7 +232,7 @@ export default function LunchPage() {
         </div>
         {dateCheck.ok && orderDeadlineClosed && (
           <div
-            className="rounded-2xl p-4 sm:p-5 border-2 shadow-sm"
+            className="rounded-[10px] p-4 sm:p-5 border-2 shadow-sm"
             style={{
               background: '#fff7ed',
               borderColor: '#fdba74',
@@ -252,7 +252,7 @@ export default function LunchPage() {
 
         {!dateCheck.ok && (
           <div
-            className="rounded-2xl p-4 sm:p-5 border-2 shadow-sm"
+            className="rounded-[10px] p-4 sm:p-5 border-2 shadow-sm"
             style={{
               background: dateCheck.variant === 'closed' ? '#fff1f2' : '#fff7ed',
               borderColor: dateCheck.variant === 'closed' ? '#fecdd3' : '#fdba74',
@@ -276,7 +276,7 @@ export default function LunchPage() {
         )}
 
         {checkoutResult && (
-          <div ref={checkoutRef} className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 4px 24px rgba(45,69,124,0.08)' }}>
+          <div ref={checkoutRef} className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
             <div className="p-6 sm:p-8 text-center" style={{ borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
               <div className="text-5xl mb-3">🎉</div>
               <h2 className="text-2xl font-bold mb-1" style={{ color: DYNAMO_BLUE }}>Bedankt{checkoutResult.user_name ? ` ${checkoutResult.user_name}` : ''}!</h2>
@@ -390,7 +390,7 @@ export default function LunchPage() {
                         <div
                           key={p.id}
                           className="flex items-start gap-3 rounded-xl p-3 sm:p-4"
-                          style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 1px 3px rgba(45,69,124,0.04)' }}
+                          style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}
                         >
                           <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                             {p.image_url ? (
@@ -430,7 +430,7 @@ export default function LunchPage() {
 
           {/* Winkelwagen — op mobiel boven de lijst broodjes (order-1) */}
           <div className="order-1 lg:order-2" ref={cartPanelRef} id="winkelwagen">
-            <div className="lg:sticky lg:top-20 rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)', boxShadow: '0 4px 12px rgba(45,69,124,0.08)' }}>
+            <div className="lg:sticky lg:top-20 rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
               <div className="p-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.08)' }}>
                 <h2 className="font-bold" style={{ color: DYNAMO_BLUE }}>Winkelwagen</h2>
                 <p className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.5)' }}>{orderDate}</p>

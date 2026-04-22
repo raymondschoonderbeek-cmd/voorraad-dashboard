@@ -82,7 +82,6 @@ export default function NieuwsOverzichtPage() {
 
   return (
     <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
 
       <div className="max-w-3xl mx-auto w-full space-y-5" style={{ padding: '24px 28px' }}>
         {sessionInfo?.canManageInterneNieuws && (
@@ -97,7 +96,7 @@ export default function NieuwsOverzichtPage() {
           </div>
         )}
         <div>
-          <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>
+          <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: 'var(--drg-ink)' }}>
             Intern nieuws
           </h1>
           <p className="m-0 mt-1 text-sm" style={{ color: dashboardUi.textMuted }}>
@@ -106,8 +105,8 @@ export default function NieuwsOverzichtPage() {
         </div>
 
         <div
-          className="rounded-2xl p-4 flex flex-col sm:flex-row flex-wrap gap-3"
-          style={{ background: dashboardUi.cardWhite.background, border: dashboardUi.cardWhite.border, boxShadow: dashboardUi.cardWhite.boxShadow }}
+          className="rounded-[10px] p-4 flex flex-col sm:flex-row flex-wrap gap-3"
+          style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}
         >
           <div className="flex-1 min-w-[140px]">
             <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: dashboardUi.textSubtle }}>
@@ -147,13 +146,13 @@ export default function NieuwsOverzichtPage() {
         </div>
 
         {isLoading && (
-          <div className="rounded-2xl p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
+          <div className="rounded-[10px] p-10 text-center text-sm" style={{ color: dashboardUi.textMuted }}>
             Laden…
           </div>
         )}
 
         {error && (
-          <div className="rounded-2xl p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
+          <div className="rounded-[10px] p-4 text-sm" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}>
             Kon nieuws niet laden. Probeer het opnieuw.
             <button type="button" className="ml-2 underline font-semibold" onClick={() => haalPostsOp(0, category, importantOnly, q)}>
               Opnieuw
@@ -163,7 +162,7 @@ export default function NieuwsOverzichtPage() {
 
         {!isLoading && !error && allPosts.length === 0 && (
           <div
-            className="rounded-2xl p-10 text-center border border-dashed"
+            className="rounded-[10px] p-10 text-center border border-dashed"
             style={{ borderColor: 'rgba(45,69,124,0.2)', color: dashboardUi.textMuted }}
           >
             Geen berichten gevonden. {category || importantOnly || q ? 'Pas de filters aan.' : 'Er is nog geen nieuws geplaatst.'}
@@ -175,11 +174,11 @@ export default function NieuwsOverzichtPage() {
             <li key={p.id}>
               <Link
                 href={`/dashboard/nieuws/${p.id}`}
-                className="block rounded-2xl p-4 sm:p-5 transition hover:shadow-lg"
+                className="block rounded-[10px] p-4 sm:p-5 transition hover:shadow-lg"
                 style={{
-                  background: dashboardUi.cardWhite.background,
-                  border: dashboardUi.cardWhite.border,
-                  boxShadow: dashboardUi.cardWhite.boxShadow,
+                  background: 'var(--drg-card-bg)',
+                  border: '1px solid var(--drg-card-border)',
+                  boxShadow: 'var(--drg-card-shadow)',
                 }}
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -215,7 +214,7 @@ export default function NieuwsOverzichtPage() {
               type="button"
               onClick={() => haalPostsOp(offset, category, importantOnly, q)}
               disabled={loadingMore}
-              className="rounded-2xl px-6 py-3 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-[10px] px-6 py-3 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
               style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: FONT_FAMILY }}
             >
               {loadingMore ? 'Laden…' : `Toon meer (${allPosts.length} van ${total})`}

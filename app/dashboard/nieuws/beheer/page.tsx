@@ -39,7 +39,6 @@ export default function NieuwsBeheerPage() {
 
   return (
     <div style={{ minHeight: '100%', fontFamily: FONT_FAMILY }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
       <div className="max-w-4xl mx-auto w-full" style={{ padding: '24px 28px' }}>
         <NieuwsBeheerTab />
       </div>

@@ -204,7 +204,7 @@ export default function FtpTaakPage() {
         ) : (
           <>
             {/* Webhook info */}
-            <div className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+            <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
               <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Freshdesk Observer instellen</h2>
 
               <div>
@@ -246,7 +246,7 @@ export default function FtpTaakPage() {
             </div>
 
             {/* FTP instellingen */}
-            <form onSubmit={e => void slaOp(e)} className="rounded-2xl p-5 space-y-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+            <form onSubmit={e => void slaOp(e)} className="rounded-[10px] p-5 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>FTP-instellingen</h2>
                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -320,7 +320,7 @@ export default function FtpTaakPage() {
             </form>
 
             {/* Readme / documentatie */}
-            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+            <div className="rounded-[10px] p-5 space-y-3" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Documentatie</h2>
                 {!readmeBewerkModus ? (
@@ -404,7 +404,7 @@ export default function FtpTaakPage() {
             </div>
 
             {/* Activiteitenlog */}
-            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.1)' }}>
+            <div className="rounded-[10px] p-5 space-y-3" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold m-0" style={{ color: DYNAMO_BLUE }}>Recente activiteit</h2>
                 <button type="button" onClick={() => void laadLog(taakId)} disabled={logLaden} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 disabled:opacity-50" style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, fontFamily: F }}>

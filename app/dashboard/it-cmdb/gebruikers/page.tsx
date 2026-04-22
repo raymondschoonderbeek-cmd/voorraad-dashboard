@@ -134,8 +134,8 @@ function GebruikerKaart({ g }: { g: Gebruiker }) {
 
   return (
     <div
-      className="rounded-2xl border bg-white overflow-hidden transition-shadow"
-      style={{ borderColor: open ? `${DYNAMO_BLUE}40` : 'rgba(0,0,0,0.07)', boxShadow: open ? `0 0 0 2px ${DYNAMO_BLUE}22` : undefined }}
+      className="rounded-[10px] border overflow-hidden transition-shadow"
+      style={{ background: 'var(--drg-card-bg)', borderColor: open ? `${DYNAMO_BLUE}40` : 'rgba(0,0,0,0.07)', boxShadow: open ? `0 0 0 2px ${DYNAMO_BLUE}22` : undefined }}
     >
       {/* Header row */}
       <button
@@ -357,7 +357,7 @@ export default function GebruikersPage() {
         {/* Kop */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: DYNAMO_BLUE }}>
+            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: 'var(--drg-ink)' }}>
               Gebruikersoverzicht
             </h1>
             <p className="m-0 mt-1 text-sm" style={{ color: dashboardUi.textMuted }}>
@@ -375,7 +375,7 @@ export default function GebruikersPage() {
               { label: 'Licenties', value: totaalLicenties, color: '#7c3aed' },
               { label: 'Producten', value: totaalProducten, color: '#0369a1' },
             ].map(({ label, value, color }) => (
-              <div key={label} className="rounded-2xl px-4 py-3 flex flex-col bg-white border" style={{ borderColor: 'rgba(0,0,0,0.07)', minWidth: 90 }}>
+              <div key={label} className="rounded-[10px] px-4 py-3 flex flex-col border" style={{ background: 'var(--drg-card-bg)', borderColor: 'rgba(0,0,0,0.07)', minWidth: 90 }}>
                 <span className="text-xl font-bold tabular-nums" style={{ color, fontFamily: F }}>{value}</span>
                 <span className="text-xs mt-0.5" style={{ color: dashboardUi.textSubtle }}>{label}</span>
               </div>
@@ -430,14 +430,14 @@ export default function GebruikersPage() {
 
         {/* State: error */}
         {error && (
-          <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-[10px] bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             Fout bij ophalen gebruikers: {error instanceof Error ? error.message : 'Onbekende fout'}
           </div>
         )}
 
         {/* State: no data */}
         {!isLoading && !error && totaalGebruikers === 0 && (
-          <div className="rounded-2xl bg-white border py-12 text-center" style={{ borderColor: 'rgba(0,0,0,0.07)' }}>
+          <div className="rounded-[10px] border py-12 text-center" style={{ background: 'var(--drg-card-bg)', borderColor: 'rgba(0,0,0,0.07)' }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3" style={{ color: dashboardUi.textSubtle }} aria-hidden>
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>

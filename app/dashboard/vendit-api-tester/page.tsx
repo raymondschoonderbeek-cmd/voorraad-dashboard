@@ -89,7 +89,7 @@ function ArticleDetailModal({ item, onClose }: { item: Record<string, unknown>; 
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-2xl rounded-[10px] overflow-hidden shadow-2xl"
         style={{ background: 'white', color: '#2D457C' }}
         onClick={e => e.stopPropagation()}
       >
@@ -711,7 +711,6 @@ export default function VenditApiTesterPage() {
 
   return (
     <div className="vendit-tester min-h-screen" style={{ background: '#f4f6fb', fontFamily: F }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
       <style>{`
         .vendit-tester input, .vendit-tester textarea {
           color: #2D457C !important;
@@ -745,7 +744,7 @@ export default function VenditApiTesterPage() {
 
       <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Gedeelde winkelkeuze */}
-        <div className="rounded-2xl p-4" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
+        <div className="rounded-[10px] p-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <label className="block text-xs font-semibold mb-2" style={{ color: 'rgba(45,69,124,0.6)' }}>Winkel</label>
@@ -784,7 +783,7 @@ export default function VenditApiTesterPage() {
         </div>
 
         {/* Orders overzicht */}
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
+        <div className="rounded-[10px] p-4 sm:p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Orders overzicht (met klanten)</h2>
           <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Haal alle orders op met klantnamen voor de geselecteerde winkel.
@@ -920,7 +919,7 @@ export default function VenditApiTesterPage() {
         </div>
 
         {/* Voorraad overzicht */}
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
+        <div className="rounded-[10px] p-4 sm:p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Voorraad overzicht (producten op voorraad)</h2>
           <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Haal alle producten met voorraad op voor de geselecteerde winkel.
@@ -1001,7 +1000,7 @@ export default function VenditApiTesterPage() {
         </div>
 
         {/* Discovery scan */}
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
+        <div className="rounded-[10px] p-4 sm:p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
           <h2 className="text-base font-bold mb-2" style={{ color: DYNAMO_BLUE }}>Data-overzicht (Discovery scan)</h2>
           <p className="text-sm mb-4" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Scan alle GetAll-endpoints voor de geselecteerde winkel om snel te zien welke data beschikbaar is (aantal records per endpoint).
@@ -1047,8 +1046,8 @@ export default function VenditApiTesterPage() {
           )}
         </div>
 
-        <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
-          <h1 className="text-lg font-bold mb-4" style={{ color: DYNAMO_BLUE }}>Vendit Public API testen</h1>
+        <div className="rounded-[10px] p-4 sm:p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
+          <h1 className="text-lg font-bold mb-4" style={{ color: 'var(--drg-ink)' }}>Vendit Public API testen</h1>
           <p className="text-sm mb-6" style={{ color: 'rgba(45,69,124,0.5)' }}>
             Selecteer een Vendit-winkel met geconfigureerde API-credentials en een endpoint. Vul eventuele parameters of request body in en voer de call uit.
           </p>
@@ -1116,7 +1115,7 @@ export default function VenditApiTesterPage() {
         </div>
 
         {result && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(45,69,124,0.08)', boxShadow: '0 2px 12px rgba(45,69,124,0.04)' }}>
+          <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
             <div className="px-4 py-3 flex items-center justify-between gap-2" style={{ background: 'rgba(45,69,124,0.04)', borderBottom: '1px solid rgba(45,69,124,0.08)' }}>
               <span className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>Resultaat</span>
               <div className="flex items-center gap-2">
