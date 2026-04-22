@@ -111,6 +111,7 @@ export default function TvPage() {
   // Nieuws: content-aware cycling met auto-scroll voor lange berichten
   useEffect(() => {
     if (!data?.nieuws?.length) return
+    if (linkerView !== 'intern') return
     const container = newsContainerRef.current
     if (container) container.scrollTop = 0
 
@@ -153,7 +154,7 @@ export default function TvPage() {
 
     return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nieuwsIdx, data?.nieuws?.length])
+  }, [nieuwsIdx, linkerView, data?.nieuws?.length])
 
   // Linkerkolom wisselen: intern ↔ branche nieuws elke 30 seconden
   useEffect(() => {
@@ -169,8 +170,11 @@ export default function TvPage() {
   }, [data?.brancheNieuws?.length])
 
   // Branche nieuws: content-aware cycling met auto-scroll voor lange artikelen
+  // linkerView als dependency: reset timer wanneer view zichtbaar wordt (voorkomt te-korte weergave)
   useEffect(() => {
     if (!data?.brancheNieuws?.length) return
+    if (linkerView !== 'branche') return
+
     const container = brancheContainerRef.current
     if (container) container.scrollTop = 0
 
@@ -211,7 +215,7 @@ export default function TvPage() {
 
     return () => { cancelled = true; clearTimeout(timer); cancelAnimationFrame(rafId) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brancheIdx, data?.brancheNieuws?.length])
+  }, [brancheIdx, linkerView, data?.brancheNieuws?.length])
 
   // Zijpanel rouleren: verjaardagen ↔ hoogtepunten elke 8 seconden
   useEffect(() => {
