@@ -1058,7 +1058,7 @@ export default function BeheerPage() {
     })
   }, [winkels, winkelFilterSysteem, winkelFilterApi, winkelFilterLand, winkelFilterLocatie, winkelZoekterm])
 
-  const inputStyle = { background: 'rgba(45,69,124,0.04)', border: '1px solid rgba(45,69,124,0.1)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }
+  const inputStyle = { background: 'var(--drg-input-bg)', border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', fontFamily: F, outline: 'none' }
   const inputClass = "w-full rounded-xl px-3 py-2 text-sm placeholder:text-gray-400"
 
   const tabs: { key: Tab; label: string; icon: string; count?: number }[] =
@@ -1084,37 +1084,41 @@ export default function BeheerPage() {
   return (
     <div className="p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
 
-        <div className="relative rounded-[10px] overflow-hidden" style={{ background: DYNAMO_BLUE, minHeight: 120 }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 80% 50%, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'rgba(255,255,255,0.2)' }} />
-          <div className="relative p-4 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
-            <div className="min-w-0">
-              <h1 style={{ fontFamily: F, color: 'white', fontSize: 'clamp(20px,4vw,24px)', fontWeight: 700, letterSpacing: '-0.02em' }}>Beheer</h1>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', marginTop: '4px', fontFamily: F }} className="hidden sm:block">{isAdmin ? 'Beheer gebruikers, winkels en importeer data via Excel' : 'Bekijk winkels en API-status'}</p>
-            </div>
-            <div className="flex items-center gap-4 sm:gap-3 shrink-0">
-              {isAdmin && (
-                <>
-                  <div className="text-center px-4">
-                    <div style={{ color: 'white', fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
-                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gebruikers</div>
-                  </div>
-                  <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
-                </>
-              )}
-              <div className="text-center px-4">
-                <div style={{ color: 'white', fontSize: '22px', fontWeight: 700, fontFamily: F, lineHeight: 1 }}>{loading ? '—' : winkels.length}</div>
-                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Winkels</div>
-              </div>
-            </div>
+        {/* Page head */}
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', fontFamily: F, marginBottom: 6 }}>Beheer</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Portaalbeheer</h1>
+          <p style={{ fontSize: 13, color: 'var(--drg-text-2)', fontFamily: F, marginTop: 4 }}>{isAdmin ? 'Beheer gebruikers, winkels en importeer data via Excel' : 'Bekijk winkels en API-status'}</p>
+        </div>
+
+        {/* KPI stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : winkels.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Winkels</div>
           </div>
+          {isAdmin && <>
+            <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
+              <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Gebruikers</div>
+            </div>
+            <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.filter(r => r.rol === 'admin').length}</div>
+              <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Admins</div>
+            </div>
+            <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-success)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : Object.values(mfaStatus).filter(Boolean).length}</div>
+              <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>MFA actief</div>
+            </div>
+          </>}
         </div>
 
         {error && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{error}</div>}
         {formError && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{formError}</div>}
         {formSuccess && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
-        <div className="flex gap-0.5 p-1 rounded-[10px] overflow-x-auto scrollbar-none" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)', WebkitOverflowScrolling: 'touch' }}>
+        {/* Underline tab bar */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--drg-line)', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: -4 }}>
           {tabs.map(t => (
             <button
               key={t.key}
@@ -1138,15 +1142,34 @@ export default function BeheerPage() {
                   }).catch(() => {})
                 }
               }}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap shrink-0"
-              style={tab === t.key
-                ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F }
-                : { color: 'rgba(45,69,124,0.5)', fontFamily: F, background: 'transparent' }}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: tab === t.key ? 600 : 500,
+                color: tab === t.key ? 'var(--drg-ink)' : 'var(--drg-text-3)',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: tab === t.key ? '2px solid var(--drg-ink-2)' : '2px solid transparent',
+                marginBottom: -1,
+                cursor: 'pointer',
+                fontFamily: F,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'color 0.15s',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
             >
-              <span className="text-sm leading-none">{t.icon}</span>
-              <span>{t.label}</span>
+              <span style={{ fontSize: 14 }}>{t.icon}</span>
+              {t.label}
               {t.count !== undefined && (
-                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none" style={tab === t.key ? { background: 'rgba(255,255,255,0.2)', color: 'white' } : { background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.6)' }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, lineHeight: '16px',
+                  padding: '1px 6px', borderRadius: 999,
+                  background: tab === t.key ? 'var(--drg-info-bg)' : 'var(--drg-line)',
+                  color: tab === t.key ? 'var(--drg-ink-2)' : 'var(--drg-text-3)',
+                }}>
                   {t.count}
                 </span>
               )}
@@ -1168,7 +1191,7 @@ export default function BeheerPage() {
                       value={gebruikerZoekterm}
                       onChange={e => setGebruikerZoekterm(e.target.value)}
                       className="rounded-xl px-3 py-2 pl-8 text-sm w-60"
-                      style={{ background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: DYNAMO_BLUE, fontFamily: F, outline: 'none' }}
+                      style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', fontFamily: F, outline: 'none' }}
                     />
                     {gebruikerZoekterm && (
                       <button type="button" onClick={() => setGebruikerZoekterm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs" aria-label="Wis zoekterm">✕</button>
@@ -1190,8 +1213,8 @@ export default function BeheerPage() {
                         onClick={() => setRolFilter(r)}
                         className="rounded-lg px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5"
                         style={active
-                          ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F }
-                          : { background: 'white', border: '1px solid rgba(45,69,124,0.12)', color: 'rgba(45,69,124,0.6)', fontFamily: F }}
+                          ? { background: 'var(--drg-ink-2)', color: 'white', fontFamily: F }
+                          : { background: 'var(--drg-card)', border: '1px solid var(--drg-line)', color: 'var(--drg-text-2)', fontFamily: F }}
                       >
                         {labels[r]}
                         <span className="rounded-full px-1.5 text-xs font-bold" style={active ? { background: 'rgba(255,255,255,0.2)' } : { background: 'rgba(45,69,124,0.07)' }}>
@@ -1213,7 +1236,7 @@ export default function BeheerPage() {
                   disabled={azureSyncLoading}
                   title="Synchroniseer gebruikers vanuit Microsoft Entra (Azure AD)"
                   className="rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
-                  style={{ borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
+                  style={{ borderColor: 'var(--drg-line)', color: 'var(--drg-ink-2)', fontFamily: F, background: 'var(--drg-card)' }}
                 >
                   {azureSyncLoading ? (
                     <span className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: DYNAMO_BLUE }} />
@@ -1231,11 +1254,11 @@ export default function BeheerPage() {
                   type="button"
                   onClick={() => { setBulkModulePanel(v => !v); setBulkSelectie({}); setBulkSuccess(''); setBulkError('') }}
                   className="rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 flex items-center gap-2 shrink-0"
-                  style={bulkModulePanel ? { background: DYNAMO_BLUE, color: 'white', fontFamily: F, borderColor: DYNAMO_BLUE } : { borderColor: 'rgba(45,69,124,0.25)', color: DYNAMO_BLUE, fontFamily: F, background: 'white' }}
+                  style={bulkModulePanel ? { background: 'var(--drg-ink-2)', color: 'white', fontFamily: F, borderColor: 'var(--drg-ink-2)' } : { borderColor: 'var(--drg-line)', color: 'var(--drg-ink-2)', fontFamily: F, background: 'var(--drg-card)' }}
                 >
                   Modules toewijzen
                 </button>
-                <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+                <button onClick={() => { setToonForm(v => !v); setBewerkGebruiker(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2 shrink-0" style={{ background: 'var(--drg-ink-2)', color: 'white', fontFamily: F }}>
                   + Gebruiker uitnodigen
                 </button>
               </div>
@@ -1284,9 +1307,9 @@ export default function BeheerPage() {
 
             {/* Bulk module toewijzen */}
             {bulkModulePanel && (
-              <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
+              <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'var(--drg-card)', border: '2px solid var(--drg-ink-2)', boxShadow: 'var(--drg-card-shadow)' }}>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Modules bulk toewijzen / ontkoppelen</h2>
+                  <h2 className="text-sm font-bold" style={{ color: 'var(--drg-ink)', fontFamily: F }}>Modules bulk toewijzen / ontkoppelen</h2>
                   <button type="button" onClick={() => setBulkModulePanel(false)} className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>✕ Sluiten</button>
                 </div>
 
@@ -1403,8 +1426,8 @@ export default function BeheerPage() {
             )}
 
             {toonForm && (
-              <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-                <h2 className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe gebruiker aanmaken</h2>
+              <div className="rounded-[10px] p-5 space-y-4" style={{ background: 'var(--drg-card)', border: '2px solid var(--drg-ink-2)', boxShadow: 'var(--drg-card-shadow)' }}>
+                <h2 className="text-sm font-bold" style={{ color: 'var(--drg-ink)', fontFamily: F }}>Nieuwe gebruiker aanmaken</h2>
                 <form onSubmit={voegGebruikerToe} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -1494,9 +1517,9 @@ export default function BeheerPage() {
                 style={{ background: 'rgba(0,0,0,0.45)' }}
                 onClick={e => { if (e.target === e.currentTarget) { setBewerkGebruiker(null); setBewerkEmail('') } }}
               >
-                <div className="w-full max-w-2xl rounded-[10px] shadow-2xl overflow-y-auto" style={{ background: 'white', maxHeight: 'calc(100dvh - 2rem)' }}>
-                  <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(45,69,124,0.1)', background: 'white', zIndex: 1 }}>
-                    <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkGebruiker.naam} bewerken</h2>
+                <div className="w-full max-w-2xl rounded-[10px] shadow-2xl overflow-y-auto" style={{ background: 'var(--drg-card)', maxHeight: 'calc(100dvh - 2rem)' }}>
+                  <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--drg-line)', background: 'var(--drg-card)', zIndex: 1 }}>
+                    <h2 className="text-base font-bold" style={{ color: 'var(--drg-ink)', fontFamily: F }}>✏️ {bewerkGebruiker.naam} bewerken</h2>
                     <button type="button" onClick={() => { setBewerkGebruiker(null); setBewerkEmail('') }} className="rounded-lg w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition" style={{ color: 'rgba(45,69,124,0.4)' }}>✕</button>
                   </div>
                   <form onSubmit={updateGebruiker} className="p-6 space-y-5">
@@ -1580,9 +1603,9 @@ export default function BeheerPage() {
             )}
 
             <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div className="p-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)', borderTop: `3px solid ${DYNAMO_BLUE}` }}>
-                <div className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Gebruikersoverzicht</div>
-                <div className="text-xs" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>
+              <div className="p-4" style={{ borderBottom: '1px solid var(--drg-line)' }}>
+                <div className="text-sm font-bold" style={{ color: 'var(--drg-ink)', fontFamily: F }}>Gebruikersoverzicht</div>
+                <div className="text-xs" style={{ color: 'var(--drg-text-3)', fontFamily: F }}>
                   {gebruikerZoekterm ? `${gefilterdeGebruikers.length} van ${rollen.length} gebruikers` : `${rollen.length} gebruikers`}
                 </div>
               </div>
@@ -1594,56 +1617,56 @@ export default function BeheerPage() {
                 <div className="divide-y" style={{ borderColor: 'rgba(45,69,124,0.06)' }}>
                   {gefilterdeGebruikers.map(rol => (
                     <div key={rol.id} className="flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50/50">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: DYNAMO_BLUE, fontFamily: F }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: 'var(--drg-ink-2)', fontFamily: F }}>
                         {(rol.naam || 'G').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'rgba(45,69,124,0.12)', color: DYNAMO_BLUE } : rol.rol === 'lunch' ? { background: 'rgba(34,197,94,0.15)', color: '#15803d' } : { background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.6)' }}>
+                          <span className="font-semibold text-sm" style={{ color: 'var(--drg-ink)', fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={rol.rol === 'admin' ? { background: 'var(--drg-info-bg)', color: 'var(--drg-ink-2)' } : rol.rol === 'lunch' ? { background: 'var(--drg-success-bg)', color: 'var(--drg-success)' } : { background: 'var(--drg-line)', color: 'var(--drg-text-2)' }}>
                             {rol.rol === 'admin' ? '👑 Admin' : rol.rol === 'lunch' ? '🥪 Lunch' : '👁 Viewer'}
                           </span>
                           {mfaStatus[rol.user_id] === true && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.12)', color: '#15803d' }} title="MFA ingeschakeld">✓ MFA</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-success-bg)', color: 'var(--drg-success)' }} title="MFA ingeschakeld">✓ MFA</span>
                           )}
                           {mfaStatus[rol.user_id] === false && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.45)' }} title="MFA uitgeschakeld">— MFA</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-line)', color: 'var(--drg-text-3)' }} title="MFA uitgeschakeld">— MFA</span>
                           )}
                           {rol.mfa_verplicht && (
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }} title="MFA verplicht">MFA verplicht</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--drg-danger-bg)', color: 'var(--drg-danger)' }} title="MFA verplicht">MFA verplicht</span>
                           )}
                           {rol.rol !== 'admin' && profileModulesResolved[rol.user_id]?.includes('campagne-fietsen') && (
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE }} title="Campagnefietsen">🚲 Campagnefietsen</span>
                           )}
                         </div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.35)', fontFamily: F }}>{modulesLabelForUser(rol.user_id)}</div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.32)', fontFamily: F }}>Land: {landLabelForUser(rol.user_id)}</div>
-                        <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.3)', fontFamily: F }} title="Laatste inlog">
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--drg-text-2)', fontFamily: F }}>{userEmails[rol.user_id] || '(Geen e-mail)'}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--drg-text-3)', fontFamily: F }}>{modulesLabelForUser(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--drg-text-3)', fontFamily: F }}>Land: {landLabelForUser(rol.user_id)}</div>
+                        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--drg-text-3)', fontFamily: F }} title="Laatste inlog">
                           {userLastSignIns[rol.user_id]
                             ? `Laatste inlog: ${new Date(userLastSignIns[rol.user_id]!).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`
                             : 'Nog nooit ingelogd'}
                         </div>
                         {rol.manager_naam && (
-                          <div className="text-xs mt-0.5 truncate" style={{ color: 'rgba(45,69,124,0.32)', fontFamily: F }} title={rol.manager_email ?? rol.manager_naam}>
+                          <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--drg-text-3)', fontFamily: F }} title={rol.manager_email ?? rol.manager_naam}>
                             Manager: {rol.manager_naam}
                           </div>
                         )}
                       </div>
                       <div className="flex gap-2 shrink-0 flex-wrap">
-                        <button onClick={() => stuurUitnodigingOpnieuw(rol.user_id)} disabled={resendInviteLoading === rol.user_id} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }} title="Stuur inloggegevens opnieuw per e-mail">{resendInviteLoading === rol.user_id ? '...' : 'Opnieuw uitnodigen'}</button>
+                        <button onClick={() => stuurUitnodigingOpnieuw(rol.user_id)} disabled={resendInviteLoading === rol.user_id} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50" style={{ background: 'var(--drg-line-2)', color: 'var(--drg-ink-2)', border: '1px solid var(--drg-line)', fontFamily: F }} title="Stuur inloggegevens opnieuw per e-mail">{resendInviteLoading === rol.user_id ? '...' : 'Opnieuw uitnodigen'}</button>
                         <button
                           type="button"
                           onClick={() => loginAlsGebruiker(rol.user_id, rol.naam)}
                           disabled={impersonateLoadingUserId === rol.user_id}
                           className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70 disabled:opacity-50"
-                          style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.15)', fontFamily: F }}
+                          style={{ background: 'var(--drg-line-2)', color: 'var(--drg-ink-2)', border: '1px solid var(--drg-line)', fontFamily: F }}
                           title="Inloggen als deze gebruiker (je admin-sessie wordt beëindigd)"
                         >
                           {impersonateLoadingUserId === rol.user_id ? '…' : 'Inloggen als'}
                         </button>
-                        <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(45,69,124,0.05)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Bewerken</button>
-                        <button onClick={() => verwijderGebruiker(rol.user_id, rol.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'rgba(220,38,38,0.05)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
+                        <button onClick={() => startBewerken(rol)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'var(--drg-line-2)', color: 'var(--drg-ink-2)', border: '1px solid var(--drg-line)', fontFamily: F }}>Bewerken</button>
+                        <button onClick={() => verwijderGebruiker(rol.user_id, rol.naam)} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:opacity-70" style={{ background: 'var(--drg-danger-bg)', color: 'var(--drg-danger)', border: '1px solid rgba(220,38,38,0.15)', fontFamily: F }}>Verwijderen</button>
                       </div>
                     </div>
                   ))}
@@ -1658,15 +1681,15 @@ export default function BeheerPage() {
           <div className="space-y-4">
             {isAdmin && (
               <div className="flex justify-end">
-                <button onClick={() => { setToonWinkelForm(v => !v); setBewerkWinkel(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: DYNAMO_BLUE, color: 'white', fontFamily: F }}>
+                <button onClick={() => { setToonWinkelForm(v => !v); setBewerkWinkel(null) }} className="rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90 flex items-center gap-2" style={{ background: 'var(--drg-ink-2)', color: 'white', fontFamily: F }}>
                   + Winkel toevoegen
                 </button>
               </div>
             )}
 
             {isAdmin && toonWinkelForm && (
-              <div className="rounded-[10px] p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-                <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe winkel</h2>
+              <div className="rounded-[10px] p-5" style={{ background: 'var(--drg-card)', border: '2px solid var(--drg-ink-2)', boxShadow: 'var(--drg-card-shadow)' }}>
+                <h2 className="text-sm font-bold mb-4" style={{ color: 'var(--drg-ink)', fontFamily: F }}>Nieuwe winkel</h2>
                 <form onSubmit={voegWinkelToe} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -1796,8 +1819,8 @@ export default function BeheerPage() {
             )}
 
             {isAdmin && bewerkWinkel && (
-              <div className="rounded-[10px] p-5" style={{ background: 'white', border: `2px solid ${DYNAMO_BLUE}`, boxShadow: '0 2px 8px rgba(45,69,124,0.04)' }}>
-                <h2 className="text-sm font-bold mb-4" style={{ color: DYNAMO_BLUE, fontFamily: F }}>✏️ {bewerkWinkel.naam} bewerken</h2>
+              <div className="rounded-[10px] p-5" style={{ background: 'var(--drg-card)', border: '2px solid var(--drg-ink-2)', boxShadow: 'var(--drg-card-shadow)' }}>
+                <h2 className="text-sm font-bold mb-4" style={{ color: 'var(--drg-ink)', fontFamily: F }}>✏️ {bewerkWinkel.naam} bewerken</h2>
                 <form onSubmit={slaWinkelOp} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
