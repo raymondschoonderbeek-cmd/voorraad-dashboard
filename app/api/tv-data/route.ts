@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth'
 import { getRoomAvailability } from '@/lib/joan'
@@ -40,10 +41,10 @@ function dagenTotVerjaardag(geboortedatum: string): number {
   return Math.floor((volgende.getTime() - vandaag.setHours(0, 0, 0, 0)) / 86400000)
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const tvKey = process.env.TV_API_KEY
-  const cookie = request.headers.get('cookie') ?? ''
-  const tvCookie = cookie.split(';').find(c => c.trim().startsWith('tv_access='))?.split('=')[1]
+  const cookieStore = await cookies()
+  const tvCookie = cookieStore.get('tv_access')?.value
   const isTvSession = tvKey && tvCookie === tvKey
 
   if (!isTvSession) {
