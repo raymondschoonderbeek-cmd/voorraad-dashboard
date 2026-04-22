@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   // Gebruiker-afdelingen uit Azure sync (primaire bron)
   const gebruikerLabels = [...new Set(
     (rollenData ?? [])
-      .map((r: { afdeling: string | null }) => r.afdeling?.trim())
+      .map((r: { afdeling: string | null }) => r.afdeling?.split(',')[0]?.trim())
       .filter((a): a is string => !!a)
   )].sort((a, b) => a.localeCompare(b, 'nl'))
 
