@@ -1092,23 +1092,23 @@ export default function BeheerPage() {
         {/* Page head */}
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', fontFamily: F, marginBottom: 6 }}>Beheer</p>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Gebruikers, winkels en data</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Gebruikers, winkels en data</h1>
           <p style={{ fontSize: 13, color: 'var(--drg-text-2)', fontFamily: F, marginTop: 4 }}>{isAdmin ? 'Beheer gebruikers, winkels en importeer data via Excel' : 'Bekijk winkels en API-status'}</p>
         </div>
 
         {/* KPI stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : winkels.length}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : winkels.length}</div>
             <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Winkels</div>
           </div>
           {isAdmin && <>
             <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
               <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Gebruikers</div>
             </div>
             <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.filter(r => r.rol === 'admin').length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.filter(r => r.rol === 'admin').length}</div>
               <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Admins</div>
             </div>
             <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
@@ -1151,7 +1151,7 @@ export default function BeheerPage() {
                 padding: '8px 16px',
                 fontSize: 13,
                 fontWeight: tab === t.key ? 600 : 500,
-                color: tab === t.key ? 'var(--drg-ink)' : 'var(--drg-text-3)',
+                color: tab === t.key ? 'var(--drg-ink-2)' : 'var(--drg-text-3)',
                 background: 'transparent',
                 border: 'none',
                 borderBottom: tab === t.key ? '2px solid var(--drg-ink-2)' : '2px solid transparent',
@@ -1609,7 +1609,7 @@ export default function BeheerPage() {
 
             <div className="rounded-[10px] overflow-hidden" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)' }}>
               <div className="p-4" style={{ borderBottom: '1px solid var(--drg-line)' }}>
-                <div className="text-sm font-bold" style={{ color: 'var(--drg-ink)', fontFamily: F }}>Gebruikersoverzicht</div>
+                <div className="text-sm font-bold" style={{ color: 'var(--drg-ink-2)', fontFamily: F }}>Gebruikersoverzicht</div>
                 <div className="text-xs" style={{ color: 'var(--drg-text-3)', fontFamily: F }}>
                   {gebruikerZoekterm ? `${gefilterdeGebruikers.length} van ${rollen.length} gebruikers` : `${rollen.length} gebruikers`}
                 </div>
@@ -1627,7 +1627,7 @@ export default function BeheerPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm" style={{ color: 'var(--drg-ink)', fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
+                          <span className="font-semibold text-sm" style={{ color: 'var(--drg-ink-2)', fontFamily: F }}>{rol.naam || '(Geen naam)'}</span>
                           {rol.rol === 'admin'
                             ? <span style={{ background: 'var(--drg-admin-bg)', color: 'var(--drg-admin)', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 8px', height: 20, lineHeight: '20px', borderRadius: 999, display: 'inline-flex', alignItems: 'center' }}>Admin</span>
                             : rol.rol === 'lunch'
