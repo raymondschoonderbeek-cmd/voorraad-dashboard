@@ -116,10 +116,12 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
     const d = datumAms
     const tz = 'Europe/Amsterdam'
+    // V1 events staat bovenaan: geeft array van { room, events: [...] } en werkt betrouwbaar.
+    // Schedule-endpoint geeft 200 maar levert schedule: [] (leeg) — slaat echte boekingen over.
     const kandidaten = [
-      `${JOAN_PORTAL}/rooms/reservations/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}&tz=${encodeURIComponent(tz)}`,
       `${JOAN_V1}/events/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_V1}/events/?start=${d}&end=${d}`,
+      `${JOAN_PORTAL}/rooms/reservations/schedule/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}&tz=${encodeURIComponent(tz)}`,
       `${JOAN_PORTAL}/rooms/${roomId}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
       `${JOAN_PORTAL}/rooms/${roomId}/schedule/?date=${d}`,
       `${JOAN_PORTAL}/bookings/?start=${beginVanDag.toISOString()}&end=${eindVanDag.toISOString()}`,
@@ -139,9 +141,10 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
     for (const url of kandidaten) {
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 0 } })
       probes.push(`${url.replace(/https:\/\/portal\.getjoan\.com\/api\/(2\.0\/?|v1\.0\/)?(portal\/)?/, '').split('?')[0]}=${r.status}`)
-      if (r.ok && !eventsRaw) {
+      if (r.ok) {
         eventsRaw = await r.json()
         werkendPattern = url
+        break
       }
     }
 
