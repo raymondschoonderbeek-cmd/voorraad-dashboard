@@ -1,0 +1,262 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT, DYNAMO_GOLD, FONT_FAMILY as F } from '@/lib/theme'
+
+const SIDEBAR_BG = '#1a2540'
+const SIDEBAR_ACTIVE = 'rgba(102,145,174,0.18)'
+const SIDEBAR_HOVER = 'rgba(255,255,255,0.05)'
+const TEXT_DIM = 'rgba(255,255,255,0.45)'
+const TEXT_NORMAL = 'rgba(255,255,255,0.82)'
+const TEXT_BRIGHT = '#ffffff'
+
+type NavItem = {
+  id: string
+  label: string
+  href: string
+  icon: React.ReactNode
+  badge?: number | string | null
+  section?: string
+}
+
+function IconHome() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+}
+function IconBox() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+}
+function IconChart() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+}
+function IconBike() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 0 0-1-1h-1V4"/><path d="M9 17.5 12 10l2 3.5"/><path d="M16 17.5 12 10 8.5 17.5"/></svg>
+}
+function IconNewspaper() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8"/><path d="M10 10h8"/></svg>
+}
+function IconChat() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+}
+function IconLaptop() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+}
+function IconMap() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+}
+function IconUsers() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+}
+function IconLunch() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+}
+function IconSettings() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+}
+
+function Badge({ count }: { count: number | string }) {
+  return (
+    <span style={{
+      minWidth: 18, height: 18, borderRadius: 100, fontSize: 10, fontWeight: 700,
+      background: DYNAMO_GOLD, color: DYNAMO_BLUE,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '0 5px', lineHeight: 1, flexShrink: 0,
+    }}>
+      {count}
+    </span>
+  )
+}
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 10px', borderRadius: 7,
+        color: active ? TEXT_BRIGHT : TEXT_NORMAL,
+        background: active ? SIDEBAR_ACTIVE : 'transparent',
+        fontSize: 13, fontWeight: active ? 600 : 400,
+        fontFamily: F, textDecoration: 'none',
+        transition: 'background 0.15s, color 0.15s',
+        position: 'relative',
+      }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+    >
+      <span style={{ color: active ? DYNAMO_BLUE_LIGHT : TEXT_DIM, flexShrink: 0, display: 'flex' }}>
+        {item.icon}
+      </span>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {item.label}
+      </span>
+      {item.badge != null && item.badge !== 0 && <Badge count={item.badge} />}
+    </Link>
+  )
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div style={{
+      fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+      color: TEXT_DIM, fontFamily: F, padding: '14px 10px 4px',
+    }}>
+      {label}
+    </div>
+  )
+}
+
+export function DashboardSidebar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [gebruiker, setGebruiker] = useState('')
+  const [rol, setRol] = useState('')
+  const [modules, setModules] = useState<string[]>([])
+  const [nieuwsBadge, setNieuwsBadge] = useState(0)
+  const [brancheBadge, setBrancheBadge] = useState(0)
+  const [initials, setInitials] = useState('?')
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function laad() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const [{ data: rolData }, sessionRes, nieuwsRes] = await Promise.all([
+        supabase.from('gebruiker_rollen').select('rol, naam').eq('user_id', user.id).single(),
+        fetch('/api/auth/session-info'),
+        fetch('/api/news/unread').catch(() => null),
+      ])
+
+      const naam = rolData?.naam || user.email?.split('@')[0] || ''
+      setGebruiker(naam)
+      setRol(rolData?.rol === 'admin' ? 'Beheerder' : rolData?.rol || '')
+      setInitials(naam.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?')
+
+      const session = await sessionRes.json().catch(() => ({}))
+      setModules(session.dashboardModules ?? [])
+
+      if (nieuwsRes?.ok) {
+        const d = await nieuwsRes.json().catch(() => ({}))
+        setNieuwsBadge(d.count ?? 0)
+      }
+    }
+
+    void laad()
+  }, [])
+
+  async function uitloggen() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
+
+  const heeftModule = (id: string) => modules.includes(id)
+
+  return (
+    <aside style={{
+      width: 220, flexShrink: 0, background: SIDEBAR_BG,
+      display: 'flex', flexDirection: 'column',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
+      height: '100vh', position: 'sticky', top: 0, overflow: 'hidden',
+      fontFamily: F,
+    }}>
+      {/* Logo */}
+      <div style={{ padding: '16px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/dynamo-retail-group-logo.png" alt="Dynamo" style={{ height: 22, width: 'auto', objectFit: 'contain' }} />
+        </Link>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 0', scrollbarWidth: 'none' }}>
+
+        {/* Hoofdnavigatie */}
+        <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={isActive('/dashboard')} />
+
+        {heeftModule('voorraad') && (
+          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard?module=voorraad', icon: <IconBox /> }} active={false} />
+        )}
+        {heeftModule('brand-groep') && (
+          <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard?module=brand-groep', icon: <IconChart /> }} active={false} />
+        )}
+        {heeftModule('campagne-fietsen') && (
+          <NavLink item={{ id: 'campagne', label: 'Campagnefietsen', href: '/dashboard/campagne-fietsen', icon: <IconBike /> }} active={isActive('/dashboard/campagne-fietsen')} />
+        )}
+
+        {/* Communicatie */}
+        {(heeftModule('branche-nieuws') || heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur') || heeftModule('lunch')) && (
+          <>
+            <SectionLabel label="Communicatie" />
+            {heeftModule('branche-nieuws') && (
+              <NavLink item={{ id: 'branche', label: 'Branche nieuws', href: '/dashboard?module=branche-nieuws', icon: <IconNewspaper />, badge: brancheBadge || null }} active={false} />
+            )}
+            {(heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur')) && (
+              <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} />
+            )}
+            {heeftModule('lunch') && (
+              <NavLink item={{ id: 'lunch', label: 'Lunch', href: '/dashboard/lunch', icon: <IconLunch /> }} active={isActive('/dashboard/lunch')} />
+            )}
+          </>
+        )}
+
+        {/* IT & Organisatie */}
+        {(heeftModule('it-cmdb') || heeftModule('winkels') || heeftModule('beschikbaarheid')) && (
+          <>
+            <SectionLabel label="IT & Organisatie" />
+            {heeftModule('it-cmdb') && (
+              <NavLink item={{ id: 'it', label: 'IT-hardware', href: '/dashboard/it-cmdb', icon: <IconLaptop /> }} active={isActive('/dashboard/it-cmdb')} />
+            )}
+            {heeftModule('winkels') && (
+              <NavLink item={{ id: 'winkels', label: 'Winkels', href: '/dashboard/winkels', icon: <IconMap /> }} active={isActive('/dashboard/winkels')} />
+            )}
+            {heeftModule('beschikbaarheid') && (
+              <NavLink item={{ id: 'beschikbaar', label: 'Beschikbaarheid', href: '/dashboard/beschikbaarheid', icon: <IconUsers /> }} active={isActive('/dashboard/beschikbaarheid')} />
+            )}
+          </>
+        )}
+
+        <SectionLabel label="" />
+        <NavLink item={{ id: 'instellingen', label: 'Instellingen', href: '/dashboard/instellingen', icon: <IconSettings /> }} active={isActive('/dashboard/instellingen')} />
+      </nav>
+
+      {/* User profiel onderaan */}
+      <div style={{
+        padding: '10px 10px 12px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0, display: 'flex', alignItems: 'center', gap: 9,
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: '50%',
+          background: DYNAMO_BLUE, color: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, flexShrink: 0,
+        }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_BRIGHT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gebruiker}</div>
+          <div style={{ fontSize: 10, color: TEXT_DIM, marginTop: 1 }}>{rol}</div>
+        </div>
+        <button
+          onClick={uitloggen}
+          title="Uitloggen"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT_DIM, padding: 4, display: 'flex', borderRadius: 5, transition: 'color 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.color = TEXT_NORMAL)}
+          onMouseLeave={e => (e.currentTarget.style.color = TEXT_DIM)}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+  )
+}
