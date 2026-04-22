@@ -5,6 +5,7 @@ import { slugifyAfdelingLabel, type DrgNewsAfdeling } from '@/lib/news-afdelinge
 
 /**
  * GET: alle afdelingen (gesorteerd) — iedereen ingelogd (filters / tonen).
+ * Voegt automatisch distinct afdelingen uit gebruiker_rollen (Azure sync) toe.
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -13,14 +14,47 @@ export async function GET(request: NextRequest) {
   const { user, supabase } = await requireAuth()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('drg_news_afdelingen')
-    .select('*')
-    .order('sort_order', { ascending: true })
-    .order('label', { ascending: true })
+  const [{ data, error }, { data: rollenData }] = await Promise.all([
+    supabase
+      .from('drg_news_afdelingen')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('label', { ascending: true }),
+    supabase
+      .from('gebruiker_rollen')
+      .select('afdeling')
+      .not('afdeling', 'is', null),
+  ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ afdelingen: (data ?? []) as DrgNewsAfdeling[] })
+
+  const bestaandeAfdelingen = (data ?? []) as DrgNewsAfdeling[]
+  const bestaandeSlugs = new Set(bestaandeAfdelingen.map(a => a.slug))
+
+  // Distinct Azure-afdelingen die nog niet in drg_news_afdelingen staan
+  const azureLabels = [...new Set(
+    (rollenData ?? [])
+      .map((r: { afdeling: string | null }) => r.afdeling?.trim())
+      .filter((a): a is string => !!a)
+  )]
+
+  const extraAfdelingen: DrgNewsAfdeling[] = azureLabels
+    .map(label => {
+      const slug = slugifyAfdelingLabel(label)
+      if (!slug || bestaandeSlugs.has(slug)) return null
+      return {
+        id: `azure-${slug}`,
+        slug,
+        label,
+        sort_order: 999,
+        created_at: '',
+        updated_at: '',
+      } satisfies DrgNewsAfdeling
+    })
+    .filter((a): a is DrgNewsAfdeling => a !== null)
+    .sort((a, b) => a.label.localeCompare(b.label, 'nl'))
+
+  return NextResponse.json({ afdelingen: [...bestaandeAfdelingen, ...extraAfdelingen] })
 }
 
 /**
