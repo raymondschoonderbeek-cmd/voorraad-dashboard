@@ -104,19 +104,24 @@ function ComplianceBadge({ state }: { state: string | null | undefined }) {
   )
 }
 
-function StatCard({ label, value, color, icon }: { label: string; value: number; color: 'blue' | 'green' | 'red' | 'gray'; icon: string }) {
+function StatCard({ label, value, color, icon, sub }: { label: string; value: number; color: 'blue' | 'green' | 'red' | 'gray'; icon: React.ReactNode; sub?: string }) {
   const palette = {
-    blue:  { bg: 'rgba(45,69,124,0.06)',      fg: DYNAMO_BLUE,  border: 'rgba(45,69,124,0.15)' },
-    green: { bg: '#f0fdf4',                   fg: '#15803d',    border: 'rgba(22,163,74,0.2)'  },
-    red:   { bg: '#fef2f2',                   fg: '#b91c1c',    border: 'rgba(220,38,38,0.2)'  },
-    gray:  { bg: '#f8fafc',                   fg: '#475569',    border: 'rgba(100,116,139,0.2)' },
+    blue:  { bg: 'rgba(45,69,124,0.06)', fg: DYNAMO_BLUE, border: 'rgba(45,69,124,0.15)', iconBg: 'rgba(45,69,124,0.1)' },
+    green: { bg: '#f0fdf4',              fg: '#15803d',    border: 'rgba(22,163,74,0.2)',  iconBg: 'rgba(22,163,74,0.12)' },
+    red:   { bg: '#fef2f2',              fg: '#b91c1c',    border: 'rgba(220,38,38,0.2)',  iconBg: 'rgba(220,38,38,0.1)' },
+    gray:  { bg: '#f8fafc',              fg: '#475569',    border: 'rgba(100,116,139,0.2)', iconBg: 'rgba(100,116,139,0.1)' },
   }
   const c = palette[color]
   return (
-    <div className="rounded-[10px] p-4 flex flex-col gap-1" style={{ background: c.bg, border: `1px solid ${c.border}` }}>
-      <span className="text-xl">{icon}</span>
-      <span className="text-2xl font-bold tabular-nums" style={{ color: c.fg, fontFamily: F }}>{value}</span>
-      <span className="text-xs font-semibold" style={{ color: c.fg, opacity: 0.7, fontFamily: F }}>{label}</span>
+    <div className="rounded-[10px] p-4 flex flex-col gap-2" style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: c.iconBg, color: c.fg }}>
+          {icon}
+        </div>
+        <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: c.fg, opacity: 0.75, fontFamily: F }}>{label}</span>
+      </div>
+      <span className="text-2xl font-bold tabular-nums leading-none" style={{ color: c.fg, fontFamily: F }}>{value}</span>
+      {sub && <span className="text-xs" style={{ color: c.fg, opacity: 0.6, fontFamily: F }}>{sub}</span>}
     </div>
   )
 }
@@ -314,6 +319,34 @@ export default function ItCmdbPage() {
 
   const noIntuneCount = useMemo(() => items.filter(it => !isIntuneSnapshot(it.intune_snapshot)).length, [items])
 
+  const typeBreakdown = useMemo(() => {
+    let laptops = 0, telefoons = 0, overig = 0
+    for (const it of items) {
+      const t = (it.device_type ?? '').toLowerCase()
+      if (t.includes('laptop') || t.includes('notebook') || t.includes('macbook') || t.includes('pc') || t.includes('desktop')) laptops++
+      else if (t.includes('telefoon') || t.includes('phone') || t.includes('iphone') || t.includes('android') || t.includes('mobiel')) telefoons++
+      else overig++
+    }
+    const parts: string[] = []
+    if (laptops > 0) parts.push(`${laptops} laptops`)
+    if (telefoons > 0) parts.push(`${telefoons} telefoons`)
+    if (overig > 0) parts.push(`${overig} overig`)
+    return parts.join(' · ')
+  }, [items])
+
+  const lastSyncSub = useMemo(() => {
+    const timestamps = items
+      .map(it => (isIntuneSnapshot(it.intune_snapshot) ? it.intune_snapshot?.lastSyncDateTime : null))
+      .filter((d): d is string => Boolean(d))
+      .map(d => new Date(d).getTime())
+      .filter(n => !isNaN(n))
+    if (timestamps.length === 0) return undefined
+    const diffMin = Math.round((Date.now() - Math.max(...timestamps)) / 60000)
+    if (diffMin < 60) return `laatste sync ${diffMin} min geleden`
+    if (diffMin < 1440) return `laatste sync ${Math.round(diffMin / 60)} uur geleden`
+    return `laatste sync ${Math.round(diffMin / 1440)} dag(en) geleden`
+  }, [items])
+
   const hasActiveFilters = Boolean(q.trim()) || Boolean(filterType) || Boolean(filterLocation)
 
   function openCreate() { setEditing(null); setForm(emptyForm()); setFormError(''); setModalOpen(true) }
@@ -429,31 +462,50 @@ export default function ItCmdbPage() {
         {/* ── Title + primary actions ── */}
         <div className="flex flex-col sm:flex-row sm:items-start gap-4 justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>Interne IT-voorraad</h1>
-            <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>Hardware, serienummers, Intune &amp; locaties.</p>
+            <p className="m-0 mb-1" style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)' }}>IT &amp; Organisatie</p>
+            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: 'var(--drg-ink-2)' }}>Interne IT-voorraad</h1>
+            <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>Hardware, serienummers, Intune-status &amp; locaties.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Link
               href="/dashboard/it-cmdb/catalogus"
-              className="rounded-[8px] px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 flex items-center gap-1.5"
               style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
               Catalogus
             </Link>
             <Link
               href="/dashboard/it-cmdb/gebruikers"
-              className="rounded-[8px] px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 flex items-center gap-1.5"
               style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               Gebruikers
+            </Link>
+            <Link
+              href="/dashboard/ftp-koppeling"
+              className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 flex items-center gap-1.5"
+              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.7h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.4a16 16 0 0 0 6 6l.91-1.14a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7a2 2 0 0 1 1.72 2.01z"/></svg>
+              FTP koppelingen
+            </Link>
+            <Link
+              href="/dashboard/vendit-api-tester"
+              className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 flex items-center gap-1.5"
+              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              API Vendit
             </Link>
             <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" className="sr-only" tabIndex={-1} onChange={onImportFile} />
             <button
               type="button"
               disabled={intuneSyncing || intuneConfigData?.configured === false}
               onClick={() => void onIntuneSync()}
-              className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+              className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
               title={intuneConfigData?.configured === false ? 'Stel Azure-omgevingsvariabelen in en verleen DeviceManagementManagedDevices.Read.All' : 'Synchroniseer met Microsoft Intune'}
             >
               {intuneSyncing ? (
@@ -470,18 +522,20 @@ export default function ItCmdbPage() {
               type="button"
               disabled={importing}
               onClick={() => importInputRef.current?.click()}
-              className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+              className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+              style={{ border: '1px solid rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'var(--drg-card-bg)', fontFamily: F }}
             >
-              {importing ? 'Importeren…' : '↑ Importeer Excel / CSV'}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {importing ? 'Importeren…' : 'Importeer Excel / CSV'}
             </button>
             <button
               type="button"
               onClick={openCreate}
-              className="rounded-xl px-4 py-2 text-sm font-bold text-white"
+              className="rounded-[8px] px-3 py-2 text-sm font-bold text-white flex items-center gap-1.5"
               style={{ background: DYNAMO_BLUE, fontFamily: F }}
             >
-              + Apparaat toevoegen
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Apparaat toevoegen
             </button>
           </div>
         </div>
@@ -489,10 +543,18 @@ export default function ItCmdbPage() {
         {/* ── Summary stat cards ── */}
         {(items.length > 0 || isLoading) && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard label="Apparaten totaal" value={items.length} color="blue" icon="💻" />
-            <StatCard label="Compliant" value={compliantCount} color="green" icon="✓" />
-            <StatCard label="Non-compliant" value={nonCompliantCount} color="red" icon="✗" />
-            <StatCard label="Geen Intune-data" value={noIntuneCount} color="gray" icon="—" />
+            <StatCard label="Apparaten totaal" value={items.length} color="blue" sub={typeBreakdown || undefined}
+              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>}
+            />
+            <StatCard label="Compliant" value={compliantCount} color="green" sub={lastSyncSub}
+              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>}
+            />
+            <StatCard label="Non-compliant" value={nonCompliantCount} color="red" sub="actie nodig"
+              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+            />
+            <StatCard label="Geen Intune-data" value={noIntuneCount} color="gray" sub="handmatig beheerd"
+              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="5" y1="12" x2="19" y2="12"/></svg>}
+            />
           </div>
         )}
 
