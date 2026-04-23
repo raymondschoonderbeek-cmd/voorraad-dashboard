@@ -273,8 +273,12 @@ export function DashboardSidebar({ isOpen = false, onClose }: { isOpen?: boolean
           <>
             <SectionLabel label="Beheer" />
             <NavLink item={{ id: 'beheer', label: 'Beheer', href: '/dashboard/beheer', icon: <IconBeheer /> }} active={isActive('/dashboard/beheer')} onClick={onClose} />
-            <NavLink item={{ id: 'gazelle-orders', label: 'Gazelle pakket orders', href: '/dashboard/gazelle-pakket-orders', icon: <IconReceipt /> }} active={isActive('/dashboard/gazelle-pakket-orders')} onClick={onClose} />
           </>
+        )}
+
+        {/* Gazelle orders: admin of module-recht */}
+        {(isAdmin || heeftModule('gazelle-orders')) && (
+          <NavLink item={{ id: 'gazelle-orders', label: 'Gazelle pakket orders', href: '/dashboard/gazelle-pakket-orders', icon: <IconReceipt /> }} active={isActive('/dashboard/gazelle-pakket-orders')} onClick={onClose} />
         )}
 
         <SectionLabel label="" />

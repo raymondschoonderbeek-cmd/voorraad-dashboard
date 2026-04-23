@@ -10,6 +10,7 @@ export const DASHBOARD_MODULE_ORDER = [
   'it-cmdb',
   'beschikbaarheid',
   'winkels',
+  'gazelle-orders',
   'meer',
 ] as const
 

@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { parseGazelleDescription } from '@/lib/gazelle-parser'
+import { resolveDashboardModules } from '@/lib/dashboard-modules'
+
+async function requireGazelleAccess() {
+  const { user, supabase, isAdmin } = await requireAuth()
+  if (!user) return { ok: false as const, status: 401, supabase, isAdmin }
+
+  if (isAdmin) return { ok: true as const, user, supabase, isAdmin }
+
+  // Controleer of de gebruiker het gazelle-orders module-recht heeft
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('modules_toegang, lunch_module_enabled, campagne_fietsen_toegang')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const { data: rolData } = await supabase
+    .from('gebruiker_rollen')
+    .select('rol')
+    .eq('user_id', user.id)
+    .single()
+
+  const modules = resolveDashboardModules(rolData?.rol, profile, false)
+  if (!modules.includes('gazelle-orders')) {
+    return { ok: false as const, status: 403, supabase, isAdmin }
+  }
+
+  return { ok: true as const, user, supabase, isAdmin }
+}
 
 function normalizeDomain(raw: string): string {
   return raw.replace(/^https?:\/\//, '').replace(/\/$/, '').trim()
@@ -30,7 +58,7 @@ async function haalFreshdeskBeschrijvingOp(ticketId: string): Promise<string | n
 }
 
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireGazelleAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: auth.status })
 
   const { data, error } = await auth.supabase
@@ -43,7 +71,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireGazelleAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: auth.status })
 
   const id = request.nextUrl.searchParams.get('id')
