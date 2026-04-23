@@ -119,6 +119,30 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Mobile sidebar drawer ── */
+.drg-sidebar {
+  position: relative;
+  flex-shrink: 0;
+  height: 100%;
+  transition: transform 0.25s ease;
+}
+
+@media (max-width: 767px) {
+  .drg-sidebar {
+    position: fixed;
+    top: 48px; /* topbar hoogte */
+    left: 0;
+    bottom: 0;
+    height: auto;
+    z-index: 55;
+    transform: translateX(-100%);
+  }
+  .drg-sidebar.drg-sidebar--open {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(14, 23, 38, 0.2);
+  }
+}
+
 /* Dark mode: structurele overrides voor dashboard */
 [data-theme="dark"] body {
   background: var(--drg-page-bg);

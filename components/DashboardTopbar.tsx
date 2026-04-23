@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { DYNAMO_BLUE, FONT_FAMILY as F } from '@/lib/theme'
+import { FONT_FAMILY as F } from '@/lib/theme'
 
 const TOPBAR_BG = 'var(--drg-topbar-bg)'
 const BORDER = 'var(--drg-topbar-border)'
@@ -29,6 +29,7 @@ const PAGINA_TITELS: Record<string, string> = {
   '/dashboard/campagne-fietsen': 'Campagnefietsen',
   '/dashboard/brand-groep': 'Merk / Groep',
   '/dashboard/ftp-koppeling': 'FTP-koppelingen',
+  '/dashboard/voorraad': 'Voorraad',
 }
 
 function paginaTitel(pathname: string): string {
@@ -45,7 +46,7 @@ function initialen(naam: string): string {
   return naam.slice(0, 2).toUpperCase() || '?'
 }
 
-export function DashboardTopbar() {
+export function DashboardTopbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const pathname = usePathname()
   const titel = paginaTitel(pathname)
   const [naam, setNaam] = useState('')
@@ -68,26 +69,46 @@ export function DashboardTopbar() {
       height: 48, background: TOPBAR_BG,
       borderBottom: `1px solid ${BORDER}`,
       display: 'flex', alignItems: 'center',
-      padding: '0 20px', gap: 16,
-      flexShrink: 0, zIndex: 50,
+      padding: '0 16px', gap: 10,
+      flexShrink: 0, zIndex: 60,
       fontFamily: F,
     }}>
+
+      {/* Hamburger — alleen mobiel */}
+      <button
+        className="md:hidden"
+        type="button"
+        onClick={onMenuToggle}
+        aria-label="Menu openen"
+        style={{
+          width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
+          background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: TEXT_MAIN, flexShrink: 0,
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
       {/* Merk + Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.15em', color: '#ffffff', textTransform: 'uppercase', flexShrink: 0 }}>DYNAMO</span>
-        <span style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>|</span>
-        <span style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 500, flexShrink: 0 }}>DRG Portal</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: TEXT_MUTED, flexShrink: 0 }} aria-hidden>
+        {/* Desktop: volledige breadcrumb */}
+        <span className="hidden md:inline" style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.15em', color: '#ffffff', textTransform: 'uppercase', flexShrink: 0 }}>DYNAMO</span>
+        <span className="hidden md:inline" style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>|</span>
+        <span className="hidden md:inline" style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 500, flexShrink: 0 }}>DRG Portal</span>
+        <svg className="hidden md:block" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: TEXT_MUTED, flexShrink: 0 }} aria-hidden>
           <polyline points="9 18 15 12 9 6"/>
         </svg>
+        {/* Paginatitel — altijd zichtbaar */}
         <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_MAIN, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {titel}
         </span>
       </div>
 
-      {/* Zoekbalk */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
+      {/* Zoekbalk — alleen desktop */}
+      <div className="hidden md:flex" style={{
+        alignItems: 'center', gap: 8,
         background: 'rgba(255,255,255,0.07)',
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: 8, padding: '6px 12px',
@@ -107,10 +128,9 @@ export function DashboardTopbar() {
 
       {/* Rechts: notificaties + avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        {/* Notificatie */}
-        <button style={{
+        <button className="hidden md:flex" style={{
           width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
-          background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'transparent', alignItems: 'center', justifyContent: 'center',
           color: TEXT_MUTED, transition: 'background 0.15s',
         }}
           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}

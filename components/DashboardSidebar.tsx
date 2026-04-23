@@ -76,10 +76,11 @@ function Badge({ count }: { count: number | string }) {
   )
 }
 
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+function NavLink({ item, active, onClick }: { item: NavItem; active: boolean; onClick?: () => void }) {
   return (
     <Link
       href={item.href}
+      onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '6px 10px', borderRadius: 6,
@@ -148,7 +149,7 @@ function ThemeToggle() {
   )
 }
 
-export function DashboardSidebar() {
+export function DashboardSidebar({ isOpen = false, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const [gebruiker, setGebruiker] = useState('')
@@ -201,13 +202,16 @@ export function DashboardSidebar() {
   const heeftModule = (id: string) => modules.includes(id)
 
   return (
-    <aside style={{
-      width: 240, flexShrink: 0, background: SIDEBAR_BG,
-      display: 'flex', flexDirection: 'column',
-      borderRight: '1px solid rgba(45,69,124,0.12)',
-      height: '100%', overflow: 'hidden',
-      fontFamily: F,
-    }}>
+    <aside
+      className={`drg-sidebar${isOpen ? ' drg-sidebar--open' : ''}`}
+      style={{
+        width: 240, background: SIDEBAR_BG,
+        display: 'flex', flexDirection: 'column',
+        borderRight: '1px solid rgba(45,69,124,0.12)',
+        overflow: 'hidden',
+        fontFamily: F,
+      }}
+    >
       {/* Logo */}
       <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid rgba(45,69,124,0.1)', flexShrink: 0 }}>
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
@@ -219,15 +223,15 @@ export function DashboardSidebar() {
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 0', scrollbarWidth: 'none' }}>
 
         {/* Hoofdnavigatie */}
-        <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={pathname === '/dashboard'} />
+        <NavLink item={{ id: 'home', label: 'Home', href: '/dashboard', icon: <IconHome /> }} active={pathname === '/dashboard'} onClick={onClose} />
         {heeftModule('voorraad') && (
-          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard/voorraad', icon: <IconBox /> }} active={pathname === '/dashboard/voorraad' || pathname.startsWith('/dashboard/voorraad/')} />
+          <NavLink item={{ id: 'voorraad', label: 'Voorraad', href: '/dashboard/voorraad', icon: <IconBox /> }} active={pathname === '/dashboard/voorraad' || pathname.startsWith('/dashboard/voorraad/')} onClick={onClose} />
         )}
         {heeftModule('brand-groep') && (
-          <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard/brand-groep', icon: <IconChart /> }} active={isActive('/dashboard/brand-groep')} />
+          <NavLink item={{ id: 'brand', label: 'Merk / Groep', href: '/dashboard/brand-groep', icon: <IconChart /> }} active={isActive('/dashboard/brand-groep')} onClick={onClose} />
         )}
         {heeftModule('campagne-fietsen') && (
-          <NavLink item={{ id: 'campagne', label: 'Campagnefietsen', href: '/dashboard/campagne-fietsen', icon: <IconBike /> }} active={isActive('/dashboard/campagne-fietsen')} />
+          <NavLink item={{ id: 'campagne', label: 'Campagnefietsen', href: '/dashboard/campagne-fietsen', icon: <IconBike /> }} active={isActive('/dashboard/campagne-fietsen')} onClick={onClose} />
         )}
 
         {/* Communicatie */}
@@ -235,10 +239,10 @@ export function DashboardSidebar() {
           <>
             <SectionLabel label="Communicatie" />
             {(heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur')) && (
-              <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} />
+              <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} onClick={onClose} />
             )}
             {heeftModule('lunch') && (
-              <NavLink item={{ id: 'lunch', label: 'Lunch', href: '/dashboard/lunch', icon: <IconLunch /> }} active={pathname === '/dashboard/lunch'} />
+              <NavLink item={{ id: 'lunch', label: 'Lunch', href: '/dashboard/lunch', icon: <IconLunch /> }} active={pathname === '/dashboard/lunch'} onClick={onClose} />
             )}
           </>
         )}
@@ -247,7 +251,7 @@ export function DashboardSidebar() {
         {heeftModule('it-cmdb') && (
           <>
             <SectionLabel label="IT" />
-            <NavLink item={{ id: 'it', label: 'IT-hardware', href: '/dashboard/it-cmdb', icon: <IconLaptop /> }} active={isActive('/dashboard/it-cmdb')} />
+            <NavLink item={{ id: 'it', label: 'IT-hardware', href: '/dashboard/it-cmdb', icon: <IconLaptop /> }} active={isActive('/dashboard/it-cmdb')} onClick={onClose} />
           </>
         )}
 
@@ -256,10 +260,10 @@ export function DashboardSidebar() {
           <>
             <SectionLabel label="Organisatie" />
             {heeftModule('winkels') && (
-              <NavLink item={{ id: 'winkels', label: 'Winkels', href: '/dashboard/winkels', icon: <IconMap /> }} active={isActive('/dashboard/winkels')} />
+              <NavLink item={{ id: 'winkels', label: 'Winkels', href: '/dashboard/winkels', icon: <IconMap /> }} active={isActive('/dashboard/winkels')} onClick={onClose} />
             )}
             {heeftModule('beschikbaarheid') && (
-              <NavLink item={{ id: 'beschikbaar', label: 'Beschikbaarheid', href: '/dashboard/beschikbaarheid', icon: <IconUsers /> }} active={isActive('/dashboard/beschikbaarheid')} />
+              <NavLink item={{ id: 'beschikbaar', label: 'Beschikbaarheid', href: '/dashboard/beschikbaarheid', icon: <IconUsers /> }} active={isActive('/dashboard/beschikbaarheid')} onClick={onClose} />
             )}
           </>
         )}
@@ -268,12 +272,12 @@ export function DashboardSidebar() {
         {isAdmin && (
           <>
             <SectionLabel label="Beheer" />
-            <NavLink item={{ id: 'beheer', label: 'Beheer', href: '/dashboard/beheer', icon: <IconBeheer /> }} active={isActive('/dashboard/beheer')} />
+            <NavLink item={{ id: 'beheer', label: 'Beheer', href: '/dashboard/beheer', icon: <IconBeheer /> }} active={isActive('/dashboard/beheer')} onClick={onClose} />
           </>
         )}
 
         <SectionLabel label="" />
-        <NavLink item={{ id: 'instellingen', label: 'Instellingen', href: '/dashboard/instellingen', icon: <IconSettings /> }} active={isActive('/dashboard/instellingen')} />
+        <NavLink item={{ id: 'instellingen', label: 'Instellingen', href: '/dashboard/instellingen', icon: <IconSettings /> }} active={isActive('/dashboard/instellingen')} onClick={onClose} />
       </nav>
 
       <ThemeToggle />
