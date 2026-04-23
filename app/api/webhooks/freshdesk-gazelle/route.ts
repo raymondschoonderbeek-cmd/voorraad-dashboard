@@ -10,6 +10,12 @@ type Product = {
   totaal_stuks: string
 }
 
+function verifySecret(request: NextRequest, secret: string): boolean {
+  const headerSecret = request.headers.get('x-webhook-secret')
+  if (headerSecret) return headerSecret === secret
+  return request.nextUrl.searchParams.get('secret') === secret
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
@@ -53,7 +59,6 @@ function parseProducten(text: string): Product[] {
       line.toLowerCase().includes('klik hier') ||
       line.toLowerCase().includes('afmelden')
     ) break
-
     const cols = line.split('\t').map(c => c.trim())
     if (cols.length >= 2 && cols[0]) {
       producten.push({
@@ -98,21 +103,30 @@ function parseDescription(html: string) {
 
 /**
  * POST /api/webhooks/freshdesk-gazelle
- * Freshdesk automation webhook — ontvangt nieuwe Gazelle pakket orders.
- * Beveilig met ?secret=FRESHDESK_WEBHOOK_SECRET in de webhook-URL.
+ * Freshdesk Observer webhook voor Gazelle pakket orders.
+ * Secret validatie via X-Webhook-Secret header (of ?secret= query param).
+ * Secret beheer via /dashboard/gazelle-pakket-orders (admin).
  */
 export async function POST(request: NextRequest) {
-  const secret = process.env.FRESHDESK_WEBHOOK_SECRET?.trim()
-  if (secret) {
-    const qSecret = request.nextUrl.searchParams.get('secret')
-    const authHeader = request.headers.get('authorization')
-    if (qSecret !== secret && authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
-
   if (!hasAdminKey()) {
     return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY ontbreekt' }, { status: 500 })
+  }
+
+  const admin = createAdminClient()
+
+  // Secret ophalen uit database
+  const { data: inst } = await admin
+    .from('gazelle_observer_instellingen')
+    .select('webhook_secret, actief')
+    .eq('id', 1)
+    .maybeSingle()
+
+  if (!inst?.actief) {
+    return NextResponse.json({ error: 'Gazelle observer is niet actief' }, { status: 503 })
+  }
+
+  if (inst.webhook_secret && !verifySecret(request, inst.webhook_secret)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   let body: Record<string, unknown>
@@ -125,12 +139,8 @@ export async function POST(request: NextRequest) {
   // Freshdesk kan fields nesten onder freshdesk_webhook of direct op root sturen
   const ticket = (body.freshdesk_webhook ?? body) as Record<string, unknown>
   const ticketId = ticket.ticket_id ?? ticket.id
-  const rawDescription = String(
-    ticket.ticket_description ?? ticket.description ?? ''
-  )
-  const rawText = String(
-    ticket.ticket_description_text ?? ticket.description_text ?? ''
-  )
+  const rawDescription = String(ticket.ticket_description ?? ticket.description ?? '')
+  const rawText = String(ticket.ticket_description_text ?? ticket.description_text ?? '')
   const htmlToParse = rawDescription || rawText
 
   if (!htmlToParse) {
@@ -138,8 +148,6 @@ export async function POST(request: NextRequest) {
   }
 
   const parsed = parseDescription(htmlToParse)
-  const admin = createAdminClient()
-
   const row = {
     besteldatum: parsed.besteldatum,
     bestelnummer: parsed.bestelnummer,
@@ -156,7 +164,6 @@ export async function POST(request: NextRequest) {
   let dbError: { message: string } | null = null
 
   if (ticketId) {
-    // Upsert: als hetzelfde ticket opnieuw binnenkomt, data bijwerken maar status niet aanraken
     const { error } = await admin
       .from('gazelle_pakket_orders')
       .upsert(

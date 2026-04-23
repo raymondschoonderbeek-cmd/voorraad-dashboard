@@ -6,6 +6,86 @@ import useSWR from 'swr'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 const F = "'Outfit', sans-serif"
 
+type ObserverInstellingen = { webhook_secret: string | null; actief: boolean }
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => { void navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+      style={{ background: copied ? 'rgba(22,163,74,0.1)' : 'rgba(45,69,124,0.08)', color: copied ? 'var(--drg-success)' : 'var(--drg-ink-2)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F }}
+    >
+      {copied ? '✓ Gekopieerd' : 'Kopieer'}
+    </button>
+  )
+}
+
+function ObserverInstellingenCard() {
+  const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
+  const [geheimTonen, setGeheimTonen] = useState(false)
+  const [bezig, setBezig] = useState(false)
+  const webhookUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/webhooks/freshdesk-gazelle`
+    : '/api/webhooks/freshdesk-gazelle'
+
+  async function genereerGeheim() {
+    setBezig(true)
+    await fetch('/api/admin/gazelle-observer', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ genereer_secret: true }),
+    })
+    await mutate()
+    setGeheimTonen(true)
+    setBezig(false)
+  }
+
+  const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', fontFamily: F, display: 'block', marginBottom: 6 }
+  const codeStyle: React.CSSProperties = { flex: 1, borderRadius: 8, padding: '8px 12px', fontSize: 12, fontFamily: 'monospace', background: 'rgba(45,69,124,0.05)', color: 'var(--drg-ink-2)', wordBreak: 'break-all' }
+
+  return (
+    <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '20px 20px 16px', boxShadow: 'var(--drg-card-shadow)', marginBottom: 24 }}>
+      <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: '0 0 16px', fontFamily: F }}>Freshdesk Observer instellen</h2>
+
+      <div style={{ marginBottom: 14 }}>
+        <span style={labelStyle}>Webhook URL</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <code style={codeStyle}>{webhookUrl}</code>
+          <CopyButton value={webhookUrl} />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <span style={labelStyle}>Webhook secret</span>
+        {inst?.webhook_secret ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <code style={codeStyle}>
+              {geheimTonen ? inst.webhook_secret : '••••••••••••••••••••••••••••••••'}
+            </code>
+            <button type="button" onClick={() => setGeheimTonen(v => !v)} style={{ background: 'rgba(45,69,124,0.08)', color: 'var(--drg-ink-2)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F }}>
+              {geheimTonen ? 'Verberg' : 'Toon'}
+            </button>
+            {geheimTonen && <CopyButton value={inst.webhook_secret} />}
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>Nog geen secret.</p>
+        )}
+        <button type="button" onClick={() => void genereerGeheim()} disabled={bezig} style={{ marginTop: 8, background: 'transparent', border: '1px solid rgba(45,69,124,0.2)', color: 'var(--drg-ink-2)', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F, opacity: bezig ? 0.5 : 1 }}>
+          Nieuw secret genereren
+        </button>
+      </div>
+
+      <div style={{ borderRadius: 8, padding: '10px 12px', background: 'rgba(45,69,124,0.04)', fontSize: 12, color: 'rgba(45,69,124,0.7)', fontFamily: F, lineHeight: 1.6 }}>
+        <strong>Configureer in Freshdesk Observer:</strong><br />
+        1. Actie: <strong>Trigger webhook</strong> → POST naar bovenstaande URL<br />
+        2. Voeg custom header toe: <code style={{ fontFamily: 'monospace' }}>X-Webhook-Secret: [secret]</code><br />
+        3. Body (JSON): <code style={{ fontFamily: 'monospace' }}>{'{"ticket_id": "{{ticket.id}}", "ticket_description": "{{ticket.description}}"}'}</code>
+      </div>
+    </div>
+  )
+}
+
 type Product = {
   lev_nr: string
   omschrijving: string
@@ -99,6 +179,8 @@ export default function GazellePakketOrders() {
           Binnenkomende Gazelle pakket bestellingen via Freshdesk.
         </p>
       </div>
+
+      <ObserverInstellingenCard />
 
       {isLoading && (
         <div style={{ textAlign: 'center', padding: 48, color: 'var(--drg-text-3)', fontSize: 13, fontFamily: F }}>Laden…</div>
