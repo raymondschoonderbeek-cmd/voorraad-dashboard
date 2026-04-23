@@ -172,6 +172,7 @@ function exporteerNaarExcel(orders: GazelleOrder[]) {
       'Woonplaats': extractWoonplaats(order.adres ?? ''),
       'Klantnummer Gazelle': '',
       'Pakket': hoofdProduct ? extractPakket(hoofdProduct.lev_nr) : '',
+      'Besteldatum': order.besteldatum ?? '',
     })
   }
   const ws = XLSX.utils.json_to_sheet(rijen)
