@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { createAdminClient, hasAdminKey } from '@/lib/supabase/admin'
 import { parseGazelleDescription } from '@/lib/gazelle-parser'
 import { resolveDashboardModules } from '@/lib/dashboard-modules'
 
@@ -61,7 +62,10 @@ export async function GET() {
   const auth = await requireGazelleAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: auth.status })
 
-  const { data, error } = await auth.supabase
+  if (!hasAdminKey()) return NextResponse.json({ error: 'Configuratiefout' }, { status: 500 })
+
+  // Admin client gebruiken: RLS blokkeert niet-admin gebruikers anders
+  const { data, error } = await createAdminClient()
     .from('gazelle_pakket_orders')
     .select('*')
     .order('ontvangen_op', { ascending: false })
@@ -79,14 +83,16 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json() as { status?: string; reparse?: boolean }
 
+  if (!hasAdminKey()) return NextResponse.json({ error: 'Configuratiefout' }, { status: 500 })
+  const admin = createAdminClient()
+
   if (body.reparse) {
-    const { data: order } = await auth.supabase
+    const { data: order } = await admin
       .from('gazelle_pakket_orders')
       .select('raw_description, freshdesk_ticket_id')
       .eq('id', id)
       .single()
 
-    // raw_description leeg? Probeer alsnog via Freshdesk API te halen.
     let html = order?.raw_description || ''
     if (!html && order?.freshdesk_ticket_id) {
       html = await haalFreshdeskBeschrijvingOp(order.freshdesk_ticket_id) ?? ''
@@ -99,7 +105,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const parsed = parseGazelleDescription(html)
-    const { error } = await auth.supabase
+    const { error } = await admin
       .from('gazelle_pakket_orders')
       .update({
         besteldatum: parsed.besteldatum,
@@ -121,7 +127,7 @@ export async function PATCH(request: NextRequest) {
 
   if (!body.status) return NextResponse.json({ error: 'status of reparse vereist' }, { status: 400 })
 
-  const { error } = await auth.supabase
+  const { error } = await admin
     .from('gazelle_pakket_orders')
     .update({ status: body.status })
     .eq('id', id)
