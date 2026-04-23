@@ -521,7 +521,7 @@ export default function Dashboard() {
                         {/* Naam + status */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: r.bezet ? 'var(--drg-danger)' : 'var(--drg-success)' }} />
-                          <span style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.naam}</span>
+                          <span style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.naam}</span>
                           <span style={{ fontFamily: F, fontSize: 11, fontWeight: 500, flexShrink: 0, color: r.bezet ? 'var(--drg-danger)' : 'var(--drg-success)' }}>
                             {r.bezet ? `bezet t/m ${r.tot}` : r.boekingen.length === 0 ? 'vrij vandaag' : `vrij tot ${r.boekingen[0].van}`}
                           </span>
@@ -562,7 +562,7 @@ export default function Dashboard() {
                             {initialen}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {g.naam ?? '—'}
                             </div>
                             {g.afdeling && (
