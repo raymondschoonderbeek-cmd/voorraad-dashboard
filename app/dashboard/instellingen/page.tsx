@@ -289,8 +289,9 @@ export default function InstellingenPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-gray-900">Mijn instellingen</h1>
-          <p className="text-sm text-gray-500">Voorkeuren voor het DRG-portal, beveiliging en je toegewezen IT-middelen.</p>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-subtle)', margin: 0 }}>Instellingen</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', margin: '2px 0 0' }}>Mijn instellingen</h1>
+          <p style={{ fontSize: 13, color: 'var(--drg-text-muted)', margin: '2px 0 0' }}>Voorkeuren voor het DRG-portal, beveiliging en je toegewezen IT-middelen.</p>
         </header>
 
         {/* Beschikbaarheid */}
@@ -299,13 +300,13 @@ export default function InstellingenPage() {
           className="flex items-center justify-between rounded-[10px] shadow-sm p-6 hover:shadow-md transition-shadow group" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}
         >
           <div>
-            <h2 className="text-lg font-bold text-gray-900 group-hover:text-[#2D457C] transition-colors">🕐 Beschikbaarheid</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-lg font-bold transition-colors" style={{ color: 'var(--drg-ink-2)' }}>🕐 Beschikbaarheid</h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
               Stel je werktijden en out-of-office in. Synchroniseert met Microsoft 365.
             </p>
           </div>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            className="text-gray-400 group-hover:text-[#2D457C] transition-colors shrink-0" aria-hidden>
+            className="shrink-0" style={{ color: 'var(--drg-text-subtle)' }} aria-hidden>
             <polyline points="9 18 15 12 9 6"/>
           </svg>
         </Link>
@@ -314,38 +315,38 @@ export default function InstellingenPage() {
         <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">💻 Mijn IT-apparaten</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--drg-ink-2)' }}>💻 Mijn IT-apparaten</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
                 Apparaten die in het interne hardware-overzicht aan jouw portalaccount zijn gekoppeld.
               </p>
             </div>
           </div>
           {mijnHardwareError ? (
-            <p className="mt-4 text-sm text-amber-800">
+            <p className="mt-4 text-sm" style={{ color: 'var(--drg-warn)' }}>
               Hardwareoverzicht kon niet worden geladen. Controleer of de database bijgewerkt is, of probeer het later opnieuw.
             </p>
           ) : mijnHardware.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-sm" style={{ color: 'var(--drg-text-muted)' }}>
               Er zijn nog geen apparaten aan jouw account gekoppeld. IT kan dit koppelen in het CMDB-overzicht.
             </p>
           ) : (
-            <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200">
+            <div className="mt-4 overflow-x-auto rounded-lg" style={{ border: '1px solid var(--drg-line)' }}>
               <table className="w-full text-sm text-left min-w-[520px]">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-3 py-2 font-semibold text-gray-700">Serie</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700">Hostname</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700">Type</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700">Locatie</th>
+                  <tr style={{ borderBottom: '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.03)' }}>
+                    <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Serie</th>
+                    <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Hostname</th>
+                    <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Type</th>
+                    <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Locatie</th>
                   </tr>
                 </thead>
                 <tbody>
                   {mijnHardware.map(row => (
-                    <tr key={row.id} className="border-b border-gray-100 last:border-0">
-                      <td className="px-3 py-2 font-mono text-xs text-gray-900">{row.serial_number}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-gray-800">{row.hostname || '—'}</td>
-                      <td className="px-3 py-2 text-gray-800">{row.device_type || '—'}</td>
-                      <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{row.location || '—'}</td>
+                    <tr key={row.id} style={{ borderBottom: '1px solid var(--drg-line)' }} className="last:border-0">
+                      <td className="px-3 py-2 font-mono text-xs" style={{ color: 'var(--drg-ink)' }}>{row.serial_number}</td>
+                      <td className="px-3 py-2 font-mono text-xs" style={{ color: 'var(--drg-ink)' }}>{row.hostname || '—'}</td>
+                      <td className="px-3 py-2" style={{ color: 'var(--drg-ink)' }}>{row.device_type || '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--drg-ink)' }}>{row.location || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -358,20 +359,20 @@ export default function InstellingenPage() {
         <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">📦 Mijn producten &amp; licenties</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--drg-ink-2)' }}>📦 Mijn producten &amp; licenties</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
                 Software-licenties en IT-producten die door IT aan jouw account zijn toegewezen.
               </p>
             </div>
           </div>
           {mijnCatalogusError ? (
-            <p className="mt-4 text-sm text-amber-800">
+            <p className="mt-4 text-sm" style={{ color: 'var(--drg-warn)' }}>
               Overzicht kon niet worden geladen. Probeer het later opnieuw.
             </p>
           ) : !mijnCatalogusData ? (
-            <p className="mt-4 text-sm text-gray-400">Laden…</p>
+            <p className="mt-4 text-sm" style={{ color: 'var(--drg-text-subtle)' }}>Laden…</p>
           ) : mijnCatalogus.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-sm" style={{ color: 'var(--drg-text-muted)' }}>
               Er zijn nog geen producten of licenties aan jouw account gekoppeld.
             </p>
           ) : (
@@ -381,31 +382,31 @@ export default function InstellingenPage() {
                 if (rijen.length === 0) return null
                 return (
                   <div key={type}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--drg-text-subtle)' }}>
                       {type === 'licentie' ? 'Licenties' : 'Producten'}
                     </p>
-                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--drg-line)' }}>
                       <table className="w-full text-sm text-left min-w-[520px]">
                         <thead>
-                          <tr className="border-b border-gray-200 bg-gray-50">
-                            <th className="px-3 py-2 font-semibold text-gray-700">Naam</th>
-                            <th className="px-3 py-2 font-semibold text-gray-700">Leverancier</th>
-                            <th className="px-3 py-2 font-semibold text-gray-700">Versie</th>
-                            {type === 'product' && <th className="px-3 py-2 font-semibold text-gray-700">Serienummer</th>}
-                            {type === 'product' && <th className="px-3 py-2 font-semibold text-gray-700">In gebruik sinds</th>}
+                          <tr style={{ borderBottom: '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.03)' }}>
+                            <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Naam</th>
+                            <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Leverancier</th>
+                            <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Versie</th>
+                            {type === 'product' && <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>Serienummer</th>}
+                            {type === 'product' && <th className="px-3 py-2 font-semibold" style={{ color: 'var(--drg-ink-2)' }}>In gebruik sinds</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {rijen.map(row => (
-                            <tr key={row.catalogus_id} className="border-b border-gray-100 last:border-0">
-                              <td className="px-3 py-2 font-medium text-gray-900">{row.naam}</td>
-                              <td className="px-3 py-2 text-gray-600">{row.leverancier}</td>
-                              <td className="px-3 py-2 text-gray-500">{row.versie ?? '—'}</td>
+                            <tr key={row.catalogus_id} style={{ borderBottom: '1px solid var(--drg-line)' }} className="last:border-0">
+                              <td className="px-3 py-2 font-medium" style={{ color: 'var(--drg-ink)' }}>{row.naam}</td>
+                              <td className="px-3 py-2" style={{ color: 'var(--drg-text-muted)' }}>{row.leverancier}</td>
+                              <td className="px-3 py-2" style={{ color: 'var(--drg-text-subtle)' }}>{row.versie ?? '—'}</td>
                               {type === 'product' && (
-                                <td className="px-3 py-2 font-mono text-xs text-gray-700">{row.serienummer ?? '—'}</td>
+                                <td className="px-3 py-2 font-mono text-xs" style={{ color: 'var(--drg-text-muted)' }}>{row.serienummer ?? '—'}</td>
                               )}
                               {type === 'product' && (
-                                <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                                <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--drg-text-muted)' }}>
                                   {row.datum_ingebruik
                                     ? new Date(row.datum_ingebruik).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
                                     : '—'}
@@ -425,49 +426,49 @@ export default function InstellingenPage() {
 
         {/* Mijn aanvragen */}
         <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
-          <h2 className="text-lg font-bold mb-1">📋 Mijn software-aanvragen</h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--drg-ink-2)' }}>📋 Mijn software-aanvragen</h2>
+          <p className="text-sm mb-4" style={{ color: 'var(--drg-text-muted)' }}>
             Overzicht van jouw ingediende licentie-aanvragen. Je kunt alleen voor jezelf een aanvraag indienen.
           </p>
 
           {mijnAanvragen.length === 0 ? (
-            <p className="text-sm text-gray-400">Nog geen aanvragen ingediend.</p>
+            <p className="text-sm" style={{ color: 'var(--drg-text-subtle)' }}>Nog geen aanvragen ingediend.</p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--drg-line)' }}>
               <table className="w-full text-sm min-w-[480px]">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr style={{ background: 'rgba(45,69,124,0.03)', borderBottom: '1px solid var(--drg-line)' }}>
                     {['Product', 'Status', 'Manager', 'Ingediend'].map(h => (
-                      <th key={h} className="text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-400">{h}</th>
+                      <th key={h} className="text-left px-3 py-2 text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--drg-ink-2)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {mijnAanvragen.map(a => {
                     const statusMeta = {
-                      ingediend: { label: 'Ingediend', bg: '#f1f5f9', fg: '#475569' },
+                      ingediend: { label: 'Ingediend', bg: 'rgba(45,69,124,0.08)', fg: 'var(--drg-ink-2)' },
                       wacht_op_manager: { label: 'Wacht op manager', bg: '#fef9c3', fg: '#854d0e' },
                       goedgekeurd: { label: 'Goedgekeurd', bg: '#dcfce7', fg: '#15803d' },
                       afgekeurd: { label: 'Afgekeurd', bg: '#fee2e2', fg: '#b91c1c' },
-                    }[a.status] ?? { label: a.status, bg: '#f1f5f9', fg: '#475569' }
+                    }[a.status] ?? { label: a.status, bg: 'rgba(45,69,124,0.08)', fg: 'var(--drg-ink-2)' }
                     return (
-                      <tr key={a.id} className="border-b border-gray-100 last:border-0">
+                      <tr key={a.id} style={{ borderBottom: '1px solid var(--drg-line)' }} className="last:border-0">
                         <td className="px-3 py-2.5">
-                          <div className="font-medium text-gray-900">{a.catalogus_naam}</div>
-                          {a.motivatie && <div className="text-xs text-gray-400 truncate max-w-[200px]" title={a.motivatie}>{a.motivatie}</div>}
+                          <div className="font-medium" style={{ color: 'var(--drg-ink)' }}>{a.catalogus_naam}</div>
+                          {a.motivatie && <div className="text-xs truncate max-w-[200px]" style={{ color: 'var(--drg-text-subtle)' }} title={a.motivatie}>{a.motivatie}</div>}
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold" style={{ background: statusMeta.bg, color: statusMeta.fg }}>
                             {statusMeta.label}
                           </span>
                           {a.manager_notitie && (
-                            <div className="text-xs text-gray-400 mt-0.5 max-w-[160px] truncate" title={a.manager_notitie}>
+                            <div className="text-xs mt-0.5 max-w-[160px] truncate" style={{ color: 'var(--drg-text-subtle)' }} title={a.manager_notitie}>
                               &ldquo;{a.manager_notitie}&rdquo;
                             </div>
                           )}
                         </td>
-                        <td className="px-3 py-2.5 text-gray-600">{a.manager_naam ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-gray-400 whitespace-nowrap text-xs">
+                        <td className="px-3 py-2.5" style={{ color: 'var(--drg-text-muted)' }}>{a.manager_naam ?? '—'}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-xs" style={{ color: 'var(--drg-text-subtle)' }}>
                           {new Date(a.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
                       </tr>
@@ -479,11 +480,11 @@ export default function InstellingenPage() {
           )}
 
           {/* Nieuwe aanvraag indienen — inline catalogus */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-1">Nieuwe aanvraag indienen</p>
-            <p className="text-xs text-gray-400 mb-3">Alleen licenties die door IT als &ldquo;aanvraagbaar&rdquo; zijn gemarkeerd, staan hier. Andere producten vraag je aan via IT.</p>
+          <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--drg-line)' }}>
+            <p className="text-sm font-medium mb-1" style={{ color: 'var(--drg-ink)' }}>Nieuwe aanvraag indienen</p>
+            <p className="text-xs mb-3" style={{ color: 'var(--drg-text-subtle)' }}>Alleen licenties die door IT als &ldquo;aanvraagbaar&rdquo; zijn gemarkeerd, staan hier. Andere producten vraag je aan via IT.</p>
             {!catalogusData ? (
-              <p className="text-sm text-gray-400">Catalogus laden…</p>
+              <p className="text-sm" style={{ color: 'var(--drg-text-subtle)' }}>Catalogus laden…</p>
             ) : (() => {
               const heeftIds = new Set(mijnCatalogus.map(r => r.catalogus_id))
               const openstaandeIds = new Set(
@@ -493,7 +494,7 @@ export default function InstellingenPage() {
               )
               const beschikbaar = alleCatalogus.filter(item => !heeftIds.has(item.id))
               if (beschikbaar.length === 0) {
-                return <p className="text-sm text-gray-400">Je hebt al toegang tot alle beschikbare licenties.</p>
+                return <p className="text-sm" style={{ color: 'var(--drg-text-subtle)' }}>Je hebt al toegang tot alle beschikbare licenties.</p>
               }
               return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -515,8 +516,8 @@ export default function InstellingenPage() {
                       >
                         <span className="mt-0.5 text-lg">📦</span>
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 truncate">{item.naam}</div>
-                          <div className="text-xs text-gray-400 truncate">{item.leverancier}{item.categorie ? ` · ${item.categorie}` : ''}</div>
+                          <div className="text-sm font-semibold truncate" style={{ color: 'var(--drg-ink)' }}>{item.naam}</div>
+                          <div className="text-xs truncate" style={{ color: 'var(--drg-text-subtle)' }}>{item.leverancier}{item.categorie ? ` · ${item.categorie}` : ''}</div>
                           {heeftOpenstaand && (
                             <div className="text-xs text-amber-600 font-medium mt-0.5">Aanvraag loopt</div>
                           )}
@@ -544,7 +545,7 @@ export default function InstellingenPage() {
                 <h3 className="text-lg font-bold" style={{ color: '#2D457C' }}>Licentie aanvragen</h3>
                 <button type="button" onClick={sluitAanvraagModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1">✕</button>
               </div>
-              <p className="text-sm text-gray-500 mb-5">Je dient alleen een aanvraag in voor jezelf.</p>
+              <p className="text-sm mb-5" style={{ color: 'var(--drg-text-muted)' }}>Je dient alleen een aanvraag in voor jezelf.</p>
 
               {/* Product */}
               <div className="rounded-xl p-3 mb-4" style={{ background: 'rgba(45,69,124,0.04)' }}>
@@ -553,16 +554,16 @@ export default function InstellingenPage() {
               </div>
 
               {/* Motivatie */}
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                Motivatie <span className="text-gray-400 font-normal">(optioneel)</span>
+              <label className="text-sm font-medium block mb-1" style={{ color: 'var(--drg-ink)' }}>
+                Motivatie <span className="font-normal" style={{ color: 'var(--drg-text-subtle)' }}>(optioneel)</span>
               </label>
               <textarea value={aanvraagMotivatie} onChange={e => setAanvraagMotivatie(e.target.value)} rows={3}
                 placeholder="Waarom is deze licentie nodig?"
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm resize-none outline-none focus:border-blue-400 mb-5" />
+                className="w-full rounded-xl p-3 text-sm resize-none outline-none mb-5" style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }} />
 
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={sluitAanvraagModal}
-                  className="rounded-xl px-4 py-2 text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition">
+                  className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-80" style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}>
                   Annuleren
                 </button>
                 <button type="button" disabled={aanvraagLoading}
@@ -579,31 +580,33 @@ export default function InstellingenPage() {
         {/* Mijn profiel (TV-scherm) */}
         <div className="rounded-[10px] shadow-sm p-6 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div>
-            <h2 className="text-lg font-bold">👤 Mijn profiel</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-lg font-bold" style={{ color: 'var(--drg-ink-2)' }}>👤 Mijn profiel</h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
               Je naam en verjaardag worden getoond op het TV-scherm in het kantoor.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Weergavenaam</label>
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--drg-text-muted)' }}>Weergavenaam</label>
               <input
                 type="text"
                 value={weergaveNaam}
                 onChange={e => setWeergaveNaam(e.target.value)}
                 placeholder="Bijv. Jan de Vries"
-                className="w-full rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-900 bg-white placeholder:text-gray-400"
+                className="w-full rounded-xl px-3 py-2 text-sm outline-none"
+                style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Geboortedatum</label>
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--drg-text-muted)' }}>Geboortedatum</label>
               <input
                 type="date"
                 value={geboortedatum}
                 onChange={e => setGeboortedatum(e.target.value)}
-                className="w-full rounded-xl px-3 py-2 text-sm border border-gray-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-900 bg-white"
+                className="w-full rounded-xl px-3 py-2 text-sm outline-none"
+                style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}
               />
-              <p className="text-xs text-gray-400 mt-1">Alleen dag en maand worden op het TV-scherm getoond.</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--drg-text-subtle)' }}>Alleen dag en maand worden op het TV-scherm getoond.</p>
             </div>
           </div>
           <button
@@ -620,17 +623,17 @@ export default function InstellingenPage() {
         <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">🥪 Lunch bestellingen</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--drg-ink-2)' }}>🥪 Lunch bestellingen</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
                 Schakel de lunch-module in om broodjes te kunnen bestellen op kantoor.
               </p>
             </div>
-            <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900 shrink-0">
+            <Link href="/dashboard" className="text-sm font-medium shrink-0" style={{ color: 'var(--drg-text-muted)' }}>
               ← DRG Portal
             </Link>
           </div>
           <div className="mt-4 flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Lunch module aan</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--drg-ink)' }}>Lunch module aan</span>
             <button
               type="button"
               role="switch"
@@ -649,11 +652,11 @@ export default function InstellingenPage() {
             </button>
           </div>
           {lunchModuleEnabled && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--drg-line)' }}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">E-mailherinnering lunch</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-sm font-medium" style={{ color: 'var(--drg-ink)' }}>E-mailherinnering lunch</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--drg-text-muted)' }}>
                     Ontvang een herinnering op de ingestelde dag (indien ingeschakeld door beheer).
                   </p>
                 </div>
@@ -674,7 +677,7 @@ export default function InstellingenPage() {
                   />
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs mt-2" style={{ color: 'var(--drg-text-muted)' }}>
                 Uit = geen herinneringsmails (je kunt nog wel via het portaal bestellen).
               </p>
             </div>
@@ -685,17 +688,17 @@ export default function InstellingenPage() {
         <div className="rounded-[10px] shadow-sm p-6" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">📰 Intern nieuws</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--drg-ink-2)' }}>📰 Intern nieuws</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
                 Wekelijkse samenvatting per e-mail (indien aan staat in het portaal). Beheer stuurt berichten via Beheer → Nieuws.
               </p>
             </div>
-            <Link href="/dashboard/nieuws" className="text-sm font-medium text-gray-600 hover:text-gray-900 shrink-0">
+            <Link href="/dashboard/nieuws" className="text-sm font-medium shrink-0" style={{ color: 'var(--drg-text-muted)' }}>
               Naar nieuws →
             </Link>
           </div>
           <div className="mt-4 flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Wekelijkse e-mail met nieuws</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--drg-ink)' }}>Wekelijkse e-mail met nieuws</span>
             <button
               type="button"
               role="switch"
@@ -719,8 +722,8 @@ export default function InstellingenPage() {
         <div className="rounded-[10px] shadow-sm p-6 space-y-4" style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-lg font-bold">🔐 Twee-factor authenticatie</h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <h1 className="text-lg font-bold" style={{ color: 'var(--drg-ink-2)' }}>🔐 Twee-factor authenticatie</h1>
+              <p className="text-sm mt-1" style={{ color: 'var(--drg-text-muted)' }}>
                 Voeg een extra beveiligingslaag toe. Vanaf kantoor (vertrouwd IP) is geen MFA nodig. Vanaf thuis of elders wel.
               </p>
             </div>
@@ -733,9 +736,9 @@ export default function InstellingenPage() {
           )}
           {mfaFactors.length > 0 && !mfaQr && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-700">MFA is ingeschakeld.</p>
+              <p className="text-sm" style={{ color: 'var(--drg-ink)' }}>MFA is ingeschakeld.</p>
               {mfaFactors.map(f => (
-                <div key={f.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <div key={f.id} className="flex items-center justify-between rounded-lg p-3" style={{ border: '1px solid var(--drg-line)' }}>
                   <span className="text-sm">{f.friendly_name ?? 'Authenticator'}</span>
                   <button
                     type="button"
@@ -750,8 +753,8 @@ export default function InstellingenPage() {
           )}
 
           {mfaQr ? (
-            <div className="space-y-3 rounded-lg border border-gray-200 p-4">
-              <p className="text-sm font-medium">Scan de QR-code met je authenticator-app (Google Authenticator, Authy, 1Password):</p>
+            <div className="space-y-3 rounded-lg p-4" style={{ border: '1px solid var(--drg-line)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--drg-ink)' }}>Scan de QR-code met je authenticator-app (Google Authenticator, Authy, 1Password):</p>
               <div className="flex justify-center">
                 <img src={mfaQr} alt="QR code" className="w-48 h-48" />
               </div>
@@ -763,7 +766,8 @@ export default function InstellingenPage() {
                   placeholder="6-cijferige code"
                   value={mfaVerifyCode}
                   onChange={e => setMfaVerifyCode(e.target.value.replace(/\D/g, ''))}
-                  className="flex-1 rounded-lg px-3 py-2 text-sm border border-gray-300"
+                  className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+                  style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}
                 />
                 <button
                   type="button"
@@ -773,7 +777,7 @@ export default function InstellingenPage() {
                 >
                   Bevestigen
                 </button>
-                <button type="button" onClick={cancelMfaEnroll} className="rounded-lg px-3 py-2 text-sm border border-gray-300 hover:bg-gray-50">
+                <button type="button" onClick={cancelMfaEnroll} className="rounded-lg px-3 py-2 text-sm hover:opacity-80 transition" style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}>
                   Annuleren
                 </button>
               </div>
