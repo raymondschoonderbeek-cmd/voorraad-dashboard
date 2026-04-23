@@ -234,18 +234,14 @@ export function DashboardSidebar({ isOpen = false, onClose }: { isOpen?: boolean
           <NavLink item={{ id: 'campagne', label: 'Campagnefietsen', href: '/dashboard/campagne-fietsen', icon: <IconBike /> }} active={isActive('/dashboard/campagne-fietsen')} onClick={onClose} />
         )}
 
-        {/* Communicatie */}
-        {(heeftModule('branche-nieuws') || heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur') || heeftModule('lunch')) && (
-          <>
-            <SectionLabel label="Communicatie" />
-            {(heeftModule('interne-nieuws') || heeftModule('nieuws-redacteur')) && (
-              <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} onClick={onClose} />
-            )}
-            {heeftModule('lunch') && (
-              <NavLink item={{ id: 'lunch', label: 'Lunch', href: '/dashboard/lunch', icon: <IconLunch /> }} active={pathname === '/dashboard/lunch'} onClick={onClose} />
-            )}
-          </>
-        )}
+        {/* Communicatie — intern nieuws voor iedereen zichtbaar */}
+        <>
+          <SectionLabel label="Communicatie" />
+          <NavLink item={{ id: 'nieuws', label: 'Intern nieuws', href: '/dashboard/nieuws', icon: <IconChat />, badge: nieuwsBadge || null }} active={isActive('/dashboard/nieuws')} onClick={onClose} />
+          {heeftModule('lunch') && (
+            <NavLink item={{ id: 'lunch', label: 'Lunch', href: '/dashboard/lunch', icon: <IconLunch /> }} active={pathname === '/dashboard/lunch'} onClick={onClose} />
+          )}
+        </>
 
         {/* IT */}
         {heeftModule('it-cmdb') && (
