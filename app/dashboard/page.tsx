@@ -159,10 +159,9 @@ export default function Dashboard() {
     shouldRetryOnError: false,
   })
 
-  const heeftBeschikbaarheid = sessionData?.dashboardModules?.includes('beschikbaarheid') ?? false
   type OofCollega = { user_id: string; naam: string | null; afdeling: string | null; next_available_label: string | null }
   const { data: beschikbaarheidData } = useSWR<{ statussen: (OofCollega & { status: string })[] }>(
-    heeftBeschikbaarheid ? '/api/beschikbaarheid/status' : null,
+    '/api/beschikbaarheid/status',
     fetcher,
     { refreshInterval: 5 * 60_000, shouldRetryOnError: false }
   )
