@@ -202,6 +202,15 @@ export default function GazellePakketOrders() {
     await mutate()
   }
 
+  async function herparser(id: string) {
+    await fetch(`/api/gazelle-orders?id=${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reparse: true }),
+    })
+    await mutate()
+  }
+
   return (
     <div style={{ padding: '32px 32px 64px', maxWidth: 1100, margin: '0 auto', fontFamily: F }}>
 
@@ -301,7 +310,12 @@ export default function GazellePakketOrders() {
 
                     {/* Klantgegevens */}
                     <div style={{ minWidth: 220 }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: '0 0 12px', fontFamily: F }}>Klantgegevens</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>Klantgegevens</p>
+                        <button type="button" onClick={e => { e.stopPropagation(); void herparser(order.id) }} style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: 'pointer', fontFamily: F }}>
+                          Opnieuw parsen
+                        </button>
+                      </div>
                       <DetailRij label="Naam" waarde={order.naam} />
                       <DetailRij label="Bedrijfsnaam" waarde={order.bedrijfsnaam} />
                       <DetailRij label="E-mailadres" waarde={order.emailadres} />
