@@ -82,15 +82,18 @@ function parseProducten(text: string): GazelleProduct[] {
   const headerStart = lines.findIndex(l => l.toLowerCase().includes('lev.nr'))
   if (headerStart < 0) return []
 
-  // Sla alle headerregels over (exact 've' of substring-match voor de rest)
+  // Sla alle headerregels én tussenliggende lege regels over.
+  // Lege regels mogen NIET de loop breken: de HTML-broncode heeft een newline
+  // na elke </th>, waardoor er blanco regels tussen kolomnamen staan.
   const HEADER_TERMS = ['lev.nr', 'omschrijving', 'gewenste leverweek', 'aantal', 'totaal stuks']
   let i = headerStart
   while (i < lines.length) {
     const lower = lines[i].toLowerCase()
+    if (!lower) { i++; continue }                              // lege regel overslaan
     if (lower === 've' || HEADER_TERMS.some(h => lower.includes(h))) {
       i++
     } else {
-      break
+      break                                                    // echte data gevonden
     }
   }
 
