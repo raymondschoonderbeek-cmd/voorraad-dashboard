@@ -114,11 +114,7 @@ export default function BrandGroepPage() {
 
   const [minAvailable, setMinAvailable] = useState<number>(0)
   const [top10Brands, setTop10Brands] = useState<boolean>(false)
-  const [winkelModalOpen, setWinkelModalOpen] = useState(() => {
-    if (searchParams.get('winkel')) return false
-    try { if (typeof window !== 'undefined' && localStorage.getItem(WINKEL_STORAGE_KEY)) return false } catch {}
-    return true
-  })
+  const [winkelModalOpen, setWinkelModalOpen] = useState(!searchParams.get('winkel'))
   const [authRequired, setAuthRequired] = useState<null | { message: string }>(null)
 
   const haalWinkelsOp = useCallback(async () => {
@@ -158,13 +154,8 @@ export default function BrandGroepPage() {
   useEffect(() => {
     if (winkels.length === 0 || geselecteerdeWinkel) return
     const idParam = searchParams.get('winkel')
-    const id = idParam ? Number(idParam) : (() => {
-      try {
-        const s = localStorage.getItem(WINKEL_STORAGE_KEY)
-        return s ? Number(s) : 0
-      } catch { return 0 }
-    })()
-    const w = id ? winkels.find(x => x.id === id) : null
+    if (!idParam) return
+    const w = winkels.find(x => x.id === Number(idParam))
     if (w) {
       setGeselecteerdeWinkel(w)
       setWinkelModalOpen(false)
