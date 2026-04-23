@@ -1090,32 +1090,32 @@ export default function BeheerPage() {
     <div className="p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4 sm:space-y-5 overflow-x-hidden">
 
         {/* Page head */}
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', fontFamily: F, marginBottom: 6 }}>Beheer</p>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Gebruikers, winkels en data</h1>
-          <p style={{ fontSize: 13, color: 'var(--drg-text-2)', fontFamily: F, marginTop: 4 }}>{isAdmin ? 'Beheer gebruikers, winkels en importeer data via Excel' : 'Bekijk winkels en API-status'}</p>
-        </div>
-
-        {/* KPI stat cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : winkels.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Winkels</div>
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4 justify-between">
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', fontFamily: F, marginBottom: 6 }}>Beheer</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>Portal-instellingen &amp; toegang</h1>
+            <p style={{ fontSize: 13, color: 'var(--drg-text-2)', fontFamily: F, marginTop: 4 }}>Beheer gebruikers, winkels, apparaat-catalogus en bronbestanden voor het DRG Portal.</p>
           </div>
-          {isAdmin && <>
-            <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.length}</div>
-              <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Gebruikers</div>
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <a
+                href="/dashboard/ftp-koppeling"
+                className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 flex items-center gap-1.5"
+                style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink-2)', background: 'var(--drg-card)', fontFamily: F, textDecoration: 'none' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.7h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.4a16 16 0 0 0 6 6l.91-1.14a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7a2 2 0 0 1 1.72 2.01z"/></svg>
+                FTP koppelingen
+              </a>
+              <a
+                href="/dashboard/vendit-api-tester"
+                className="rounded-[8px] px-3 py-2 text-sm font-semibold transition hover:opacity-90 flex items-center gap-1.5"
+                style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink-2)', background: 'var(--drg-card)', fontFamily: F, textDecoration: 'none' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                API Vendit
+              </a>
             </div>
-            <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : rollen.filter(r => r.rol === 'admin').length}</div>
-              <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>Admins</div>
-            </div>
-            <div style={{ background: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderRadius: 10, padding: '14px 16px', boxShadow: 'var(--drg-card-shadow)' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{loading ? '—' : Object.values(mfaStatus).filter(Boolean).length}</div>
-              <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>MFA actief</div>
-            </div>
-          </>}
+          )}
         </div>
 
         {error && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#fef2f2', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626', fontFamily: F }}>{error}</div>}
