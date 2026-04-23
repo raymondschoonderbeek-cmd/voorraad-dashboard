@@ -317,7 +317,7 @@ export default function GebruikersPage() {
   const totaalProducten = gebruikers.reduce((s, g) => s + g.producten.length, 0)
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--drg-page-bg)', fontFamily: F }}>
 
       <main className="flex-1 p-4 sm:p-6 max-w-[1000px] mx-auto w-full space-y-5">
 

@@ -1180,7 +1180,7 @@ export default function CatalogusPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--drg-page-bg)', fontFamily: F }}>
 
       <main className="flex-1 p-3 sm:p-5 max-w-[1200px] mx-auto w-full space-y-5">
 
