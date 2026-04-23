@@ -109,6 +109,7 @@ type GazelleOrder = {
   opmerkingen: string | null
   adres: string | null
   producten: Product[]
+  raw_description: string | null
   status: string
 }
 
@@ -335,6 +336,16 @@ export default function GazellePakketOrders() {
                         <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 10, fontFamily: F }}>
                           {reparseFout}
                         </div>
+                      )}
+                      {order.raw_description && (
+                        <details style={{ marginBottom: 10 }}>
+                          <summary style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-text-3)', cursor: 'pointer', fontFamily: F, userSelect: 'none' }}>
+                            Raw description (debug)
+                          </summary>
+                          <pre style={{ fontSize: 10, color: 'var(--drg-text-3)', background: 'rgba(45,69,124,0.04)', border: '1px solid var(--drg-line)', borderRadius: 6, padding: 8, marginTop: 4, overflow: 'auto', maxHeight: 200, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                            {order.raw_description.slice(0, 1000)}
+                          </pre>
+                        </details>
                       )}
                       <DetailRij label="Naam" waarde={order.naam} />
                       <DetailRij label="Bedrijfsnaam" waarde={order.bedrijfsnaam} />
