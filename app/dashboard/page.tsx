@@ -158,6 +158,15 @@ export default function Dashboard() {
     refreshInterval: 60_000,
     shouldRetryOnError: false,
   })
+
+  const heeftBeschikbaarheid = sessionData?.dashboardModules?.includes('beschikbaarheid') ?? false
+  type OofCollega = { user_id: string; naam: string | null; afdeling: string | null; next_available_label: string | null }
+  const { data: beschikbaarheidData } = useSWR<{ statussen: (OofCollega & { status: string })[] }>(
+    heeftBeschikbaarheid ? '/api/beschikbaarheid/status' : null,
+    fetcher,
+    { refreshInterval: 5 * 60_000, shouldRetryOnError: false }
+  )
+  const oofCollega = (beschikbaarheidData?.statussen ?? []).filter(s => s.status === 'out-of-office')
   const savedOrder = profileData?.modules_order
   const [moduleOrder, setModuleOrder] = useState<ModuleId[]>(() => [...DEFAULT_MODULE_ORDER])
   useEffect(() => {
@@ -530,6 +539,45 @@ export default function Dashboard() {
                         )}
                       </div>
                     ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Afwezig vandaag */}
+              {oofCollega.length > 0 && (
+                <section className="s2" aria-label="Afwezig vandaag">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <h2 style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, letterSpacing: '-0.01em' }}>Afwezig vandaag</h2>
+                    <div style={{ flex: 1, height: 1, background: 'var(--drg-line)' }} />
+                    <Link href="/dashboard/beschikbaarheid" style={{ fontFamily: F, fontSize: 11, fontWeight: 600, color: 'var(--drg-ink-2)', textDecoration: 'none', opacity: 0.6 }}>
+                      Alle collega&apos;s →
+                    </Link>
+                  </div>
+                  <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, boxShadow: 'var(--drg-card-shadow)', overflow: 'hidden' }}>
+                    {oofCollega.map((g, i) => {
+                      const initialen = (g.naam ?? '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
+                      const isLast = i === oofCollega.length - 1
+                      return (
+                        <div key={g.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: isLast ? 'none' : '1px solid var(--drg-line)' }}>
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(220,38,38,0.09)', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, fontFamily: F }}>
+                            {initialen}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {g.naam ?? '—'}
+                            </div>
+                            {g.afdeling && (
+                              <div style={{ fontFamily: F, fontSize: 11, color: 'var(--drg-text-3)', marginTop: 1 }}>{g.afdeling}</div>
+                            )}
+                          </div>
+                          {g.next_available_label && (
+                            <span style={{ fontFamily: F, fontSize: 11, fontWeight: 500, color: 'var(--drg-text-3)', flexShrink: 0 }}>
+                              {g.next_available_label}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </section>
               )}
