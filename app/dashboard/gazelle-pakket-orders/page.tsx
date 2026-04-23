@@ -140,36 +140,36 @@ function StatusSelect({ status, onChange }: { status: string; onChange: (s: stri
   )
 }
 
+function extractLidnummer(naam: string): string {
+  return naam.match(/^(\d+)\s/)?.[1] ?? ''
+}
+
+function extractNaamZonderLidnummer(naam: string): string {
+  return naam.replace(/^\d+\s+/, '').trim()
+}
+
+function extractWoonplaats(naam: string): string {
+  // Woonplaats staat na de laatste komma (bijv. "12316 Bike Totaal, Rodenburg, Sneek" → "Sneek")
+  const idx = naam.lastIndexOf(',')
+  return idx >= 0 ? naam.slice(idx + 1).trim() : ''
+}
+
+function extractPakket(levNr: string): string {
+  return levNr.match(/Pakket\s+([AB])/i)?.[1]?.toUpperCase() ?? levNr
+}
+
 function exporteerNaarExcel(orders: GazelleOrder[]) {
-  const rijen: Record<string, string | number>[] = []
+  const rijen: Record<string, string>[] = []
   for (const order of orders) {
-    const basis = {
-      'Ontvangen op': new Date(order.ontvangen_op).toLocaleDateString('nl-NL'),
-      'Bestelnummer': order.bestelnummer ?? '',
-      'Besteldatum': order.besteldatum ?? '',
-      'Naam': order.naam ?? '',
-      'Bedrijfsnaam': order.bedrijfsnaam ?? '',
-      'E-mailadres': order.emailadres ?? '',
-      'Adres': order.adres ?? '',
-      'Referentie': order.referentie ?? '',
-      'Opmerkingen': order.opmerkingen ?? '',
-      'Status': order.status,
-    }
-    if (order.producten?.length > 0) {
-      for (const p of order.producten) {
-        rijen.push({
-          ...basis,
-          'Lev.nr.': p.lev_nr,
-          'Omschrijving': p.omschrijving,
-          'Gewenste leverweek': p.gewenste_leverweek,
-          'Aantal': p.aantal,
-          'VE': p.ve,
-          'Totaal stuks': p.totaal_stuks,
-        })
-      }
-    } else {
-      rijen.push({ ...basis, 'Lev.nr.': '', 'Omschrijving': '', 'Gewenste leverweek': '', 'Aantal': '', 'VE': '', 'Totaal stuks': '' })
-    }
+    const naam = order.naam ?? ''
+    const hoofdProduct = order.producten?.[0]
+    rijen.push({
+      'Lidnummer': extractLidnummer(naam),
+      'Naam': extractNaamZonderLidnummer(naam),
+      'Woonplaats': extractWoonplaats(naam),
+      'Klantnummer Gazelle': '',
+      'Pakket': hoofdProduct ? extractPakket(hoofdProduct.lev_nr) : '',
+    })
   }
   const ws = XLSX.utils.json_to_sheet(rijen)
   const wb = XLSX.utils.book_new()
