@@ -189,6 +189,8 @@ function DetailRij({ label, waarde }: { label: string; waarde: string | null | u
 export default function GazellePakketOrders() {
   const { data, isLoading, mutate } = useSWR<GazelleOrder[]>('/api/gazelle-orders', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
+  const [reparseBezig, setReparseBezig] = useState<string | null>(null)
+  const [reparseFout, setReparseFout] = useState<string | null>(null)
 
   const orders: GazelleOrder[] = Array.isArray(data) ? data : []
   const fout = data && !Array.isArray(data)
@@ -203,12 +205,20 @@ export default function GazellePakketOrders() {
   }
 
   async function herparser(id: string) {
-    await fetch(`/api/gazelle-orders?id=${id}`, {
+    setReparseBezig(id)
+    setReparseFout(null)
+    const res = await fetch(`/api/gazelle-orders?id=${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reparse: true }),
     })
-    await mutate()
+    const json = await res.json() as { ok?: boolean; error?: string; producten?: number }
+    setReparseBezig(null)
+    if (!res.ok) {
+      setReparseFout(json.error ?? 'Onbekende fout')
+    } else {
+      await mutate()
+    }
   }
 
   return (
@@ -310,12 +320,22 @@ export default function GazellePakketOrders() {
 
                     {/* Klantgegevens */}
                     <div style={{ minWidth: 220 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>Klantgegevens</p>
-                        <button type="button" onClick={e => { e.stopPropagation(); void herparser(order.id) }} style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: 'pointer', fontFamily: F }}>
-                          Opnieuw parsen
+                        <button
+                          type="button"
+                          disabled={reparseBezig === order.id}
+                          onClick={e => { e.stopPropagation(); void herparser(order.id) }}
+                          style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: reparseBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: reparseBezig === order.id ? 0.5 : 1 }}
+                        >
+                          {reparseBezig === order.id ? 'Bezig…' : 'Opnieuw parsen'}
                         </button>
                       </div>
+                      {reparseFout && uitgebreid === order.id && (
+                        <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 10, fontFamily: F }}>
+                          {reparseFout}
+                        </div>
+                      )}
                       <DetailRij label="Naam" waarde={order.naam} />
                       <DetailRij label="Bedrijfsnaam" waarde={order.bedrijfsnaam} />
                       <DetailRij label="E-mailadres" waarde={order.emailadres} />
