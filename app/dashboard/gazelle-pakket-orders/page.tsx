@@ -24,6 +24,7 @@ function CopyButton({ value }: { value: string }) {
 
 function ObserverInstellingenCard() {
   const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
+  const [ingeklapt, setIngeklapt] = useState(true)
   const [geheimTonen, setGeheimTonen] = useState(false)
   const [bezig, setBezig] = useState(false)
   const webhookUrl = typeof window !== 'undefined'
@@ -46,8 +47,18 @@ function ObserverInstellingenCard() {
   const codeStyle: React.CSSProperties = { flex: 1, borderRadius: 8, padding: '8px 12px', fontSize: 12, fontFamily: 'monospace', background: 'rgba(45,69,124,0.05)', color: 'var(--drg-ink-2)', wordBreak: 'break-all' }
 
   return (
-    <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '20px 20px 16px', boxShadow: 'var(--drg-card-shadow)', marginBottom: 24 }}>
-      <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: '0 0 16px', fontFamily: F }}>Freshdesk Observer instellen</h2>
+    <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, boxShadow: 'var(--drg-card-shadow)', marginBottom: 24, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setIngeklapt(v => !v)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, fontFamily: F }}>Freshdesk Observer instellen</h2>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', flexShrink: 0, transform: ingeklapt ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} aria-hidden>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {!ingeklapt && <div style={{ padding: '0 20px 16px' }}>
 
       <div style={{ marginBottom: 14 }}>
         <span style={labelStyle}>Webhook URL</span>
@@ -83,6 +94,7 @@ function ObserverInstellingenCard() {
         2. Voeg custom header toe: <code style={{ fontFamily: 'monospace' }}>X-Webhook-Secret: [secret]</code><br />
         3. Body (JSON): <code style={{ fontFamily: 'monospace' }}>{'{"ticket_id": "{{ticket.id}}", "ticket_description": "{{ticket.description}}"}'}</code>
       </div>
+      </div>}
     </div>
   )
 }
