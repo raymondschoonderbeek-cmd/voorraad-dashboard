@@ -17,7 +17,12 @@ function verifySecret(request: NextRequest, secret: string): boolean {
 }
 
 function stripHtml(html: string): string {
-  return html
+  // <br> inside table cells moet een spatie worden (niet newline),
+  // anders breekt "Pakket A<br>geen" de kolom-detectie.
+  const normalized = html.replace(/<td[^>]*>([\s\S]*?)<\/td>/gi, (_, content: string) =>
+    `<td>${content.replace(/<br\s*\/?>/gi, ' ')}</td>`
+  )
+  return normalized
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')

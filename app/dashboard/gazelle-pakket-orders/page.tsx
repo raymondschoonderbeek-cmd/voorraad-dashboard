@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import * as XLSX from 'xlsx'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 const F = "'Outfit', sans-serif"
@@ -138,6 +139,43 @@ function StatusSelect({ status, onChange }: { status: string; onChange: (s: stri
   )
 }
 
+function exporteerNaarExcel(orders: GazelleOrder[]) {
+  const rijen: Record<string, string | number>[] = []
+  for (const order of orders) {
+    const basis = {
+      'Ontvangen op': new Date(order.ontvangen_op).toLocaleDateString('nl-NL'),
+      'Bestelnummer': order.bestelnummer ?? '',
+      'Besteldatum': order.besteldatum ?? '',
+      'Naam': order.naam ?? '',
+      'Bedrijfsnaam': order.bedrijfsnaam ?? '',
+      'E-mailadres': order.emailadres ?? '',
+      'Adres': order.adres ?? '',
+      'Referentie': order.referentie ?? '',
+      'Opmerkingen': order.opmerkingen ?? '',
+      'Status': order.status,
+    }
+    if (order.producten?.length > 0) {
+      for (const p of order.producten) {
+        rijen.push({
+          ...basis,
+          'Lev.nr.': p.lev_nr,
+          'Omschrijving': p.omschrijving,
+          'Gewenste leverweek': p.gewenste_leverweek,
+          'Aantal': p.aantal,
+          'VE': p.ve,
+          'Totaal stuks': p.totaal_stuks,
+        })
+      }
+    } else {
+      rijen.push({ ...basis, 'Lev.nr.': '', 'Omschrijving': '', 'Gewenste leverweek': '', 'Aantal': '', 'VE': '', 'Totaal stuks': '' })
+    }
+  }
+  const ws = XLSX.utils.json_to_sheet(rijen)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Gazelle orders')
+  XLSX.writeFile(wb, `gazelle-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
 function DetailRij({ label, waarde }: { label: string; waarde: string | null | undefined }) {
   if (!waarde) return null
   return (
@@ -172,9 +210,23 @@ export default function GazellePakketOrders() {
         <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: '0 0 6px', fontFamily: F }}>
           Gazelle
         </p>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, letterSpacing: '-0.02em', fontFamily: F }}>
-          Pakket orders
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, letterSpacing: '-0.02em', fontFamily: F, flex: 1 }}>
+            Pakket orders
+          </h1>
+          {orders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => exporteerNaarExcel(orders)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', cursor: 'pointer', fontFamily: F, flexShrink: 0 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exporteer Excel
+            </button>
+          )}
+        </div>
         <p style={{ marginTop: 6, fontSize: 13, color: 'var(--drg-text-3)', margin: '6px 0 0', fontFamily: F }}>
           Binnenkomende Gazelle pakket bestellingen via Freshdesk.
         </p>
