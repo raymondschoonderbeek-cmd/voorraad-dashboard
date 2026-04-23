@@ -148,10 +148,13 @@ function extractNaamZonderLidnummer(naam: string): string {
   return naam.replace(/^\d+\s+/, '').trim()
 }
 
-function extractWoonplaats(naam: string): string {
-  // Woonplaats staat na de laatste komma (bijv. "12316 Bike Totaal, Rodenburg, Sneek" → "Sneek")
-  const idx = naam.lastIndexOf(',')
-  return idx >= 0 ? naam.slice(idx + 1).trim() : ''
+function extractWoonplaats(adres: string): string {
+  // Postcode-formaat: 4 cijfers + 2 letters + plaatsnaam (bijv. "3824 ML AMERSFOORT")
+  const match = adres.match(/\d{4}\s+[A-Z]{2}\s+([A-Za-z\sÀ-ɏ\-]+)/i)
+  if (match?.[1]) return match[1].trim()
+  // Fallback: na de laatste komma
+  const idx = adres.lastIndexOf(',')
+  return idx >= 0 ? adres.slice(idx + 1).trim() : ''
 }
 
 function extractPakket(levNr: string): string {
@@ -166,7 +169,7 @@ function exporteerNaarExcel(orders: GazelleOrder[]) {
     rijen.push({
       'Lidnummer': extractLidnummer(naam),
       'Naam': extractNaamZonderLidnummer(naam),
-      'Woonplaats': extractWoonplaats(naam),
+      'Woonplaats': extractWoonplaats(order.adres ?? ''),
       'Klantnummer Gazelle': '',
       'Pakket': hoofdProduct ? extractPakket(hoofdProduct.lev_nr) : '',
     })
