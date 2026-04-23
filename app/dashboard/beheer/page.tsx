@@ -34,6 +34,7 @@ const MODULE_LABELS: Record<DashboardModuleId, string> = {
   'it-cmdb': 'IT-hardware (CMDB)',
   beschikbaarheid: 'Beschikbaarheid team',
   winkels: 'Winkels & vestigingen',
+  'gazelle-orders': 'Gazelle pakket orders',
   meer: 'Meer',
 }
 type LandFilter = 'alle' | LandCode
