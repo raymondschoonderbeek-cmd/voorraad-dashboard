@@ -1123,7 +1123,7 @@ export default function BeheerPage() {
         {formSuccess && <div className="rounded-[10px] p-4 text-sm font-medium" style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.2)', color: '#16a34a', fontFamily: F }}>✓ {formSuccess}</div>}
 
         {/* Underline tab bar */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--drg-line)', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: -4 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--drg-line)', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 8 }}>
           {tabs.map(t => (
             <button
               key={t.key}
