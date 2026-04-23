@@ -520,9 +520,9 @@ export default function Dashboard() {
                       <div key={r.id} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--drg-card-shadow)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {/* Naam + status */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: r.bezet ? '#dc2626' : '#16a34a' }} />
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: r.bezet ? 'var(--drg-danger)' : 'var(--drg-success)' }} />
                           <span style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.naam}</span>
-                          <span style={{ fontFamily: F, fontSize: 11, fontWeight: 500, flexShrink: 0, color: r.bezet ? '#dc2626' : '#16a34a' }}>
+                          <span style={{ fontFamily: F, fontSize: 11, fontWeight: 500, flexShrink: 0, color: r.bezet ? 'var(--drg-danger)' : 'var(--drg-success)' }}>
                             {r.bezet ? `bezet t/m ${r.tot}` : r.boekingen.length === 0 ? 'vrij vandaag' : `vrij tot ${r.boekingen[0].van}`}
                           </span>
                         </div>
@@ -530,7 +530,7 @@ export default function Dashboard() {
                         {r.boekingen.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                             {r.boekingen.map((b, i) => (
-                              <span key={i} style={{ fontFamily: F, fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', color: '#b91c1c', whiteSpace: 'nowrap' }}>
+                              <span key={i} style={{ fontFamily: F, fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.12)', color: 'var(--drg-ink-2)', whiteSpace: 'nowrap' }}>
                                 {b.van}–{b.tot}
                               </span>
                             ))}
@@ -558,7 +558,7 @@ export default function Dashboard() {
                       const isLast = i === oofCollega.length - 1
                       return (
                         <div key={g.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: isLast ? 'none' : '1px solid var(--drg-line)' }}>
-                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(220,38,38,0.09)', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, fontFamily: F }}>
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(45,69,124,0.1)', color: 'var(--drg-ink-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, fontFamily: F }}>
                             {initialen}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
