@@ -494,7 +494,9 @@ export default function TvPage() {
                       <span style={{ fontSize: '1.3vh', fontWeight: 500, flexShrink: 0, color: r.bezet ? '#f87171' : '#4ade80' }}>
                         {r.bezet
                           ? `bezet t/m ${r.tot}`
-                          : r.boekingen.length === 0 ? 'vrij vandaag' : ''}
+                          : r.boekingen.length === 0
+                            ? 'vrij vandaag'
+                            : `vrij tot ${r.boekingen[0].van}`}
                       </span>
                     </div>
                     {r.boekingen.length > 0 && (

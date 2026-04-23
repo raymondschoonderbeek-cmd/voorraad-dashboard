@@ -218,7 +218,10 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
         try { return new Date(e.start).getTime() <= nowMs && new Date(e.end).getTime() > nowMs }
         catch { return false }
       })
-      const boekingen: Boeking[] = events.map(e => ({ van: tijdLabel(e.start), tot: tijdLabel(e.end) }))
+      // Alleen toekomstige of lopende boekingen tonen — verlopen slots weggooien
+      const boekingen: Boeking[] = events
+        .filter(e => { try { return new Date(e.end).getTime() > nowMs } catch { return false } })
+        .map(e => ({ van: tijdLabel(e.start), tot: tijdLabel(e.end) }))
       const roomKey = r.email ?? r.key
 
       if (!actief) return { id: roomKey, naam: r.name, bezet: false, capacity: r.capacity, boekingen }
