@@ -243,13 +243,18 @@ export function DashboardSidebar() {
           </>
         )}
 
-        {/* IT & Organisatie */}
-        {(heeftModule('it-cmdb') || heeftModule('winkels') || heeftModule('beschikbaarheid')) && (
+        {/* IT */}
+        {heeftModule('it-cmdb') && (
           <>
-            <SectionLabel label="IT & Organisatie" />
-            {heeftModule('it-cmdb') && (
-              <NavLink item={{ id: 'it', label: 'IT-hardware', href: '/dashboard/it-cmdb', icon: <IconLaptop /> }} active={isActive('/dashboard/it-cmdb')} />
-            )}
+            <SectionLabel label="IT" />
+            <NavLink item={{ id: 'it', label: 'IT-hardware', href: '/dashboard/it-cmdb', icon: <IconLaptop /> }} active={isActive('/dashboard/it-cmdb')} />
+          </>
+        )}
+
+        {/* Organisatie */}
+        {(heeftModule('winkels') || heeftModule('beschikbaarheid')) && (
+          <>
+            <SectionLabel label="Organisatie" />
             {heeftModule('winkels') && (
               <NavLink item={{ id: 'winkels', label: 'Winkels', href: '/dashboard/winkels', icon: <IconMap /> }} active={isActive('/dashboard/winkels')} />
             )}
