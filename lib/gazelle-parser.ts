@@ -44,10 +44,6 @@ function stripHtml(html: string): string {
     .trim()
 }
 
-export function stripGazelleHtml(html: string): string {
-  return stripHtml(html)
-}
-
 // Pakt waarde die op dezelfde regel staat als het label ("Label: waarde")
 // of op de volgende niet-lege regel ("Label:\n\nwaarde").
 function extractField(text: string, label: string): string {
