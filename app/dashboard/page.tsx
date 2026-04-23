@@ -463,7 +463,7 @@ export default function Dashboard() {
                 <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--drg-section-label)', fontFamily: F, margin: 0 }}>
                   {getDatum()}
                 </p>
-                <h1 id="dashboard-heading-welcome" style={{ fontFamily: F, color: 'var(--drg-text)', fontSize: 'clamp(22px, 2.5vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2, margin: '4px 0 0' }}>
+                <h1 id="dashboard-heading-welcome" style={{ fontFamily: F, color: 'var(--drg-ink-2)', fontSize: 'clamp(22px, 2.5vw, 28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2, margin: '4px 0 0' }}>
                   Home — overzicht
                 </h1>
                 {!lunchOnly && !winkelsLoading && winkelsVoorGebruiker.length === 0 && (
@@ -487,7 +487,7 @@ export default function Dashboard() {
                         <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--drg-section-label)', fontFamily: F }}>{s.label}</span>
                         <span style={{ color: 'var(--drg-section-label)' }}>{s.icon}</span>
                       </div>
-                      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-text)', fontFamily: F, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.value}</div>
                       <div style={{ fontSize: 12, color: 'var(--drg-section-label)', fontFamily: F }}>{s.sub}</div>
                     </div>
                   ))}
@@ -538,7 +538,7 @@ export default function Dashboard() {
                     const tileSurface = { background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', boxShadow: 'var(--drg-card-shadow)', borderRadius: 10 } as const
                     const tileIconWrap = { background: 'rgba(45,69,124,0.07)' } as const
                     const tileFooter = { background: 'rgba(45,69,124,0.03)', borderTop: '1px solid var(--drg-divider)' } as const
-                    const modTitleStyle = { fontFamily: F, color: 'var(--drg-text)', fontSize: '15px', fontWeight: 600, letterSpacing: '-0.01em' } as const
+                    const modTitleStyle = { fontFamily: F, color: 'var(--drg-ink-2)', fontSize: '15px', fontWeight: 600, letterSpacing: '-0.01em' } as const
                     const modSubStyle = { color: 'var(--drg-text-muted)', fontSize: '12px', marginTop: 6, lineHeight: 1.55, fontFamily: F } as const
                     const modFooterLink = { color: DYNAMO_BLUE, fontSize: '12px', fontWeight: 600, fontFamily: F } as const
                     const modFooterIcon = { color: 'rgba(45,69,124,0.3)' } as const
@@ -913,19 +913,19 @@ export default function Dashboard() {
                         ⚙ Kolommen ({zichtbareKolommen.length})
                       </button>
                       {kolomPanelOpen && (
-                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-[10px] bg-white shadow-xl p-4 z-20" style={{ border: '1px solid rgba(45,69,124,0.1)' }}>
+                        <div ref={kolomPanelRef} role="dialog" aria-label="Kolommen configuratie" className="absolute right-0 left-0 sm:left-auto mt-2 w-full sm:w-72 max-w-sm rounded-[10px] shadow-xl p-4 z-20" style={{ border: '1px solid var(--drg-line)', background: 'var(--drg-card-bg)' }}>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Kolommen</span>
-                            <button onClick={() => setKolomPanelOpen(false)} className="text-gray-400 hover:text-gray-700 text-lg leading-none" aria-label="Sluiten">✕</button>
+                            <button onClick={() => setKolomPanelOpen(false)} className="text-lg leading-none hover:opacity-60 transition" style={{ color: 'var(--drg-text-subtle)' }} aria-label="Sluiten">✕</button>
                           </div>
-                          <p className="text-xs mb-3" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Voorkeur wordt automatisch onthouden.</p>
+                          <p className="text-xs mb-3" style={{ color: 'var(--drg-text-subtle)', fontFamily: F }}>Voorkeur wordt automatisch onthouden.</p>
                           <div className="flex gap-2 mb-3">
-                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Alles aan</button>
-                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:bg-gray-50" style={{ border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>Alles uit</button>
+                            <button onClick={() => setZichtbareKolommen([...kolommen])} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:opacity-80 transition" style={{ border: '1px solid var(--drg-line)', fontFamily: F, color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}>Alles aan</button>
+                            <button onClick={() => setZichtbareKolommen(prev => prev.length > 1 ? [prev[0]] : prev)} className="flex-1 rounded-lg py-1.5 text-xs font-semibold hover:opacity-80 transition" style={{ border: '1px solid var(--drg-line)', fontFamily: F, color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}>Alles uit</button>
                           </div>
                           <div className="space-y-1 max-h-64 overflow-auto">
                             {kolommen.map(k => (
-                              <label key={k} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1.5">
+                              <label key={k} className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-2 py-1.5 hover:opacity-80 transition">
                                 <input type="checkbox" checked={zichtbareKolommen.includes(k)} onChange={() => toggleKolom(k)} disabled={zichtbareKolommen.includes(k) && zichtbareKolommen.length === 1} className="accent-[#2D457C]" />
                                 <span style={{ color: DYNAMO_BLUE, fontFamily: F }}>{columnLabel(k)}</span>
                                 {isSticky(k) && <span className="ml-auto text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.4)', fontFamily: F }}>Vast</span>}
