@@ -192,6 +192,7 @@ export default function GazellePakketOrders() {
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
+  const [reparseDebug, setReparseDebug] = useState<string | null>(null)
 
   const orders: GazelleOrder[] = Array.isArray(data) ? data : []
   const fout = data && !Array.isArray(data)
@@ -213,11 +214,12 @@ export default function GazellePakketOrders() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reparse: true }),
     })
-    const json = await res.json() as { ok?: boolean; error?: string; producten?: number }
+    const json = await res.json() as { ok?: boolean; error?: string; producten?: number; debug_stripped?: string; debug_parsed?: unknown }
     setReparseBezig(null)
     if (!res.ok) {
       setReparseFout(json.error ?? 'Onbekende fout')
     } else {
+      setReparseDebug(json.debug_stripped ?? null)
       await mutate()
     }
   }
@@ -337,13 +339,13 @@ export default function GazellePakketOrders() {
                           {reparseFout}
                         </div>
                       )}
-                      {order.raw_description && (
-                        <details style={{ marginBottom: 10 }}>
+                      {reparseDebug && uitgebreid === order.id && (
+                        <details open style={{ marginBottom: 10 }}>
                           <summary style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-text-3)', cursor: 'pointer', fontFamily: F, userSelect: 'none' }}>
-                            Raw description (debug)
+                            Gestripte tekst (debug) — kopieer dit en stuur naar Raymond
                           </summary>
-                          <pre style={{ fontSize: 10, color: 'var(--drg-text-3)', background: 'rgba(45,69,124,0.04)', border: '1px solid var(--drg-line)', borderRadius: 6, padding: 8, marginTop: 4, overflow: 'auto', maxHeight: 200, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
-                            {order.raw_description.slice(0, 1000)}
+                          <pre style={{ fontSize: 10, color: 'var(--drg-text-3)', background: 'rgba(45,69,124,0.04)', border: '1px solid var(--drg-line)', borderRadius: 6, padding: 8, marginTop: 4, overflow: 'auto', maxHeight: 300, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                            {reparseDebug}
                           </pre>
                         </details>
                       )}

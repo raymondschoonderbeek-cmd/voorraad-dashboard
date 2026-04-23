@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { parseGazelleDescription } from '@/lib/gazelle-parser'
+import { parseGazelleDescription, stripGazelleHtml } from '@/lib/gazelle-parser'
 
 function normalizeDomain(raw: string): string {
   return raw.replace(/^https?:\/\//, '').replace(/\/$/, '').trim()
@@ -88,7 +88,12 @@ export async function PATCH(request: NextRequest) {
       .eq('id', id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true, producten: parsed.producten.length })
+    return NextResponse.json({
+      ok: true,
+      producten: parsed.producten.length,
+      debug_parsed: parsed,
+      debug_stripped: stripGazelleHtml(html).slice(0, 3000),
+    })
   }
 
   if (!body.status) return NextResponse.json({ error: 'status of reparse vereist' }, { status: 400 })

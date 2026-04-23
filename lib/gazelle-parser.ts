@@ -127,6 +127,10 @@ function parseAdres(text: string): string {
     .join(', ')
 }
 
+export function stripGazelleHtml(html: string): string {
+  return stripHtml(html)
+}
+
 export function parseGazelleDescription(html: string): GazelleParsed {
   const text = stripHtml(html)
   return {
