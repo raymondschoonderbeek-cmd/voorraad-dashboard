@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import { DYNAMO_BLUE, FONT_FAMILY } from '@/lib/theme'
 import { formatOrderEndTimeNl, isOrderClosedForDate, normalizeOrderEndTimeLocal } from '@/lib/lunch-order-deadline'
@@ -54,6 +55,9 @@ export default function LunchPage() {
   const [cartToast, setCartToast] = useState<string | null>(null)
   const cartPanelRef = useRef<HTMLDivElement>(null)
   const toastClearRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const { data: sessionData } = useSWR<{ isAdmin?: boolean }>('/api/auth/session-info', fetcher)
+  const isAdmin = sessionData?.isAdmin === true
 
   const { data: products = [], isLoading } = useSWR<LunchProduct[]>('/api/lunch/products', fetcher)
   const { data: lunchSettings } = useSWR<{
@@ -214,6 +218,28 @@ export default function LunchPage() {
       <div
         className={`max-w-4xl mx-auto p-4 sm:p-6 space-y-6 ${cart.length > 0 ? 'pb-24 lg:pb-6' : ''}`}
       >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/lunch/overzicht"
+              className="inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-sm font-semibold transition hover:opacity-80"
+              style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><path d="M16 8H8"/><path d="M16 12H8"/><path d="M12 16H8"/></svg>
+              Mijn bestellingen
+            </Link>
+            {isAdmin && (
+              <Link
+                href="/dashboard/lunch/beheer"
+                className="inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-sm font-semibold transition hover:opacity-80"
+                style={{ background: 'rgba(45,69,124,0.08)', color: DYNAMO_BLUE }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Lunch beheer
+              </Link>
+            )}
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-sm font-semibold" style={{ color: DYNAMO_BLUE }}>
             Besteldatum:

@@ -240,12 +240,6 @@ export function DashboardSidebar() {
             {heeftModule('lunch') && (
               <NavLink item={{ id: 'lunch', label: 'Lunch', href: '/dashboard/lunch', icon: <IconLunch /> }} active={pathname === '/dashboard/lunch'} />
             )}
-            {heeftModule('lunch') && (
-              <NavLink item={{ id: 'lunch-overzicht', label: 'Mijn bestellingen', href: '/dashboard/lunch/overzicht', icon: <IconReceipt /> }} active={isActive('/dashboard/lunch/overzicht')} />
-            )}
-            {heeftModule('lunch') && isAdmin && (
-              <NavLink item={{ id: 'lunch-beheer', label: 'Lunch beheer', href: '/dashboard/lunch/beheer', icon: <IconSettings /> }} active={isActive('/dashboard/lunch/beheer')} />
-            )}
           </>
         )}
 
