@@ -373,7 +373,7 @@ export default function BeschikbaarheidDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--drg-page-bg)', fontFamily: F }}>
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
