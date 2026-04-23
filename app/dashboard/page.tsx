@@ -152,6 +152,12 @@ export default function Dashboard() {
   }, [winkels, allowedCountries])
 
   const { data: profileData, mutate: mutateProfile } = useSWR<{ modules_order?: string[] }>('/api/profile', fetcher)
+
+  type RuimteItem = { id: string; naam: string; bezet: boolean; tot?: string; capacity: number; boekingen: { van: string; tot: string }[] }
+  const { data: ruimtesData } = useSWR<RuimteItem[]>('/api/ruimtes', fetcher, {
+    refreshInterval: 60_000,
+    shouldRetryOnError: false,
+  })
   const savedOrder = profileData?.modules_order
   const [moduleOrder, setModuleOrder] = useState<ModuleId[]>(() => [...DEFAULT_MODULE_ORDER])
   useEffect(() => {
@@ -492,6 +498,40 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Ruimtes vandaag */}
+              {ruimtesData && ruimtesData.length > 0 && (
+                <section className="s2" aria-label="Ruimtes vandaag">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <h2 style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, letterSpacing: '-0.01em' }}>Ruimtes vandaag</h2>
+                    <div style={{ flex: 1, height: 1, background: 'var(--drg-line)' }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                    {ruimtesData.map(r => (
+                      <div key={r.id} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--drg-card-shadow)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* Naam + status */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: r.bezet ? '#dc2626' : '#16a34a' }} />
+                          <span style={{ fontFamily: F, fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.naam}</span>
+                          <span style={{ fontFamily: F, fontSize: 11, fontWeight: 500, flexShrink: 0, color: r.bezet ? '#dc2626' : '#16a34a' }}>
+                            {r.bezet ? `bezet t/m ${r.tot}` : r.boekingen.length === 0 ? 'vrij vandaag' : `vrij tot ${r.boekingen[0].van}`}
+                          </span>
+                        </div>
+                        {/* Komende tijdslots */}
+                        {r.boekingen.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {r.boekingen.map((b, i) => (
+                              <span key={i} style={{ fontFamily: F, fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', color: '#b91c1c', whiteSpace: 'nowrap' }}>
+                                {b.van}–{b.tot}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
               )}
 
               {/* MODULES */}
