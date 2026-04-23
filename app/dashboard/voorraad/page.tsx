@@ -144,29 +144,17 @@ export default function VoorraadPagina() {
     try { localStorage.setItem(KOLOMMEN_STORAGE_KEY, JSON.stringify(zichtbareKolommen)) } catch {}
   }, [zichtbareKolommen, kolommenGeladen])
 
-  // Winkel herstellen uit URL of localStorage
+  // Winkel herstellen uit URL — alleen via ?winkel=ID, nooit automatisch uit localStorage
   useEffect(() => {
     if (winkelsVoorGebruiker.length === 0 || sessionData === undefined) return
     const idParam = searchParams.get('winkel')
     if (idParam) {
       const w = winkelsVoorGebruiker.find(x => x.id === Number(idParam))
-      if (w) { setGeselecteerdeWinkel(w); return }
+      if (w) { setGeselecteerdeWinkel(w); setWinkelModalOpen(false); return }
     }
-    // Geen URL-param: probeer localStorage
-    try {
-      const opgeslagen = localStorage.getItem(WINKEL_STORAGE_KEY)
-      if (opgeslagen) {
-        const w = winkelsVoorGebruiker.find(x => x.id === Number(opgeslagen))
-        if (w) {
-          setGeselecteerdeWinkel(w)
-          router.replace(`/dashboard/voorraad?winkel=${w.id}`)
-          return
-        }
-      }
-    } catch {}
-    // Niets gevonden: open winkelkiezer
+    // Geen URL-param: altijd winkelkiezer tonen
     setWinkelModalOpen(true)
-  }, [winkelsVoorGebruiker, searchParams, sessionData, router])
+  }, [winkelsVoorGebruiker, searchParams, sessionData])
 
   // Temperatuur voor geselecteerde winkel
   useEffect(() => {
