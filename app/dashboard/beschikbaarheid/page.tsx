@@ -374,47 +374,38 @@ export default function BeschikbaarheidDashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      {/* Header */}
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none">Beschikbaarheid</span>
-          <div className="ml-auto flex items-center gap-2">
+
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
+
+        {/* Paginakop */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', margin: 0 }}>Beschikbaarheid</p>
+            <h1 className="m-0" style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)' }}>Beschikbaarheid team</h1>
+            <p className="text-sm m-0 mt-0.5" style={{ color: dashboardUi.textMuted }}>
+              Wie is er vandaag beschikbaar?
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {timestamp && (
-              <span className="text-xs text-white/60 hidden sm:block">
+              <span className="text-xs hidden sm:block" style={{ color: 'var(--drg-text-3)' }}>
                 Bijgewerkt {timestamp}
               </span>
             )}
             <button
               type="button"
               onClick={() => void mutate()}
-              className="rounded-lg p-1.5 hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition hover:opacity-80"
+              style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white' }}
               title="Vernieuwen"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                className="text-white/80" aria-hidden>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
               </svg>
+              Vernieuwen
             </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
-
-        {/* Kop */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>Beschikbaarheid team</h1>
-            <p className="text-sm m-0 mt-0.5" style={{ color: dashboardUi.textMuted }}>
-              Wie is er vandaag beschikbaar?
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {isAdmin && (
               <button
                 type="button"

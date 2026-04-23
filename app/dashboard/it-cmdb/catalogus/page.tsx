@@ -1181,46 +1181,14 @@ export default function CatalogusPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: dashboardUi.pageBg, fontFamily: F }}>
-      <header style={{ background: DYNAMO_BLUE }} className="sticky top-0 z-[100]">
-        {/* Top bar */}
-        <div className="px-4 sm:px-6 flex items-center gap-3 py-2 border-b border-white/10 min-h-[44px]">
-          <Link href="/dashboard" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white border border-white/10 hover:opacity-90 shrink-0">
-            ← Portal
-          </Link>
-          <span className="text-white/50 text-xs select-none">IT CMDB</span>
-        </div>
-        {/* Tab navigation */}
-        <div className="px-4 sm:px-6 flex gap-0 overflow-x-auto scrollbar-none">
-          <Link
-            href="/dashboard/it-cmdb"
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-white/55 hover:text-white/85 transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            Interne Hardware
-          </Link>
-          <Link
-            href="/dashboard/it-cmdb/catalogus"
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 border-white text-white"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            Catalogus
-          </Link>
-          <Link
-            href="/dashboard/it-cmdb/gebruikers"
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 border-transparent text-white/55 hover:text-white/85 transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Gebruikers
-          </Link>
-        </div>
-      </header>
 
       <main className="flex-1 p-3 sm:p-5 max-w-[1200px] mx-auto w-full space-y-5">
 
-        {/* Kop */}
+        {/* Paginakop */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="m-0 text-xl sm:text-2xl font-bold" style={{ color: 'var(--drg-ink)' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--drg-text-3)', margin: 0 }}>IT CMDB</p>
+            <h1 className="m-0" style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)' }}>
               Product &amp; licentie catalogus
             </h1>
             <p className="m-0 mt-1 text-sm" style={{ color: dashboardUi.textMuted }}>
@@ -1257,6 +1225,30 @@ export default function CatalogusPage() {
               + Toevoegen
             </button>
           </div>
+        </div>
+
+        {/* Tab navigatie */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--drg-line)', overflowX: 'auto', marginBottom: -4 }}>
+          {[
+            { href: '/dashboard/it-cmdb', label: 'Interne Hardware', active: false },
+            { href: '/dashboard/it-cmdb/catalogus', label: 'Catalogus', active: true },
+            { href: '/dashboard/it-cmdb/gebruikers', label: 'Gebruikers', active: false },
+          ].map(t => (
+            <Link
+              key={t.href}
+              href={t.href}
+              style={{
+                padding: '8px 16px', fontSize: 13,
+                fontWeight: t.active ? 600 : 500,
+                color: t.active ? 'var(--drg-ink-2)' : 'var(--drg-text-3)',
+                background: 'transparent',
+                borderBottom: t.active ? '2px solid var(--drg-ink-2)' : '2px solid transparent',
+                marginBottom: -1, whiteSpace: 'nowrap', textDecoration: 'none',
+              }}
+            >
+              {t.label}
+            </Link>
+          ))}
         </div>
 
         {/* Statistieken */}
