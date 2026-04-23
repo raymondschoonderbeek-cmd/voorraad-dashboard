@@ -76,6 +76,7 @@ export async function proxy(request: NextRequest) {
     '/api/lunch/reminder-cron',
     '/api/campagne-fietsen/voorraad/sync',
     '/api/news/digest-cron',
+    '/api/cron/',
     '/api/webhooks/',
     '/api/public/',
   ]
