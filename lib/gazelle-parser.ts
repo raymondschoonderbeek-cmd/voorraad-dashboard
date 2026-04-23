@@ -79,11 +79,10 @@ function extractField(text: string, label: string): string {
 function parseProducten(text: string): GazelleProduct[] {
   const lines = text.split('\n').map(l => l.trim())
 
-  // Zoek startpositie van de kolomheaders
   const headerStart = lines.findIndex(l => l.toLowerCase().includes('lev.nr'))
   if (headerStart < 0) return []
 
-  // Sla alle headerregels over
+  // Sla alle headerregels over (exact 've' of substring-match voor de rest)
   const HEADER_TERMS = ['lev.nr', 'omschrijving', 'gewenste leverweek', 'aantal', 'totaal stuks']
   let i = headerStart
   while (i < lines.length) {
@@ -95,47 +94,36 @@ function parseProducten(text: string): GazelleProduct[] {
     }
   }
 
-  // Sla lege regels na de headers over
-  while (i < lines.length && !lines[i]) i++
-
-  const producten: GazelleProduct[] = []
-
+  // Verzamel alle niet-lege regels tot de footer (sla lege regels over).
+  // Lege regels BINNEN een productrij (door newline na elke </td> in bronHTML)
+  // worden zo meegenomen zonder de groepering te breken.
+  const contentLines: string[] = []
   while (i < lines.length) {
-    if (!lines[i]) { i++; continue }
-    if (
-      lines[i].toLowerCase().includes('vriendelijke groet') ||
-      lines[i].toLowerCase().includes('klik hier') ||
-      lines[i].toLowerCase().includes('afmelden')
-    ) break
+    const line = lines[i]
+    if (line && (
+      line.toLowerCase().includes('vriendelijke groet') ||
+      line.toLowerCase().includes('klik hier') ||
+      line.toLowerCase().includes('afmelden')
+    )) break
+    if (line) contentLines.push(line)
+    i++
+  }
 
-    // Verzamel opeenvolgende niet-lege regels als één productrij (max 6 kolommen)
-    const values: string[] = []
-    while (i < lines.length && values.length < 6) {
-      const line = lines[i]
-      if (!line) break
-      if (
-        line.toLowerCase().includes('vriendelijke groet') ||
-        line.toLowerCase().includes('klik hier') ||
-        line.toLowerCase().includes('afmelden')
-      ) break
-      values.push(line)
-      i++
-    }
-
-    // Minimaal lev.nr + omschrijving om als product te tellen
-    if (values.length >= 2 && values[0]) {
-      producten.push({
-        lev_nr: values[0],
-        omschrijving: values[1] ?? '',
-        gewenste_leverweek: values[2] ?? '',
-        aantal: values[3] ?? '',
-        ve: values[4] ?? '',
-        totaal_stuks: values[5] ?? '',
-      })
-    }
-
-    // Sla lege regels tussen producten over
-    while (i < lines.length && !lines[i]) i++
+  // Groepeer per 6 regels = één productrij (6 kolommen).
+  // Een resterende batch van 1 is een notitiegel (bijv. colspan "geen") → overslaan.
+  const producten: GazelleProduct[] = []
+  let j = 0
+  while (j + 1 < contentLines.length) {
+    const b = contentLines.slice(j, j + 6)
+    producten.push({
+      lev_nr: b[0] ?? '',
+      omschrijving: b[1] ?? '',
+      gewenste_leverweek: b[2] ?? '',
+      aantal: b[3] ?? '',
+      ve: b[4] ?? '',
+      totaal_stuks: b[5] ?? '',
+    })
+    j += 6
   }
 
   return producten
