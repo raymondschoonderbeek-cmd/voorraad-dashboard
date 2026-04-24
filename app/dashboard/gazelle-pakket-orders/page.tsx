@@ -399,15 +399,15 @@ export default function GazellePakketOrders() {
 
         if (stats.length === 0) return null
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))`, gap: 10, marginBottom: 24 }}>
             {stats.map(s => {
               const resterend = s.beschikbaar !== null ? s.beschikbaar - s.orders : null
               return (
-                <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--drg-card-shadow)' }}>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.orders}</div>
-                  <div style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 4 }}>{s.label}</div>
+                <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--drg-card-shadow)' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.orders}</div>
+                  <div style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 3 }}>{s.label}</div>
                   {s.beschikbaar !== null && (
-                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ marginTop: 7, display: 'flex', flexDirection: 'column', gap: 2, borderTop: '1px solid var(--drg-line)', paddingTop: 7 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: F }}>
                         <span style={{ color: 'var(--drg-text-3)' }}>Beschikbaar</span>
                         <span style={{ fontWeight: 600, color: 'var(--drg-ink-2)' }}>{s.beschikbaar}</span>
