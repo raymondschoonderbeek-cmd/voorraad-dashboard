@@ -74,8 +74,6 @@ export async function POST(request: NextRequest) {
     naam: extractNaamZonderLidnummer(naam),
     plaats: extractWoonplaats(order.adres ?? ''),
     pakket: hoofdProduct ? extractPakket(hoofdProduct.lev_nr) : '',
-    besteldatum: order.besteldatum ?? '',
-    bestelnummer: order.bestelnummer ?? '',
   }
 
   try {
