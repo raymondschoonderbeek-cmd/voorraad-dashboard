@@ -7,7 +7,116 @@ import * as XLSX from 'xlsx'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 const F = "'Outfit', sans-serif"
 
-type ObserverInstellingen = { webhook_secret: string | null; actief: boolean }
+type PakketInstelling = { beschikbaar: boolean; omschrijving: string }
+type ObserverInstellingen = {
+  webhook_secret: string | null
+  actief: boolean
+  pakket_instellingen: Record<string, PakketInstelling>
+}
+
+const PAKKETTEN = ['A', 'B', 'C', 'D', 'E'] as const
+
+function PakketInstellingenCard() {
+  const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
+  const [ingeklapt, setIngeklapt] = useState(true)
+  const [bezig, setBezig] = useState(false)
+  const [lokaal, setLokaal] = useState<Record<string, PakketInstelling>>({})
+  const [opgeslagen, setOpgeslagen] = useState(false)
+
+  // Synchroniseer lokale state met server data
+  useState(() => {
+    if (inst?.pakket_instellingen) setLokaal(inst.pakket_instellingen)
+  })
+
+  const instellingen = inst?.pakket_instellingen ?? {}
+
+  function getInstelling(pakket: string): PakketInstelling {
+    return lokaal[pakket] ?? instellingen[pakket] ?? { beschikbaar: true, omschrijving: '' }
+  }
+
+  function setInstelling(pakket: string, veld: keyof PakketInstelling, waarde: boolean | string) {
+    setLokaal(prev => ({
+      ...prev,
+      [pakket]: { ...getInstelling(pakket), [veld]: waarde },
+    }))
+  }
+
+  async function slaOp() {
+    setBezig(true)
+    setOpgeslagen(false)
+    await fetch('/api/admin/gazelle-observer', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pakket_instellingen: lokaal }),
+    })
+    await mutate()
+    setBezig(false)
+    setOpgeslagen(true)
+    setTimeout(() => setOpgeslagen(false), 2500)
+  }
+
+  return (
+    <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, boxShadow: 'var(--drg-card-shadow)', marginBottom: 24, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => { setIngeklapt(v => !v); if (inst?.pakket_instellingen) setLokaal(inst.pakket_instellingen) }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, fontFamily: F }}>Pakket instellingen</h2>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', flexShrink: 0, transform: ingeklapt ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} aria-hidden>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {!ingeklapt && (
+        <div style={{ padding: '0 20px 20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            {PAKKETTEN.map(p => {
+              const inst = getInstelling(p)
+              return (
+                <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(45,69,124,0.03)', border: '1px solid var(--drg-line)' }}>
+                  {/* Pakket label */}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, width: 70, flexShrink: 0 }}>Pakket {p}</span>
+
+                  {/* Beschikbaar toggle */}
+                  <div
+                    role="switch"
+                    aria-checked={inst.beschikbaar}
+                    tabIndex={0}
+                    onClick={() => setInstelling(p, 'beschikbaar', !inst.beschikbaar)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setInstelling(p, 'beschikbaar', !inst.beschikbaar) }}
+                    style={{ width: 36, height: 20, borderRadius: 100, background: inst.beschikbaar ? 'var(--drg-ink-2)' : 'rgba(45,69,124,0.2)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}
+                  >
+                    <span style={{ position: 'absolute', top: 2, left: inst.beschikbaar ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: inst.beschikbaar ? 'var(--drg-ink-2)' : 'var(--drg-text-3)', fontFamily: F, width: 90, flexShrink: 0 }}>
+                    {inst.beschikbaar ? 'Beschikbaar' : 'Niet beschikbaar'}
+                  </span>
+
+                  {/* Omschrijving */}
+                  <input
+                    type="text"
+                    value={inst.omschrijving}
+                    onChange={e => setInstelling(p, 'omschrijving', e.target.value)}
+                    placeholder="Omschrijving (optioneel)"
+                    style={{ flex: 1, fontSize: 12, fontFamily: F, color: 'var(--drg-ink-2)', background: 'var(--drg-card-bg)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '5px 10px', outline: 'none' }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => void slaOp()}
+            disabled={bezig}
+            style={{ fontSize: 12, fontWeight: 600, color: opgeslagen ? 'var(--drg-success)' : 'var(--drg-ink-2)', background: opgeslagen ? 'rgba(22,163,74,0.08)' : 'rgba(45,69,124,0.08)', border: `1px solid ${opgeslagen ? 'rgba(22,163,74,0.2)' : 'rgba(45,69,124,0.2)'}`, borderRadius: 8, padding: '7px 16px', cursor: bezig ? 'default' : 'pointer', fontFamily: F, opacity: bezig ? 0.6 : 1, transition: 'all 0.2s' }}
+          >
+            {opgeslagen ? '✓ Opgeslagen' : bezig ? 'Opslaan…' : 'Opslaan'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
@@ -300,6 +409,7 @@ export default function GazellePakketOrders() {
       })()}
 
       <ObserverInstellingenCard />
+      <PakketInstellingenCard />
 
       {isLoading && (
         <div style={{ textAlign: 'center', padding: 48, color: 'var(--drg-text-3)', fontSize: 13, fontFamily: F }}>Laden…</div>

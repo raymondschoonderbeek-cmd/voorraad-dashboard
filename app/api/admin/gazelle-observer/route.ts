@@ -9,18 +9,22 @@ export async function GET() {
 
   const { data } = await auth.supabase
     .from('gazelle_observer_instellingen')
-    .select('webhook_secret, actief, updated_at')
+    .select('webhook_secret, actief, pakket_instellingen, updated_at')
     .eq('id', 1)
     .maybeSingle()
 
-  return NextResponse.json(data ?? { webhook_secret: null, actief: true })
+  return NextResponse.json(data ?? { webhook_secret: null, actief: true, pakket_instellingen: {} })
 }
 
 export async function PUT(request: NextRequest) {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: auth.status })
 
-  const body = await request.json() as { genereer_secret?: boolean; actief?: boolean }
+  const body = await request.json() as {
+    genereer_secret?: boolean
+    actief?: boolean
+    pakket_instellingen?: Record<string, { beschikbaar: boolean; omschrijving: string }>
+  }
   const admin = createAdminClient()
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
@@ -31,6 +35,9 @@ export async function PUT(request: NextRequest) {
   if (typeof body.actief === 'boolean') {
     updates.actief = body.actief
   }
+  if (body.pakket_instellingen) {
+    updates.pakket_instellingen = body.pakket_instellingen
+  }
 
   const { error } = await admin
     .from('gazelle_observer_instellingen')
@@ -40,7 +47,7 @@ export async function PUT(request: NextRequest) {
 
   const { data } = await admin
     .from('gazelle_observer_instellingen')
-    .select('webhook_secret, actief')
+    .select('webhook_secret, actief, pakket_instellingen')
     .eq('id', 1)
     .single()
 
