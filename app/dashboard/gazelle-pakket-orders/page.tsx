@@ -279,6 +279,26 @@ export default function GazellePakketOrders() {
         </p>
       </div>
 
+      {/* Stat-kaarten */}
+      {orders.length > 0 && (() => {
+        const aantalA = orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === 'A').length
+        const aantalB = orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === 'B').length
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+            {[
+              { label: 'Totaal orders', value: orders.length },
+              { label: 'Pakket A', value: aantalA },
+              { label: 'Pakket B', value: aantalB },
+            ].map(s => (
+              <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--drg-card-shadow)' }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 4 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       <ObserverInstellingenCard />
 
       {isLoading && (
