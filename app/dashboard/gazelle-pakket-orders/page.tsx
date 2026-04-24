@@ -137,14 +137,14 @@ function ObserverInstellingenCard() {
   const [ingeklapt, setIngeklapt] = useState(true)
   const [geheimTonen, setGeheimTonen] = useState(false)
   const [bezig, setBezig] = useState(false)
-  const [sheetUrl, setSheetUrl] = useState('')
+  // null = niet bewerkt, toon server-waarde; string = gebruiker typt
+  const [sheetUrlEdit, setSheetUrlEdit] = useState<string | null>(null)
+  const [sheetFout, setSheetFout] = useState<string | null>(null)
   const [sheetOpgeslagen, setSheetOpgeslagen] = useState(false)
+  const sheetUrl = sheetUrlEdit ?? inst?.google_sheet_url ?? ''
   const webhookUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/api/webhooks/freshdesk-gazelle`
     : '/api/webhooks/freshdesk-gazelle'
-
-  // Sync sheet URL van server
-  if (inst?.google_sheet_url && !sheetUrl) setSheetUrl(inst.google_sheet_url)
 
   async function genereerGeheim() {
     setBezig(true)
@@ -160,15 +160,22 @@ function ObserverInstellingenCard() {
 
   async function slaSheetUrlOp() {
     setBezig(true)
-    await fetch('/api/admin/gazelle-observer', {
+    setSheetFout(null)
+    const res = await fetch('/api/admin/gazelle-observer', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ google_sheet_url: sheetUrl.trim() || null }),
     })
+    const json = await res.json() as { ok?: boolean; error?: string }
     await mutate()
     setBezig(false)
-    setSheetOpgeslagen(true)
-    setTimeout(() => setSheetOpgeslagen(false), 2500)
+    if (!res.ok) {
+      setSheetFout(json.error ?? 'Opslaan mislukt — controleer of de SQL-migratie is uitgevoerd.')
+    } else {
+      setSheetUrlEdit(null) // terug naar server-waarde
+      setSheetOpgeslagen(true)
+      setTimeout(() => setSheetOpgeslagen(false), 2500)
+    }
   }
 
   const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', fontFamily: F, display: 'block', marginBottom: 6 }
@@ -223,9 +230,9 @@ function ObserverInstellingenCard() {
           <input
             type="url"
             value={sheetUrl}
-            onChange={e => setSheetUrl(e.target.value)}
+            onChange={e => { setSheetUrlEdit(e.target.value); setSheetFout(null) }}
             placeholder="https://script.google.com/macros/s/…/exec"
-            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
+            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: `1px solid ${sheetFout ? 'rgba(220,38,38,0.4)' : 'rgba(45,69,124,0.15)'}`, borderRadius: 8, padding: '8px 12px', outline: 'none' }}
           />
           <button
             type="button"
@@ -233,9 +240,12 @@ function ObserverInstellingenCard() {
             disabled={bezig}
             style={{ fontSize: 11, fontWeight: 600, color: sheetOpgeslagen ? 'var(--drg-success)' : 'var(--drg-ink-2)', background: sheetOpgeslagen ? 'rgba(22,163,74,0.08)' : 'rgba(45,69,124,0.08)', border: `1px solid ${sheetOpgeslagen ? 'rgba(22,163,74,0.2)' : 'rgba(45,69,124,0.2)'}`, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontFamily: F, whiteSpace: 'nowrap', transition: 'all 0.2s' }}
           >
-            {sheetOpgeslagen ? '✓ Opgeslagen' : 'Opslaan'}
+            {sheetOpgeslagen ? '✓ Opgeslagen' : bezig ? 'Opslaan…' : 'Opslaan'}
           </button>
         </div>
+        {sheetFout && (
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--drg-danger)', fontFamily: F }}>{sheetFout}</div>
+        )}
       </div>
 
       <div style={{ borderRadius: 8, padding: '10px 12px', background: 'rgba(45,69,124,0.04)', fontSize: 12, color: 'rgba(45,69,124,0.7)', fontFamily: F, lineHeight: 1.6 }}>
