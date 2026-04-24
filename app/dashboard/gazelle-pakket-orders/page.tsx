@@ -300,7 +300,8 @@ type SessionInfo = { isAdmin?: boolean; moduleRollen?: Record<string, string> }
 
 export default function GazellePakketOrders() {
   const { data, isLoading, mutate } = useSWR<GazelleOrder[]>('/api/gazelle-orders', fetcher)
-  const { data: observerInst } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
+  // Beschikbaarheid is toegankelijk voor alle gazelle-orders gebruikers (niet admin-only)
+  const { data: beschikbaarheidData } = useSWR<Record<string, { aantal: number }>>('/api/gazelle-orders/beschikbaarheid', fetcher)
   const { data: session } = useSWR<SessionInfo>('/api/auth/session-info', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
@@ -382,9 +383,9 @@ export default function GazellePakketOrders() {
         </p>
       </div>
 
-      {/* Stat-kaarten */}
+      {/* Stat-kaarten — altijd zichtbaar voor iedereen met toegang */}
       {(() => {
-        const beschikbaar = observerInst?.pakket_instellingen ?? {}
+        const beschikbaar = beschikbaarheidData ?? {}
         const telPakket = (letter: string) =>
           orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === letter).length
 
@@ -394,7 +395,7 @@ export default function GazellePakketOrders() {
             label: `Pakket ${p}`,
             orders: telPakket(p),
             beschikbaar: beschikbaar[p]?.aantal ?? null,
-          })).filter(s => s.orders > 0 || (s.beschikbaar !== null && s.beschikbaar > 0)),
+          })),
         ]
 
         if (stats.length === 0) return null
