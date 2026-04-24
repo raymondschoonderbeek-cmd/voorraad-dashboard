@@ -400,17 +400,29 @@ export default function GazellePakketOrders() {
         if (stats.length === 0) return null
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
-            {stats.map(s => (
-              <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--drg-card-shadow)' }}>
-                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.orders}</div>
-                <div style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 4 }}>{s.label}</div>
-                {s.beschikbaar !== null && (
-                  <div style={{ fontSize: 11, color: 'var(--drg-ink-2)', fontFamily: F, marginTop: 6, fontWeight: 600 }}>
-                    {s.beschikbaar} beschikbaar
-                  </div>
-                )}
-              </div>
-            ))}
+            {stats.map(s => {
+              const resterend = s.beschikbaar !== null ? s.beschikbaar - s.orders : null
+              return (
+                <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--drg-card-shadow)' }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.orders}</div>
+                  <div style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 4 }}>{s.label}</div>
+                  {s.beschikbaar !== null && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: F }}>
+                        <span style={{ color: 'var(--drg-text-3)' }}>Beschikbaar</span>
+                        <span style={{ fontWeight: 600, color: 'var(--drg-ink-2)' }}>{s.beschikbaar}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: F }}>
+                        <span style={{ color: 'var(--drg-text-3)' }}>Resterend</span>
+                        <span style={{ fontWeight: 700, color: resterend !== null && resterend <= 0 ? 'var(--drg-danger)' : 'var(--drg-success)' }}>
+                          {resterend}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )
       })()}
