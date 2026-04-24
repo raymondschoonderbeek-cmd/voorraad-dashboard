@@ -528,8 +528,8 @@ function GebruikersModal({
           <label style={labelStyle}>Gebruiker toevoegen</label>
           {!portalData ? (
             <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>Laden…</p>
-          ) : beschikbaar.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>Alle gebruikers zijn al gekoppeld.</p>
+          ) : beschikbaarPortal.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '13px', color: dashboardUi.textMuted }}>Alle portaalgebruikers zijn al gekoppeld.</p>
           ) : (
             <>
               {/* Search + selecteer alles */}
