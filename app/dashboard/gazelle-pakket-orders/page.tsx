@@ -216,35 +216,8 @@ type GazelleOrder = {
   adres: string | null
   producten: Product[]
   raw_description: string | null
-  status: string
 }
 
-const STATUS_OPTIES = ['nieuw', 'in behandeling', 'afgerond', 'geannuleerd']
-
-const STATUS_STIJL: Record<string, { background: string; color: string }> = {
-  'nieuw':           { background: 'rgba(45,69,124,0.1)',   color: 'var(--drg-ink-2)' },
-  'in behandeling':  { background: 'rgba(217,119,6,0.1)',   color: '#d97706' },
-  'afgerond':        { background: 'rgba(22,163,74,0.1)',    color: 'var(--drg-success)' },
-  'geannuleerd':     { background: 'rgba(107,114,128,0.1)', color: '#6b7280' },
-}
-
-function StatusSelect({ status, onChange }: { status: string; onChange: (s: string) => void }) {
-  const stijl = STATUS_STIJL[status] ?? STATUS_STIJL['nieuw']
-  return (
-    <select
-      value={status}
-      onChange={e => onChange(e.target.value)}
-      onClick={e => e.stopPropagation()}
-      style={{
-        ...stijl, fontSize: 11, fontWeight: 600, padding: '3px 8px',
-        borderRadius: 6, border: 'none', cursor: 'pointer', outline: 'none',
-        fontFamily: F,
-      }}
-    >
-      {STATUS_OPTIES.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
-  )
-}
 
 function extractLidnummer(naam: string): string {
   return naam.match(/^(\d+)\s/)?.[1] ?? ''
@@ -321,15 +294,6 @@ export default function GazellePakketOrders() {
   const moduleRol = session?.moduleRollen?.['gazelle-orders']
   const isGazelleAdmin = isAdmin || moduleRol === 'admin'
   const isBewerker = isGazelleAdmin || moduleRol === 'bewerker'
-
-  async function updateStatus(id: string, status: string) {
-    await fetch(`/api/gazelle-orders?id=${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    await mutate()
-  }
 
   async function herparser(id: string) {
     setReparseBezig(id)
@@ -531,8 +495,8 @@ export default function GazellePakketOrders() {
         <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--drg-card-shadow)' }}>
 
           {/* Tabelheader */}
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 110px 1fr 1fr 130px', padding: '10px 16px', borderBottom: '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.03)', gap: 12 }}>
-            {['Ontvangen', 'Bestelnr.', 'Naam', 'Product', 'Status'].map(h => (
+          <div style={{ display: 'grid', gridTemplateColumns: '130px 110px 1fr 1fr', padding: '10px 16px', borderBottom: '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.03)', gap: 12 }}>
+            {['Ontvangen', 'Bestelnr.', 'Naam', 'Product'].map(h => (
               <span key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--drg-text-3)', fontFamily: F }}>{h}</span>
             ))}
           </div>
@@ -550,7 +514,7 @@ export default function GazellePakketOrders() {
                   onClick={() => setUitgebreid(isOpen ? null : order.id)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setUitgebreid(isOpen ? null : order.id) }}
                   style={{
-                    display: 'grid', gridTemplateColumns: '130px 110px 1fr 1fr 130px',
+                    display: 'grid', gridTemplateColumns: '130px 110px 1fr 1fr',
                     padding: '12px 16px', cursor: 'pointer', gap: 12,
                     borderBottom: isLast && !isOpen ? 'none' : '1px solid var(--drg-line)',
                     background: isOpen ? 'rgba(45,69,124,0.025)' : 'transparent',
@@ -570,7 +534,6 @@ export default function GazellePakketOrders() {
                   <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {hoofdProduct?.omschrijving ?? '—'}
                   </span>
-                  <StatusSelect status={order.status} onChange={s => updateStatus(order.id, s)} />
                 </div>
 
                 {isOpen && (
