@@ -12,6 +12,7 @@ type ObserverInstellingen = {
   webhook_secret: string | null
   actief: boolean
   pakket_instellingen: Record<string, PakketInstelling>
+  google_sheet_url: string | null
 }
 
 const PAKKETTEN = ['A', 'B', 'C', 'D', 'E'] as const
@@ -136,9 +137,14 @@ function ObserverInstellingenCard() {
   const [ingeklapt, setIngeklapt] = useState(true)
   const [geheimTonen, setGeheimTonen] = useState(false)
   const [bezig, setBezig] = useState(false)
+  const [sheetUrl, setSheetUrl] = useState('')
+  const [sheetOpgeslagen, setSheetOpgeslagen] = useState(false)
   const webhookUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/api/webhooks/freshdesk-gazelle`
     : '/api/webhooks/freshdesk-gazelle'
+
+  // Sync sheet URL van server
+  if (inst?.google_sheet_url && !sheetUrl) setSheetUrl(inst.google_sheet_url)
 
   async function genereerGeheim() {
     setBezig(true)
@@ -150,6 +156,19 @@ function ObserverInstellingenCard() {
     await mutate()
     setGeheimTonen(true)
     setBezig(false)
+  }
+
+  async function slaSheetUrlOp() {
+    setBezig(true)
+    await fetch('/api/admin/gazelle-observer', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ google_sheet_url: sheetUrl.trim() || null }),
+    })
+    await mutate()
+    setBezig(false)
+    setSheetOpgeslagen(true)
+    setTimeout(() => setSheetOpgeslagen(false), 2500)
   }
 
   const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', fontFamily: F, display: 'block', marginBottom: 6 }
@@ -195,6 +214,28 @@ function ObserverInstellingenCard() {
         <button type="button" onClick={() => void genereerGeheim()} disabled={bezig} style={{ marginTop: 8, background: 'transparent', border: '1px solid rgba(45,69,124,0.2)', color: 'var(--drg-ink-2)', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F, opacity: bezig ? 0.5 : 1 }}>
           Nieuw secret genereren
         </button>
+      </div>
+
+      {/* Google Sheet URL */}
+      <div style={{ marginBottom: 14 }}>
+        <span style={labelStyle}>Google Sheet Script URL</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="url"
+            value={sheetUrl}
+            onChange={e => setSheetUrl(e.target.value)}
+            placeholder="https://script.google.com/macros/s/…/exec"
+            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
+          />
+          <button
+            type="button"
+            onClick={() => void slaSheetUrlOp()}
+            disabled={bezig}
+            style={{ fontSize: 11, fontWeight: 600, color: sheetOpgeslagen ? 'var(--drg-success)' : 'var(--drg-ink-2)', background: sheetOpgeslagen ? 'rgba(22,163,74,0.08)' : 'rgba(45,69,124,0.08)', border: `1px solid ${sheetOpgeslagen ? 'rgba(22,163,74,0.2)' : 'rgba(45,69,124,0.2)'}`, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontFamily: F, whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+          >
+            {sheetOpgeslagen ? '✓ Opgeslagen' : 'Opslaan'}
+          </button>
+        </div>
       </div>
 
       <div style={{ borderRadius: 8, padding: '10px 12px', background: 'rgba(45,69,124,0.04)', fontSize: 12, color: 'rgba(45,69,124,0.7)', fontFamily: F, lineHeight: 1.6 }}>
@@ -317,6 +358,20 @@ export default function GazellePakketOrders() {
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
+  const [pushBezig, setPushBezig] = useState<string | null>(null)
+  const [pushStatus, setPushStatus] = useState<Record<string, 'ok' | 'fout'>>({})
+
+  async function pushNaarSheet(id: string) {
+    setPushBezig(id)
+    setPushStatus(prev => { const n = { ...prev }; delete n[id]; return n })
+    const res = await fetch('/api/admin/gazelle-sheet-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: id }),
+    })
+    setPushBezig(null)
+    setPushStatus(prev => ({ ...prev, [id]: res.ok ? 'ok' : 'fout' }))
+  }
 
   const orders: GazelleOrder[] = Array.isArray(data) ? data : []
   const fout = data && !Array.isArray(data)
@@ -487,6 +542,14 @@ export default function GazellePakketOrders() {
                           style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: reparseBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: reparseBezig === order.id ? 0.5 : 1 }}
                         >
                           {reparseBezig === order.id ? 'Bezig…' : 'Opnieuw parsen'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pushBezig === order.id}
+                          onClick={e => { e.stopPropagation(); void pushNaarSheet(order.id) }}
+                          style={{ fontSize: 10, fontWeight: 600, color: pushStatus[order.id] === 'ok' ? 'var(--drg-success)' : pushStatus[order.id] === 'fout' ? 'var(--drg-danger)' : 'var(--drg-ink-2)', background: pushStatus[order.id] === 'ok' ? 'rgba(22,163,74,0.08)' : pushStatus[order.id] === 'fout' ? 'rgba(220,38,38,0.07)' : 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: pushBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: pushBezig === order.id ? 0.5 : 1 }}
+                        >
+                          {pushBezig === order.id ? 'Bezig…' : pushStatus[order.id] === 'ok' ? '✓ Naar sheet' : pushStatus[order.id] === 'fout' ? '✗ Mislukt' : 'Push naar Sheet'}
                         </button>
                       </div>
                       {reparseFout && uitgebreid === order.id && (
