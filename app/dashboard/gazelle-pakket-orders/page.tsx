@@ -14,7 +14,7 @@ type ObserverInstellingen = {
   pakket_instellingen: Record<string, PakketInstelling>
 }
 
-const PAKKETTEN = ['A', 'B', 'C', 'D', 'E'] as const
+const PAKKETTEN = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 
 function PakketInstellingenCard() {
   const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
