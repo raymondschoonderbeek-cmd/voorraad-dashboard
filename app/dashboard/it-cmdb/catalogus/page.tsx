@@ -45,6 +45,11 @@ interface PortalUser {
   naam: string
 }
 
+interface ExterneGebruiker {
+  email: string
+  naam: string | null
+}
+
 type AanvraagStatus = 'ingediend' | 'wacht_op_manager' | 'goedgekeurd' | 'afgekeurd'
 
 interface Aanvraag {
@@ -426,74 +431,79 @@ function GebruikersModal({
     `/api/it-cmdb/catalogus/${item.id}/gebruikers`, fetcher
   )
   const { data: portalData } = useSWR<{ users: PortalUser[] }>('/api/it-cmdb/portal-users', fetcher)
+  const [toonOverige, setToonOverige] = useState(false)
+  const { data: externeData } = useSWR<{ users: ExterneGebruiker[] }>(
+    toonOverige ? '/api/it-cmdb/externe-gebruikers' : null, fetcher
+  )
 
-  const gekoppeld = gekoppeldData?.gebruikers ?? []
-  const beschikbaar = useMemo(() => {
+  const gekoppeld = useMemo(() => gekoppeldData?.gebruikers ?? [], [gekoppeldData])
+
+  const beschikbaarPortal = useMemo(() => {
     const ids = new Set(gekoppeld.filter(g => g.user_id).map(g => g.user_id as string))
     return (portalData?.users ?? [])
       .filter(u => !ids.has(u.user_id) && u.email)
       .sort((a, b) => (a.naam || a.email).localeCompare(b.naam || b.email, 'nl'))
   }, [portalData, gekoppeld])
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const beschikbaarExtern = useMemo(() => {
+    const gekoppeldeEmails = new Set(gekoppeld.filter(g => !g.user_id).map(g => g.email.toLowerCase()))
+    return (externeData?.users ?? []).filter(u => !gekoppeldeEmails.has(u.email.toLowerCase()))
+  }, [externeData, gekoppeld])
+
+  // Selectie: portal users via user_id, externe via email
+  const [selectedPortalIds, setSelectedPortalIds] = useState<Set<string>>(new Set())
+  const [selectedExternEmails, setSelectedExternEmails] = useState<Set<string>>(new Set())
   const [zoek, setZoek] = useState('')
   const [adding, setAdding] = useState(false)
   const isProduct = item.type === 'product'
 
-  const zoekResultaten = useMemo(() => {
+  const zoekPortal = useMemo(() => {
     const q = zoek.trim().toLowerCase()
-    if (!q) return beschikbaar
-    return beschikbaar.filter(u =>
+    if (!q) return beschikbaarPortal
+    return beschikbaarPortal.filter(u =>
       (u.naam || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     )
-  }, [beschikbaar, zoek])
+  }, [beschikbaarPortal, zoek])
 
-  function toggleUser(userId: string) {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      next.has(userId) ? next.delete(userId) : next.add(userId)
-      return next
-    })
-  }
+  const zoekExtern = useMemo(() => {
+    const q = zoek.trim().toLowerCase()
+    if (!q) return beschikbaarExtern
+    return beschikbaarExtern.filter(u =>
+      (u.naam || '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+    )
+  }, [beschikbaarExtern, zoek])
 
-  function toggleAll() {
-    if (zoekResultaten.every(u => selectedIds.has(u.user_id))) {
-      setSelectedIds(prev => {
-        const next = new Set(prev)
-        zoekResultaten.forEach(u => next.delete(u.user_id))
-        return next
-      })
-    } else {
-      setSelectedIds(prev => {
-        const next = new Set(prev)
-        zoekResultaten.forEach(u => next.add(u.user_id))
-        return next
-      })
-    }
-  }
+  const totaalGeselecteerd = selectedPortalIds.size + selectedExternEmails.size
 
   async function koppel() {
-    if (selectedIds.size === 0) return
+    if (totaalGeselecteerd === 0) return
     setAdding(true)
     try {
-      const ids = [...selectedIds]
-      const results = await Promise.allSettled(
-        ids.map(uid =>
-          fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: uid }),
-          }).then(r => r.ok ? r.json() : r.json().then((j: { error?: string }) => Promise.reject(new Error(j.error ?? 'Koppelen mislukt'))))
-        )
+      const portalRequests = [...selectedPortalIds].map(uid =>
+        fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: uid }),
+        }).then(r => r.ok ? r.json() : r.json().then((j: { error?: string }) => Promise.reject(new Error(j.error ?? 'Koppelen mislukt'))))
       )
+      const externeRequests = [...selectedExternEmails].map(email => {
+        const gebruiker = beschikbaarExtern.find(u => u.email === email)
+        return fetch(`/api/it-cmdb/catalogus/${item.id}/gebruikers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ microsoft_email: email, microsoft_naam: gebruiker?.naam ?? null }),
+        }).then(r => r.ok ? r.json() : r.json().then((j: { error?: string }) => Promise.reject(new Error(j.error ?? 'Koppelen mislukt'))))
+      })
+      const results = await Promise.allSettled([...portalRequests, ...externeRequests])
       const fouten = results.filter(r => r.status === 'rejected').length
       await mutate()
-      setSelectedIds(new Set())
+      setSelectedPortalIds(new Set())
+      setSelectedExternEmails(new Set())
       setZoek('')
       if (fouten === 0) {
-        toast(`${ids.length} gebruiker${ids.length !== 1 ? 's' : ''} gekoppeld.`, 'success')
+        toast(`${totaalGeselecteerd} gebruiker${totaalGeselecteerd !== 1 ? 's' : ''} gekoppeld.`, 'success')
       } else {
-        toast(`${ids.length - fouten} gekoppeld, ${fouten} mislukt.`, 'error')
+        toast(`${totaalGeselecteerd - fouten} gekoppeld, ${fouten} mislukt.`, 'error')
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Koppelen mislukt', 'error')
@@ -531,34 +541,36 @@ function GebruikersModal({
                   placeholder="Zoek op naam of e-mail…"
                   style={{ ...inputStyle, margin: 0, flex: 1 }}
                 />
-                <button
-                  type="button"
-                  onClick={toggleAll}
-                  style={{ fontSize: '12px', fontWeight: 600, color: DYNAMO_BLUE, background: 'none', border: '1px solid rgba(45,69,124,0.2)', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: F }}
-                >
-                  {zoekResultaten.every(u => selectedIds.has(u.user_id)) ? 'Geen' : 'Alles'}
-                </button>
               </div>
-              {/* Scrollable pick list */}
-              <div style={{ border: '1px solid rgba(45,69,124,0.12)', borderRadius: '10px', overflowY: 'auto', maxHeight: '240px', background: 'white' }}>
-                {zoekResultaten.length === 0 ? (
+
+              {/* Toggle: toon overige gebruikers */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '8px', marginBottom: '4px' }}>
+                <div
+                  role="switch"
+                  aria-checked={toonOverige}
+                  onClick={() => setToonOverige(v => !v)}
+                  style={{ width: 32, height: 18, borderRadius: 100, background: toonOverige ? DYNAMO_BLUE : 'rgba(45,69,124,0.2)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}
+                >
+                  <span style={{ position: 'absolute', top: 1, left: toonOverige ? 15 : 1, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </div>
+                <span style={{ fontSize: '12px', color: toonOverige ? DYNAMO_BLUE : 'rgba(45,69,124,0.5)', fontWeight: 600, fontFamily: F }}>Toon overige gebruikers</span>
+              </label>
+
+              {/* Scrollable pick list — portaalgebruikers */}
+              <div style={{ border: '1px solid rgba(45,69,124,0.12)', borderRadius: '10px', overflowY: 'auto', maxHeight: '200px', background: 'white' }}>
+                {zoekPortal.length === 0 && !toonOverige ? (
                   <p style={{ margin: 0, padding: '10px 14px', fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen gebruikers gevonden</p>
-                ) : zoekResultaten.map(u => {
-                  const selected = selectedIds.has(u.user_id)
+                ) : zoekPortal.map(u => {
+                  const selected = selectedPortalIds.has(u.user_id)
                   return (
                     <button
                       key={u.user_id}
                       type="button"
-                      onClick={() => toggleUser(u.user_id)}
+                      onClick={() => setSelectedPortalIds(prev => { const n = new Set(prev); n.has(u.user_id) ? n.delete(u.user_id) : n.add(u.user_id); return n })}
                       style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', padding: '9px 14px', background: selected ? 'rgba(45,69,124,0.07)' : 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
                     >
-                      {/* Checkbox */}
                       <span style={{ width: '16px', height: '16px', borderRadius: '4px', border: `2px solid ${selected ? DYNAMO_BLUE : 'rgba(45,69,124,0.25)'}`, background: selected ? DYNAMO_BLUE : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {selected && (
-                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden>
-                            <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
+                        {selected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </span>
                       <span>
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
@@ -567,18 +579,53 @@ function GebruikersModal({
                     </button>
                   )
                 })}
+
+                {/* Externe gebruikers — alleen zichtbaar met toggle */}
+                {toonOverige && zoekExtern.length > 0 && (
+                  <>
+                    <div style={{ padding: '6px 14px', background: 'rgba(45,69,124,0.04)', borderTop: '1px solid rgba(45,69,124,0.1)', borderBottom: '1px solid rgba(45,69,124,0.1)' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Overige (Microsoft)</span>
+                    </div>
+                    {zoekExtern.map(u => {
+                      const selected = selectedExternEmails.has(u.email)
+                      return (
+                        <button
+                          key={u.email}
+                          type="button"
+                          onClick={() => setSelectedExternEmails(prev => { const n = new Set(prev); n.has(u.email) ? n.delete(u.email) : n.add(u.email); return n })}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', padding: '9px 14px', background: selected ? 'rgba(45,69,124,0.07)' : 'none', border: 'none', borderBottom: '1px solid rgba(45,69,124,0.06)', cursor: 'pointer', fontFamily: F }}
+                        >
+                          <span style={{ width: '16px', height: '16px', borderRadius: '4px', border: `2px solid ${selected ? DYNAMO_BLUE : 'rgba(45,69,124,0.25)'}`, background: selected ? DYNAMO_BLUE : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {selected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </span>
+                          <span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', display: 'block' }}>{u.naam || prettyEmail(u.email)}</span>
+                            <span style={{ fontSize: '11px', color: 'rgba(45,69,124,0.5)' }}>{u.email}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </>
+                )}
+                {toonOverige && !externeData && (
+                  <p style={{ margin: 0, padding: '10px 14px', fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Laden…</p>
+                )}
+                {toonOverige && externeData && zoekExtern.length === 0 && (
+                  <p style={{ margin: 0, padding: '10px 14px', fontSize: '13px', color: 'rgba(45,69,124,0.5)' }}>Geen overige gebruikers gevonden</p>
+                )}
               </div>
+
               <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: 'rgba(45,69,124,0.5)' }}>
-                  {selectedIds.size > 0 ? `${selectedIds.size} geselecteerd` : `${zoekResultaten.length} van ${beschikbaar.length} beschikbaar`}
+                  {totaalGeselecteerd > 0 ? `${totaalGeselecteerd} geselecteerd` : `${zoekPortal.length} portaalgebruikers beschikbaar`}
                 </span>
                 <button
                   type="button"
-                  disabled={selectedIds.size === 0 || adding}
+                  disabled={totaalGeselecteerd === 0 || adding}
                   onClick={() => void koppel()}
-                  style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (selectedIds.size === 0 || adding) ? 'not-allowed' : 'pointer', opacity: (selectedIds.size === 0 || adding) ? 0.5 : 1 }}
+                  style={{ borderRadius: '10px', padding: '8px 20px', fontSize: '13px', fontWeight: 700, background: DYNAMO_BLUE, color: 'white', border: 'none', fontFamily: F, cursor: (totaalGeselecteerd === 0 || adding) ? 'not-allowed' : 'pointer', opacity: (totaalGeselecteerd === 0 || adding) ? 0.5 : 1 }}
                 >
-                  {adding ? 'Koppelen…' : selectedIds.size > 1 ? `${selectedIds.size} koppelen` : 'Koppelen'}
+                  {adding ? 'Koppelen…' : totaalGeselecteerd > 1 ? `${totaalGeselecteerd} koppelen` : 'Koppelen'}
                 </button>
               </div>
               {isProduct && (
