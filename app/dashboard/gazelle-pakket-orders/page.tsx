@@ -296,15 +296,24 @@ function DetailRij({ label, waarde }: { label: string; waarde: string | null | u
   )
 }
 
+type SessionInfo = { isAdmin?: boolean; moduleRollen?: Record<string, string> }
+
 export default function GazellePakketOrders() {
   const { data, isLoading, mutate } = useSWR<GazelleOrder[]>('/api/gazelle-orders', fetcher)
   const { data: observerInst } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
+  const { data: session } = useSWR<SessionInfo>('/api/auth/session-info', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
 
   const orders: GazelleOrder[] = Array.isArray(data) ? data : []
   const fout = data && !Array.isArray(data)
+
+  // Admin-kaarten alleen tonen voor globale admins of gazelle-orders beheerders
+  const isAdmin = session?.isAdmin ?? false
+  const moduleRol = session?.moduleRollen?.['gazelle-orders']
+  const isGazelleAdmin = isAdmin || moduleRol === 'admin'
+  const isBewerker = isGazelleAdmin || moduleRol === 'bewerker'
 
   async function updateStatus(id: string, status: string) {
     await fetch(`/api/gazelle-orders?id=${id}`, {
@@ -406,8 +415,8 @@ export default function GazellePakketOrders() {
         )
       })()}
 
-      <ObserverInstellingenCard />
-      <PakketInstellingenCard />
+      {isGazelleAdmin && <ObserverInstellingenCard />}
+      {isGazelleAdmin && <PakketInstellingenCard />}
 
       {isLoading && (
         <div style={{ textAlign: 'center', padding: 48, color: 'var(--drg-text-3)', fontSize: 13, fontFamily: F }}>Laden…</div>
@@ -478,14 +487,16 @@ export default function GazellePakketOrders() {
                     <div style={{ minWidth: 220 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>Klantgegevens</p>
-                        <button
-                          type="button"
-                          disabled={reparseBezig === order.id}
-                          onClick={e => { e.stopPropagation(); void herparser(order.id) }}
-                          style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: reparseBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: reparseBezig === order.id ? 0.5 : 1 }}
-                        >
-                          {reparseBezig === order.id ? 'Bezig…' : 'Opnieuw parsen'}
-                        </button>
+                        {isBewerker && (
+                          <button
+                            type="button"
+                            disabled={reparseBezig === order.id}
+                            onClick={e => { e.stopPropagation(); void herparser(order.id) }}
+                            style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: reparseBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: reparseBezig === order.id ? 0.5 : 1 }}
+                          >
+                            {reparseBezig === order.id ? 'Bezig…' : 'Opnieuw parsen'}
+                          </button>
+                        )}
                       </div>
                       {reparseFout && uitgebreid === order.id && (
                         <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontFamily: F }}>

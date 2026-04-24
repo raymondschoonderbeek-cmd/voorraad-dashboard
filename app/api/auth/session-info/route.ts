@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isIpTrusted, getClientIp } from '@/lib/trusted-ips'
 import { withRateLimit } from '@/lib/api-middleware'
 import { parseLandenToegang, resolveDashboardModules, type LandCode } from '@/lib/dashboard-modules'
+import type { ModuleRol } from '@/lib/module-rollen'
 
 /**
  * Retourneert sessie-info voor MFA/IP-logica.
@@ -67,6 +68,18 @@ export async function GET(request: NextRequest) {
     const canManageInterneNieuws = isAdmin || dashboardModules.includes('interne-nieuws')
     const canAccessItCmdb = isAdmin || dashboardModules.includes('it-cmdb')
 
+    // Per-module rollen ophalen
+    let moduleRollen: Record<string, ModuleRol> = {}
+    try {
+      const { data: rollenData } = await supabase
+        .from('gebruiker_module_rollen')
+        .select('module, rol')
+        .eq('user_id', user.id)
+      if (rollenData) {
+        moduleRollen = Object.fromEntries(rollenData.map(r => [r.module, r.rol as ModuleRol]))
+      }
+    } catch { /* tabel bestaat mogelijk nog niet */ }
+
     const clientIp = getClientIp(request)
     const { data: dbIps, error: dbErr } = await supabase.from('trusted_ips').select('ip_or_cidr')
     const dbEntries = !dbErr && dbIps ? dbIps.map(r => r.ip_or_cidr).filter(Boolean) : []
@@ -106,6 +119,7 @@ export async function GET(request: NextRequest) {
       canManageInterneNieuws,
       canAccessItCmdb,
       dashboardModules,
+      moduleRollen,
       allowedCountries,
       mustChangePassword,
     })

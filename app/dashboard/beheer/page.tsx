@@ -16,6 +16,7 @@ import { ImportTab } from '@/components/beheer/ImportTab'
 import { PubliekeAfbeeldingenTab } from '@/components/beheer/PubliekeAfbeeldingenTab'
 import { TvMededelingenTab } from '@/components/beheer/TvMededelingenTab'
 import { DASHBOARD_MODULE_ORDER, type DashboardModuleId, type LandCode } from '@/lib/dashboard-modules'
+import { MODULE_ROL_LABELS, MODULE_ROL_ORDER, type ModuleRol } from '@/lib/module-rollen'
 const F = "'Outfit', sans-serif"
 const BIKE_TOTAAL_LOGO = '/bike-totaal-logo.png'
 const WINKEL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777']
@@ -148,6 +149,8 @@ export default function BeheerPage() {
   const [profileModulesResolved, setProfileModulesResolved] = useState<Record<string, DashboardModuleId[]>>({})
   const [profileLandenRaw, setProfileLandenRaw] = useState<Record<string, unknown>>({})
   const [bewerkModules, setBewerkModules] = useState<DashboardModuleId[]>([])
+  const [bewerkModuleRollen, setBewerkModuleRollen] = useState<Record<string, ModuleRol | 'geen'>>({})
+  const [nieuwModuleRollen, setNieuwModuleRollen] = useState<Record<string, ModuleRol | 'geen'>>({})
   const [bewerkLandFilter, setBewerkLandFilter] = useState<LandFilter>('alle')
 
   // Bulk module toewijzen
@@ -633,8 +636,19 @@ export default function BeheerPage() {
     const data = await res.json().catch(() => ({}))
     setFormLoading(false)
     if (res.ok) {
+      // Module-rollen opslaan
+      await Promise.all(
+        Object.entries(bewerkModuleRollen).map(([module, rol]) =>
+          fetch('/api/admin/module-rollen', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: bewerkGebruiker.user_id, module, rol }),
+          })
+        )
+      )
       setBewerkGebruiker(null)
       setBewerkEmail('')
+      setBewerkModuleRollen({})
       setFormSuccess('Gebruiker opgeslagen.')
       await haalGebruikersOp(true)
     } else {
@@ -771,12 +785,18 @@ export default function BeheerPage() {
     setBewerkGebruiker(rol)
     setBewerkEmail(userEmails[rol.user_id] ?? '')
     setBewerkModules(profileModulesToegang[rol.user_id] ?? profileModulesResolved[rol.user_id] ?? [])
+    setBewerkModuleRollen({})
     const raw = profileLandenRaw[rol.user_id]
     if (raw == null) setBewerkLandFilter('alle')
     else if (Array.isArray(raw) && raw.length === 1 && raw[0] === 'Netherlands') setBewerkLandFilter('Netherlands')
     else if (Array.isArray(raw) && raw.length === 1 && raw[0] === 'Belgium') setBewerkLandFilter('Belgium')
     else setBewerkLandFilter('alle')
     setToonForm(false)
+    // Laad bestaande module-rollen voor deze gebruiker
+    void fetch(`/api/admin/module-rollen?user_id=${rol.user_id}`)
+      .then(r => r.json())
+      .then((rollen: Record<string, ModuleRol>) => setBewerkModuleRollen(rollen))
+      .catch(() => {})
   }
 
   async function slaaBulkModulesOp() {
@@ -1561,22 +1581,38 @@ export default function BeheerPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dashboard-modules</label>
+                      <label className="text-xs font-semibold mb-2 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dashboard-modules & rechten</label>
                       {bewerkGebruiker.rol === 'lunch' ? (
                         <p className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>Lunch-gebruikers zien alleen de lunch-pagina.</p>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {DASHBOARD_MODULE_ORDER.map(id => (
-                            <label key={id} className="flex items-center gap-2 cursor-pointer rounded-xl border p-2.5 transition" style={bewerkModules.includes(id) ? { borderColor: DYNAMO_BLUE, background: 'rgba(45,69,124,0.04)' } : { borderColor: 'rgba(45,69,124,0.1)' }}>
-                              <input
-                                type="checkbox"
-                                checked={bewerkModules.includes(id)}
-                                onChange={() => setBewerkModules(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                                className="accent-[#2D457C]"
-                              />
-                              <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{MODULE_LABELS[id]}</span>
-                            </label>
-                          ))}
+                        <div className="flex flex-col gap-1.5">
+                          {DASHBOARD_MODULE_ORDER.map(id => {
+                            const rolWaarde: ModuleRol | 'geen' = bewerkModuleRollen[id] ?? (bewerkModules.includes(id) ? 'viewer' : 'geen')
+                            return (
+                              <div key={id} className="flex items-center gap-3 rounded-xl border px-3 py-2" style={{ borderColor: rolWaarde !== 'geen' ? DYNAMO_BLUE : 'rgba(45,69,124,0.1)', background: rolWaarde !== 'geen' ? 'rgba(45,69,124,0.04)' : 'transparent' }}>
+                                <span className="text-xs font-semibold flex-1" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{MODULE_LABELS[id]}</span>
+                                <select
+                                  value={rolWaarde}
+                                  onChange={e => {
+                                    const nieuw = e.target.value as ModuleRol | 'geen'
+                                    setBewerkModuleRollen(prev => ({ ...prev, [id]: nieuw }))
+                                    if (nieuw === 'geen') {
+                                      setBewerkModules(prev => prev.filter(x => x !== id))
+                                    } else if (!bewerkModules.includes(id)) {
+                                      setBewerkModules(prev => [...prev, id])
+                                    }
+                                  }}
+                                  className="text-xs rounded-lg border px-2 py-1"
+                                  style={{ borderColor: 'rgba(45,69,124,0.2)', color: DYNAMO_BLUE, background: 'white', fontFamily: F }}
+                                >
+                                  <option value="geen">Geen toegang</option>
+                                  {MODULE_ROL_ORDER.map(r => (
+                                    <option key={r} value={r}>{MODULE_ROL_LABELS[r]}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
