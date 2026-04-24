@@ -275,8 +275,8 @@ function exporteerNaarExcel(orders: GazelleOrder[]) {
       'Lidnummer': extractLidnummer(naam),
       'Naam': extractNaamZonderLidnummer(naam),
       'Woonplaats': extractWoonplaats(order.adres ?? ''),
-      'Klantnummer Gazelle': '',
       'Pakket': hoofdProduct ? extractPakket(hoofdProduct.lev_nr) : '',
+      'Bestelnummer DRG': order.bestelnummer ?? '',
       'Besteldatum': order.besteldatum ?? '',
     })
   }
