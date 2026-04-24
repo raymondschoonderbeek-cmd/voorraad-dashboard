@@ -263,7 +263,7 @@ function extractWoonplaats(adres: string): string {
 }
 
 function extractPakket(levNr: string): string {
-  return levNr.match(/Pakket\s+([AB])/i)?.[1]?.toUpperCase() ?? levNr
+  return levNr.match(/Pakket\s+([A-F])/i)?.[1]?.toUpperCase() ?? levNr
 }
 
 function exporteerNaarExcel(orders: GazelleOrder[]) {
