@@ -304,6 +304,7 @@ export default function GazellePakketOrders() {
   const { data: beschikbaarheidData } = useSWR<Record<string, { aantal: number }>>('/api/gazelle-orders/beschikbaarheid', fetcher)
   const { data: session } = useSWR<SessionInfo>('/api/auth/session-info', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
+  const [workflowOpen, setWorkflowOpen] = useState(false)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
 
@@ -382,6 +383,42 @@ export default function GazellePakketOrders() {
           Binnenkomende Gazelle pakket bestellingen via Freshdesk.
         </p>
       </div>
+
+      {/* Workflow uitleg */}
+      {(() => {
+        return (
+          <div style={{ marginBottom: 20, border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--drg-card-bg)', boxShadow: 'var(--drg-card-shadow)' }}>
+            <button
+              type="button"
+              onClick={() => setWorkflowOpen(v => !v)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: 'var(--drg-text-3)' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Hoe werkt het?
+              </span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', transform: workflowOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} aria-hidden><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {workflowOpen && (
+              <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--drg-line)' }}>
+                <ol style={{ margin: '12px 0 0', paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { stap: 'Order binnenkomst', tekst: 'Een klant plaatst een bestelling via de Gazelle-bestelmail. Freshdesk ontvangt de mail en stuurt de gegevens automatisch naar dit overzicht via de webhook.' },
+                    { stap: 'Order bekijken', tekst: 'Klik op een rij om de klantgegevens, het bestelde pakket en de leverweek te zien.' },
+                    { stap: 'Status bijhouden', tekst: 'Wijzig de status van een order: Nieuw → In behandeling → Afgerond. Dit helpt om bij te houden waar je staat.' },
+                    { stap: 'Exporteer naar Excel', tekst: 'Klik op "Exporteer Excel" om een overzicht te downloaden met lidnummer, naam, woonplaats, pakket, bestelnummer en besteldatum. Plak kolommen A–C en E in de Google Sheet (sla kolom D over — die vult automatisch in).' },
+                  ].map((s, i) => (
+                    <li key={i} style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.5 }}>
+                      <strong>{s.stap}:</strong>{' '}
+                      <span style={{ color: 'var(--drg-text-3)' }}>{s.tekst}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Stat-kaarten — altijd zichtbaar voor iedereen met toegang */}
       {(() => {
