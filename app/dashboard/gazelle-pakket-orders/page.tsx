@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import * as XLSX from 'xlsx'
+import type { WorkflowStap } from '@/app/api/admin/gazelle-observer/route'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 const F = "'Outfit', sans-serif"
@@ -305,6 +306,10 @@ export default function GazellePakketOrders() {
   const { data: session } = useSWR<SessionInfo>('/api/auth/session-info', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
   const [workflowOpen, setWorkflowOpen] = useState(false)
+  const [workflowEdit, setWorkflowEdit] = useState(false)
+  const [workflowLokaal, setWorkflowLokaal] = useState<WorkflowStap[]>([])
+  const [workflowOpslaan, setWorkflowOpslaan] = useState(false)
+  const { data: workflowData, mutate: mutateWorkflow } = useSWR<{ workflow: WorkflowStap[] }>('/api/gazelle-orders/workflow', fetcher)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
 
@@ -385,40 +390,78 @@ export default function GazellePakketOrders() {
       </div>
 
       {/* Workflow uitleg */}
-      {(() => {
-        return (
-          <div style={{ marginBottom: 20, border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--drg-card-bg)', boxShadow: 'var(--drg-card-shadow)' }}>
-            <button
-              type="button"
-              onClick={() => setWorkflowOpen(v => !v)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: 'var(--drg-text-3)' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Hoe werkt het?
-              </span>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', transform: workflowOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} aria-hidden><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            {workflowOpen && (
-              <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--drg-line)' }}>
-                <ol style={{ margin: '12px 0 0', paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[
-                    { stap: 'Order binnenkomst', tekst: 'Een klant plaatst een bestelling via de Gazelle-bestelmail. Freshdesk ontvangt de mail en stuurt de gegevens automatisch naar dit overzicht via de webhook.' },
-                    { stap: 'Order bekijken', tekst: 'Klik op een rij om de klantgegevens, het bestelde pakket en de leverweek te zien.' },
-                    { stap: 'Status bijhouden', tekst: 'Wijzig de status van een order: Nieuw → In behandeling → Afgerond. Dit helpt om bij te houden waar je staat.' },
-                    { stap: 'Exporteer naar Excel', tekst: 'Klik op "Exporteer Excel" om een overzicht te downloaden met lidnummer, naam, woonplaats, pakket, bestelnummer en besteldatum. Plak kolommen A–C en E in de Google Sheet (sla kolom D over — die vult automatisch in).' },
-                  ].map((s, i) => (
-                    <li key={i} style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.5 }}>
-                      <strong>{s.stap}:</strong>{' '}
-                      <span style={{ color: 'var(--drg-text-3)' }}>{s.tekst}</span>
-                    </li>
-                  ))}
-                </ol>
+      <div style={{ marginBottom: 20, border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--drg-card-bg)', boxShadow: 'var(--drg-card-shadow)' }}>
+        <button
+          type="button"
+          onClick={() => setWorkflowOpen(v => !v)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: 'var(--drg-text-3)' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Hoe werkt het?
+          </span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', transform: workflowOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} aria-hidden><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {workflowOpen && (
+          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--drg-line)' }}>
+            {/* Edit-modus voor admins */}
+            {isGazelleAdmin && (
+              <div style={{ marginTop: 12, marginBottom: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                {workflowEdit ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={() => setWorkflowEdit(false)} style={{ fontSize: 11, fontWeight: 600, color: 'var(--drg-text-3)', background: 'none', border: '1px solid var(--drg-line)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: F }}>Annuleren</button>
+                    <button type="button" disabled={workflowOpslaan} onClick={async () => {
+                      setWorkflowOpslaan(true)
+                      await fetch('/api/admin/gazelle-observer', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workflow_tekst: workflowLokaal }) })
+                      await mutateWorkflow()
+                      setWorkflowOpslaan(false)
+                      setWorkflowEdit(false)
+                    }} style={{ fontSize: 11, fontWeight: 600, color: 'var(--drg-success)', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: F, opacity: workflowOpslaan ? 0.5 : 1 }}>
+                      {workflowOpslaan ? 'Opslaan…' : '✓ Opslaan'}
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => { setWorkflowLokaal(workflowData?.workflow ?? []); setWorkflowEdit(true) }} style={{ fontSize: 11, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: F }}>
+                    Bewerken
+                  </button>
+                )}
               </div>
             )}
+
+            {workflowEdit ? (
+              /* Bewerkmodus: stap-naam + tekst per stap */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                {workflowLokaal.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <input
+                      value={s.stap}
+                      onChange={e => setWorkflowLokaal(prev => prev.map((x, j) => j === i ? { ...x, stap: e.target.value } : x))}
+                      placeholder="Stap naam"
+                      style={{ fontSize: 12, fontWeight: 700, fontFamily: F, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '5px 10px', outline: 'none' }}
+                    />
+                    <textarea
+                      value={s.tekst}
+                      onChange={e => setWorkflowLokaal(prev => prev.map((x, j) => j === i ? { ...x, tekst: e.target.value } : x))}
+                      rows={3}
+                      style={{ fontSize: 12, fontFamily: F, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '5px 10px', outline: 'none', resize: 'vertical' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Leesmodus */
+              <ol style={{ margin: '12px 0 0', paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(workflowData?.workflow ?? []).map((s, i) => (
+                  <li key={i} style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.5 }}>
+                    <strong>{s.stap}:</strong>{' '}
+                    <span style={{ color: 'var(--drg-text-3)' }}>{s.tekst}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
-        )
-      })()}
+        )}
+      </div>
 
       {/* Stat-kaarten — altijd zichtbaar voor iedereen met toegang */}
       {(() => {
