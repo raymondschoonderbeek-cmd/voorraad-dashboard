@@ -79,12 +79,19 @@ export async function POST(request: NextRequest) {
   try {
     const res = await fetch(sheetUrl, {
       method: 'POST',
+      redirect: 'follow',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const json = await res.json().catch(() => ({})) as { ok?: boolean; error?: string }
-    if (!res.ok || json.ok === false) {
-      return NextResponse.json({ error: json.error ?? `Sheet fout: ${res.status}` }, { status: 502 })
+    const text = await res.text()
+    let json: { ok?: boolean; error?: string } = {}
+    try { json = JSON.parse(text) } catch { /* geen JSON */ }
+
+    if (!res.ok) {
+      return NextResponse.json({ error: `HTTP ${res.status}: ${text.slice(0, 300)}` }, { status: 502 })
+    }
+    if (json.ok === false) {
+      return NextResponse.json({ error: json.error ?? text.slice(0, 300) }, { status: 502 })
     }
     return NextResponse.json({ ok: true })
   } catch (e) {

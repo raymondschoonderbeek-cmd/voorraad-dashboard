@@ -360,17 +360,21 @@ export default function GazellePakketOrders() {
   const [reparseFout, setReparseFout] = useState<string | null>(null)
   const [pushBezig, setPushBezig] = useState<string | null>(null)
   const [pushStatus, setPushStatus] = useState<Record<string, 'ok' | 'fout'>>({})
+  const [pushFout, setPushFout] = useState<Record<string, string>>({})
 
   async function pushNaarSheet(id: string) {
     setPushBezig(id)
     setPushStatus(prev => { const n = { ...prev }; delete n[id]; return n })
+    setPushFout(prev => { const n = { ...prev }; delete n[id]; return n })
     const res = await fetch('/api/admin/gazelle-sheet-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ order_id: id }),
     })
+    const json = await res.json() as { ok?: boolean; error?: string }
     setPushBezig(null)
     setPushStatus(prev => ({ ...prev, [id]: res.ok ? 'ok' : 'fout' }))
+    if (!res.ok && json.error) setPushFout(prev => ({ ...prev, [id]: json.error! }))
   }
 
   const orders: GazelleOrder[] = Array.isArray(data) ? data : []
@@ -553,8 +557,13 @@ export default function GazellePakketOrders() {
                         </button>
                       </div>
                       {reparseFout && uitgebreid === order.id && (
-                        <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 10, fontFamily: F }}>
+                        <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontFamily: F }}>
                           {reparseFout}
+                        </div>
+                      )}
+                      {pushFout[order.id] && uitgebreid === order.id && (
+                        <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontFamily: F }}>
+                          Sheet fout: {pushFout[order.id]}
                         </div>
                       )}
                       <DetailRij label="Naam" waarde={order.naam} />
