@@ -20,34 +20,41 @@ function PakketInstellingenCard() {
   const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
   const [ingeklapt, setIngeklapt] = useState(true)
   const [bezig, setBezig] = useState(false)
-  const [lokaal, setLokaal] = useState<Record<string, number>>({})
   const [opgeslagen, setOpgeslagen] = useState(false)
+  const [fout, setFout] = useState<string | null>(null)
+  // Sla lokale invoerwaarden op per pakket (string zodat de input altijd editable is)
+  const [lokaal, setLokaal] = useState<Record<string, string>>({})
 
   const serverAantallen = inst?.pakket_instellingen ?? {}
 
-  function getAantal(pakket: string): number {
-    return lokaal[pakket] ?? (serverAantallen[pakket]?.aantal ?? 0)
-  }
-
-  function setAantal(pakket: string, waarde: number) {
-    setLokaal(prev => ({ ...prev, [pakket]: waarde }))
+  function getWaarde(pakket: string): string {
+    if (pakket in lokaal) return lokaal[pakket]
+    const server = serverAantallen[pakket]?.aantal
+    return server !== undefined ? String(server) : ''
   }
 
   async function slaOp() {
     setBezig(true)
     setOpgeslagen(false)
+    setFout(null)
     const pakket_instellingen = Object.fromEntries(
-      PAKKETTEN.map(p => [p, { aantal: getAantal(p) }])
+      PAKKETTEN.map(p => [p, { aantal: parseInt(lokaal[p] ?? String(serverAantallen[p]?.aantal ?? 0)) || 0 }])
     )
-    await fetch('/api/admin/gazelle-observer', {
+    const res = await fetch('/api/admin/gazelle-observer', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pakket_instellingen }),
     })
+    const json = await res.json() as { ok?: boolean; error?: string }
     await mutate()
     setBezig(false)
-    setOpgeslagen(true)
-    setTimeout(() => setOpgeslagen(false), 2500)
+    if (!res.ok) {
+      setFout(json.error ?? 'Opslaan mislukt')
+    } else {
+      setLokaal({}) // reset: inputs tonen nu server-waarden
+      setOpgeslagen(true)
+      setTimeout(() => setOpgeslagen(false), 2500)
+    }
   }
 
   return (
@@ -71,8 +78,9 @@ function PakketInstellingenCard() {
                 <input
                   type="number"
                   min={0}
-                  value={getAantal(p)}
-                  onChange={e => setAantal(p, Math.max(0, parseInt(e.target.value) || 0))}
+                  value={getWaarde(p)}
+                  onChange={e => setLokaal(prev => ({ ...prev, [p]: e.target.value }))}
+                  placeholder="0"
                   style={{ width: 90, fontSize: 13, fontFamily: F, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '5px 10px', outline: 'none', textAlign: 'right' }}
                 />
                 <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F }}>stuks beschikbaar</span>
@@ -87,6 +95,7 @@ function PakketInstellingenCard() {
           >
             {opgeslagen ? '✓ Opgeslagen' : bezig ? 'Opslaan…' : 'Opslaan'}
           </button>
+          {fout && <div style={{ marginTop: 8, fontSize: 11, color: 'var(--drg-danger)', fontFamily: F }}>{fout}</div>}
         </div>
       )}
     </div>
