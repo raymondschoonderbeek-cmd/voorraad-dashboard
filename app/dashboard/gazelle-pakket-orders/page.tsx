@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 const F = "'Outfit', sans-serif"
 
-type PakketInstelling = { beschikbaar: boolean; omschrijving: string }
+type PakketInstelling = { aantal: number }
 type ObserverInstellingen = {
   webhook_secret: string | null
   actief: boolean
@@ -20,34 +20,29 @@ function PakketInstellingenCard() {
   const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
   const [ingeklapt, setIngeklapt] = useState(true)
   const [bezig, setBezig] = useState(false)
-  const [lokaal, setLokaal] = useState<Record<string, PakketInstelling>>({})
+  const [lokaal, setLokaal] = useState<Record<string, number>>({})
   const [opgeslagen, setOpgeslagen] = useState(false)
 
-  // Synchroniseer lokale state met server data
-  useState(() => {
-    if (inst?.pakket_instellingen) setLokaal(inst.pakket_instellingen)
-  })
+  const serverAantallen = inst?.pakket_instellingen ?? {}
 
-  const instellingen = inst?.pakket_instellingen ?? {}
-
-  function getInstelling(pakket: string): PakketInstelling {
-    return lokaal[pakket] ?? instellingen[pakket] ?? { beschikbaar: true, omschrijving: '' }
+  function getAantal(pakket: string): number {
+    return lokaal[pakket] ?? (serverAantallen[pakket]?.aantal ?? 0)
   }
 
-  function setInstelling(pakket: string, veld: keyof PakketInstelling, waarde: boolean | string) {
-    setLokaal(prev => ({
-      ...prev,
-      [pakket]: { ...getInstelling(pakket), [veld]: waarde },
-    }))
+  function setAantal(pakket: string, waarde: number) {
+    setLokaal(prev => ({ ...prev, [pakket]: waarde }))
   }
 
   async function slaOp() {
     setBezig(true)
     setOpgeslagen(false)
+    const pakket_instellingen = Object.fromEntries(
+      PAKKETTEN.map(p => [p, { aantal: getAantal(p) }])
+    )
     await fetch('/api/admin/gazelle-observer', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pakket_instellingen: lokaal }),
+      body: JSON.stringify({ pakket_instellingen }),
     })
     await mutate()
     setBezig(false)
@@ -59,50 +54,30 @@ function PakketInstellingenCard() {
     <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, boxShadow: 'var(--drg-card-shadow)', marginBottom: 24, overflow: 'hidden' }}>
       <button
         type="button"
-        onClick={() => { setIngeklapt(v => !v); if (inst?.pakket_instellingen) setLokaal(inst.pakket_instellingen) }}
+        onClick={() => setIngeklapt(v => !v)}
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
       >
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, fontFamily: F }}>Pakket instellingen</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, fontFamily: F }}>Beschikbaarheid</h2>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', flexShrink: 0, transform: ingeklapt ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} aria-hidden>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
       {!ingeklapt && (
         <div style={{ padding: '0 20px 20px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-            {PAKKETTEN.map(p => {
-              const inst = getInstelling(p)
-              return (
-                <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(45,69,124,0.03)', border: '1px solid var(--drg-line)' }}>
-                  {/* Pakket label */}
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, width: 70, flexShrink: 0 }}>Pakket {p}</span>
-
-                  {/* Beschikbaar toggle */}
-                  <div
-                    role="switch"
-                    aria-checked={inst.beschikbaar}
-                    tabIndex={0}
-                    onClick={() => setInstelling(p, 'beschikbaar', !inst.beschikbaar)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setInstelling(p, 'beschikbaar', !inst.beschikbaar) }}
-                    style={{ width: 36, height: 20, borderRadius: 100, background: inst.beschikbaar ? 'var(--drg-ink-2)' : 'rgba(45,69,124,0.2)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}
-                  >
-                    <span style={{ position: 'absolute', top: 2, left: inst.beschikbaar ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: inst.beschikbaar ? 'var(--drg-ink-2)' : 'var(--drg-text-3)', fontFamily: F, width: 90, flexShrink: 0 }}>
-                    {inst.beschikbaar ? 'Beschikbaar' : 'Niet beschikbaar'}
-                  </span>
-
-                  {/* Omschrijving */}
-                  <input
-                    type="text"
-                    value={inst.omschrijving}
-                    onChange={e => setInstelling(p, 'omschrijving', e.target.value)}
-                    placeholder="Omschrijving (optioneel)"
-                    style={{ flex: 1, fontSize: 12, fontFamily: F, color: 'var(--drg-ink-2)', background: 'var(--drg-card-bg)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '5px 10px', outline: 'none' }}
-                  />
-                </div>
-              )
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {PAKKETTEN.map(p => (
+              <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F, width: 70, flexShrink: 0 }}>Pakket {p}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={getAantal(p)}
+                  onChange={e => setAantal(p, Math.max(0, parseInt(e.target.value) || 0))}
+                  style={{ width: 90, fontSize: 13, fontFamily: F, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '5px 10px', outline: 'none', textAlign: 'right' }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F }}>stuks beschikbaar</span>
+              </div>
+            ))}
           </div>
           <button
             type="button"
@@ -314,6 +289,7 @@ function DetailRij({ label, waarde }: { label: string; waarde: string | null | u
 
 export default function GazellePakketOrders() {
   const { data, isLoading, mutate } = useSWR<GazelleOrder[]>('/api/gazelle-orders', fetcher)
+  const { data: observerInst } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
@@ -389,19 +365,32 @@ export default function GazellePakketOrders() {
       </div>
 
       {/* Stat-kaarten */}
-      {orders.length > 0 && (() => {
-        const aantalA = orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === 'A').length
-        const aantalB = orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === 'B').length
+      {(() => {
+        const beschikbaar = observerInst?.pakket_instellingen ?? {}
+        const telPakket = (letter: string) =>
+          orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === letter).length
+
+        const stats = [
+          { label: 'Totaal orders', orders: orders.length, beschikbaar: null },
+          ...PAKKETTEN.map(p => ({
+            label: `Pakket ${p}`,
+            orders: telPakket(p),
+            beschikbaar: beschikbaar[p]?.aantal ?? null,
+          })).filter(s => s.orders > 0 || (s.beschikbaar !== null && s.beschikbaar > 0)),
+        ]
+
+        if (stats.length === 0) return null
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-            {[
-              { label: 'Totaal orders', value: orders.length },
-              { label: 'Pakket A', value: aantalA },
-              { label: 'Pakket B', value: aantalB },
-            ].map(s => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+            {stats.map(s => (
               <div key={s.label} style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--drg-card-shadow)' }}>
-                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1 }}>{s.orders}</div>
                 <div style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 4 }}>{s.label}</div>
+                {s.beschikbaar !== null && (
+                  <div style={{ fontSize: 11, color: 'var(--drg-ink-2)', fontFamily: F, marginTop: 6, fontWeight: 600 }}>
+                    {s.beschikbaar} beschikbaar
+                  </div>
+                )}
               </div>
             ))}
           </div>
