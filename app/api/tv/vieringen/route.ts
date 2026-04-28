@@ -66,7 +66,7 @@ export async function GET() {
 
     const { data: profielen, error: profError } = await supabase
       .from('profiles')
-      .select('user_id, geboortedatum, weergave_naam, in_dienst_per')
+      .select('user_id, geboortedatum, weergave_naam')
 
     if (!profError && profielen) {
       // Geeft de YYYY-MM-DD terug als maand+dag binnen het 31-dagenvenster valt, anders null
@@ -108,29 +108,6 @@ export async function GET() {
           } catch { /* skip */ }
         }
 
-        // Jubileum — parse direct uit string (timezone-safe)
-        const inDienstStr = typeof rec.in_dienst_per === 'string' ? rec.in_dienst_per : null
-        if (inDienstStr) {
-          try {
-            const ipDelen = inDienstStr.slice(0, 10).split('-')
-            const ipJaar = parseInt(ipDelen[0], 10)
-            const maand = parseInt(ipDelen[1], 10)
-            const dag = parseInt(ipDelen[2], 10)
-            const datum = datumInVenster(maand, dag)
-            if (datum) {
-              const jaren = parseInt(datum.slice(0, 4), 10) - ipJaar
-              if (jaren > 0) {
-                items.push({
-                  type: 'jubileum',
-                  naam: voornaam,
-                  label: `${dag} ${MAAND_NAMEN[maand - 1]} · ${jaren} jr in dienst`,
-                  datum,
-                  vandaag: datum === vandaagStr,
-                })
-              }
-            }
-          } catch { /* skip */ }
-        }
       }
     }
 
