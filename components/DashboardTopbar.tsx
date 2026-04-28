@@ -87,8 +87,6 @@ function NotificatieBel() {
     }
   }
 
-  if (fouten.length === 0 && ongelezen === 0) return null
-
   return (
     <div ref={ref} className="hidden md:block" style={{ position: 'relative' }}>
       <button
@@ -215,8 +213,8 @@ export function DashboardTopbar({ onMenuToggle }: { onMenuToggle?: () => void })
       </div>
 
       {/* Rechts: notificaties + avatar */}
-      <NotificatieBel />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <NotificatieBel />
 
         {/* Avatar */}
         <Link
