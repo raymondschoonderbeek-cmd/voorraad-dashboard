@@ -285,9 +285,30 @@ export default function GazellePakketOrders() {
   const { data: workflowData, mutate: mutateWorkflow } = useSWR<{ workflow: WorkflowStap[] }>('/api/gazelle-orders/workflow', fetcher)
   const [reparseBezig, setReparseBezig] = useState<string | null>(null)
   const [reparseFout, setReparseFout] = useState<string | null>(null)
+  const [zoek, setZoek] = useState('')
+  const [pagina, setPagina] = useState(1)
+  const PER_PAGINA = 25
 
   const orders: GazelleOrder[] = Array.isArray(data) ? data : []
   const fout = data && !Array.isArray(data)
+
+  const gefilterd = zoek.trim()
+    ? orders.filter(o => {
+        const q = zoek.toLowerCase()
+        return (
+          o.naam?.toLowerCase().includes(q) ||
+          o.bestelnummer?.toLowerCase().includes(q) ||
+          o.emailadres?.toLowerCase().includes(q) ||
+          o.adres?.toLowerCase().includes(q) ||
+          extractPakket(o.producten?.[0]?.lev_nr ?? '').toLowerCase().includes(q) ||
+          extractLidnummer(o.naam ?? '').includes(q)
+        )
+      })
+    : orders
+
+  const aantalPaginas = Math.max(1, Math.ceil(gefilterd.length / PER_PAGINA))
+  const huidigePagina = Math.min(pagina, aantalPaginas)
+  const paginaOrders = gefilterd.slice((huidigePagina - 1) * PER_PAGINA, huidigePagina * PER_PAGINA)
 
   // Admin-kaarten alleen tonen voor globale admins of gazelle-orders beheerders
   const isAdmin = session?.isAdmin ?? false
@@ -492,6 +513,25 @@ export default function GazellePakketOrders() {
       )}
 
       {orders.length > 0 && (
+        <>
+          {/* Zoekbalk */}
+          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--drg-text-3)', pointerEvents: 'none' }} aria-hidden><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input
+                type="search"
+                value={zoek}
+                onChange={e => { setZoek(e.target.value); setPagina(1) }}
+                placeholder="Zoek op naam, bestelnr., pakket, woonplaats…"
+                style={{ width: '100%', paddingLeft: 32, paddingRight: 10, paddingTop: 7, paddingBottom: 7, fontSize: 13, fontFamily: F, color: 'var(--drg-ink-2)', background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 8, outline: 'none' }}
+              />
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, whiteSpace: 'nowrap' }}>
+              {gefilterd.length} {gefilterd.length === 1 ? 'order' : 'orders'}
+              {zoek.trim() ? ` gevonden` : ''}
+            </span>
+          </div>
+
         <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--drg-card-shadow)' }}>
 
           {/* Tabelheader */}
@@ -501,9 +541,13 @@ export default function GazellePakketOrders() {
             ))}
           </div>
 
-          {orders.map((order, i) => {
+          {paginaOrders.length === 0 && (
+            <p style={{ margin: 0, padding: '20px 16px', fontSize: 13, color: 'var(--drg-text-3)', fontFamily: F }}>Geen orders gevonden.</p>
+          )}
+
+          {paginaOrders.map((order, i) => {
             const isOpen = uitgebreid === order.id
-            const isLast = i === orders.length - 1
+            const isLast = i === paginaOrders.length - 1
             const hoofdProduct = order.producten?.[0]
             return (
               <div key={order.id}>
@@ -601,6 +645,34 @@ export default function GazellePakketOrders() {
             )
           })}
         </div>
+
+          {/* Paginering */}
+          {aantalPaginas > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, fontFamily: F }}>
+              <span style={{ fontSize: 12, color: 'var(--drg-text-3)' }}>
+                Pagina {huidigePagina} van {aantalPaginas} · {gefilterd.length} orders
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={huidigePagina === 1}
+                  onClick={() => setPagina(p => Math.max(1, p - 1))}
+                  style={{ fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 7, padding: '5px 12px', cursor: huidigePagina === 1 ? 'default' : 'pointer', opacity: huidigePagina === 1 ? 0.4 : 1, fontFamily: F }}
+                >
+                  ← Vorige
+                </button>
+                <button
+                  type="button"
+                  disabled={huidigePagina === aantalPaginas}
+                  onClick={() => setPagina(p => Math.min(aantalPaginas, p + 1))}
+                  style={{ fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 7, padding: '5px 12px', cursor: huidigePagina === aantalPaginas ? 'default' : 'pointer', opacity: huidigePagina === aantalPaginas ? 0.4 : 1, fontFamily: F }}
+                >
+                  Volgende →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
