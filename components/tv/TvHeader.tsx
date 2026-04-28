@@ -56,7 +56,7 @@ export default function TvHeader({ nu, weer }: TvHeaderProps) {
           alt="Dynamo Retail Group"
           width={220}
           height={44}
-          style={{ objectFit: 'contain', width: 'auto', height: 44 }}
+          style={{ objectFit: 'contain', width: 'auto', height: 44, filter: 'brightness(0) invert(1)' }}
           priority
           unoptimized
         />
