@@ -111,6 +111,12 @@
   }
 }
 
+/* TV nieuws — auto-scroll animatie */
+@keyframes tv-nieuws-scroll {
+  0%, 12% { transform: translateY(0); }
+  88%, 100% { transform: translateY(var(--tv-scroll-dist, 0px)); }
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }

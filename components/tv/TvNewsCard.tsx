@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react'
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT } from '@/lib/theme'
 
 const MAANDEN_KORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun',
@@ -16,23 +16,7 @@ function categorieLabel(cat: string): string {
 
 function formatDatum(iso: string): string {
   const d = new Date(iso)
-  return `${d.getDate()} ${MAANDEN_KORT[d.getMonth()]} ${d.getFullYear()}`
-}
-
-export interface NewsItem {
-  id: string
-  title: string
-  excerpt: string | null
-  body_html: string | null
-  category: string
-  is_important: boolean
-  published_at: string
-  image_url?: string | null
-}
-
-interface TvNewsCardProps {
-  item: NewsItem
-  opacity?: number
+  return `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
 function extractEersteAfbeelding(html: string | null): string | null {
@@ -52,10 +36,45 @@ function stripHtml(html: string | null): string | null {
     .trim() || null
 }
 
+export interface NewsItem {
+  id: string
+  title: string
+  excerpt: string | null
+  body_html: string | null
+  category: string
+  is_important: boolean
+  published_at: string
+  image_url?: string | null
+}
+
+interface TvNewsCardProps {
+  item: NewsItem
+  opacity?: number
+}
+
 export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
   const coverAfbeelding = item.image_url ?? extractEersteAfbeelding(item.body_html)
-  const heeftAfbeelding = Boolean(coverAfbeelding)
-  const introTekst = item.excerpt ?? stripHtml(item.body_html)
+  const tekst = item.excerpt ?? stripHtml(item.body_html)
+
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [scrollCss, setScrollCss] = useState<React.CSSProperties>({})
+
+  useEffect(() => {
+    const outer = wrapperRef.current
+    const inner = innerRef.current
+    if (!outer || !inner) return
+    const overflow = inner.scrollHeight - outer.clientHeight
+    if (overflow > 30) {
+      const duur = Math.max(12, overflow / 28)
+      setScrollCss({
+        '--tv-scroll-dist': `-${overflow}px`,
+        animation: `tv-nieuws-scroll ${duur}s ease-in-out 2s infinite`,
+      } as React.CSSProperties)
+    } else {
+      setScrollCss({})
+    }
+  }, [item])
 
   return (
     <div
@@ -70,101 +89,52 @@ export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
         overflow: 'hidden',
         transition: 'opacity 0.6s ease',
         opacity,
+        padding: '32px 40px 32px',
       }}
     >
-      {/* Fotogedeelte */}
-      {heeftAfbeelding && (
-        <div style={{ position: 'relative', height: 200, flexShrink: 0 }}>
-          <Image
-            src={coverAfbeelding!}
-            alt={item.title}
-            fill
-            style={{ objectFit: 'cover' }}
-            sizes="800px"
-            unoptimized
-          />
-        </div>
-      )}
+      {/* Eyebrow: categorie + datum */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexShrink: 0 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: item.is_important ? 'var(--drg-accent)' : DYNAMO_BLUE_LIGHT }}>
+          {item.is_important ? '⚡ ' : ''}{categorieLabel(item.category)}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--drg-text-3)' }}>·</span>
+        <span style={{ fontSize: 11, color: 'var(--drg-text-3)' }}>{formatDatum(item.published_at)}</span>
+      </div>
 
-      {/* Tekst-gedeelte */}
-      <div
+      {/* Headline */}
+      <h2
         style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          padding: heeftAfbeelding ? '28px 36px 32px' : '44px 48px 40px',
-          minHeight: 0,
-        }}
+          fontSize: 38,
+          fontWeight: 700,
+          lineHeight: 1.1,
+          color: DYNAMO_BLUE,
+          margin: '0 0 18px',
+          flexShrink: 0,
+          textWrap: 'balance',
+        } as React.CSSProperties}
       >
-        {/* Eyebrow */}
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            color: item.is_important ? 'var(--drg-accent)' : DYNAMO_BLUE_LIGHT,
-            marginBottom: 16,
-          }}
-        >
-          {item.is_important ? '⚡ Belangrijk · ' : ''}{categorieLabel(item.category)}
-        </div>
+        {item.title}
+      </h2>
 
-        {/* Headline */}
-        <h2
-          style={{
-            fontSize: heeftAfbeelding ? 34 : 42,
-            fontWeight: 700,
-            lineHeight: 1.05,
-            color: DYNAMO_BLUE,
-            margin: '0 0 20px',
-            textWrap: 'balance',
-          } as React.CSSProperties}
-        >
-          {item.title}
-        </h2>
+      {/* Divider */}
+      <div style={{ height: 1, background: 'var(--drg-line)', marginBottom: 20, flexShrink: 0 }} />
 
-        {/* Divider */}
-        <div
-          style={{
-            height: 1,
-            background: 'var(--drg-line)',
-            marginBottom: 20,
-            flexShrink: 0,
-          }}
-        />
-
-        {/* Intro tekst */}
-        {introTekst && (
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 400,
-              lineHeight: 1.45,
-              color: 'var(--drg-ink)',
-              margin: 0,
-              flex: 1,
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: heeftAfbeelding ? 3 : 6,
-              WebkitBoxOrient: 'vertical',
-            } as React.CSSProperties}
-          >
-            {introTekst}
-          </p>
-        )}
-
-        {/* Datum */}
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: 20,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--drg-text-3)',
-          }}
-        >
-          {formatDatum(item.published_at)}
+      {/* Scrollende inhoud */}
+      <div ref={wrapperRef} style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        <div ref={innerRef} style={scrollCss}>
+          {tekst && (
+            <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--drg-ink)', margin: '0 0 20px' }}>
+              {tekst}
+            </p>
+          )}
+          {coverAfbeelding && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverAfbeelding}
+              alt={item.title}
+              style={{ maxWidth: '55%', height: 'auto', borderRadius: 10, display: 'block' }}
+            />
+          )}
         </div>
       </div>
     </div>
