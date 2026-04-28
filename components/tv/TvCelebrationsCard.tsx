@@ -20,7 +20,7 @@ const MAAND_NAMEN = [
 ]
 
 function VieringDot({ type }: { type: VieringType }) {
-  const kleur = type === 'jarig' ? 'var(--drg-accent)' : type === 'jubileum' ? DYNAMO_BLUE : 'var(--drg-success)'
+  const kleur = type === 'jarig' ? 'var(--drg-accent)' : type === 'jubileum' ? DYNAMO_BLUE : type === 'hoogtepunt' ? 'var(--drg-warn)' : 'var(--drg-success)'
   return (
     <div style={{
       width: 8, height: 8, borderRadius: '50%',
@@ -32,6 +32,7 @@ function VieringDot({ type }: { type: VieringType }) {
 function typeLabel(type: VieringType): string {
   if (type === 'jarig') return 'Verjaardag'
   if (type === 'jubileum') return 'Jubileum'
+  if (type === 'hoogtepunt') return 'Hoogtepunt'
   return 'Nieuw'
 }
 
@@ -83,7 +84,11 @@ export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardPr
                 margin: item.vandaag ? '0 -10px' : '0',
               }}
             >
-              <VieringDot type={item.type} />
+              {/* Hoogtepunt toont eigen emoji, rest een dot */}
+              {item.type === 'hoogtepunt' && item.icoon
+                ? <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, width: 16, textAlign: 'center' }}>{item.icoon}</span>
+                : <VieringDot type={item.type} />
+              }
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -96,7 +101,7 @@ export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardPr
                   )}
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--drg-text-2)', marginTop: 1 }}>
-                  {typeLabel(item.type)} · {item.label.replace(/^[A-Z][a-z]+ /, '')}
+                  {item.type !== 'hoogtepunt' ? `${typeLabel(item.type)} · ` : ''}{item.label}
                 </div>
               </div>
             </div>
