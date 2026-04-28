@@ -52,7 +52,7 @@ export default function TvHeader({ nu, weer }: TvHeaderProps) {
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', width: 280 }}>
         <Image
-          src="/dynamo-retail-group-2025.png"
+          src="/dynamo-retail-group-logo-tv.png"
           alt="Dynamo Retail Group"
           width={220}
           height={44}
