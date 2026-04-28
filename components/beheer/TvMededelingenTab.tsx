@@ -9,6 +9,7 @@ const F = FONT_FAMILY
 type Mededeling = {
   id: string
   tekst: string
+  label: string | null
   actief: boolean
   sort_order: number
   geldig_van: string | null
@@ -47,12 +48,14 @@ export function TvMededelingenTab() {
 
   // Nieuw formulier
   const [nieuweTekst, setNieuweTekst] = useState('')
+  const [nieuweLabel, setNieuweLabel] = useState('')
   const [nieuweVan, setNieuweVan] = useState('')
   const [nieuweTot, setNieuweTot] = useState('')
 
   // Bewerken
   const [bewerkId, setBewerkId] = useState<string | null>(null)
   const [bewerkTekst, setBewerkTekst] = useState('')
+  const [bewerkLabel, setBewerkLabel] = useState('')
   const [bewerkVan, setBewerkVan] = useState('')
   const [bewerkTot, setBewerkTot] = useState('')
 
@@ -98,13 +101,14 @@ export function TvMededelingenTab() {
       .from('tv_mededelingen')
       .insert({
         tekst: nieuweTekst.trim(),
+        label: nieuweLabel.trim() || null,
         actief: true,
         sort_order: lijst.length,
         geldig_van: nieuweVan || null,
         geldig_tot: nieuweTot || null,
       })
     if (err) setError(err.message)
-    else { setNieuweTekst(''); setNieuweVan(''); setNieuweTot(''); void laad() }
+    else { setNieuweTekst(''); setNieuweLabel(''); setNieuweVan(''); setNieuweTot(''); void laad() }
     setSaving(false)
   }
 
@@ -122,6 +126,7 @@ export function TvMededelingenTab() {
   const startBewerken = (m: Mededeling) => {
     setBewerkId(m.id)
     setBewerkTekst(m.tekst)
+    setBewerkLabel(m.label ?? '')
     setBewerkVan(m.geldig_van ?? '')
     setBewerkTot(m.geldig_tot ?? '')
   }
@@ -131,6 +136,7 @@ export function TvMededelingenTab() {
     setSaving(true)
     await supabase.from('tv_mededelingen').update({
       tekst: bewerkTekst.trim(),
+      label: bewerkLabel.trim() || null,
       geldig_van: bewerkVan || null,
       geldig_tot: bewerkTot || null,
       updated_at: new Date().toISOString(),
@@ -218,15 +224,26 @@ export function TvMededelingenTab() {
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
         <h2 className="text-base font-bold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>Nieuwe mededeling toevoegen</h2>
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">Tekst</label>
-          <input
-            className={inp}
-            value={nieuweTekst}
-            onChange={e => setNieuweTekst(e.target.value)}
-            placeholder="Bijv. De kantine is open van 12:00 tot 13:30."
-            onKeyDown={e => { if (e.key === 'Enter') void voegToe() }}
-          />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Tekst</label>
+            <input
+              className={inp}
+              value={nieuweTekst}
+              onChange={e => setNieuweTekst(e.target.value)}
+              placeholder="Bijv. De kantine is open van 12:00 tot 13:30."
+              onKeyDown={e => { if (e.key === 'Enter') void voegToe() }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Label <span className="font-normal text-gray-400">(opt.)</span></label>
+            <input
+              className={inp}
+              value={nieuweLabel}
+              onChange={e => setNieuweLabel(e.target.value)}
+              placeholder="HR, IT, Facilitair…"
+            />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -234,7 +251,7 @@ export function TvMededelingenTab() {
             <input type="date" className={inpDate} value={nieuweVan} onChange={e => setNieuweVan(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Einddatum <span className="font-normal text-gray-400">(optioneel)</span></label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Einddatum / deadline <span className="font-normal text-gray-400">(optioneel)</span></label>
             <input type="date" className={inpDate} value={nieuweTot} onChange={e => setNieuweTot(e.target.value)} />
           </div>
         </div>

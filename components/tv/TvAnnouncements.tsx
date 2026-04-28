@@ -1,10 +1,20 @@
 'use client'
 
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT } from '@/lib/theme'
+import { IconMegaphone } from '@/components/DashboardIcons'
+
+const MAAND_KORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+
+function formatDeadline(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getDate()} ${MAAND_KORT[d.getMonth()]}`
+}
 
 export interface MededelingItem {
   id: string
   tekst: string
+  label?: string | null
+  geldig_tot?: string | null
   sort_order: number
 }
 
@@ -13,7 +23,7 @@ interface TvAnnouncementsProps {
 }
 
 export default function TvAnnouncements({ mededelingen }: TvAnnouncementsProps) {
-  const zichtbaar = mededelingen.slice(0, 3)
+  const zichtbaar = mededelingen.slice(0, 5)
 
   return (
     <div
@@ -29,80 +39,63 @@ export default function TvAnnouncements({ mededelingen }: TvAnnouncementsProps) 
         overflow: 'hidden',
       }}
     >
-      {/* Eyebrow */}
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.22em',
-          textTransform: 'uppercase',
-          color: DYNAMO_BLUE_LIGHT,
-          marginBottom: 24,
-        }}
-      >
-        Mededelingen
+      {/* Header met megafoon-icoon */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
+        <span style={{ color: DYNAMO_BLUE_LIGHT, display: 'flex' }}>
+          <IconMegaphone size={14} />
+        </span>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: DYNAMO_BLUE_LIGHT }}>
+          Mededelingen
+        </div>
       </div>
 
       {/* Lijst */}
       {zichtbaar.length === 0 ? (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--drg-text-3)',
-            fontSize: 15,
-          }}
-        >
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--drg-text-3)', fontSize: 15 }}>
           Geen mededelingen
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1 }}>
           {zichtbaar.map((m, idx) => (
             <div
               key={m.id}
               style={{
                 display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
+                alignItems: 'flex-start',
+                gap: 14,
                 paddingBottom: idx < zichtbaar.length - 1 ? 20 : 0,
-                borderBottom: idx < zichtbaar.length - 1
-                  ? '1px solid var(--drg-line)'
-                  : 'none',
+                marginBottom: idx < zichtbaar.length - 1 ? 20 : 0,
+                borderBottom: idx < zichtbaar.length - 1 ? '1px solid var(--drg-line)' : 'none',
               }}
             >
-              {/* Nummer-pill */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                <div
-                  style={{
-                    flexShrink: 0,
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    background: DYNAMO_BLUE,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#FFFFFF',
-                    marginTop: 1,
-                  }}
-                >
-                  {idx + 1}
+              {/* Label-badge */}
+              {m.label && (
+                <div style={{
+                  flexShrink: 0,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: 'rgba(45,69,124,0.08)',
+                  color: DYNAMO_BLUE,
+                  marginTop: 2,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {m.label}
                 </div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 19,
-                    fontWeight: 600,
-                    lineHeight: 1.4,
-                    color: 'var(--drg-ink)',
-                  }}
-                >
+              )}
+
+              {/* Tekst + deadline */}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.35, color: 'var(--drg-ink)' }}>
                   {m.tekst}
-                </p>
+                </div>
+                {m.geldig_tot && (
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--drg-text-3)', marginTop: 4 }}>
+                    Deadline · <strong style={{ color: DYNAMO_BLUE }}>{formatDeadline(m.geldig_tot)}</strong>
+                  </div>
+                )}
               </div>
             </div>
           ))}

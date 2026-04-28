@@ -30,7 +30,7 @@ async function haalMededelingenOp(supabase: ReturnType<typeof createAdminClient>
   const vandaag = new Date().toISOString().slice(0, 10)
   const { data } = await supabase
     .from('tv_mededelingen')
-    .select('id, tekst, sort_order')
+    .select('id, tekst, label, geldig_tot, sort_order')
     .eq('actief', true)
     .or(`geldig_van.is.null,geldig_van.lte.${vandaag}`)
     .or(`geldig_tot.is.null,geldig_tot.gte.${vandaag}`)
