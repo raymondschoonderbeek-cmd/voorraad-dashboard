@@ -226,7 +226,16 @@ export async function getRoomAvailability(): Promise<{ ruimtes: JoanRoom[]; joan
 
       if (!actief) return { id: roomKey, naam: r.name, bezet: false, capacity: r.capacity, boekingen }
 
-      const tot = tijdLabel(actief.end)
+      // Ketenboeking: als de volgende boeking aansluit (start ≤ einde huidige), doorlopen tot echte eindtijd
+      let eindMs = new Date(actief.end).getTime()
+      for (const e of events) {
+        try {
+          const eStart = new Date(e.start).getTime()
+          const eEnd = new Date(e.end).getTime()
+          if (eStart <= eindMs && eEnd > eindMs) eindMs = eEnd
+        } catch { /* skip */ }
+      }
+      const tot = tijdLabel(new Date(eindMs).toISOString())
       const rawNaam = actief.organizer?.displayName ?? actief.organizer?.email?.split('@')[0] ?? ''
       return { id: roomKey, naam: r.name, bezet: true, tot, geboektDoor: stripBedrijfsnaam(rawNaam), capacity: r.capacity, boekingen }
     })
