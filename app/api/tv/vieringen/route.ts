@@ -7,7 +7,7 @@ export interface VieringItem {
   type: VieringType
   naam: string
   label: string
-  dag: number   // dag van de maand, voor sortering en weergave
+  dag: number
   vandaag: boolean
 }
 
@@ -17,8 +17,9 @@ const MAAND_NAMEN = [
 ]
 
 /**
- * Publiek TV-endpoint — geen user-auth vereist.
- * Retourneert verjaardagen, jubilea en nieuwe medewerkers van de HUIDIGE MAAND.
+ * Publiek TV-endpoint — maandoverzicht van verjaardagen, jubilea en nieuwe collega's.
+ * Kolommen die bestaan in profiles: geboortedatum, weergave_naam, in_dienst_per (optioneel).
+ * Naam fallback: gebruiker_rollen.naam.
  */
 export async function GET() {
   try {
@@ -29,26 +30,37 @@ export async function GET() {
     const huidigJaar = nu.getFullYear()
     const vandaagDag = nu.getDate()
 
+    // Namen ophalen uit gebruiker_rollen (bestaat altijd)
+    const { data: rollen } = await supabase
+      .from('gebruiker_rollen')
+      .select('user_id, naam, afdeling')
+
+    const rollenMap = new Map(
+      (rollen ?? []).map((r: { user_id: string; naam: string | null; afdeling: string | null }) =>
+        [r.user_id, { naam: r.naam, afdeling: r.afdeling }]
+      )
+    )
+
+    // Profiles: geboortedatum + weergave_naam + optioneel in_dienst_per
+    // Selecteer met * en filter client-side zodat ontbrekende kolommen geen error geven
+    const { data: profielen, error: profError } = await supabase
+      .from('profiles')
+      .select('user_id, geboortedatum, weergave_naam, in_dienst_per')
+
     const items: VieringItem[] = []
 
-    const { data: profielen, error } = await supabase
-      .from('profiles')
-      .select('user_id, geboortedatum, in_dienst_per, weergave_naam')
-
-    if (!error && profielen) {
+    if (!profError && profielen) {
       for (const p of profielen) {
-        const rec = p as {
-          user_id: string
-          geboortedatum?: string | null
-          in_dienst_per?: string | null
-          weergave_naam?: string | null
-        }
-
-        const naam = rec.weergave_naam ?? rec.user_id
+        const rec = p as Record<string, unknown>
+        const userId = String(rec.user_id ?? '')
+        const rolInfo = rollenMap.get(userId)
+        const weergaveNaam = typeof rec.weergave_naam === 'string' ? rec.weergave_naam : null
+        const naamUitRol = rolInfo?.naam ?? null
+        const naam = (weergaveNaam || naamUitRol || userId)
         const voornaam = naam.split(' ')[0] ?? naam
 
-        // Verjaardag in huidige maand
-        if (rec.geboortedatum) {
+        // Verjaardag — geboortedatum bestaat (via migratie 20260420000001)
+        if (typeof rec.geboortedatum === 'string' && rec.geboortedatum) {
           try {
             const gb = new Date(rec.geboortedatum)
             if (gb.getMonth() + 1 === huidigeMaand) {
@@ -64,34 +76,29 @@ export async function GET() {
           } catch { /* ongeldige datum */ }
         }
 
-        // In dienst dit jaar/maand (nieuw of jubileum)
-        if (rec.in_dienst_per) {
+        // In dienst (jubileum / nieuw) — kolom optioneel, graceful skip
+        const inDienstStr = typeof rec.in_dienst_per === 'string' ? rec.in_dienst_per : null
+        if (inDienstStr) {
           try {
-            const ip = new Date(rec.in_dienst_per)
+            const ip = new Date(inDienstStr)
             const ipMaand = ip.getMonth() + 1
             const ipDag = ip.getDate()
-            const ipStr = rec.in_dienst_per.slice(0, 10)
             const jaren = huidigJaar - ip.getFullYear()
 
             if (ipMaand === huidigeMaand) {
-              if (ipStr.slice(0, 7) === `${huidigJaar}-${String(huidigeMaand).padStart(2,'0')}`) {
+              const maandStr = `${huidigJaar}-${String(huidigeMaand).padStart(2, '0')}`
+              if (inDienstStr.startsWith(maandStr)) {
                 // Gestart deze maand dit jaar → nieuw
-                const { data: rolData } = await supabase
-                  .from('gebruiker_rollen')
-                  .select('afdeling')
-                  .eq('user_id', rec.user_id)
-                  .single()
-                const afdeling = (rolData as { afdeling?: string | null } | null)?.afdeling ?? ''
-                const labelDeel = afdeling ? ` — ${afdeling}` : ''
+                const afdeling = rolInfo?.afdeling ?? ''
+                const afdelingDeel = afdeling ? ` — ${afdeling}` : ''
                 items.push({
                   type: 'nieuw',
                   naam: voornaam,
-                  label: `Start ${ipDag} ${MAAND_NAMEN[huidigeMaand - 1]}${labelDeel}`,
+                  label: `Start ${ipDag} ${MAAND_NAMEN[huidigeMaand - 1]}${afdelingDeel}`,
                   dag: ipDag,
-                  vandaag: ipStr === vandaagStr,
+                  vandaag: inDienstStr.slice(0, 10) === vandaagStr,
                 })
               } else if (jaren > 0) {
-                // Jubileum
                 items.push({
                   type: 'jubileum',
                   naam: voornaam,
@@ -106,7 +113,7 @@ export async function GET() {
       }
     }
 
-    // Sorteer: vandaag eerst, dan op dag
+    // Vandaag eerst, dan op dag
     items.sort((a, b) => {
       if (a.vandaag && !b.vandaag) return -1
       if (!a.vandaag && b.vandaag) return 1
