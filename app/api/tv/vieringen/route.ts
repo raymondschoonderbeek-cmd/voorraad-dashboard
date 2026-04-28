@@ -89,12 +89,12 @@ export async function GET() {
           || rolInfo?.naam || userId
         const voornaam = naam.split(' ')[0] ?? naam
 
-        // Verjaardag
+        // Verjaardag — parse direct uit string (timezone-safe)
         if (typeof rec.geboortedatum === 'string' && rec.geboortedatum) {
           try {
-            const gb = new Date(rec.geboortedatum)
-            const maand = gb.getMonth() + 1
-            const dag = gb.getDate()
+            const delen = rec.geboortedatum.slice(0, 10).split('-')
+            const maand = parseInt(delen[1], 10)
+            const dag = parseInt(delen[2], 10)
             const datum = datumInVenster(maand, dag)
             if (datum) {
               items.push({
@@ -108,16 +108,17 @@ export async function GET() {
           } catch { /* skip */ }
         }
 
-        // Jubileum
+        // Jubileum — parse direct uit string (timezone-safe)
         const inDienstStr = typeof rec.in_dienst_per === 'string' ? rec.in_dienst_per : null
         if (inDienstStr) {
           try {
-            const ip = new Date(inDienstStr)
-            const maand = ip.getMonth() + 1
-            const dag = ip.getDate()
+            const ipDelen = inDienstStr.slice(0, 10).split('-')
+            const ipJaar = parseInt(ipDelen[0], 10)
+            const maand = parseInt(ipDelen[1], 10)
+            const dag = parseInt(ipDelen[2], 10)
             const datum = datumInVenster(maand, dag)
             if (datum) {
-              const jaren = parseInt(datum.slice(0, 4), 10) - ip.getFullYear()
+              const jaren = parseInt(datum.slice(0, 4), 10) - ipJaar
               if (jaren > 0) {
                 items.push({
                   type: 'jubileum',
