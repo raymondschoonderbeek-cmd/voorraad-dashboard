@@ -1,23 +1,64 @@
 'use client'
 
+import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import TvStage from '@/components/tv/TvStage'
 import TvHeader, { type WeerItem } from '@/components/tv/TvHeader'
 import TvNewsCard, { type NewsItem } from '@/components/tv/TvNewsCard'
 import TvAnnouncements, { type MededelingItem } from '@/components/tv/TvAnnouncements'
+import TvRoomsCard from '@/components/tv/TvRoomsCard'
+import TvPresenceCard, { type AanwezigheidData } from '@/components/tv/TvPresenceCard'
+import TvCelebrationsCard, { type VieringenData } from '@/components/tv/TvCelebrationsCard'
+import TvTicker, { type BrancheNieuwsData } from '@/components/tv/TvTicker'
 import { DYNAMO_BLUE_LIGHT } from '@/lib/theme'
+import type { JoanRoom } from '@/lib/joan'
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 interface TvClientProps {
   nieuws: NewsItem[]
   mededelingen: MededelingItem[]
   weer: WeerItem[]
+  initRuimtes: JoanRoom[]
 }
 
-export default function TvClient({ nieuws, mededelingen, weer: initWeer }: TvClientProps) {
+export default function TvClient({
+  nieuws,
+  mededelingen,
+  weer: initWeer,
+  initRuimtes,
+}: TvClientProps) {
   const [nu, setNu] = useState(() => new Date())
   const [nieuwsIdx, setNieuwsIdx] = useState(0)
   const [fade, setFade] = useState(true)
   const [huidigWeer, setHuidigWeer] = useState<WeerItem[]>(initWeer)
+
+  // Ruimtes — elke 60s vernieuwen
+  const { data: ruimtesData } = useSWR<JoanRoom[]>('/api/ruimtes', fetcher, {
+    refreshInterval: 60_000,
+    fallbackData: initRuimtes,
+  })
+
+  // Aanwezigheid — elke 60s vernieuwen
+  const { data: aanwezigheidData } = useSWR<AanwezigheidData>(
+    '/api/tv/aanwezigheid',
+    fetcher,
+    { refreshInterval: 60_000 }
+  )
+
+  // Vieringen — elke 30 minuten vernieuwen (verandert zelden)
+  const { data: vieringenData } = useSWR<VieringenData>(
+    '/api/tv/vieringen',
+    fetcher,
+    { refreshInterval: 30 * 60_000 }
+  )
+
+  // Branchenieuws — elke 5 minuten vernieuwen
+  const { data: brancheNieuwsData } = useSWR<BrancheNieuwsData>(
+    '/api/tv/branchenieuws',
+    fetcher,
+    { refreshInterval: 5 * 60_000 }
+  )
 
   // Klok — elke seconde
   useEffect(() => {
@@ -54,6 +95,7 @@ export default function TvClient({ nieuws, mededelingen, weer: initWeer }: TvCli
   }, [])
 
   const huidigNieuws = nieuws[nieuwsIdx] ?? null
+  const ruimtes: JoanRoom[] = ruimtesData ?? initRuimtes
 
   return (
     <TvStage>
@@ -76,7 +118,7 @@ export default function TvClient({ nieuws, mededelingen, weer: initWeer }: TvCli
             flex: 1,
             display: 'grid',
             gridTemplateColumns: 'repeat(12, 1fr)',
-            gridTemplateRows: 'repeat(4, 1fr)',
+            gridTemplateRows: 'repeat(6, 1fr)',
             gap: 20,
             padding: '20px 36px 36px',
             minHeight: 0,
@@ -114,6 +156,29 @@ export default function TvClient({ nieuws, mededelingen, weer: initWeer }: TvCli
 
           {/* MEDEDELINGEN — col 8-12, row 1-4 */}
           <TvAnnouncements mededelingen={mededelingen} />
+
+          {/* RUIMTES — col 1-4, row 5-6 */}
+          <TvRoomsCard
+            ruimtes={ruimtes}
+            style={{ gridColumn: '1 / 5', gridRow: '5 / 7' }}
+          />
+
+          {/* AANWEZIGHEID — col 5-8, row 5-6 */}
+          <TvPresenceCard
+            data={aanwezigheidData ?? null}
+            style={{ gridColumn: '5 / 9', gridRow: '5 / 7' }}
+          />
+
+          {/* VIERINGEN — col 9-12, row 5-6 */}
+          <TvCelebrationsCard
+            data={vieringenData ?? null}
+            style={{ gridColumn: '9 / 13', gridRow: '5 / 7' }}
+          />
+        </div>
+
+        {/* TICKER — onder het grid, vaste hoogte */}
+        <div style={{ padding: '0 36px 20px', flexShrink: 0 }}>
+          <TvTicker data={brancheNieuwsData ?? null} style={{ height: 64 }} />
         </div>
       </div>
     </TvStage>

@@ -1,11 +1,13 @@
 import TvClient from './TvClient'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getRoomAvailability } from '@/lib/joan'
 import type { NewsItem } from '@/components/tv/TvNewsCard'
 import type { MededelingItem } from '@/components/tv/TvAnnouncements'
 import type { WeerItem } from '@/components/tv/TvHeader'
+import type { JoanRoom } from '@/lib/joan'
 
 /**
- * TV-pagina (server component) — haalt data direct uit Supabase + Open-Meteo.
+ * TV-pagina (server component) — haalt data direct uit Supabase + Open-Meteo + Joan.
  * Geen auth-check nodig: middleware (cookie tv_access) dekt de route al af.
  */
 
@@ -68,12 +70,22 @@ async function haalWeerOp(): Promise<WeerItem[]> {
   return resultaten.filter((r): r is WeerItem => r !== null)
 }
 
+async function haalRuimtesOp(): Promise<JoanRoom[]> {
+  try {
+    const { ruimtes } = await getRoomAvailability()
+    return ruimtes
+  } catch {
+    return []
+  }
+}
+
 export default async function TvPage() {
   const supabase = createAdminClient()
-  const [nieuws, mededelingen, weer] = await Promise.all([
+  const [nieuws, mededelingen, weer, initRuimtes] = await Promise.all([
     haalNieuwsOp(supabase),
     haalMededelingenOp(supabase),
     haalWeerOp(),
+    haalRuimtesOp(),
   ])
 
   return (
@@ -81,6 +93,7 @@ export default async function TvPage() {
       nieuws={nieuws}
       mededelingen={mededelingen}
       weer={weer}
+      initRuimtes={initRuimtes}
     />
   )
 }
