@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export type VieringType = 'jarig' | 'jubileum' | 'nieuw' | 'hoogtepunt'
+export type VieringType = 'jarig' | 'jubileum' | 'hoogtepunt'
 
 export interface VieringItem {
   type: VieringType
@@ -90,7 +90,7 @@ export async function GET() {
               items.push({
                 type: 'jarig',
                 naam: voornaam,
-                label: `Jarig op ${dag} ${MAAND_NAMEN[huidigeMaand - 1]}`,
+                label: `${dag} ${MAAND_NAMEN[huidigeMaand - 1]} · Verjaardag`,
                 dag,
                 vandaag: dag === vandaagDag,
               })
@@ -98,7 +98,7 @@ export async function GET() {
           } catch { /* skip */ }
         }
 
-        // Jubileum / nieuw (in_dienst_per optioneel)
+        // Jubileum (in_dienst_per optioneel)
         const inDienstStr = typeof rec.in_dienst_per === 'string' ? rec.in_dienst_per : null
         if (inDienstStr) {
           try {
@@ -106,24 +106,13 @@ export async function GET() {
             const ipMaand = ip.getMonth() + 1
             const ipDag = ip.getDate()
             const jaren = huidigJaar - ip.getFullYear()
-            const maandStr = `${huidigJaar}-${String(huidigeMaand).padStart(2,'0')}`
 
-            if (ipMaand === huidigeMaand) {
-              if (inDienstStr.startsWith(maandStr)) {
-                const afdeling = rolInfo?.afdeling ?? ''
-                const afdelingDeel = afdeling ? ` — ${afdeling}` : ''
-                items.push({
-                  type: 'nieuw', naam: voornaam,
-                  label: `Start ${ipDag} ${MAAND_NAMEN[huidigeMaand - 1]}${afdelingDeel}`,
-                  dag: ipDag, vandaag: inDienstStr.slice(0, 10) === vandaagStr,
-                })
-              } else if (jaren > 0) {
-                items.push({
-                  type: 'jubileum', naam: voornaam,
-                  label: `${jaren} jaar in dienst op ${ipDag} ${MAAND_NAMEN[huidigeMaand - 1]}`,
-                  dag: ipDag, vandaag: ipDag === vandaagDag,
-                })
-              }
+            if (ipMaand === huidigeMaand && jaren > 0) {
+              items.push({
+                type: 'jubileum', naam: voornaam,
+                label: `${ipDag} ${MAAND_NAMEN[huidigeMaand - 1]} · ${jaren} jr in dienst`,
+                dag: ipDag, vandaag: ipDag === vandaagDag,
+              })
             }
           } catch { /* skip */ }
         }

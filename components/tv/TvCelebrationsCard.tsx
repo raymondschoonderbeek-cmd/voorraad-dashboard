@@ -21,22 +21,14 @@ const MAAND_NAMEN = [
   'juli','augustus','september','oktober','november','december',
 ]
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 4
 
 function VieringDot({ type }: { type: VieringType }) {
   const kleur =
-    type === 'jarig'      ? 'var(--drg-accent)' :
-    type === 'jubileum'   ? DYNAMO_BLUE :
-    type === 'hoogtepunt' ? 'var(--drg-warn)' :
-    'var(--drg-success)'
+    type === 'jarig'    ? 'var(--drg-accent)' :
+    type === 'jubileum' ? DYNAMO_BLUE :
+    'var(--drg-warn)'
   return <div style={{ width: 8, height: 8, borderRadius: '50%', background: kleur, flexShrink: 0, marginTop: 3 }} />
-}
-
-function typeLabel(type: VieringType): string {
-  if (type === 'jarig')      return 'Verjaardag'
-  if (type === 'jubileum')   return 'Jubileum'
-  if (type === 'hoogtepunt') return 'Hoogtepunt'
-  return 'Nieuw'
 }
 
 export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardProps) {
@@ -117,7 +109,7 @@ export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardPr
                   )}
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--drg-text-2)', marginTop: 1 }}>
-                  {item.type !== 'hoogtepunt' ? `${typeLabel(item.type)} · ` : ''}{item.label}
+                  {item.label}
                 </div>
               </div>
             </div>
