@@ -35,9 +35,21 @@ interface TvNewsCardProps {
   opacity?: number
 }
 
+function extractEersteAfbeelding(html: string | null): string | null {
+  if (!html) return null
+  const match = html.match(/<img[^>]+src="([^"]+)"/)
+  return match?.[1] ?? null
+}
+
+function stripHtml(html: string | null): string | null {
+  if (!html) return null
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || null
+}
+
 export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
-  const heeftAfbeelding = Boolean(item.image_url)
-  const introTekst = item.excerpt ?? null
+  const coverAfbeelding = item.image_url ?? extractEersteAfbeelding(item.body_html)
+  const heeftAfbeelding = Boolean(coverAfbeelding)
+  const introTekst = item.excerpt ?? stripHtml(item.body_html)
 
   return (
     <div
@@ -58,7 +70,7 @@ export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
       {heeftAfbeelding && (
         <div style={{ position: 'relative', height: 320, flexShrink: 0 }}>
           <Image
-            src={item.image_url!}
+            src={coverAfbeelding!}
             alt={item.title}
             fill
             style={{ objectFit: 'cover' }}
