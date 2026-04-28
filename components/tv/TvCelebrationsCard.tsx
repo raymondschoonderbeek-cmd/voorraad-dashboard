@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT } from '@/lib/theme'
 import { useRotator } from '@/components/tv/useRotator'
+import { IconCake, IconStar } from '@/components/DashboardIcons'
 import type { VieringItem, VieringType } from '@/app/api/tv/vieringen/route'
 
 export type { VieringItem, VieringType }
@@ -23,12 +24,26 @@ const MAAND_NAMEN = [
 
 const PAGE_SIZE = 4
 
-function VieringDot({ type }: { type: VieringType }) {
-  const kleur =
-    type === 'jarig'    ? 'var(--drg-accent)' :
-    type === 'jubileum' ? DYNAMO_BLUE :
-    'var(--drg-warn)'
-  return <div style={{ width: 8, height: 8, borderRadius: '50%', background: kleur, flexShrink: 0, marginTop: 3 }} />
+function VieringIcon({ type, icoon }: { type: VieringType; icoon?: string }) {
+  if (type === 'hoogtepunt') {
+    return (
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(217,119,6,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16, lineHeight: 1 }}>
+        {icoon ?? '📅'}
+      </div>
+    )
+  }
+  if (type === 'jubileum') {
+    return (
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(45,69,124,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: DYNAMO_BLUE }}>
+        <IconStar size={15} />
+      </div>
+    )
+  }
+  return (
+    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(201,161,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--drg-accent)' }}>
+      <IconCake size={15} />
+    </div>
+  )
 }
 
 export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardProps) {
@@ -93,10 +108,7 @@ export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardPr
                 margin: item.vandaag ? '0 -10px' : '0',
               }}
             >
-              {item.type === 'hoogtepunt' && item.icoon
-                ? <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, width: 16, textAlign: 'center' }}>{item.icoon}</span>
-                : <VieringDot type={item.type} />
-              }
+              <VieringIcon type={item.type} icoon={item.icoon} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

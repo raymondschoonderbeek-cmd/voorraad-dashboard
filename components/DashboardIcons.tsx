@@ -121,3 +121,23 @@ export const IconMonitor = ({ size = 20 }: { size?: number }) => (
     <line x1="12" y1="17" x2="12" y2="21" />
   </svg>
 )
+
+export const IconCake = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8" />
+    <path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2 1 2 1" />
+    <path d="M2 21h20" />
+    <path d="M7 8v2" />
+    <path d="M12 8v2" />
+    <path d="M17 8v2" />
+    <path d="M7 4 8.5 2 10 4" />
+    <path d="M12 4l1.5-2 1.5 2" />
+    <path d="M17 4l1.5-2 1.5 2" />
+  </svg>
+)
+
+export const IconStar = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+)
