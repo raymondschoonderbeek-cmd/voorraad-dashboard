@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { DYNAMO_BLUE, DYNAMO_BLUE_LIGHT } from '@/lib/theme'
 
 const MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni',
@@ -49,17 +48,14 @@ export default function TvHeader({ nu, weer }: TvHeaderProps) {
         flexShrink: 0,
       }}
     >
-      {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', width: 280 }}>
-        <Image
-          src="/dynamo-retail-group-logo-tv.png"
-          alt="Dynamo Retail Group"
-          width={220}
-          height={44}
-          style={{ objectFit: 'contain', width: 'auto', height: 44, filter: 'brightness(0) invert(1)' }}
-          priority
-          unoptimized
-        />
+      {/* Naam */}
+      <div style={{ display: 'flex', flexDirection: 'column', width: 280 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#FFFFFF', lineHeight: 1.1 }}>
+          Dynamo
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.70)', marginTop: 3 }}>
+          Retail Group
+        </div>
       </div>
 
       {/* Datum + Klok */}
