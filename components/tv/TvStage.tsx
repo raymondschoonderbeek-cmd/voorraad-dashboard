@@ -45,6 +45,7 @@ export default function TvStage({ children }: TvStageProps) {
     >
       <div
         ref={containerRef}
+        data-theme="tv"
         style={{
           width: CANVAS_W,
           height: CANVAS_H,

@@ -82,6 +82,16 @@
   --drg-admin: #c9a14a;
 }
 
+/* TV-display: alles in de blauw-familie */
+[data-theme="tv"] {
+  --drg-ink:    #2D457C;                   /* Dynamo donkerblauw als primaire tekstkleur */
+  --drg-text-2: rgba(45,69,124,0.70);
+  --drg-text-3: rgba(45,69,124,0.45);
+  --drg-line:   rgba(45,69,124,0.12);
+  --drg-line-2: rgba(45,69,124,0.06);
+  --drg-section-label: rgba(45,69,124,0.45);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
