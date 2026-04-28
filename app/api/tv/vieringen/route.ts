@@ -130,15 +130,18 @@ export async function GET() {
       }
     }
 
-    // Vandaag eerst, dan op dag
-    items.sort((a, b) => {
+    // Filter: alleen vandaag en toekomst (verleden niet tonen)
+    const gefilterd = items.filter(i => i.dag >= vandaagDag)
+
+    // Vandaag eerst, dan chronologisch
+    gefilterd.sort((a, b) => {
       if (a.vandaag && !b.vandaag) return -1
       if (!a.vandaag && b.vandaag) return 1
       return a.dag - b.dag
     })
 
     return NextResponse.json(
-      { items },
+      { items: gefilterd },
       { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch {
