@@ -43,7 +43,13 @@ function extractEersteAfbeelding(html: string | null): string | null {
 
 function stripHtml(html: string | null): string | null {
   if (!html) return null
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || null
+  return html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#?\w+;/g, '')
+    .replace(/\s+/g, ' ')
+    .trim() || null
 }
 
 export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
@@ -68,14 +74,14 @@ export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
     >
       {/* Fotogedeelte */}
       {heeftAfbeelding && (
-        <div style={{ position: 'relative', height: 320, flexShrink: 0 }}>
+        <div style={{ position: 'relative', height: 200, flexShrink: 0 }}>
           <Image
             src={coverAfbeelding!}
             alt={item.title}
             fill
             style={{ objectFit: 'cover' }}
             sizes="800px"
-            unoptimized={false}
+            unoptimized
           />
         </div>
       )}
