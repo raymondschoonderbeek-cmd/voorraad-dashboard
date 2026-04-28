@@ -1,16 +1,25 @@
 import type { ReactNode } from 'react'
+import '@/app/globals.css'
 
 export const metadata = { title: 'DRG TV' }
 
+/**
+ * TV-layout — minimalistisch, geen sidebar/topbar, geen auth.
+ * Zwarte body vangt de buitenrand op bij schaalverschillen (TvStage).
+ */
 export default function TvLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="nl">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
-      </head>
-      <body style={{ margin: 0, padding: 0, overflow: 'hidden', background: '#0f1a35' }}>
+      <body
+        style={{
+          margin: 0,
+          padding: 0,
+          overflow: 'hidden',
+          background: '#0E1726',
+          cursor: 'none',
+          userSelect: 'none',
+        }}
+      >
         {children}
       </body>
     </html>
