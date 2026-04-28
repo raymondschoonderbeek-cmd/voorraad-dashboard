@@ -17,11 +17,6 @@ interface TvCelebrationsCardProps {
   style?: React.CSSProperties
 }
 
-const MAAND_NAMEN = [
-  'januari','februari','maart','april','mei','juni',
-  'juli','augustus','september','oktober','november','december',
-]
-
 const PAGE_SIZE = 4
 
 function VieringIcon({ type, icoon }: { type: VieringType; icoon?: string }) {
@@ -48,8 +43,6 @@ function VieringIcon({ type, icoon }: { type: VieringType; icoon?: string }) {
 
 export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardProps) {
   const items = data?.items ?? []
-  const nu = new Date()
-  const maandNaam = MAAND_NAMEN[nu.getMonth()]
 
   const aantalPaginas = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
   const paginaIdx = useRotator(aantalPaginas, 5000)
@@ -72,7 +65,7 @@ export default function TvCelebrationsCard({ data, style }: TvCelebrationsCardPr
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: DYNAMO_BLUE_LIGHT }}>
-          Bij DRG — {maandNaam}
+          Bij DRG
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {items.length > 0 && (
