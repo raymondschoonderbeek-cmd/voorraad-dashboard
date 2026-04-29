@@ -468,7 +468,9 @@ export default function GazellePakketOrders() {
       {(() => {
         const beschikbaar = beschikbaarheidData ?? {}
         const telPakket = (letter: string) =>
-          orders.filter(o => extractPakket(o.producten?.[0]?.lev_nr ?? '') === letter).length
+          orders.reduce((acc, o) =>
+            acc + (o.producten ?? []).filter(p => extractPakket(p.lev_nr) === letter).length
+          , 0)
 
         const stats = [
           { label: 'Totaal orders', orders: orders.length, beschikbaar: null },
