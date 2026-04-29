@@ -49,9 +49,12 @@ export async function GET(request: NextRequest) {
     const items = await fetchSharepointListItems()
     const transformed = transformListItems(items)
 
+    // tijdelijk: raw eerste item meesturen voor debug
+    const rawSample = items[0]?.fields ?? null
+
     // Cache-headers: 5 minuten
     return NextResponse.json(
-      { data: transformed, count: transformed.length },
+      { data: transformed, count: transformed.length, rawSample },
       {
         headers: {
           'Cache-Control': 'private, max-age=300',
