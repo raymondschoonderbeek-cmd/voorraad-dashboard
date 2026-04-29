@@ -244,15 +244,25 @@ function exporteerNaarExcel(orders: GazelleOrder[]) {
   const rijen: Record<string, string>[] = []
   for (const order of orders) {
     const naam = order.naam ?? ''
-    const hoofdProduct = order.producten?.[0]
-    rijen.push({
+    const producten = order.producten ?? []
+    const basis = {
       'Lidnummer': extractLidnummer(naam),
       'Naam': extractNaamZonderLidnummer(naam),
       'Woonplaats': extractWoonplaats(order.adres ?? ''),
-      'Pakket': hoofdProduct ? extractPakket(hoofdProduct.lev_nr) : '',
       'Bestelnummer DRG': order.bestelnummer ?? '',
       'Besteldatum': order.besteldatum ?? '',
-    })
+    }
+    if (producten.length === 0) {
+      rijen.push({ ...basis, 'Pakket': '', 'Aantal': '' })
+    } else {
+      for (const product of producten) {
+        rijen.push({
+          ...basis,
+          'Pakket': extractPakket(product.lev_nr),
+          'Aantal': product.totaal_stuks || product.aantal || '',
+        })
+      }
+    }
   }
   const ws = XLSX.utils.json_to_sheet(rijen)
   const wb = XLSX.utils.book_new()
