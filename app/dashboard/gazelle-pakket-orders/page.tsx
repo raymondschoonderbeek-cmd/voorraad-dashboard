@@ -252,10 +252,11 @@ function exporteerNaarExcel(orders: GazelleOrder[]) {
       'Bestelnummer DRG': order.bestelnummer ?? '',
       'Besteldatum': order.besteldatum ?? '',
     }
-    if (producten.length === 0) {
+    const pakketProducten = producten.filter(p => /^pakket\s+[A-F]/i.test(p.lev_nr))
+    if (pakketProducten.length === 0) {
       rijen.push({ ...basis, 'Pakket': '', 'Aantal': '' })
     } else {
-      for (const product of producten) {
+      for (const product of pakketProducten) {
         rijen.push({
           ...basis,
           'Pakket': extractPakket(product.lev_nr),
