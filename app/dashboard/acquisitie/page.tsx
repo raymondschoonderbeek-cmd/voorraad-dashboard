@@ -233,10 +233,10 @@ export default function AcquisitievePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ backgroundColor: 'var(--drg-bg)', borderBottom: '1px solid var(--drg-line)' }}>
-                      {columns.slice(0, 10).map(col => (
+                      {columns.map(col => (
                         <th
                           key={col}
-                          className="px-4 py-3 text-left font-semibold"
+                          className="px-4 py-3 text-left font-semibold whitespace-nowrap"
                           style={{
                             color: 'var(--drg-ink)',
                             textTransform: 'uppercase',
@@ -247,19 +247,6 @@ export default function AcquisitievePage() {
                           {String(col).replace(/_/g, ' ')}
                         </th>
                       ))}
-                      {columns.length > 10 && (
-                        <th
-                          className="px-4 py-3 text-left font-semibold"
-                          style={{
-                            color: 'var(--drg-ink)',
-                            textTransform: 'uppercase',
-                            fontSize: '11px',
-                            letterSpacing: '0.05em',
-                          }}
-                        >
-                          +{columns.length - 10} meer
-                        </th>
-                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -271,22 +258,15 @@ export default function AcquisitievePage() {
                           borderBottom: '1px solid var(--drg-line)',
                         }}
                       >
-                        {columns.slice(0, 10).map(col => {
+                        {columns.map(col => {
                           const val = item[col]
-                          const display = val === null || val === undefined ? '—' : String(val).slice(0, 50)
+                          const display = val === null || val === undefined ? '—' : String(val).slice(0, 100)
                           return (
-                            <td key={col} className="px-4 py-3" style={{ color: 'var(--drg-ink)' }}>
+                            <td key={col} className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--drg-ink)' }}>
                               {display}
                             </td>
                           )
                         })}
-                        {columns.length > 10 && (
-                          <td className="px-4 py-3" style={{ color: 'var(--drg-text-2)', fontSize: '12px' }}>
-                            {Object.keys(item)
-                              .slice(10)
-                              .join(', ')}
-                          </td>
-                        )}
                       </tr>
                     ))}
                   </tbody>
