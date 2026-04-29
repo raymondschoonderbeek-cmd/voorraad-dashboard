@@ -6,7 +6,12 @@ import useSWR from 'swr'
 import { DYNAMO_BLUE } from '@/lib/theme'
 import { IconArrowLeft } from '@/components/DashboardIcons'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = async (url: string) => {
+  const r = await fetch(url)
+  const json = await r.json()
+  if (!r.ok) throw new Error(json?.error || `HTTP ${r.status}`)
+  return json
+}
 
 type ContactMoment = {
   id: string
@@ -23,6 +28,29 @@ type FilterState = {
 interface ApiResponse {
   data: ContactMoment[]
   count: number
+}
+
+function decodeSPKolomnaam(name: string): string {
+  return name
+    .replace(/_x003a_/g, ':')
+    .replace(/_x0020_/g, ' ')
+    .replace(/_x0028_/g, '(')
+    .replace(/_x0029_/g, ')')
+    .replace(/LookupId$/, '')
+    .replace(/_/g, ' ')
+    .trim()
+}
+
+function formatCelWaarde(val: unknown): string {
+  if (val === null || val === undefined) return '—'
+  if (Array.isArray(val)) return val.map(formatCelWaarde).join(', ') || '—'
+  if (typeof val === 'object') {
+    const o = val as Record<string, unknown>
+    const tekst = o.displayName ?? o.Title ?? o.LookupValue ?? o.name ?? o.email
+    if (tekst != null) return String(tekst)
+    return JSON.stringify(val).slice(0, 100)
+  }
+  return String(val).slice(0, 100)
 }
 
 function parseContactMoments(raw: unknown): ContactMoment[] {
@@ -228,10 +256,10 @@ export default function AcquisitievePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ backgroundColor: 'var(--drg-bg)', borderBottom: '1px solid var(--drg-line)' }}>
-                      {columns.slice(0, 10).map(col => (
+                      {columns.map(col => (
                         <th
                           key={col}
-                          className="px-4 py-3 text-left font-semibold"
+                          className="px-4 py-3 text-left font-semibold whitespace-nowrap"
                           style={{
                             color: 'var(--drg-ink)',
                             textTransform: 'uppercase',
@@ -239,22 +267,9 @@ export default function AcquisitievePage() {
                             letterSpacing: '0.05em',
                           }}
                         >
-                          {String(col).replace(/_/g, ' ')}
+                          {decodeSPKolomnaam(col)}
                         </th>
                       ))}
-                      {columns.length > 10 && (
-                        <th
-                          className="px-4 py-3 text-left font-semibold"
-                          style={{
-                            color: 'var(--drg-ink)',
-                            textTransform: 'uppercase',
-                            fontSize: '11px',
-                            letterSpacing: '0.05em',
-                          }}
-                        >
-                          +{columns.length - 10} meer
-                        </th>
-                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -266,22 +281,11 @@ export default function AcquisitievePage() {
                           borderBottom: '1px solid var(--drg-line)',
                         }}
                       >
-                        {columns.slice(0, 10).map(col => {
-                          const val = item[col]
-                          const display = val === null || val === undefined ? '—' : String(val).slice(0, 50)
-                          return (
-                            <td key={col} className="px-4 py-3" style={{ color: 'var(--drg-ink)' }}>
-                              {display}
-                            </td>
-                          )
-                        })}
-                        {columns.length > 10 && (
-                          <td className="px-4 py-3" style={{ color: 'var(--drg-text-2)', fontSize: '12px' }}>
-                            {Object.keys(item)
-                              .slice(10)
-                              .join(', ')}
+                        {columns.map(col => (
+                          <td key={col} className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--drg-ink)' }}>
+                            {formatCelWaarde(item[col])}
                           </td>
-                        )}
+                        ))}
                       </tr>
                     ))}
                   </tbody>
