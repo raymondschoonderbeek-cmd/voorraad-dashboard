@@ -99,17 +99,51 @@ async function fetchWinkelMap(
     const colRes = await fetch(`${GRAPH_BASE}/sites/${siteId}/lists/${listId}/columns`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-    if (!colRes.ok) return null
+    if (!colRes.ok) {
+      console.error(`Winkel-lookup: columns ophalen mislukt (${colRes.status})`)
+      return null
+    }
 
     const colJson = (await colRes.json()) as { value?: Array<{ name: string; lookup?: { listId: string } }> }
-    const winkelListId = colJson.value?.find(c => c.name === 'Winkel')?.lookup?.listId
-    if (!winkelListId) return null
+    const winkelKolom = colJson.value?.find(c => c.name === 'Winkel')
+    console.log('Winkel-kolom gevonden:', JSON.stringify(winkelKolom ?? null))
 
-    // Alle Winkel-items ophalen
-    const winkels = await fetchAllPages(
-      `${GRAPH_BASE}/sites/${siteId}/lists/${winkelListId}/items?$expand=fields&$top=500`,
-      token,
-    )
+    const winkelListId = winkelKolom?.lookup?.listId
+    if (!winkelListId) {
+      console.error('Winkel-lookup: geen listId in kolomdefinitie')
+      return null
+    }
+    console.log('Winkel-listId:', winkelListId)
+
+    // Probeer de Winkel-items op te halen; de lijst kan op dezelfde of een andere site staan
+    let winkels: any[] = []
+    try {
+      winkels = await fetchAllPages(
+        `${GRAPH_BASE}/sites/${siteId}/lists/${winkelListId}/items?$expand=fields&$top=500`,
+        token,
+      )
+    } catch (e) {
+      // Fallback: probeer via root-site
+      console.warn('Winkel-lookup op huidige site mislukt, probeer root-site:', e instanceof Error ? e.message : String(e))
+      const rootSiteRes = await fetch(`${GRAPH_BASE}/sites/dynamoretailgroup.sharepoint.com`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (rootSiteRes.ok) {
+        const rootJson = (await rootSiteRes.json()) as { id?: string }
+        const rootSiteId = rootJson.id
+        if (rootSiteId) {
+          winkels = await fetchAllPages(
+            `${GRAPH_BASE}/sites/${rootSiteId}/lists/${winkelListId}/items?$expand=fields&$top=500`,
+            token,
+          )
+        }
+      }
+    }
+
+    console.log(`Winkel-map: ${winkels.length} items opgehaald`)
+    if (winkels.length > 0) {
+      console.log('Eerste Winkel-item fields:', JSON.stringify(winkels[0]?.fields ?? {}))
+    }
 
     const map = new Map<string, WinkelInfo>()
     for (const w of winkels) {
@@ -119,8 +153,9 @@ async function fetchWinkelMap(
         woonplaats: f?.WOONPLAATS ?? f?.Woonplaats ?? f?.Plaats ?? '',
       })
     }
-    return map
-  } catch {
+    return map.size > 0 ? map : null
+  } catch (e) {
+    console.error('Winkel-lookup mislukt:', e instanceof Error ? e.message : String(e))
     return null
   }
 }
