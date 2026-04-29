@@ -141,16 +141,38 @@ async function fetchWinkelMap(
     }
 
     console.log(`Winkel-map: ${winkels.length} items opgehaald`)
-    if (winkels.length > 0) {
-      console.log('Eerste Winkel-item fields:', JSON.stringify(winkels[0]?.fields ?? {}))
+
+    // Kolomdefinities van de Winkel-lijst ophalen om displayName → internalName mapping te vinden
+    let naamVeld = 'field_1'
+    let woonplaatsVeld = 'field_7'
+    try {
+      const winkelColsRes = await fetch(
+        `${GRAPH_BASE}/sites/${siteId}/lists/${winkelListId}/columns`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      if (winkelColsRes.ok) {
+        const winkelColsJson = (await winkelColsRes.json()) as {
+          value?: Array<{ name: string; displayName: string }>
+        }
+        const cols = winkelColsJson.value ?? []
+        const naamKolom = cols.find(c => c.displayName === 'NAAM' || c.displayName === 'Naam')
+        const wpKolom = cols.find(
+          c => c.displayName === 'WOONPLAATS' || c.displayName === 'Woonplaats' || c.displayName === 'Plaats',
+        )
+        if (naamKolom) naamVeld = naamKolom.name
+        if (wpKolom) woonplaatsVeld = wpKolom.name
+        console.log(`Winkel-velden: naam=${naamVeld}, woonplaats=${woonplaatsVeld}`)
+      }
+    } catch {
+      // Gebruik defaults (field_1 / field_7)
     }
 
     const map = new Map<string, WinkelInfo>()
     for (const w of winkels) {
       const f = w.fields as Record<string, any>
       map.set(String(w.id), {
-        naam: f?.NAAM ?? f?.Naam ?? f?.Title ?? '',
-        woonplaats: f?.WOONPLAATS ?? f?.Woonplaats ?? f?.Plaats ?? '',
+        naam: f?.[naamVeld] ?? f?.NAAM ?? f?.Naam ?? f?.Title ?? '',
+        woonplaats: f?.[woonplaatsVeld] ?? f?.WOONPLAATS ?? f?.Woonplaats ?? f?.Plaats ?? '',
       })
     }
     return map.size > 0 ? map : null
