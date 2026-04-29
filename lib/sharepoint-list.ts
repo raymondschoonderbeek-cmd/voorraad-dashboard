@@ -14,7 +14,7 @@ const TOKEN_URL = (tenant: string) => `https://login.microsoftonline.com/${tenan
 const SHAREPOINT_CONFIG = {
   tenant: 'dynamoretailgroup.onmicrosoft.com',
   site: 'AcquisitieNederland',
-  listName: 'Contactmomenten acquisitie',
+  listName: 'Contactmomenten NL',
 }
 
 function formatSharepoint403Help(technical: string): string {
