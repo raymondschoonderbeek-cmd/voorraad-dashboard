@@ -6,7 +6,12 @@ import useSWR from 'swr'
 import { DYNAMO_BLUE } from '@/lib/theme'
 import { IconArrowLeft } from '@/components/DashboardIcons'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = async (url: string) => {
+  const r = await fetch(url)
+  const json = await r.json()
+  if (!r.ok) throw new Error(json?.error || `HTTP ${r.status}`)
+  return json
+}
 
 type ContactMoment = {
   id: string

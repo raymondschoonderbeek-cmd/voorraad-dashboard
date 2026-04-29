@@ -99,7 +99,8 @@ export async function fetchSharepointListItems(): Promise<SharepointListItem[]> 
     if (!siteId) throw new Error('SharePoint-site AcquisitieNederland niet gevonden.')
 
     // 2. Vind de lijst-ID van "Contactmomenten acquisitie"
-    const listSearchUrl = `${GRAPH_BASE}/sites/${siteId}/lists?$filter=displayName eq '${encodeURIComponent(SHAREPOINT_CONFIG.listName)}'`
+    const listParams = new URLSearchParams({ '$filter': `displayName eq '${SHAREPOINT_CONFIG.listName}'` })
+    const listSearchUrl = `${GRAPH_BASE}/sites/${siteId}/lists?${listParams}`
     const listRes = await fetch(listSearchUrl, {
       headers: { Authorization: `Bearer ${token}` },
     })
