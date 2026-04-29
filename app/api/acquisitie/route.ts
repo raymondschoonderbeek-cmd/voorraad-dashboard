@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch data from SharePoint
-    const items = await fetchSharepointListItems()
-    const transformed = transformListItems(items)
+    // Fetch data from SharePoint (incl. Winkel-lookup voor naam/woonplaats)
+    const { items, winkelMap } = await fetchSharepointListItems()
+    const transformed = transformListItems(items, winkelMap)
 
     // Cache-headers: 5 minuten
     return NextResponse.json(

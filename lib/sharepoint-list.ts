@@ -2,15 +2,11 @@
  * Microsoft Graph → SharePoint List (app-only / client credentials).
  * Vereist: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
  * Graph: Sites.Read.All (application)
- *
- * Contactmomenten acquisitie lijst:
- * https://dynamoretailgroup.sharepoint.com/sites/AcquisitieNederland/Lists/Contactmomenten%20acquisitie/AllItems.aspx
  */
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0'
 const TOKEN_URL = (tenant: string) => `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`
 
-/** Sharepoint site-ID en lijst-ID (geëxtraheerd uit URL) */
 const SHAREPOINT_CONFIG = {
   tenant: 'dynamoretailgroup.onmicrosoft.com',
   site: 'AcquisitieNederland',
@@ -42,6 +38,8 @@ export type SharepointListItem = {
   [key: string]: any
 }
 
+type WinkelInfo = { naam: string; woonplaats: string }
+
 async function fetchAccessToken(): Promise<string> {
   const tenant = process.env.AZURE_TENANT_ID?.trim()
   const clientId = process.env.AZURE_CLIENT_ID?.trim()
@@ -64,82 +62,118 @@ async function fetchAccessToken(): Promise<string> {
   })
   if (!res.ok) throw new Error(`Token-fout: ${res.status}`)
 
-  const json = (await res.json()) as { access_token?: string; error?: string }
+  const json = (await res.json()) as { access_token?: string }
   if (!json.access_token) throw new Error('Geen access_token van Microsoft.')
   return json.access_token
 }
 
+/** Alle pagina's van een Graph-lijst ophalen. */
+async function fetchAllPages(startUrl: string, token: string): Promise<any[]> {
+  const out: any[] = []
+  let nextUrl = startUrl
+  while (nextUrl) {
+    const res = await fetch(nextUrl, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(formatSharepoint403Help(`${res.status}: ${err}`))
+    }
+    const json = (await res.json()) as { value?: any[]; '@odata.nextLink'?: string }
+    if (json.value) out.push(...json.value)
+    nextUrl = json['@odata.nextLink'] ?? ''
+  }
+  return out
+}
+
 /**
- * Haal alle items uit SharePoint-lijst op (met paginatie).
- * Retourneert array van items met hun `fields` (kolommen).
+ * Zoek het listId van de Winkel-lookup via de kolomdefinitie van de hoofdlijst,
+ * haal dan alle Winkel-items op en bouw een Map id → {naam, woonplaats}.
+ * Retourneert null als de lookup niet gevonden of niet op te halen is (non-fatal).
  */
-export async function fetchSharepointListItems(): Promise<SharepointListItem[]> {
+async function fetchWinkelMap(
+  token: string,
+  siteId: string,
+  listId: string,
+): Promise<Map<string, WinkelInfo> | null> {
+  try {
+    // Kolommen van de hoofdlijst ophalen om de Winkel-lookup listId te vinden
+    const colRes = await fetch(`${GRAPH_BASE}/sites/${siteId}/lists/${listId}/columns`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!colRes.ok) return null
+
+    const colJson = (await colRes.json()) as { value?: Array<{ name: string; lookup?: { listId: string } }> }
+    const winkelListId = colJson.value?.find(c => c.name === 'Winkel')?.lookup?.listId
+    if (!winkelListId) return null
+
+    // Alle Winkel-items ophalen
+    const winkels = await fetchAllPages(
+      `${GRAPH_BASE}/sites/${siteId}/lists/${winkelListId}/items?$expand=fields&$top=500`,
+      token,
+    )
+
+    const map = new Map<string, WinkelInfo>()
+    for (const w of winkels) {
+      const f = w.fields as Record<string, any>
+      map.set(String(w.id), {
+        naam: f?.Title ?? f?.NAAM ?? f?.Naam ?? '',
+        woonplaats: f?.WOONPLAATS ?? f?.Woonplaats ?? f?.Plaats ?? '',
+      })
+    }
+    return map
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Haal alle Contactmomenten-items op en verrijk ze met winkel-naam en -woonplaats.
+ */
+export async function fetchSharepointListItems(): Promise<{
+  items: SharepointListItem[]
+  winkelMap: Map<string, WinkelInfo> | null
+}> {
   if (!isSharepointConfigured()) {
     console.warn('SharePoint niet geconfigureerd. Retourneer lege array.')
-    return []
+    return { items: [], winkelMap: null }
   }
 
   try {
     const token = await fetchAccessToken()
 
-    // 1. Vind de site-ID van AcquisitieNederland
+    // 1. Site-ID
     const siteSearchUrl = `${GRAPH_BASE}/sites?search=${encodeURIComponent(SHAREPOINT_CONFIG.site)}`
-    const siteRes = await fetch(siteSearchUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const siteRes = await fetch(siteSearchUrl, { headers: { Authorization: `Bearer ${token}` } })
     if (!siteRes.ok) {
       const err = await siteRes.text()
-      throw new Error(
-        formatSharepoint403Help(`Site zoeken ${siteRes.status}: ${err}`),
-      )
+      throw new Error(formatSharepoint403Help(`Site zoeken ${siteRes.status}: ${err}`))
     }
-
     const siteJson = (await siteRes.json()) as { value?: Array<{ id: string }> }
     const siteId = siteJson.value?.[0]?.id
     if (!siteId) throw new Error('SharePoint-site AcquisitieNederland niet gevonden.')
 
-    // 2. Vind de lijst-ID van "Contactmomenten acquisitie"
+    // 2. Lijst-ID van "Contactmomenten NL"
     const listParams = new URLSearchParams({ '$filter': `displayName eq '${SHAREPOINT_CONFIG.listName}'` })
-    const listSearchUrl = `${GRAPH_BASE}/sites/${siteId}/lists?${listParams}`
-    const listRes = await fetch(listSearchUrl, {
+    const listRes = await fetch(`${GRAPH_BASE}/sites/${siteId}/lists?${listParams}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!listRes.ok) {
       const err = await listRes.text()
-      throw new Error(
-        formatSharepoint403Help(`Lijst zoeken ${listRes.status}: ${err}`),
-      )
+      throw new Error(formatSharepoint403Help(`Lijst zoeken ${listRes.status}: ${err}`))
     }
-
     const listJson = (await listRes.json()) as { value?: Array<{ id: string }> }
     const listId = listJson.value?.[0]?.id
     if (!listId) throw new Error(`SharePoint-lijst "${SHAREPOINT_CONFIG.listName}" niet gevonden.`)
 
-    // 3. Haal alle items op (met paginatie)
-    const out: SharepointListItem[] = []
-    let nextUrl = `${GRAPH_BASE}/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=100`
+    // 3. Contactmomenten + Winkel-map parallel ophalen
+    const [items, winkelMap] = await Promise.all([
+      fetchAllPages(
+        `${GRAPH_BASE}/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=100`,
+        token,
+      ),
+      fetchWinkelMap(token, siteId, listId),
+    ])
 
-    while (nextUrl) {
-      const itemRes = await fetch(nextUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!itemRes.ok) {
-        const err = await itemRes.text()
-        throw new Error(
-          formatSharepoint403Help(`Items ophalen ${itemRes.status}: ${err}`),
-        )
-      }
-
-      const itemJson = (await itemRes.json()) as {
-        value?: SharepointListItem[]
-        '@odata.nextLink'?: string
-      }
-      if (itemJson.value) out.push(...itemJson.value)
-
-      nextUrl = itemJson['@odata.nextLink'] ?? ''
-    }
-
-    return out
+    return { items, winkelMap }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('SharePoint-fout:', msg)
@@ -147,9 +181,8 @@ export async function fetchSharepointListItems(): Promise<SharepointListItem[]> 
   }
 }
 
-// Velden die niet getoond worden: SharePoint-systeemvelden en
-// dubbele Winkel-LookupId kolommen (allemaal hetzelfde ID als WinkelLookupId).
-const SKIP_VELDEN = new Set([
+// Systeem- en dubbele velden verbergen
+const SKIP_VELDEN_BASIS = new Set([
   '@odata.etag', 'ContentType', 'AuthorLookupId', 'EditorLookupId',
   '_UIVersionString', 'Attachments', 'Edit', 'ItemChildCount', 'FolderChildCount',
   '_ComplianceFlags', '_ComplianceTag', '_ComplianceTagWrittenTime', '_ComplianceTagUserId',
@@ -162,20 +195,31 @@ const SKIP_VELDEN = new Set([
 ])
 
 /**
- * Transformeer SharePoint-items naar een gesorteerde, gefilterde array.
- * Verbergt systeem- en dubbele LookupId-velden.
+ * Transformeer SharePoint-items naar een platte array.
+ * Als winkelMap beschikbaar is, wordt WinkelLookupId vervangen door naam + woonplaats.
  */
 export function transformListItems(
   items: SharepointListItem[],
-): Array<{
-  id: string
-  [key: string]: any
-}> {
+  winkelMap: Map<string, WinkelInfo> | null,
+): Array<{ id: string; [key: string]: any }> {
+  const skipVelden = winkelMap
+    ? new Set([...SKIP_VELDEN_BASIS, 'WinkelLookupId'])
+    : SKIP_VELDEN_BASIS
+
   return items.map(item => {
     const out: { id: string; [key: string]: any } = { id: item.id }
     const fields = item.fields as Record<string, any>
+
+    // Winkel-naam en woonplaats vooraan toevoegen als lookup beschikbaar is
+    if (winkelMap) {
+      const winkelId = String(fields.WinkelLookupId ?? '')
+      const winkel = winkelMap.get(winkelId)
+      out.Winkel = winkel?.naam ?? `#${winkelId}`
+      out.Woonplaats = winkel?.woonplaats ?? ''
+    }
+
     for (const [k, v] of Object.entries(fields)) {
-      if (!SKIP_VELDEN.has(k)) out[k] = v
+      if (!skipVelden.has(k)) out[k] = v
     }
     return out
   })
