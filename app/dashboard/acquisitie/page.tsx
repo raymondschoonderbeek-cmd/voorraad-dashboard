@@ -30,6 +30,18 @@ interface ApiResponse {
   count: number
 }
 
+function formatCelWaarde(val: unknown): string {
+  if (val === null || val === undefined) return '—'
+  if (Array.isArray(val)) return val.map(formatCelWaarde).join(', ') || '—'
+  if (typeof val === 'object') {
+    const o = val as Record<string, unknown>
+    const tekst = o.displayName ?? o.Title ?? o.LookupValue ?? o.name ?? o.email
+    if (tekst != null) return String(tekst)
+    return JSON.stringify(val).slice(0, 100)
+  }
+  return String(val).slice(0, 100)
+}
+
 function parseContactMoments(raw: unknown): ContactMoment[] {
   if (!Array.isArray(raw)) return []
   return raw.map((item: unknown) => {
@@ -258,15 +270,11 @@ export default function AcquisitievePage() {
                           borderBottom: '1px solid var(--drg-line)',
                         }}
                       >
-                        {columns.map(col => {
-                          const val = item[col]
-                          const display = val === null || val === undefined ? '—' : String(val).slice(0, 100)
-                          return (
-                            <td key={col} className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--drg-ink)' }}>
-                              {display}
-                            </td>
-                          )
-                        })}
+                        {columns.map(col => (
+                          <td key={col} className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--drg-ink)' }}>
+                            {formatCelWaarde(item[col])}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
