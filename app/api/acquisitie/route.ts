@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('Acquisitie API-fout:', msg)
     return NextResponse.json(
-      { error: msg.includes('403') ? msg : 'Fout bij ophalen acquisitie-data' },
+      { error: msg },
       { status: 500 },
     )
   }
