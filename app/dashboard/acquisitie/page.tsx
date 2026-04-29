@@ -70,6 +70,8 @@ function faseKleur(fase: string): string {
 type WinkelGroep = {
   naam: string
   woonplaats: string
+  straat: string
+  postcode: string
   fase: string
   aantalContactmomenten: number
   datumLaatst: string
@@ -94,6 +96,8 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
         groepen.set(key, {
           naam,
           woonplaats,
+          straat:   String(item.Straat   ?? '').trim(),
+          postcode: String(item.Postcode ?? '').trim(),
           fase: String(item.Gespreksfase ?? ''),
           aantalContactmomenten: 0,
           datumLaatst: String(item.Datumcontact ?? ''),
@@ -109,19 +113,16 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
     return [...groepen.values()]
   }, [items])
 
-  const uniqueWoonplaatsen = useMemo(
-    () => [...new Set(winkelGroepen.map(g => g.woonplaats).filter(Boolean))],
+  // Geocodeer alle unieke winkels op volledig adres via Nominatim
+  const geocodeSleutels = useMemo(
+    () => winkelGroepen.map(g => `${g.straat}__${g.postcode}__${g.woonplaats}`),
     [winkelGroepen],
   )
 
-  // Geocodeer alle unieke woonplaatsen via Nominatim
   useEffect(() => {
-    if (uniqueWoonplaatsen.length === 0) return
-    const teGeocoderen = uniqueWoonplaatsen.filter(w => !geocacheRef.current.has(w))
-    if (teGeocoderen.length === 0) {
-      setGeocodeerStatus('klaar')
-      return
-    }
+    if (winkelGroepen.length === 0) return
+    const teGeocoderen = winkelGroepen.filter(g => !geocacheRef.current.has(`${g.straat}__${g.postcode}__${g.woonplaats}`))
+    if (teGeocoderen.length === 0) { setGeocodeerStatus('klaar'); return }
 
     setGeocodeerStatus('bezig')
     let gestopt = false
@@ -129,19 +130,30 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
     async function geocodeerAlles() {
       for (let i = 0; i < teGeocoderen.length; i++) {
         if (gestopt) break
-        const woonplaats = teGeocoderen[i]
+        const g = teGeocoderen[i]
+        const cacheKey = `${g.straat}__${g.postcode}__${g.woonplaats}`
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(woonplaats + ', Nederland')}&format=json&limit=1`,
-            { headers: { 'Accept-Language': 'nl' } },
-          )
-          const data = await res.json()
-          if (data[0]) {
-            geocacheRef.current.set(woonplaats, [parseFloat(data[0].lat), parseFloat(data[0].lon)])
+          // Probeer eerst op volledig adres, dan op postcode, dan op woonplaats
+          const queries = [
+            g.straat && g.postcode ? `${g.straat}, ${g.postcode} ${g.woonplaats}, Nederland` : null,
+            g.postcode ? `${g.postcode}, Nederland` : null,
+            `${g.woonplaats}, Nederland`,
+          ].filter(Boolean) as string[]
+
+          for (const q of queries) {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+              { headers: { 'Accept-Language': 'nl' } },
+            )
+            const data = await res.json()
+            if (data[0]) {
+              geocacheRef.current.set(cacheKey, [parseFloat(data[0].lat), parseFloat(data[0].lon)])
+              break
+            }
+            await new Promise(r => setTimeout(r, 1100))
           }
           setGecodeerd(i + 1)
         } catch {}
-        // Nominatim rate limit: 1 req/s
         await new Promise(r => setTimeout(r, 1100))
       }
       if (!gestopt) setGeocodeerStatus('klaar')
@@ -150,7 +162,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
     void geocodeerAlles()
     return () => { gestopt = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uniqueWoonplaatsen.join(',')])
+  }, [geocodeSleutels.join(',')])
 
   // Bouw/herbouw de kaart zodra geocoding klaar is
   useEffect(() => {
@@ -182,7 +194,8 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
       const bounds: [number, number][] = []
 
       for (const groep of winkelGroepen) {
-        const coords = geocacheRef.current.get(groep.woonplaats)
+        const cacheKey = `${groep.straat}__${groep.postcode}__${groep.woonplaats}`
+        const coords = geocacheRef.current.get(cacheKey)
         if (!coords) continue
 
         const kleur = faseKleur(groep.fase)
@@ -203,7 +216,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
         marker.bindPopup(
           `<div style="font-family:system-ui,sans-serif;min-width:180px;padding:2px">
             <div style="font-weight:700;color:${DYNAMO_BLUE};font-size:13px;margin-bottom:4px">${groep.naam}</div>
-            <div style="color:#6b7280;font-size:11px;margin-bottom:6px">📍 ${groep.woonplaats}</div>
+            <div style="color:#6b7280;font-size:11px;margin-bottom:6px">📍 ${[groep.straat, groep.postcode, groep.woonplaats].filter(Boolean).join(' · ')}</div>
             <div style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:${kleur}20;color:${kleur};margin-bottom:6px">${groep.fase || '—'}</div>
             <div style="color:#6b7280;font-size:11px">Laatste contact: ${datum}</div>
             <div style="color:#6b7280;font-size:11px">${groep.aantalContactmomenten} contactmoment${groep.aantalContactmomenten !== 1 ? 'en' : ''}</div>
@@ -238,7 +251,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
     }
   }, [geocodeerStatus, winkelGroepen])
 
-  const totaalTeGeocoderen = uniqueWoonplaatsen.filter(w => !geocacheRef.current.has(w)).length
+  const totaalTeGeocoderen = winkelGroepen.filter(g => !geocacheRef.current.has(`${g.straat}__${g.postcode}__${g.woonplaats}`)).length
 
   return (
     <div className="rounded-[10px] overflow-hidden border" style={{ backgroundColor: 'var(--drg-card)', borderColor: 'var(--drg-line)' }}>

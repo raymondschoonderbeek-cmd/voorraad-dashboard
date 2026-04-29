@@ -38,7 +38,7 @@ export type SharepointListItem = {
   [key: string]: any
 }
 
-type WinkelInfo = { naam: string; woonplaats: string }
+type WinkelInfo = { naam: string; woonplaats: string; straat: string; huisnr: string; postcode: string }
 
 async function fetchAccessToken(): Promise<string> {
   const tenant = process.env.AZURE_TENANT_ID?.trim()
@@ -145,6 +145,9 @@ async function fetchWinkelMap(
     // Kolomdefinities van de Winkel-lijst ophalen om displayName → internalName mapping te vinden
     let naamVeld = 'field_1'
     let woonplaatsVeld = 'field_7'
+    let straatVeld = 'field_3'
+    let huisnrVeld = 'field_4'
+    let postcodeVeld = 'field_6'
     try {
       const winkelColsRes = await fetch(
         `${GRAPH_BASE}/sites/${siteId}/lists/${winkelListId}/columns`,
@@ -155,24 +158,28 @@ async function fetchWinkelMap(
           value?: Array<{ name: string; displayName: string }>
         }
         const cols = winkelColsJson.value ?? []
-        const naamKolom = cols.find(c => c.displayName === 'NAAM' || c.displayName === 'Naam')
-        const wpKolom = cols.find(
-          c => c.displayName === 'WOONPLAATS' || c.displayName === 'Woonplaats' || c.displayName === 'Plaats',
-        )
-        if (naamKolom) naamVeld = naamKolom.name
-        if (wpKolom) woonplaatsVeld = wpKolom.name
-        console.log(`Winkel-velden: naam=${naamVeld}, woonplaats=${woonplaatsVeld}`)
+        const zoek = (...namen: string[]) => cols.find(c => namen.includes(c.displayName))?.name
+
+        naamVeld      = zoek('NAAM', 'Naam', 'Winkelnaam') ?? naamVeld
+        woonplaatsVeld = zoek('WOONPLAATS', 'Woonplaats', 'Plaats') ?? woonplaatsVeld
+        straatVeld    = zoek('STRAATNAAM', 'Straatnaam', 'Straat', 'STRAAT') ?? straatVeld
+        huisnrVeld    = zoek('HUISNR', 'Huisnummer', 'HuisNr', 'Huisnr') ?? huisnrVeld
+        postcodeVeld  = zoek('POSTCODE', 'Postcode') ?? postcodeVeld
+        console.log(`Winkel-velden: naam=${naamVeld}, wp=${woonplaatsVeld}, straat=${straatVeld}, huisnr=${huisnrVeld}, postcode=${postcodeVeld}`)
       }
     } catch {
-      // Gebruik defaults (field_1 / field_7)
+      // Gebruik defaults (field_X)
     }
 
     const map = new Map<string, WinkelInfo>()
     for (const w of winkels) {
       const f = w.fields as Record<string, any>
       map.set(String(w.id), {
-        naam: f?.[naamVeld] ?? f?.NAAM ?? f?.Naam ?? f?.Title ?? '',
-        woonplaats: f?.[woonplaatsVeld] ?? f?.WOONPLAATS ?? f?.Woonplaats ?? f?.Plaats ?? '',
+        naam:      f?.[naamVeld]      ?? f?.NAAM      ?? f?.Naam      ?? f?.Title ?? '',
+        woonplaats: f?.[woonplaatsVeld] ?? f?.WOONPLAATS ?? f?.Woonplaats ?? '',
+        straat:    String(f?.[straatVeld]  ?? f?.STRAATNAAM ?? f?.Straat ?? ''),
+        huisnr:    String(f?.[huisnrVeld]  ?? f?.HUISNR     ?? f?.Huisnummer ?? ''),
+        postcode:  String(f?.[postcodeVeld] ?? f?.POSTCODE   ?? f?.Postcode ?? ''),
       })
     }
     return map.size > 0 ? map : null
@@ -267,11 +274,13 @@ export function transformListItems(
     const out: { id: string; [key: string]: any } = { id: item.id }
     const fields = item.fields as Record<string, any>
 
-    // Winkel-naam en woonplaats vooraan toevoegen als lookup beschikbaar is
+    // Winkel-adresgegevens vooraan toevoegen als lookup beschikbaar is
     if (winkelMap) {
       const winkelId = String(fields.WinkelLookupId ?? '')
       const winkel = winkelMap.get(winkelId)
-      out.Winkel = winkel?.naam ?? `#${winkelId}`
+      out.Winkel     = winkel?.naam      ?? `#${winkelId}`
+      out.Straat     = winkel ? `${winkel.straat} ${winkel.huisnr}`.trim() : ''
+      out.Postcode   = winkel?.postcode  ?? ''
       out.Woonplaats = winkel?.woonplaats ?? ''
     }
 
