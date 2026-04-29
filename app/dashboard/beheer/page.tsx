@@ -35,6 +35,7 @@ const MODULE_LABELS: Record<DashboardModuleId, string> = {
   'it-cmdb': 'IT-hardware (CMDB)',
   beschikbaarheid: 'Beschikbaarheid team',
   winkels: 'Winkels & vestigingen',
+  acquisitie: 'Acquisitie (contactmomenten)',
   'gazelle-orders': 'Gazelle pakket orders',
   meer: 'Meer',
 }

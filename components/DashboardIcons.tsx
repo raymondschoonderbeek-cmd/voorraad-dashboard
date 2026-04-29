@@ -147,3 +147,10 @@ export const IconMegaphone = ({ size = 20 }: { size?: number }) => (
     <path d="M3 11l19-9-9 19-2-8-8-2z" />
   </svg>
 )
+
+export const IconHandshake = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 12H9m4 0h2M9 12v3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-3M7 20h10a1 1 0 0 0 1-1V9H6v10a1 1 0 0 0 1 1z" />
+    <path d="M9 4a2 2 0 0 0-2 2v3h2V6a2 2 0 0 1 2-2m6 0a2 2 0 0 1 2 2v3h-2V6a2 2 0 0 0-2-2" />
+  </svg>
+)

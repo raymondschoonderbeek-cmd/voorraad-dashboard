@@ -9,7 +9,7 @@ import { BrancheNieuwsModule, BRANCHE_NIEUWS_MEER_URL } from '@/components/Branc
 import useSWR from 'swr'
 import { WinkelModal } from '@/components/WinkelModal'
 import { DYNAMO_BLUE, DYNAMO_GOLD, DYNAMO_LOGO, dashboardModuleTile, dashboardUi } from '@/lib/theme'
-import { IconBox, IconChart, IconMap, IconGrip, IconLunch, IconBike, IconNewspaper, IconLaptop, IconArrowLeft, IconPin } from '@/components/DashboardIcons'
+import { IconBox, IconChart, IconMap, IconGrip, IconLunch, IconBike, IconNewspaper, IconLaptop, IconArrowLeft, IconPin, IconUsers } from '@/components/DashboardIcons'
 import type { Winkel } from '@/lib/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -17,7 +17,7 @@ const KOLOMMEN_STORAGE_KEY = 'dynamo_zichtbare_kolommen'
 const WINKEL_STORAGE_KEY = 'dynamo_geselecteerde_winkel_id'
 const F = "'Outfit', sans-serif"
 
-const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'beschikbaarheid', 'winkels', 'meer'] as const
+const DEFAULT_MODULE_ORDER = ['voorraad', 'lunch', 'brand-groep', 'campagne-fietsen', 'branche-nieuws', 'interne-nieuws', 'it-cmdb', 'beschikbaarheid', 'winkels', 'acquisitie', 'meer'] as const
 type ModuleId = (typeof DEFAULT_MODULE_ORDER)[number]
 
 
@@ -855,6 +855,28 @@ export default function Dashboard() {
                             <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...tileFooter }}>
                               <span style={modFooterLink}>Open overzicht →</span>
                               <div style={modFooterIcon} aria-hidden><IconMap /></div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    }
+                    if (id === 'acquisitie') {
+                      return (
+                        <div key={id} className="relative h-full" style={colSpan} onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }} onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData('text/plain'), 10); if (!Number.isNaN(from) && from !== idx) moveModule(from, idx) }}>
+                          <Link href="/dashboard/acquisitie" aria-label="Acquisitie: contactmomenten" className={`${modCard} block cursor-pointer flex flex-col h-full`} style={{ ...tileSurface }}>
+                            {dragHandle}
+                            <div className="p-6 flex-1">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ ...tileIconWrap }}>
+                                <div style={{ color: DYNAMO_BLUE }} aria-hidden><IconUsers /></div>
+                              </div>
+                              <div style={modTitleStyle}>Acquisitie</div>
+                              <div style={modSubStyle}>
+                                Contactmomenten & leads
+                              </div>
+                            </div>
+                            <div className="px-6 py-3 flex items-center justify-between mt-auto" style={{ ...tileFooter }}>
+                              <span style={modFooterLink}>Bekijk contacten →</span>
+                              <div style={modFooterIcon} aria-hidden><IconUsers /></div>
                             </div>
                           </Link>
                         </div>
