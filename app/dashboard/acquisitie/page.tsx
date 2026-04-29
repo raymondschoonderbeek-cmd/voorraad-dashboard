@@ -30,6 +30,17 @@ interface ApiResponse {
   count: number
 }
 
+function decodeSPKolomnaam(name: string): string {
+  return name
+    .replace(/_x003a_/g, ':')
+    .replace(/_x0020_/g, ' ')
+    .replace(/_x0028_/g, '(')
+    .replace(/_x0029_/g, ')')
+    .replace(/LookupId$/, '')
+    .replace(/_/g, ' ')
+    .trim()
+}
+
 function formatCelWaarde(val: unknown): string {
   if (val === null || val === undefined) return '—'
   if (Array.isArray(val)) return val.map(formatCelWaarde).join(', ') || '—'
@@ -256,7 +267,7 @@ export default function AcquisitievePage() {
                             letterSpacing: '0.05em',
                           }}
                         >
-                          {String(col).replace(/_/g, ' ')}
+                          {decodeSPKolomnaam(col)}
                         </th>
                       ))}
                     </tr>

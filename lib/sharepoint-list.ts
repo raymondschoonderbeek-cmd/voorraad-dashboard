@@ -147,8 +147,23 @@ export async function fetchSharepointListItems(): Promise<SharepointListItem[]> 
   }
 }
 
+// Velden die niet getoond worden: SharePoint-systeemvelden en
+// dubbele Winkel-LookupId kolommen (allemaal hetzelfde ID als WinkelLookupId).
+const SKIP_VELDEN = new Set([
+  '@odata.etag', 'ContentType', 'AuthorLookupId', 'EditorLookupId',
+  '_UIVersionString', 'Attachments', 'Edit', 'ItemChildCount', 'FolderChildCount',
+  '_ComplianceFlags', '_ComplianceTag', '_ComplianceTagWrittenTime', '_ComplianceTagUserId',
+  'LinkTitleNoMenu', 'LinkTitle',
+  'Winkel_x003a__x0020_AanspreekpunLookupId',
+  'Winkel_x003a__x0020_Aanspreekpun0LookupId',
+  'Winkel_x003a__x0020_Aanspreekpun1LookupId',
+  'Winkel_x003a__x0020_NAAMLookupId',
+  'Winkel_x003a__x0020_WOONPLAATSLookupId',
+])
+
 /**
  * Transformeer SharePoint-items naar een gesorteerde, gefilterde array.
+ * Verbergt systeem- en dubbele LookupId-velden.
  */
 export function transformListItems(
   items: SharepointListItem[],
@@ -156,8 +171,12 @@ export function transformListItems(
   id: string
   [key: string]: any
 }> {
-  return items.map(item => ({
-    id: item.id,
-    ...item.fields,
-  }))
+  return items.map(item => {
+    const out: { id: string; [key: string]: any } = { id: item.id }
+    const fields = item.fields as Record<string, any>
+    for (const [k, v] of Object.entries(fields)) {
+      if (!SKIP_VELDEN.has(k)) out[k] = v
+    }
+    return out
+  })
 }
