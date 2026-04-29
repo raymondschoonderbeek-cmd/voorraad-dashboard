@@ -245,21 +245,26 @@ function exporteerNaarExcel(orders: GazelleOrder[]) {
   for (const order of orders) {
     const naam = order.naam ?? ''
     const producten = order.producten ?? []
-    const basis = {
-      'Lidnummer': extractLidnummer(naam),
-      'Naam': extractNaamZonderLidnummer(naam),
-      'Woonplaats': extractWoonplaats(order.adres ?? ''),
-      'Bestelnummer DRG': order.bestelnummer ?? '',
-      'Besteldatum': order.besteldatum ?? '',
-    }
     const pakketProducten = producten.filter(p => /^pakket\s+[A-F]/i.test(p.lev_nr))
     if (pakketProducten.length === 0) {
-      rijen.push({ ...basis, 'Pakket': '', 'Aantal': '' })
+      rijen.push({
+        'Lidnummer': extractLidnummer(naam),
+        'Naam': extractNaamZonderLidnummer(naam),
+        'Woonplaats': extractWoonplaats(order.adres ?? ''),
+        'Pakket': '',
+        'Bestelnummer DRG': order.bestelnummer ?? '',
+        'Besteldatum': order.besteldatum ?? '',
+        'Aantal': '',
+      })
     } else {
       for (const product of pakketProducten) {
         rijen.push({
-          ...basis,
+          'Lidnummer': extractLidnummer(naam),
+          'Naam': extractNaamZonderLidnummer(naam),
+          'Woonplaats': extractWoonplaats(order.adres ?? ''),
           'Pakket': extractPakket(product.lev_nr),
+          'Bestelnummer DRG': order.bestelnummer ?? '',
+          'Besteldatum': order.besteldatum ?? '',
           'Aantal': product.totaal_stuks || product.aantal || '',
         })
       }
