@@ -115,7 +115,7 @@ async function fetchWinkelMap(
     for (const w of winkels) {
       const f = w.fields as Record<string, any>
       map.set(String(w.id), {
-        naam: f?.Title ?? f?.NAAM ?? f?.Naam ?? '',
+        naam: f?.NAAM ?? f?.Naam ?? f?.Title ?? '',
         woonplaats: f?.WOONPLAATS ?? f?.Woonplaats ?? f?.Plaats ?? '',
       })
     }
