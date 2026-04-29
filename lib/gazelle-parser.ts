@@ -109,11 +109,14 @@ function parseProducten(text: string): GazelleProduct[] {
   }
 
   // Groepeer per 6 regels = één productrij (6 kolommen).
-  // Een resterende batch van 1 is een notitiegel (bijv. colspan "geen") → overslaan.
+  // Na elke 6-regelgroep kan een colspan-notitieregel staan (bijv. "geen") —
+  // dat is een <td colspan="6"> in de bronHTML die na stripping één losse
+  // regel oplevert. Sla die over zodat de volgende productrij correct begint.
   const producten: GazelleProduct[] = []
   let j = 0
-  while (j + 1 < contentLines.length) {
+  while (j < contentLines.length) {
     const b = contentLines.slice(j, j + 6)
+    if (b.length < 2) break  // minder dan 2 velden → geen geldig product
     producten.push({
       lev_nr: b[0] ?? '',
       omschrijving: b[1] ?? '',
@@ -123,6 +126,13 @@ function parseProducten(text: string): GazelleProduct[] {
       totaal_stuks: b[5] ?? '',
     })
     j += 6
+    // Sla colspan-notitiegel over: één losse waarde die geen lev_nr is
+    // (bijv. "geen", een opmerking). Lev_nrs beginnen met "Pakket" of zijn numeriek.
+    if (j < contentLines.length) {
+      const volgende = contentLines[j]
+      const isLevNr = /^pakket\s/i.test(volgende) || /^\d/.test(volgende)
+      if (!isLevNr) j++
+    }
   }
 
   return producten

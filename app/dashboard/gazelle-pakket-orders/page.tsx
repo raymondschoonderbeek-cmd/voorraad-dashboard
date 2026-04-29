@@ -576,7 +576,9 @@ export default function GazellePakketOrders() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F }}>{order.bestelnummer ?? '—'}</span>
                   <span style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.naam ?? '—'}</span>
                   <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {hoofdProduct?.omschrijving ?? '—'}
+                    {order.producten?.length > 1
+                      ? order.producten.map(p => extractPakket(p.lev_nr)).filter(Boolean).join(', ')
+                      : (hoofdProduct?.omschrijving ?? '—')}
                   </span>
                 </div>
 
