@@ -67,6 +67,9 @@ function faseKleur(fase: string): string {
   return FASE_KLEUR[fase] ?? DYNAMO_BLUE
 }
 
+// Module-level cache — overleeft tab-wissels en component-unmounts
+const _geocodeCache = new Map<string, [number, number]>()
+
 type WinkelGroep = {
   naam: string
   woonplaats: string
@@ -81,7 +84,6 @@ type WinkelGroep = {
 function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
   const mapRef = useRef<any>(null)
   const mapIdRef = useRef(`acq-kaart-${Math.random().toString(36).slice(2)}`)
-  const geocacheRef = useRef<Map<string, [number, number]>>(new Map())
   const [geocodeerStatus, setGeocodeerStatus] = useState<'idle' | 'bezig' | 'klaar'>('idle')
   const [gecodeerd, setGecodeerd] = useState(0)
 
@@ -121,7 +123,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
 
   useEffect(() => {
     if (winkelGroepen.length === 0) return
-    const teGeocoderen = winkelGroepen.filter(g => !geocacheRef.current.has(`${g.straat}__${g.postcode}__${g.woonplaats}`))
+    const teGeocoderen = winkelGroepen.filter(g => !_geocodeCache.has(`${g.straat}__${g.postcode}__${g.woonplaats}`))
     if (teGeocoderen.length === 0) { setGeocodeerStatus('klaar'); return }
 
     setGeocodeerStatus('bezig')
@@ -147,7 +149,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
             )
             const data = await res.json()
             if (data[0]) {
-              geocacheRef.current.set(cacheKey, [parseFloat(data[0].lat), parseFloat(data[0].lon)])
+              _geocodeCache.set(cacheKey, [parseFloat(data[0].lat), parseFloat(data[0].lon)])
               break
             }
             await new Promise(r => setTimeout(r, 1100))
@@ -195,7 +197,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
 
       for (const groep of winkelGroepen) {
         const cacheKey = `${groep.straat}__${groep.postcode}__${groep.woonplaats}`
-        const coords = geocacheRef.current.get(cacheKey)
+        const coords = _geocodeCache.get(cacheKey)
         if (!coords) continue
 
         const kleur = faseKleur(groep.fase)
@@ -251,7 +253,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
     }
   }, [geocodeerStatus, winkelGroepen])
 
-  const totaalTeGeocoderen = winkelGroepen.filter(g => !geocacheRef.current.has(`${g.straat}__${g.postcode}__${g.woonplaats}`)).length
+  const totaalTeGeocoderen = winkelGroepen.filter(g => !_geocodeCache.has(`${g.straat}__${g.postcode}__${g.woonplaats}`)).length
 
   return (
     <div className="rounded-[10px] overflow-hidden border" style={{ backgroundColor: 'var(--drg-card)', borderColor: 'var(--drg-line)' }}>
@@ -277,7 +279,7 @@ function AcquisitieKaart({ items }: { items: ContactMoment[] }) {
       {/* Kaart */}
       <div id={mapIdRef.current} style={{ height: 520 }} />
 
-      {geocodeerStatus === 'klaar' && winkelGroepen.filter(g => geocacheRef.current.has(g.woonplaats)).length === 0 && (
+      {geocodeerStatus === 'klaar' && winkelGroepen.filter(g => _geocodeCache.has(g.woonplaats)).length === 0 && (
         <div className="p-6 text-center text-sm" style={{ color: 'var(--drg-text-2)' }}>
           Geen locaties gevonden. Controleer of de woonplaatsnamen kloppen.
         </div>
@@ -428,9 +430,9 @@ export default function AcquisitievePage() {
               </div>
             </div>
 
-            {/* Tabel */}
-            {actievTabblad === 'tabel' && (
-              <div className="rounded-b-[10px] overflow-hidden border border-t-0" style={{ backgroundColor: 'var(--drg-card)', borderColor: 'var(--drg-line)' }}>
+            {/* Tabel — altijd in DOM, verborgen als kaart actief */}
+            <div style={{ display: actievTabblad === 'tabel' ? 'block' : 'none' }} className="rounded-b-[10px] overflow-hidden border border-t-0" style2={{ backgroundColor: 'var(--drg-card)', borderColor: 'var(--drg-line)' }}>
+              <div className="rounded-b-[10px] overflow-hidden" style={{ backgroundColor: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderTop: 'none' }}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -465,10 +467,12 @@ export default function AcquisitievePage() {
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* Kaart */}
-            {actievTabblad === 'kaart' && <AcquisitieKaart items={filtered} />}
+            {/* Kaart — altijd in DOM, verborgen als tabel actief */}
+            <div style={{ display: actievTabblad === 'kaart' ? 'block' : 'none' }}>
+              <AcquisitieKaart items={filtered} />
+            </div>
 
             <div className="mt-4 text-center text-xs" style={{ color: 'var(--drg-text-3)' }}>
               Auto-refresh elke 5 minuten · Laatste update: {new Date().toLocaleTimeString('nl-NL')}
