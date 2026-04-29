@@ -431,7 +431,7 @@ export default function AcquisitievePage() {
             </div>
 
             {/* Tabel — altijd in DOM, verborgen als kaart actief */}
-            <div style={{ display: actievTabblad === 'tabel' ? 'block' : 'none' }} className="rounded-b-[10px] overflow-hidden border border-t-0" style2={{ backgroundColor: 'var(--drg-card)', borderColor: 'var(--drg-line)' }}>
+            <div style={{ display: actievTabblad === 'tabel' ? 'block' : 'none' }}>
               <div className="rounded-b-[10px] overflow-hidden" style={{ backgroundColor: 'var(--drg-card)', border: '1px solid var(--drg-line)', borderTop: 'none' }}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
