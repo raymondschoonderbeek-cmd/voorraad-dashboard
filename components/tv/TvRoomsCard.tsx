@@ -29,7 +29,7 @@ function statusTekst(ruimte: JoanRoom): string {
     if (!eersteBoeking) return 'vrij vandaag'
     return `vrij tot ${eersteBoeking.van}`
   }
-  return ruimte.tot ? `t/m ${ruimte.tot}` : 'bezet'
+  return ruimte.tot ? `t/m ${ruimte.tot} bezet` : 'bezet'
 }
 
 export default function TvRoomsCard({ ruimtes, style }: TvRoomsCardProps) {
