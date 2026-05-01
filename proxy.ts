@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // TV kiosk: ?access=<key> zet cookie en redirect naar /tv
-  const tvKey = process.env.TV_API_KEY
+  const tvKey = process.env.TV_API_KEY?.trim()
   const tvCookie = request.cookies.get('tv_access')?.value
   const isTvSession = tvKey && tvCookie === tvKey
 
