@@ -152,6 +152,7 @@ export default function CampagneFietsenPage() {
   const [progress, setProgress] = useState<ProgressState | null>(null)
   const [baselineSaving, setBaselineSaving] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [sorteerVeld, setSorteerVeld] = useState<'voorraad' | 'omschrijving'>('voorraad')
   const abortRef = useRef<AbortController | null>(null)
 
   /** Snel: alleen snapshot uit Supabase */
@@ -273,11 +274,14 @@ export default function CampagneFietsenPage() {
 
   const fietsenSorted = useMemo(() => {
     return [...(data?.fietsen ?? [])].sort((a, b) => {
+      if (sorteerVeld === 'omschrijving') {
+        return a.omschrijving_fiets.localeCompare(b.omschrijving_fiets, 'nl')
+      }
       const d = b.totaal_voorraad - a.totaal_voorraad
       if (d !== 0) return d
       return a.omschrijving_fiets.localeCompare(b.omschrijving_fiets, 'nl')
     })
-  }, [data?.fietsen])
+  }, [data?.fietsen, sorteerVeld])
 
   const winkelFouten = data?.winkel_fouten ?? []
 
@@ -475,6 +479,32 @@ export default function CampagneFietsenPage() {
               ))}
             </ul>
           </details>
+        )}
+
+        {mayViewCampagneFietsen && data && fietsenSorted.length > 0 && (
+          <div className="flex items-center gap-2 text-sm" style={{ fontFamily: F }}>
+            <span className="text-gray-500 font-medium">Sorteren op:</span>
+            <button
+              type="button"
+              onClick={() => setSorteerVeld('voorraad')}
+              className="px-3 py-1.5 rounded-lg border font-semibold transition"
+              style={sorteerVeld === 'voorraad'
+                ? { background: DYNAMO_BLUE, color: '#fff', borderColor: DYNAMO_BLUE }
+                : { background: '#fff', color: DYNAMO_BLUE, borderColor: 'rgba(45,69,124,0.25)' }}
+            >
+              Voorraad
+            </button>
+            <button
+              type="button"
+              onClick={() => setSorteerVeld('omschrijving')}
+              className="px-3 py-1.5 rounded-lg border font-semibold transition"
+              style={sorteerVeld === 'omschrijving'
+                ? { background: DYNAMO_BLUE, color: '#fff', borderColor: DYNAMO_BLUE }
+                : { background: '#fff', color: DYNAMO_BLUE, borderColor: 'rgba(45,69,124,0.25)' }}
+            >
+              Omschrijving
+            </button>
+          </div>
         )}
 
         {mayViewCampagneFietsen && data &&
