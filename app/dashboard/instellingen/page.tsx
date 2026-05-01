@@ -119,6 +119,7 @@ export default function InstellingenPage() {
   const [weergaveNaam, setWeergaveNaam] = useState('')
   const [geboortedatum, setGeboortedatum] = useState('')
   const [profielSaving, setProfielSaving] = useState(false)
+  const [profielFout, setProfielFout] = useState<string | null>(null)
   useEffect(() => {
     if (profileData) {
       setWeergaveNaam(profileData.weergave_naam ?? '')
@@ -127,6 +128,11 @@ export default function InstellingenPage() {
   }, [profileData?.weergave_naam, profileData?.geboortedatum])
 
   async function slaProfielOp() {
+    setProfielFout(null)
+    if (weergaveNaam.trim() && !geboortedatum) {
+      setProfielFout('Vul een geboortedatum in. Dit is verplicht als je een weergavenaam instelt.')
+      return
+    }
     setProfielSaving(true)
     try {
       const res = await fetch('/api/profile', {
@@ -598,15 +604,25 @@ export default function InstellingenPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--drg-text-muted)' }}>Geboortedatum</label>
+              <label className="block text-xs font-semibold mb-1" style={{ color: profielFout ? 'var(--drg-danger)' : 'var(--drg-text-muted)' }}>
+                Geboortedatum{weergaveNaam.trim() ? <span className="ml-0.5" style={{ color: 'var(--drg-danger)' }}>*</span> : null}
+              </label>
               <input
                 type="date"
                 value={geboortedatum}
-                onChange={e => setGeboortedatum(e.target.value)}
+                onChange={e => { setGeboortedatum(e.target.value); setProfielFout(null) }}
                 className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-                style={{ border: '1px solid var(--drg-line)', color: 'var(--drg-ink)', background: 'var(--drg-card-bg)' }}
+                style={{
+                  border: `1px solid ${profielFout ? 'var(--drg-danger)' : 'var(--drg-line)'}`,
+                  color: 'var(--drg-ink)',
+                  background: 'var(--drg-card-bg)',
+                }}
               />
-              <p className="text-xs mt-1" style={{ color: 'var(--drg-text-subtle)' }}>Alleen dag en maand worden op het TV-scherm getoond.</p>
+              {profielFout ? (
+                <p className="text-xs mt-1 font-medium" style={{ color: 'var(--drg-danger)' }}>{profielFout}</p>
+              ) : (
+                <p className="text-xs mt-1" style={{ color: 'var(--drg-text-subtle)' }}>Alleen dag en maand worden op het TV-scherm getoond.</p>
+              )}
             </div>
           </div>
           <button
