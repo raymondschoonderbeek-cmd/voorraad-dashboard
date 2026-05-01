@@ -72,6 +72,12 @@ export default function TvClient({
     return () => clearInterval(t)
   }, [])
 
+  // Pagina-refresh elke 5 minuten — houdt nieuws, mededelingen en ruimtes actueel
+  useEffect(() => {
+    const t = setInterval(() => window.location.reload(), 5 * 60_000)
+    return () => clearInterval(t)
+  }, [])
+
   // Nieuws rouleren elke 20 seconden
   useEffect(() => {
     if (nieuws.length <= 1) return
