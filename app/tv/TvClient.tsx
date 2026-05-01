@@ -20,6 +20,8 @@ interface TvClientProps {
   mededelingen: MededelingItem[]
   weer: WeerItem[]
   initRuimtes: JoanRoom[]
+  initAanwezigheid: AanwezigheidData
+  initVieringen: VieringenData
 }
 
 export default function TvClient({
@@ -27,6 +29,8 @@ export default function TvClient({
   mededelingen,
   weer: initWeer,
   initRuimtes,
+  initAanwezigheid,
+  initVieringen,
 }: TvClientProps) {
   const [nu, setNu] = useState(() => new Date())
   const [nieuwsIdx, setNieuwsIdx] = useState(0)
@@ -39,18 +43,18 @@ export default function TvClient({
     fallbackData: initRuimtes,
   })
 
-  // Aanwezigheid — elke 60s vernieuwen
+  // Aanwezigheid — elke 60s vernieuwen; initAanwezigheid als SSR-fallback zodat kiosk direct data toont
   const { data: aanwezigheidData } = useSWR<AanwezigheidData>(
     '/api/tv/aanwezigheid',
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: 60_000, fallbackData: initAanwezigheid }
   )
 
-  // Vieringen — elke 30 minuten vernieuwen (verandert zelden)
+  // Vieringen — elke 30 minuten vernieuwen; initVieringen als SSR-fallback
   const { data: vieringenData } = useSWR<VieringenData>(
     '/api/tv/vieringen',
     fetcher,
-    { refreshInterval: 30 * 60_000 }
+    { refreshInterval: 30 * 60_000, fallbackData: initVieringen }
   )
 
   // Branchenieuws — elke 5 minuten vernieuwen
