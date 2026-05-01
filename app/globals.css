@@ -117,6 +117,12 @@
   88%, 100% { transform: translateY(var(--tv-scroll-dist, 0px)); }
 }
 
+/* TV ticker — doorlopende horizontale scroll */
+@keyframes tv-ticker-lopen {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }

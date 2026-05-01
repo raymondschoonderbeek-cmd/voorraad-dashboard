@@ -1,13 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { DYNAMO_BLUE_LIGHT } from '@/lib/theme'
-import { useRotator } from './useRotator'
-
-const INTERVAL_MS =
-  typeof process !== 'undefined' && process.env.NEXT_PUBLIC_TV_TICKER_MS
-    ? Number(process.env.NEXT_PUBLIC_TV_TICKER_MS) || 6000
-    : 6000
 
 export interface TickerItem {
   titel: string
@@ -25,32 +18,50 @@ interface TvTickerProps {
   style?: React.CSSProperties
 }
 
+const SEPARATOR = '   ·   '
+// ~60px per seconde — pas aan via NEXT_PUBLIC_TV_TICKER_PX_PER_S
+const PX_PER_S =
+  typeof process !== 'undefined' && process.env.NEXT_PUBLIC_TV_TICKER_PX_PER_S
+    ? Number(process.env.NEXT_PUBLIC_TV_TICKER_PX_PER_S) || 80
+    : 80
+// Schatting: gemiddeld 10px per karakter bij fontSize 17 / fontWeight 500
+const PX_PER_CHAR = 10
+
 export default function TvTicker({ data, label = 'Nieuws', style }: TvTickerProps) {
   const items = data?.items ?? []
-  const rawIndex = useRotator(items.length, INTERVAL_MS)
 
-  // Crossfade: fade out → wissel → fade in
-  const [zichtbaarIndex, setZichtbaarIndex] = useState(0)
-  const [opacity, setOpacity] = useState(1)
-  const [translateY, setTranslateY] = useState(0)
+  if (items.length === 0) {
+    return (
+      <div
+        style={{
+          background: 'var(--drg-card)',
+          border: '1px solid var(--drg-line)',
+          borderRadius: 14,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 20,
+          padding: '0 24px',
+          overflow: 'hidden',
+          height: 64,
+          ...style,
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: DYNAMO_BLUE_LIGHT, flexShrink: 0 }}>
+          {label}
+        </div>
+        <div style={{ width: 1, height: 28, background: 'var(--drg-line)', flexShrink: 0 }} />
+        <div style={{ fontSize: 13, color: 'var(--drg-text-3)' }}>Geen nieuws beschikbaar</div>
+      </div>
+    )
+  }
 
-  useEffect(() => {
-    if (items.length <= 1) {
-      setZichtbaarIndex(rawIndex)
-      return
-    }
-    // Fade uit
-    setOpacity(0)
-    setTranslateY(6)
-    const timer = setTimeout(() => {
-      setZichtbaarIndex(rawIndex)
-      setOpacity(1)
-      setTranslateY(0)
-    }, 600)
-    return () => clearTimeout(timer)
-  }, [rawIndex, items.length])
+  // Alle titels aaneengevoegd met separator, daarna verdubbeld voor naadloze loop
+  const strip = items.map(i => i.titel).join(SEPARATOR) + SEPARATOR
+  const dubbel = strip + strip
 
-  const huidigItem = items[zichtbaarIndex] ?? null
+  // Animatieduur op basis van geschatte tekstbreedte van één strip
+  const geschatteBreedtePx = strip.length * PX_PER_CHAR
+  const duurS = Math.round(geschatteBreedtePx / PX_PER_S)
 
   return (
     <div
@@ -67,73 +78,30 @@ export default function TvTicker({ data, label = 'Nieuws', style }: TvTickerProp
         ...style,
       }}
     >
-      {/* Eyebrow */}
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.22em',
-          textTransform: 'uppercase',
-          color: DYNAMO_BLUE_LIGHT,
-          flexShrink: 0,
-          whiteSpace: 'nowrap',
-        }}
-      >
+      {/* Label */}
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: DYNAMO_BLUE_LIGHT, flexShrink: 0, whiteSpace: 'nowrap' }}>
         {label}
       </div>
 
       {/* Scheidingslijn */}
-      <div
-        style={{
-          width: 1,
-          height: 28,
-          background: 'var(--drg-line)',
-          flexShrink: 0,
-        }}
-      />
+      <div style={{ width: 1, height: 28, background: 'var(--drg-line)', flexShrink: 0 }} />
 
-      {/* Ticker tekst */}
-      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {huidigItem ? (
-          <div
-            style={{
-              fontSize: 17,
-              fontWeight: 500,
-              color: 'var(--drg-ink)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              opacity,
-              transform: `translateY(${translateY}px)`,
-              transition: 'opacity 0.6s ease, transform 0.6s ease',
-            }}
-          >
-            {huidigItem.titel}
-          </div>
-        ) : (
-          <div style={{ fontSize: 13, color: 'var(--drg-text-3)' }}>
-            Geen nieuws beschikbaar
-          </div>
-        )}
-      </div>
-
-      {/* Dot-indicators */}
-      {items.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-          {items.map((_, idx) => (
-            <div
-              key={idx}
-              style={{
-                height: 6,
-                borderRadius: 3,
-                background: idx === zichtbaarIndex ? 'var(--drg-accent)' : 'rgba(14,23,38,0.18)',
-                width: idx === zichtbaarIndex ? 16 : 6,
-                transition: 'width 0.3s ease, background 0.3s ease',
-              }}
-            />
-          ))}
+      {/* Scrollende tekst */}
+      <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+        <div
+          style={{
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+            fontSize: 17,
+            fontWeight: 500,
+            color: 'var(--drg-ink)',
+            animation: `tv-ticker-lopen ${duurS}s linear infinite`,
+            willChange: 'transform',
+          }}
+        >
+          {dubbel}
         </div>
-      )}
+      </div>
     </div>
   )
 }
