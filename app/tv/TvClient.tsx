@@ -7,7 +7,7 @@ import TvHeader, { type WeerItem } from '@/components/tv/TvHeader'
 import TvNewsCard, { type NewsItem } from '@/components/tv/TvNewsCard'
 import TvAnnouncements, { type MededelingItem } from '@/components/tv/TvAnnouncements'
 import TvRoomsCard from '@/components/tv/TvRoomsCard'
-import TvPresenceCard, { type AanwezigheidData } from '@/components/tv/TvPresenceCard'
+import TvBrancheNieuwsCard from '@/components/tv/TvBrancheNieuwsCard'
 import TvCelebrationsCard, { type VieringenData } from '@/components/tv/TvCelebrationsCard'
 import TvTicker, { type BrancheNieuwsData } from '@/components/tv/TvTicker'
 import { DYNAMO_BLUE_LIGHT } from '@/lib/theme'
@@ -20,8 +20,9 @@ interface TvClientProps {
   mededelingen: MededelingItem[]
   weer: WeerItem[]
   initRuimtes: JoanRoom[]
-  initAanwezigheid: AanwezigheidData
   initVieringen: VieringenData
+  initBrancheNieuws: BrancheNieuwsData
+  initNuNl: BrancheNieuwsData
 }
 
 export default function TvClient({
@@ -29,8 +30,9 @@ export default function TvClient({
   mededelingen,
   weer: initWeer,
   initRuimtes,
-  initAanwezigheid,
   initVieringen,
+  initBrancheNieuws,
+  initNuNl,
 }: TvClientProps) {
   const [nu, setNu] = useState(() => new Date())
   const [nieuwsIdx, setNieuwsIdx] = useState(0)
@@ -43,25 +45,25 @@ export default function TvClient({
     fallbackData: initRuimtes,
   })
 
-  // Aanwezigheid — elke 60s vernieuwen; initAanwezigheid als SSR-fallback zodat kiosk direct data toont
-  const { data: aanwezigheidData } = useSWR<AanwezigheidData>(
-    '/api/tv/aanwezigheid',
-    fetcher,
-    { refreshInterval: 60_000, fallbackData: initAanwezigheid }
-  )
-
-  // Vieringen — elke 30 minuten vernieuwen; initVieringen als SSR-fallback
+  // Vieringen — elke 30 minuten vernieuwen; SSR-fallback
   const { data: vieringenData } = useSWR<VieringenData>(
     '/api/tv/vieringen',
     fetcher,
     { refreshInterval: 30 * 60_000, fallbackData: initVieringen }
   )
 
-  // Branchenieuws — elke 5 minuten vernieuwen
+  // Branchenieuws (kaart) — elke 5 minuten vernieuwen; SSR-fallback
   const { data: brancheNieuwsData } = useSWR<BrancheNieuwsData>(
     '/api/tv/branchenieuws',
     fetcher,
-    { refreshInterval: 5 * 60_000 }
+    { refreshInterval: 5 * 60_000, fallbackData: initBrancheNieuws }
+  )
+
+  // Nu.nl (ticker) — elke 5 minuten vernieuwen; SSR-fallback
+  const { data: nuNlData } = useSWR<BrancheNieuwsData>(
+    '/api/tv/nunl',
+    fetcher,
+    { refreshInterval: 5 * 60_000, fallbackData: initNuNl }
   )
 
   // Klok — elke seconde
@@ -167,9 +169,9 @@ export default function TvClient({
             style={{ gridColumn: '1 / 5', gridRow: '5 / 7' }}
           />
 
-          {/* AANWEZIGHEID — col 5-8, row 5-6 */}
-          <TvPresenceCard
-            data={aanwezigheidData ?? null}
+          {/* BRANCHENIEUWS — col 5-8, row 5-6 */}
+          <TvBrancheNieuwsCard
+            data={brancheNieuwsData ?? null}
             style={{ gridColumn: '5 / 9', gridRow: '5 / 7' }}
           />
 
@@ -180,9 +182,9 @@ export default function TvClient({
           />
         </div>
 
-        {/* TICKER — onder het grid, vaste hoogte */}
+        {/* TICKER — nu.nl nieuws */}
         <div style={{ padding: '0 36px 20px', flexShrink: 0 }}>
-          <TvTicker data={brancheNieuwsData ?? null} style={{ height: 64 }} />
+          <TvTicker data={nuNlData ?? null} label="Nu.nl" style={{ height: 64 }} />
         </div>
       </div>
     </TvStage>

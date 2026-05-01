@@ -21,10 +21,11 @@ export interface BrancheNieuwsData {
 
 interface TvTickerProps {
   data: BrancheNieuwsData | null
+  label?: string
   style?: React.CSSProperties
 }
 
-export default function TvTicker({ data, style }: TvTickerProps) {
+export default function TvTicker({ data, label = 'Nieuws', style }: TvTickerProps) {
   const items = data?.items ?? []
   const rawIndex = useRotator(items.length, INTERVAL_MS)
 
@@ -78,7 +79,7 @@ export default function TvTicker({ data, style }: TvTickerProps) {
           whiteSpace: 'nowrap',
         }}
       >
-        Branchenieuws
+        {label}
       </div>
 
       {/* Scheidingslijn */}
@@ -110,10 +111,8 @@ export default function TvTicker({ data, style }: TvTickerProps) {
             {huidigItem.titel}
           </div>
         ) : (
-          <div
-            style={{ fontSize: 13, color: 'var(--drg-text-3)' }}
-          >
-            Geen branchenieuws beschikbaar
+          <div style={{ fontSize: 13, color: 'var(--drg-text-3)' }}>
+            Geen nieuws beschikbaar
           </div>
         )}
       </div>

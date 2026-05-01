@@ -1,27 +1,20 @@
 import TvClient from './TvClient'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRoomAvailability } from '@/lib/joan'
+import { parseBrancheNieuwsRss } from '@/lib/branche-nieuws-rss'
 import type { NewsItem } from '@/components/tv/TvNewsCard'
 import type { MededelingItem } from '@/components/tv/TvAnnouncements'
 import type { WeerItem } from '@/components/tv/TvHeader'
 import type { JoanRoom } from '@/lib/joan'
-import type { AanwezigheidData } from '@/components/tv/TvPresenceCard'
 import type { VieringenData, VieringItem } from '@/components/tv/TvCelebrationsCard'
-import {
-  berekenStatus,
-  berekenVolgendeLabel,
-  toIana,
-  DEFAULT_WEEK_SCHEMA,
-  type BeschikbaarheidRecord,
-  type DagNaam,
-} from '@/lib/beschikbaarheid'
-
-const MAAND_NAMEN = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+import type { BrancheNieuwsData } from '@/components/tv/TvTicker'
 
 /**
  * TV-pagina (server component) — haalt data direct uit Supabase + Open-Meteo + Joan.
  * Geen auth-check nodig: middleware (cookie tv_access) dekt de route al af.
  */
+
+const MAAND_NAMEN = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
 async function haalNieuwsOp(supabase: ReturnType<typeof createAdminClient>): Promise<NewsItem[]> {
   const zevenDagenGeleden = new Date()
@@ -88,66 +81,6 @@ async function haalRuimtesOp(): Promise<JoanRoom[]> {
     return ruimtes
   } catch {
     return []
-  }
-}
-
-async function haalAanwezigheidOp(supabase: ReturnType<typeof createAdminClient>): Promise<AanwezigheidData> {
-  try {
-    const now = new Date()
-    const { data: beschikbaarheid, error: beschErr } = await supabase
-      .from('gebruiker_beschikbaarheid')
-      .select('*')
-
-    if (beschErr) return { aanwezig: [], oof: [] }
-
-    const rows = (beschikbaarheid ?? []) as BeschikbaarheidRecord[]
-    const userIds = rows.map(r => r.user_id)
-    if (userIds.length === 0) return { aanwezig: [], oof: [] }
-
-    const { data: rollenData } = await supabase
-      .from('gebruiker_rollen')
-      .select('user_id, naam, afdeling')
-      .in('user_id', userIds)
-
-    const naamByUser = new Map<string, string>()
-    const afdelingByUser = new Map<string, string>()
-    for (const r of rollenData ?? []) {
-      const rec = r as { user_id: string; naam: string | null; afdeling?: string | null }
-      if (rec.naam) naamByUser.set(rec.user_id, rec.naam)
-      if (rec.afdeling) afdelingByUser.set(rec.user_id, rec.afdeling)
-    }
-
-    const aanwezig: AanwezigheidData['aanwezig'] = []
-    const oof: AanwezigheidData['oof'] = []
-
-    for (const rec of rows) {
-      const naam = naamByUser.get(rec.user_id)
-      if (!naam) continue
-
-      const iana = toIana(rec.work_timezone ?? 'W. Europe Standard Time')
-      const schema = rec.work_schedule ?? DEFAULT_WEEK_SCHEMA
-      const dagNaam = now
-        .toLocaleDateString('en-US', { weekday: 'long', timeZone: iana })
-        .toLowerCase() as DagNaam
-
-      if (!schema[dagNaam]?.enabled) continue
-
-      const voornaam = naam.split(' ')[0] ?? naam
-      const afdeling = afdelingByUser.get(rec.user_id) ?? ''
-      const status = berekenStatus(rec, now)
-
-      if (status === 'out-of-office') {
-        oof.push({ naam: voornaam, afdeling, terug: berekenVolgendeLabel(rec, now) })
-      } else {
-        aanwezig.push({ naam: voornaam, afdeling })
-      }
-    }
-
-    aanwezig.sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))
-    oof.sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))
-    return { aanwezig, oof }
-  } catch {
-    return { aanwezig: [], oof: [] }
   }
 }
 
@@ -218,15 +151,35 @@ async function haalVieringenOp(supabase: ReturnType<typeof createAdminClient>): 
   }
 }
 
+async function haalRssOp(url: string, limit: number): Promise<BrancheNieuwsData> {
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8', 'User-Agent': 'DynamoTV/1.0' },
+      signal: AbortSignal.timeout(10_000),
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) return { items: [] }
+    const rawItems = parseBrancheNieuwsRss(await res.text(), limit)
+    return {
+      items: rawItems.map(item => ({ titel: item.title, url: item.link, datum: item.pubDate ?? null })),
+    }
+  } catch {
+    return { items: [] }
+  }
+}
+
 export default async function TvPage() {
   const supabase = createAdminClient()
-  const [nieuws, mededelingen, weer, initRuimtes, initAanwezigheid, initVieringen] = await Promise.all([
+  const brancheRss = process.env.NIEUWSFIETS_RSS_URL?.trim() || 'https://nieuwsfiets.nu/category/nieuws/feed/'
+
+  const [nieuws, mededelingen, weer, initRuimtes, initVieringen, initBrancheNieuws, initNuNl] = await Promise.all([
     haalNieuwsOp(supabase),
     haalMededelingenOp(supabase),
     haalWeerOp(),
     haalRuimtesOp(),
-    haalAanwezigheidOp(supabase),
     haalVieringenOp(supabase),
+    haalRssOp(brancheRss, 8),
+    haalRssOp('https://www.nu.nl/rss/Algemeen', 10),
   ])
 
   return (
@@ -235,8 +188,9 @@ export default async function TvPage() {
       mededelingen={mededelingen}
       weer={weer}
       initRuimtes={initRuimtes}
-      initAanwezigheid={initAanwezigheid}
       initVieringen={initVieringen}
+      initBrancheNieuws={initBrancheNieuws}
+      initNuNl={initNuNl}
     />
   )
 }
