@@ -25,16 +25,6 @@ function extractEersteAfbeelding(html: string | null): string | null {
   return match?.[1] ?? null
 }
 
-function stripHtml(html: string | null): string | null {
-  if (!html) return null
-  return html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/p>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#?\w+;/g, '')
-    .replace(/\s+/g, ' ')
-    .trim() || null
-}
 
 export interface NewsItem {
   id: string
@@ -53,8 +43,9 @@ interface TvNewsCardProps {
 }
 
 export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
-  const coverAfbeelding = item.image_url ?? extractEersteAfbeelding(item.body_html)
-  const tekst = item.excerpt ?? stripHtml(item.body_html)
+  const coverAfbeelding = item.image_url ?? (!item.body_html ? null : extractEersteAfbeelding(item.body_html))
+  const gebruikHtml = !!item.body_html
+  const plainTekst = !gebruikHtml ? (item.excerpt ?? null) : null
 
   const wrapperRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -122,18 +113,27 @@ export default function TvNewsCard({ item, opacity = 1 }: TvNewsCardProps) {
       {/* Scrollende inhoud */}
       <div ref={wrapperRef} style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
         <div ref={innerRef} style={scrollCss}>
-          {tekst && (
-            <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--drg-ink)', margin: '0 0 20px' }}>
-              {tekst}
-            </p>
-          )}
-          {coverAfbeelding && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={coverAfbeelding}
-              alt={item.title}
-              style={{ maxWidth: '55%', height: 'auto', borderRadius: 10, display: 'block' }}
+          {gebruikHtml ? (
+            <div
+              className="tv-nieuws-body"
+              dangerouslySetInnerHTML={{ __html: item.body_html! }}
             />
+          ) : (
+            <>
+              {plainTekst && (
+                <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--drg-ink)', margin: '0 0 20px' }}>
+                  {plainTekst}
+                </p>
+              )}
+              {coverAfbeelding && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverAfbeelding}
+                  alt={item.title}
+                  style={{ maxWidth: '55%', height: 'auto', borderRadius: 10, display: 'block' }}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
