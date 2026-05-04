@@ -1058,7 +1058,7 @@ export default function BeheerPage() {
       if (winkelFilterApi !== 'alle') {
         if (winkelFilterSysteem === 'wilmar') {
           if (winkelFilterApi === 'gekoppeld') return isWilmar && w.wilmar_organisation_id != null && w.wilmar_branch_id != null
-          if (winkelFilterApi === 'niet_gekoppeld') return isWilmar && (w.wilmar_organisation_id == null || w.wilmar_branch_id == null)
+          if (winkelFilterApi === 'niet_gekoppeld') return isWilmar && (w.wilmar_organisation_id == null || w.wilmar_branch_id == null) && String(w.cm_fietsen_deelname ?? '').toLowerCase() !== 'nee'
         } else if (winkelFilterSysteem === 'vendit') {
           if (winkelFilterApi === 'in_dataset') return isVendit && w.vendit_in_dataset === true
           if (winkelFilterApi === 'niet_in_dataset') return isVendit && w.vendit_in_dataset === false && String(w.cm_fietsen_deelname ?? '').toLowerCase() !== 'nee'
@@ -1070,8 +1070,8 @@ export default function BeheerPage() {
           }
         } else {
           if (winkelFilterApi === 'ok') return isCycle && w.cycle_api_authorized === true
-          if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false
-          if (winkelFilterApi === 'niet_gecontroleerd') return w.cycle_api_authorized == null
+          if (winkelFilterApi === 'geen') return isCycle && w.cycle_api_authorized === false && String(w.cm_fietsen_deelname ?? '').toLowerCase() !== 'nee'
+          if (winkelFilterApi === 'niet_gecontroleerd') return w.cycle_api_authorized == null && String(w.cm_fietsen_deelname ?? '').toLowerCase() !== 'nee'
         }
       }
       if (zoek) {
