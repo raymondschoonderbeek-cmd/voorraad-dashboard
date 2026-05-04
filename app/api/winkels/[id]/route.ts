@@ -28,7 +28,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { supabase } = auth
   const { id } = await params
   const body = await request.json().catch(() => ({})) as Record<string, unknown>
-  const PATCHABLE = ['contactpersoon','telefoon','email','email_administratie','website','geblokkeerd','naam','formule','regio_manager','vvo_m2','aangesloten_sinds']
+  const PATCHABLE = ['geblokkeerd','naam','formule','regio_manager','vvo_m2','aangesloten_sinds']
   const update: Record<string, unknown> = {}
   for (const key of PATCHABLE) {
     if (key in body) update[key] = body[key]
