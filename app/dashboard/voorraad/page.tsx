@@ -665,13 +665,13 @@ export default function VoorraadPagina() {
                   style={{ maxHeight: 'calc(100vh - 320px)', minHeight: '240px', WebkitOverflowScrolling: 'touch' }}
                 >
                   <table className="w-full text-sm min-w-[600px] [border-collapse:separate] [border-spacing:0]">
-                    <thead className="sticky top-0 z-[45]" style={{ background: DYNAMO_BLUE }}>
+                    <thead className="sticky top-0" style={{ background: DYNAMO_BLUE }}>
                       <tr>
                         {zichtbareKolommen.map(k => {
                           const active = sortKey === k
                           const sticky = stickyEnabled && stickyKey === k
                           return (
-                            <th key={k} scope="col" className="px-4 py-3 text-left" style={{ color: active ? 'white' : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : undefined, left: sticky ? 0 : undefined, zIndex: sticky ? 60 : undefined, minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
+                            <th key={k} scope="col" className="px-4 py-3 text-left" style={{ color: active ? 'white' : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : 'relative', left: sticky ? 0 : undefined, zIndex: sticky ? 20 : 10, minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
                                 <span style={{ color: active ? 'white' : 'rgba(255,255,255,0.25)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
@@ -728,7 +728,7 @@ export default function VoorraadPagina() {
                                   const isStock = k === 'STOCK' || k === 'AVAILABLE_STOCK'
                                   const stockVal = Number(p[k])
                                   return (
-                                    <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: i % 2 === 1 ? 'rgba(45,69,124,0.015)' : 'white', zIndex: 40, boxShadow: '2px 0 0 0 rgba(45,69,124,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
+                                    <td key={k} className="px-4 py-2.5 align-middle" style={{ ...(sticky ? { position: 'sticky', left: 0, background: i % 2 === 1 ? 'rgba(45,69,124,0.015)' : 'white', zIndex: 9, boxShadow: '2px 0 0 0 rgba(45,69,124,0.06)' } : {}), minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
                                       <span className="text-sm" style={{ fontFamily: F, color: isStock ? (stockVal === 0 ? '#dc2626' : stockVal <= 3 ? '#d97706' : '#16a34a') : DYNAMO_BLUE, fontWeight: isStock ? 600 : 400, opacity: isStock ? 1 : 0.8 }}>
                                         {formatValue(k, p[k])}
                                       </span>
