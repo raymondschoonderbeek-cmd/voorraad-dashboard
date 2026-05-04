@@ -147,7 +147,7 @@ export default function Dashboard() {
     if (!allowedCountries || allowedCountries.length === 0) return winkels
     return winkels.filter(w => {
       if (!w.land) return true
-      return allowedCountries.includes(w.land)
+      return allowedCountries.includes(w.land as 'Netherlands' | 'Belgium')
     })
   }, [winkels, allowedCountries])
 
@@ -324,7 +324,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!geselecteerdeWinkel) return
-    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer)
+    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer ?? '')
   }, [geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
@@ -338,7 +338,7 @@ export default function Dashboard() {
     router.replace(`/dashboard?winkel=${winkel.id}`)
     setZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setFoutmelding(null)
-    await haalVoorraadOp(winkel.id, winkel.kassa_nummer)
+    await haalVoorraadOp(winkel.id, winkel.kassa_nummer ?? '')
   }
 
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
@@ -1066,7 +1066,7 @@ export default function Dashboard() {
                     {geselecteerdeWinkel && (
                       <button
                         type="button"
-                        onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer)}
+                        onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer ?? '')}
                         className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition hover:opacity-90"
                         style={{ background: '#dc2626', color: 'white', fontFamily: F }}
                       >

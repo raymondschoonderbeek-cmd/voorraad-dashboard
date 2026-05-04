@@ -35,7 +35,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
     if (!q) return winkels
     return winkels.filter(w =>
       w.naam.toLowerCase().includes(q) ||
-      w.kassa_nummer.includes(q) ||
+      (w.kassa_nummer?.includes(q)) ||
       (w.stad?.toLowerCase().includes(q))
     )
   }, [winkels, search])

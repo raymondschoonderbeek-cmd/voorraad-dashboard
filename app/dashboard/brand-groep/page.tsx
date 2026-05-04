@@ -159,7 +159,7 @@ export default function BrandGroepPage() {
     if (w) {
       setGeselecteerdeWinkel(w)
       setWinkelModalOpen(false)
-      haalVoorraadOp(w.id, w.kassa_nummer)
+      haalVoorraadOp(w.id, w.kassa_nummer ?? '')
     }
   }, [winkels, geselecteerdeWinkel, searchParams, haalVoorraadOp])
 
@@ -177,7 +177,7 @@ export default function BrandGroepPage() {
     setBrandSearch('')
     setMinAvailable(0)
     setTop10Brands(false)
-    if (winkel) await haalVoorraadOp(winkel.id, winkel.kassa_nummer)
+    if (winkel) await haalVoorraadOp(winkel.id, winkel.kassa_nummer ?? '')
   }
 
   // ✅ Filter alvast 0-voorraad weg (basis voor alles)
