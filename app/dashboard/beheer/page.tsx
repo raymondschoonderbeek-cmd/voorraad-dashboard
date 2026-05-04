@@ -63,6 +63,7 @@ type Winkel = {
   vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
   lidnummer?: string | null
+  cm_fietsen_deelname?: string | null
 }
 type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen' | 'nieuws' | 'afbeeldingen' | 'tv'
 
@@ -1060,7 +1061,7 @@ export default function BeheerPage() {
           if (winkelFilterApi === 'niet_gekoppeld') return isWilmar && (w.wilmar_organisation_id == null || w.wilmar_branch_id == null)
         } else if (winkelFilterSysteem === 'vendit') {
           if (winkelFilterApi === 'in_dataset') return isVendit && w.vendit_in_dataset === true
-          if (winkelFilterApi === 'niet_in_dataset') return isVendit && w.vendit_in_dataset === false
+          if (winkelFilterApi === 'niet_in_dataset') return isVendit && w.vendit_in_dataset === false && String(w.cm_fietsen_deelname ?? '').toLowerCase() !== 'nee'
           if (winkelFilterApi === 'ouder_dan_2_dagen') {
             if (!isVendit || !w.vendit_laatst_datum) return false
             const datum = new Date(w.vendit_laatst_datum).getTime()
