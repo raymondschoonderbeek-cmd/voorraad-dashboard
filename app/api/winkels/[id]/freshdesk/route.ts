@@ -57,20 +57,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ geconfigureerd: false, open: [], historie: [] })
   }
 
-  const { data: winkel } = await supabase
-    .from('winkels')
-    .select('id, naam, email, email_administratie')
-    .eq('id', Number(id))
-    .single()
+  const [winkelRes, contactenRes] = await Promise.all([
+    supabase.from('winkels').select('id, naam, email, email_administratie').eq('id', Number(id)).single(),
+    supabase.from('winkel_contacten').select('email').eq('winkel_id', Number(id)).not('email', 'is', null),
+  ])
 
-  if (!winkel) return NextResponse.json({ error: 'Niet gevonden' }, { status: 404 })
+  if (!winkelRes.data) return NextResponse.json({ error: 'Niet gevonden' }, { status: 404 })
+  const winkel = winkelRes.data
 
   const domain = (process.env.FRESHDESK_DOMAIN ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim()
   const key = process.env.FRESHDESK_API_KEY?.trim() ?? ''
   const authHeader = `Basic ${Buffer.from(`${key}:X`).toString('base64')}`
 
-  // Verzamel unieke e-mailadressen van de winkel
-  const emails = [...new Set([winkel.email, winkel.email_administratie].filter((e): e is string => !!(e?.trim())))]
+  // Verzamel unieke e-mailadressen: primair + administratie + aanvullende contacten
+  const contactEmails = (contactenRes.data ?? []).map((c: { email: string | null }) => c.email).filter((e): e is string => !!(e?.trim()))
+  const emails = [...new Set([winkel.email, winkel.email_administratie, ...contactEmails].filter((e): e is string => !!(e?.trim())))]
 
   if (emails.length === 0) {
     return NextResponse.json({ geconfigureerd: true, open: [], historie: [], geen_email: true })
