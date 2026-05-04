@@ -93,7 +93,7 @@ export default function TvAnnouncements({ mededelingen }: TvAnnouncementsProps) 
                 </div>
                 {m.geldig_tot && (
                   <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--drg-text-3)', marginTop: 4 }}>
-                    Deadline · <strong style={{ color: DYNAMO_BLUE }}>{formatDeadline(m.geldig_tot)}</strong>
+                    <strong style={{ color: DYNAMO_BLUE }}>{formatDeadline(m.geldig_tot)}</strong>
                   </div>
                 )}
               </div>
