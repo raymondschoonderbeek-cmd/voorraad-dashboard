@@ -188,7 +188,11 @@ export default function BeheerPage() {
   const [winkelFilterLocatie, setWinkelFilterLocatie] = useState<'alle' | 'zonder'>('alle')
   const [winkelZoekterm, setWinkelZoekterm] = useState('')
   const [geocodeLoading, setGeocodeLoading] = useState(false)
-  const [geocodeResultaat, setGeocodeResultaat] = useState<{ bijgewerkt: number; totaal: number; mislukt: number } | null>(null)
+  const [geocodeVoortgang, setGeocodeVoortgang] = useState<{
+    totaal: number; gedaan: number; huidig: string | null; klaar: boolean
+    log: { naam: string; status: 'ok' | 'mislukt' | 'overgeslagen'; reden?: string }[]
+    bijgewerkt: number; mislukt: number; zonderAdres: number
+  } | null>(null)
 
   const haalGebruikersOp = useCallback(async (light = true) => {
     setLoading(true)
@@ -1021,14 +1025,46 @@ export default function BeheerPage() {
 
   async function geocodeerWinkels() {
     setGeocodeLoading(true)
-    setGeocodeResultaat(null)
+    setGeocodeVoortgang({ totaal: 0, gedaan: 0, huidig: null, klaar: false, log: [], bijgewerkt: 0, mislukt: 0, zonderAdres: 0 })
     try {
-      const res = await fetch('/api/winkels/geocode', { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      setGeocodeResultaat({ bijgewerkt: data.bijgewerkt ?? 0, totaal: data.totaal ?? 0, mislukt: data.mislukt?.length ?? 0 })
-      if ((data.bijgewerkt ?? 0) > 0) void haalWinkelsOp()
+      const res = await fetch('/api/winkels/geocode', { method: 'GET' })
+      if (!res.body) throw new Error('Geen stream')
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const regels = buf.split('\n')
+        buf = regels.pop() ?? ''
+        for (const regel of regels) {
+          if (!regel.startsWith('data: ')) continue
+          try {
+            const evt = JSON.parse(regel.slice(6)) as Record<string, unknown>
+            if (evt.type === 'start') {
+              setGeocodeVoortgang(v => v ? { ...v, totaal: (evt.metAdres as number) ?? 0 } : v)
+            } else if (evt.type === 'bezig') {
+              setGeocodeVoortgang(v => v ? { ...v, huidig: evt.naam as string } : v)
+            } else if (evt.type === 'voortgang') {
+              setGeocodeVoortgang(v => {
+                if (!v) return v
+                return {
+                  ...v,
+                  gedaan: v.gedaan + (evt.status !== 'overgeslagen' ? 1 : 0),
+                  huidig: null,
+                  log: [{ naam: evt.naam as string, status: evt.status as 'ok' | 'mislukt' | 'overgeslagen', reden: evt.reden as string | undefined }, ...v.log],
+                }
+              })
+            } else if (evt.type === 'klaar') {
+              setGeocodeVoortgang(v => v ? { ...v, klaar: true, huidig: null, bijgewerkt: evt.bijgewerkt as number, mislukt: evt.mislukt as number, zonderAdres: evt.zonderAdres as number } : v)
+              if ((evt.bijgewerkt as number) > 0) void haalWinkelsOp()
+            }
+          } catch { /* ongeldige JSON overslaan */ }
+        }
+      }
     } catch {
-      setGeocodeResultaat({ bijgewerkt: 0, totaal: 0, mislukt: 0 })
+      setGeocodeVoortgang(v => v ? { ...v, klaar: true, huidig: null } : v)
     }
     setGeocodeLoading(false)
   }
@@ -2202,21 +2238,58 @@ export default function BeheerPage() {
                   </button>
                 )}
                 {winkels.some(w => !w.lat || !w.lng) && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={geocodeerWinkels} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
-                      {geocodeLoading
-                        ? 'Geocoderen…'
-                        : `📍 Geocodeer winkels zonder locatie (${winkels.filter(w => !w.lat || !w.lng).length})`}
-                    </button>
-                    {geocodeResultaat && (
-                      <span className="text-xs" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
-                        {geocodeResultaat.bijgewerkt} van {geocodeResultaat.totaal} bijgewerkt
-                        {geocodeResultaat.mislukt > 0 ? `, ${geocodeResultaat.mislukt} mislukt` : ''}
-                      </span>
-                    )}
-                  </div>
+                  <button onClick={geocodeerWinkels} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
+                    {geocodeLoading ? 'Geocoderen…' : `📍 Geocodeer winkels zonder locatie (${winkels.filter(w => !w.lat || !w.lng).length})`}
+                  </button>
                 )}
               </div>
+              {geocodeVoortgang && (
+                <div className="rounded-[10px] overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.1)', background: 'var(--drg-card)' }}>
+                  {/* Header met voortgangsbalk */}
+                  <div className="px-4 py-3 flex items-center justify-between gap-4" style={{ borderBottom: '1px solid rgba(45,69,124,0.07)' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>
+                          {geocodeVoortgang.klaar ? `Klaar — ${geocodeVoortgang.bijgewerkt} bijgewerkt` : geocodeVoortgang.huidig ? `Bezig: ${geocodeVoortgang.huidig}` : 'Ophalen…'}
+                        </span>
+                        <span className="text-xs" style={{ color: 'rgba(45,69,124,0.45)', fontFamily: F }}>
+                          {geocodeVoortgang.gedaan} / {geocodeVoortgang.totaal}
+                        </span>
+                      </div>
+                      <div className="w-full rounded-full h-1.5" style={{ background: 'rgba(45,69,124,0.1)' }}>
+                        <div
+                          className="h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: geocodeVoortgang.totaal > 0 ? `${Math.round((geocodeVoortgang.gedaan / geocodeVoortgang.totaal) * 100)}%` : '0%', background: geocodeVoortgang.klaar ? '#16a34a' : DYNAMO_BLUE }}
+                        />
+                      </div>
+                      {geocodeVoortgang.klaar && (
+                        <p className="text-xs mt-1" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>
+                          {geocodeVoortgang.mislukt > 0 && `${geocodeVoortgang.mislukt} mislukt · `}
+                          {geocodeVoortgang.zonderAdres > 0 && `${geocodeVoortgang.zonderAdres} zonder adres`}
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={() => setGeocodeVoortgang(null)} className="text-xs shrink-0" style={{ color: 'rgba(45,69,124,0.35)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: F }}>✕</button>
+                  </div>
+                  {/* Log */}
+                  {geocodeVoortgang.log.length > 0 && (
+                    <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
+                      {geocodeVoortgang.log.map((r, i) => (
+                        <div key={i} className="px-4 py-2 flex items-start gap-2.5" style={{ borderBottom: '1px solid rgba(45,69,124,0.05)', background: r.status === 'mislukt' ? 'rgba(220,38,38,0.03)' : undefined }}>
+                          <span className="shrink-0 text-xs font-bold mt-0.5" style={{ color: r.status === 'ok' ? '#16a34a' : r.status === 'mislukt' ? '#b91c1c' : 'rgba(45,69,124,0.35)' }}>
+                            {r.status === 'ok' ? '✓' : r.status === 'mislukt' ? '✕' : '—'}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="text-xs font-medium" style={{ color: r.status === 'mislukt' ? '#b91c1c' : 'var(--drg-ink)', fontFamily: F }}>{r.naam}</span>
+                            {r.reden && <p className="text-xs m-0 mt-0.5 break-words" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>{r.reden}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {loading ? (
                 <div className="p-12 flex flex-col items-center justify-center gap-3">
                   <div className="w-10 h-10 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: DYNAMO_BLUE }} />
