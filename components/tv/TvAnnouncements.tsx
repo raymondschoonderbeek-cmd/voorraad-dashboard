@@ -20,10 +20,11 @@ export interface MededelingItem {
 
 interface TvAnnouncementsProps {
   mededelingen: MededelingItem[]
+  verjaardagen?: string[]
 }
 
-export default function TvAnnouncements({ mededelingen }: TvAnnouncementsProps) {
-  const zichtbaar = mededelingen.slice(0, 5)
+export default function TvAnnouncements({ mededelingen, verjaardagen = [] }: TvAnnouncementsProps) {
+  const zichtbaar = mededelingen.slice(0, 5 - Math.min(verjaardagen.length, 2))
 
   return (
     <div
@@ -50,12 +51,52 @@ export default function TvAnnouncements({ mededelingen }: TvAnnouncementsProps) 
       </div>
 
       {/* Lijst */}
-      {zichtbaar.length === 0 ? (
+      {verjaardagen.length === 0 && zichtbaar.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--drg-text-3)', fontSize: 15 }}>
           Geen mededelingen
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1 }}>
+          {/* Verjaardagen — altijd bovenaan */}
+          {verjaardagen.map((naam, idx) => (
+            <div
+              key={`verjaardag-${idx}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                paddingBottom: 20,
+                marginBottom: 20,
+                borderBottom: '1px solid rgba(201,161,74,0.25)',
+                background: 'linear-gradient(90deg, rgba(201,161,74,0.10) 0%, transparent 100%)',
+                borderRadius: 10,
+                padding: '12px 14px',
+              }}
+            >
+              <div style={{
+                flexShrink: 0,
+                width: 42,
+                height: 42,
+                borderRadius: 10,
+                background: 'rgba(201,161,74,0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                lineHeight: 1,
+              }}>
+                🎂
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--drg-accent)', lineHeight: 1.2 }}>
+                  Gefeliciteerd, {naam}!
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(201,161,74,0.75)', marginTop: 3, fontWeight: 500 }}>
+                  🎉 Vandaag jarig
+                </div>
+              </div>
+            </div>
+          ))}
           {zichtbaar.map((m, idx) => (
             <div
               key={m.id}

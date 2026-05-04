@@ -108,6 +108,9 @@ export default function TvClient({
 
   const huidigNieuws = nieuws[nieuwsIdx] ?? null
   const ruimtes: JoanRoom[] = ruimtesData ?? initRuimtes
+  const verjaardagenVandaag = (vieringenData ?? initVieringen).items
+    .filter(v => v.type === 'jarig' && v.vandaag)
+    .map(v => v.naam)
 
   return (
     <TvStage>
@@ -167,7 +170,7 @@ export default function TvClient({
           )}
 
           {/* MEDEDELINGEN — col 8-12, row 1-4 */}
-          <TvAnnouncements mededelingen={mededelingen} />
+          <TvAnnouncements mededelingen={mededelingen} verjaardagen={verjaardagenVandaag} />
 
           {/* RUIMTES — col 1-4, row 5-6 */}
           <TvRoomsCard
