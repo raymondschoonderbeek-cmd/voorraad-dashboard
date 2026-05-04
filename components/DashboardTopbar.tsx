@@ -99,8 +99,8 @@ function NotificatieBel() {
         style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT_MUTED, transition: 'background 0.15s', position: 'relative' }}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        title="FTP-notificaties"
-        aria-label="FTP-notificaties"
+        title="Integratie-meldingen"
+        aria-label="Integratie-meldingen"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -113,8 +113,8 @@ function NotificatieBel() {
       {open && (
         <div style={{ position: 'absolute', top: 38, right: 0, width: 320, background: 'white', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.16)', border: '1px solid rgba(45,69,124,0.12)', zIndex: 200, overflow: 'hidden', fontFamily: F }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(45,69,124,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--drg-ink-2)' }}>FTP-meldingen</span>
-            <Link href="/dashboard/ftp-koppeling" onClick={() => setOpen(false)} style={{ fontSize: 11, color: 'var(--drg-ink-2)', opacity: 0.6, textDecoration: 'none', fontWeight: 600 }}>Alle koppelingen →</Link>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--drg-ink-2)' }}>Integratie-meldingen</span>
+            <Link href="/dashboard/ftp-koppeling" onClick={() => setOpen(false)} style={{ fontSize: 11, color: 'var(--drg-ink-2)', opacity: 0.6, textDecoration: 'none', fontWeight: 600 }}>Naar integraties →</Link>
           </div>
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
             {nietGedraaid.length > 0 && (
