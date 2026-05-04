@@ -187,6 +187,8 @@ export default function BeheerPage() {
   const [winkelFilterLand, setWinkelFilterLand] = useState<'alle' | 'Netherlands' | 'Belgium'>('alle')
   const [winkelFilterLocatie, setWinkelFilterLocatie] = useState<'alle' | 'zonder'>('alle')
   const [winkelZoekterm, setWinkelZoekterm] = useState('')
+  const [geocodeLoading, setGeocodeLoading] = useState(false)
+  const [geocodeResultaat, setGeocodeResultaat] = useState<{ bijgewerkt: number; totaal: number; mislukt: number } | null>(null)
 
   const haalGebruikersOp = useCallback(async (light = true) => {
     setLoading(true)
@@ -1015,6 +1017,20 @@ export default function BeheerPage() {
       setImportError('Importeren mislukt')
     }
     setImportLoading(false)
+  }
+
+  async function geocodeerWinkels() {
+    setGeocodeLoading(true)
+    setGeocodeResultaat(null)
+    try {
+      const res = await fetch('/api/winkels/geocode', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      setGeocodeResultaat({ bijgewerkt: data.bijgewerkt ?? 0, totaal: data.totaal ?? 0, mislukt: data.mislukt?.length ?? 0 })
+      if ((data.bijgewerkt ?? 0) > 0) void haalWinkelsOp()
+    } catch {
+      setGeocodeResultaat({ bijgewerkt: 0, totaal: 0, mislukt: 0 })
+    }
+    setGeocodeLoading(false)
   }
 
   async function wilmarAutoKoppelen() {
@@ -2184,6 +2200,21 @@ export default function BeheerPage() {
                   <button onClick={wilmarAutoKoppelen} disabled={wilmarAutoLinkLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(22,163,74,0.1)', color: '#15803d', border: '1px solid rgba(22,163,74,0.25)', fontFamily: F }}>
                     {wilmarAutoLinkLoading ? 'Bezig...' : 'Wilmar auto-koppelen'}
                   </button>
+                )}
+                {winkels.some(w => !w.lat || !w.lng) && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={geocodeerWinkels} disabled={geocodeLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50" style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
+                      {geocodeLoading
+                        ? 'Geocoderen…'
+                        : `📍 Geocodeer winkels zonder locatie (${winkels.filter(w => !w.lat || !w.lng).length})`}
+                    </button>
+                    {geocodeResultaat && (
+                      <span className="text-xs" style={{ color: 'rgba(45,69,124,0.55)', fontFamily: F }}>
+                        {geocodeResultaat.bijgewerkt} van {geocodeResultaat.totaal} bijgewerkt
+                        {geocodeResultaat.mislukt > 0 ? `, ${geocodeResultaat.mislukt} mislukt` : ''}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               {loading ? (
