@@ -47,6 +47,8 @@ interface Props {
 
 export function WinkelDetail({ winkelId, activeTab, onTabChange, isAdmin, isFavoriet, onToggleFavoriet, onTerug, showTerugKnop }: Props) {
   const { data: winkel, mutate } = useSWR<Winkel>(`/api/winkels/${winkelId}`, fetcher, { revalidateOnFocus: false })
+  const { data: freshdeskData } = useSWR<{ open: unknown[] }>(`/api/winkels/${winkelId}/freshdesk`, fetcher, { revalidateOnFocus: false })
+  const aantalOpenTickets = freshdeskData?.open?.length ?? 0
 
   const kleur = INITIAAL_KLEUREN[winkelId % INITIAAL_KLEUREN.length]
 
@@ -113,8 +115,11 @@ export function WinkelDetail({ winkelId, activeTab, onTabChange, isAdmin, isFavo
         <div style={{ display:'flex', gap:0, marginTop:12, overflowX:'auto' }}>
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => onTabChange(tab.id)}
-              style={{ padding:'8px 16px', border:'none', borderBottom: activeTab === tab.id ? '2px solid var(--drg-ink-2)' : '2px solid transparent', background:'transparent', cursor:'pointer', fontSize:13, fontWeight: activeTab === tab.id ? 700 : 500, color: activeTab === tab.id ? 'var(--drg-ink-2)' : 'var(--drg-text-2)', whiteSpace:'nowrap', transition:'color 0.15s' }}>
+              style={{ padding:'8px 16px', border:'none', borderBottom: activeTab === tab.id ? '2px solid var(--drg-ink-2)' : '2px solid transparent', background:'transparent', cursor:'pointer', fontSize:13, fontWeight: activeTab === tab.id ? 700 : 500, color: activeTab === tab.id ? 'var(--drg-ink-2)' : 'var(--drg-text-2)', whiteSpace:'nowrap', transition:'color 0.15s', display:'flex', alignItems:'center', gap:5 }}>
               {tab.label}
+              {tab.id === 'support' && aantalOpenTickets > 0 && (
+                <span style={{ padding:'1px 6px', borderRadius:999, fontSize:11, fontWeight:700, background:'#fee2e2', color:'#b91c1c' }}>{aantalOpenTickets}</span>
+              )}
             </button>
           ))}
         </div>
