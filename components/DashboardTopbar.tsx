@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { FONT_FAMILY as F } from '@/lib/theme'
-import type { FtpFoutNotificatie, FtpNietGedraaidNotificatie } from '@/app/api/notifications/ftp-fouten/route'
+import type { FtpFoutNotificatie, FtpNietGedraaidNotificatie, SyncNietActueelNotificatie } from '@/app/api/notifications/ftp-fouten/route'
 
 const GEZIEN_KEY = 'dynamo_ftp_notificaties_gezien_tot'
 
@@ -52,6 +52,7 @@ function initialen(naam: string): string {
 function NotificatieBel() {
   const [fouten, setFouten] = useState<FtpFoutNotificatie[]>([])
   const [nietGedraaid, setNietGedraaid] = useState<FtpNietGedraaidNotificatie[]>([])
+  const [syncNietActueel, setSyncNietActueel] = useState<SyncNietActueelNotificatie[]>([])
   const [open, setOpen] = useState(false)
   // Lazy init: lees localStorage alleen client-side (SSR-safe)
   const [gezienTot, setGezienTot] = useState<string>(() =>
@@ -62,9 +63,10 @@ function NotificatieBel() {
   useEffect(() => {
     fetch('/api/notifications/ftp-fouten')
       .then(r => r.json())
-      .then((d: { fouten?: FtpFoutNotificatie[]; niet_gedraaid?: FtpNietGedraaidNotificatie[] }) => {
+      .then((d: { fouten?: FtpFoutNotificatie[]; niet_gedraaid?: FtpNietGedraaidNotificatie[]; sync_niet_actueel?: SyncNietActueelNotificatie[] }) => {
         setFouten(d.fouten ?? [])
         setNietGedraaid(d.niet_gedraaid ?? [])
+        setSyncNietActueel(d.sync_niet_actueel ?? [])
       })
       .catch(() => {})
   }, [])
@@ -80,7 +82,7 @@ function NotificatieBel() {
   }, [open])
 
   const ongelezenFouten = fouten.filter(f => !gezienTot || f.created_at > gezienTot).length
-  const ongelezen = ongelezenFouten + nietGedraaid.length
+  const ongelezen = ongelezenFouten + nietGedraaid.length + syncNietActueel.length
 
   function openPanel() {
     setOpen(v => !v)
@@ -117,6 +119,23 @@ function NotificatieBel() {
             <Link href="/dashboard/ftp-koppeling" onClick={() => setOpen(false)} style={{ fontSize: 11, color: 'var(--drg-ink-2)', opacity: 0.6, textDecoration: 'none', fontWeight: 600 }}>Naar integraties →</Link>
           </div>
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {syncNietActueel.length > 0 && (
+              <>
+                <div style={{ padding: '8px 16px 4px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#92400e', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+                  Sync niet actueel (&gt;26u)
+                </div>
+                {syncNietActueel.map(s => (
+                  <div key={s.label} style={{ padding: '9px 16px', borderBottom: '1px solid rgba(45,69,124,0.06)', background: '#fffdf5' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#92400e', display: 'block', marginBottom: 2 }}>{s.label}</span>
+                    <p style={{ margin: 0, fontSize: 11, color: '#b45309', lineHeight: 1.4 }}>
+                      {s.laatste_sync
+                        ? `Laatste sync: ${new Date(s.laatste_sync).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                        : 'Nog nooit gesynchroniseerd'}
+                    </p>
+                  </div>
+                ))}
+              </>
+            )}
             {nietGedraaid.length > 0 && (
               <>
                 <div style={{ padding: '8px 16px 4px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#92400e', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
@@ -152,7 +171,7 @@ function NotificatieBel() {
                 ))}
               </>
             )}
-            {fouten.length === 0 && nietGedraaid.length === 0 && (
+            {fouten.length === 0 && nietGedraaid.length === 0 && syncNietActueel.length === 0 && (
               <p style={{ margin: 0, padding: '14px 16px', fontSize: 13, color: 'rgba(45,69,124,0.5)' }}>Geen meldingen.</p>
             )}
           </div>

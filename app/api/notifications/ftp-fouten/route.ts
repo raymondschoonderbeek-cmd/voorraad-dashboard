@@ -16,6 +16,11 @@ export type FtpNietGedraaidNotificatie = {
   laatste_run: string | null
 }
 
+export type SyncNietActueelNotificatie = {
+  label: string
+  laatste_sync: string | null
+}
+
 /**
  * GET /api/notifications/ftp-fouten
  * Geeft FTP-webhook-fouten (7 dagen) en actieve koppelingen die >26u niet gedraaid hebben (admin only).
@@ -75,7 +80,36 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(20)
 
-  if (!logData?.length) return NextResponse.json({ fouten: [], niet_gedraaid })
+  // Sync-statussen controleren (vendit_stock + sap_ledenlijst)
+  const sync_niet_actueel: SyncNietActueelNotificatie[] = []
+  const syncGrens = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString()
+
+  try {
+    const { data: vsData } = await admin
+      .from('vendit_stock')
+      .select('file_date_time')
+      .not('file_date_time', 'is', null)
+      .order('file_date_time', { ascending: false })
+      .limit(1)
+    const vsDatum = vsData?.[0] ? (vsData[0] as { file_date_time: string }).file_date_time : null
+    if (!vsDatum || vsDatum < syncGrens) {
+      sync_niet_actueel.push({ label: 'Vendit stock', laatste_sync: vsDatum })
+    }
+  } catch { /* vendit_stock niet beschikbaar */ }
+
+  try {
+    const { data: sapData } = await admin
+      .from('sync_meta')
+      .select('synced_at')
+      .eq('sync_type', 'sap_ledenlijst')
+      .single()
+    const sapDatum = sapData ? (sapData as { synced_at: string }).synced_at : null
+    if (!sapDatum || sapDatum < syncGrens) {
+      sync_niet_actueel.push({ label: 'SAP ledenlijst', laatste_sync: sapDatum })
+    }
+  } catch { /* sync_meta niet beschikbaar */ }
+
+  if (!logData?.length) return NextResponse.json({ fouten: [], niet_gedraaid, sync_niet_actueel })
 
   // Koppeling-namen ophalen voor fouten
   const koppelingIds = [...new Set(logData.map(r => r.koppeling_id).filter(Boolean))]
@@ -96,5 +130,5 @@ export async function GET() {
     created_at: r.created_at,
   }))
 
-  return NextResponse.json({ fouten, niet_gedraaid })
+  return NextResponse.json({ fouten, niet_gedraaid, sync_niet_actueel })
 }
