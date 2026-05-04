@@ -4,6 +4,7 @@ export type Winkel = {
   id: number
   naam: string
   kassa_nummer: string
+  lidnummer?: string | null
   postcode?: string
   straat?: string
   huisnummer?: string
