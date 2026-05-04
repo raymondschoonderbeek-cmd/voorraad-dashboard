@@ -68,7 +68,7 @@ export function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavor
           </div>
         ) : <div className="mb-4" style={{ height: '32px' }} onClick={() => onSelecteer(w)} />}
         <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(45,69,124,0.06)' }} onClick={() => onSelecteer(w)}>
-          <span style={{ color: kleur, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk voorraad</span>
+          <span style={{ color: kleur, fontSize: '12px', fontWeight: 600, fontFamily: F }}>Bekijk details</span>
           <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: `${kleur}15` }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={kleur} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
@@ -96,6 +96,8 @@ export function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium,
   const winkelsMetCoords = winkels.filter(w => w.lat && w.lng)
   const mapRef = useRef<any>(null)
   const mapIdRef = useRef(`winkel-kaart-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const onSelecteerRef = useRef(onSelecteer)
+  useEffect(() => { onSelecteerRef.current = onSelecteer }, [onSelecteer])
 
   useEffect(() => {
     if (winkelsMetCoords.length === 0) return
@@ -125,14 +127,14 @@ export function WinkelKaart({ winkels, onSelecteer, onGeocode, onGeocodeBelgium,
         })
         const marker = L.marker([w.lat!, w.lng!], { icon })
         marker.addTo(map)
-        marker.bindPopup(`<div style="font-family:sans-serif;min-width:140px"><div style="font-weight:bold;color:${DYNAMO_BLUE};font-size:13px">${w.naam}</div><div style="color:#6b7280;font-size:11px;margin-top:2px">${w.stad || w.postcode || ''}</div><button onclick="window._selectWinkel(${w.id})" style="margin-top:8px;width:100%;background:${DYNAMO_BLUE};color:white;border:none;border-radius:6px;padding:6px;font-size:12px;cursor:pointer;font-weight:bold;">Bekijk voorraad →</button></div>`)
+        marker.bindPopup(`<div style="font-family:sans-serif;min-width:140px"><div style="font-weight:bold;color:${DYNAMO_BLUE};font-size:13px">${w.naam}</div><div style="color:#6b7280;font-size:11px;margin-top:2px">${w.stad || w.postcode || ''}</div><button onclick="window._selectWinkel(${w.id})" style="margin-top:8px;width:100%;background:${DYNAMO_BLUE};color:white;border:none;border-radius:6px;padding:6px;font-size:12px;cursor:pointer;font-weight:bold;">Bekijk details →</button></div>`)
         bounds.push([w.lat!, w.lng!])
       })
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60] })
       ;(window as any)._selectWinkel = (id: number) => {
         const winkel = winkels.find(w => w.id === id)
-        if (winkel) onSelecteer(winkel)
+        if (winkel) onSelecteerRef.current(winkel)
       }
     }
 
