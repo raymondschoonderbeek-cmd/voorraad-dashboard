@@ -36,7 +36,7 @@ export function TabFinancieel({ w }: { w: Winkel }) {
           <KvItem label="Deelname" value={<DeelnamePill waarde={w.deelname_centraal_betalen} />} />
         </KvList>
       </Card>
-      <Card title="Campagne fietsen">
+      <Card title="CM Fietsen">
         <KvList>
           <KvItem label="Deelname" value={<DeelnamePill waarde={w.cm_fietsen_deelname} />} />
           <KvItem label="Instroom" value={w.cm_fietsen_instroom} />
