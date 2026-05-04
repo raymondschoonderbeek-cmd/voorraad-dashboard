@@ -62,8 +62,8 @@ function isBelgischeWinkel(w: { postcode?: string | null; straat?: string | null
 type WinkelRij = { id: number; naam: string | null; postcode: string | null; straat: string | null; huisnummer: string | null; stad: string | null; land: string | null; lat: number | null; lng: number | null }
 
 /**
- * GET — streaming geocoding met SSE voortgang (beheer pagina).
- * Optioneel: ?force_belgium=1
+ * GET — geeft de wachtrij van winkels zonder coördinaten terug.
+ * De client verwerkt ze één voor één met eigen delay (geen timeout-risico).
  */
 export async function GET(request: NextRequest) {
   const rl = withRateLimit(request)
@@ -75,83 +75,27 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const forceBelgium = searchParams.get('force_belgium') === '1'
 
-  const encoder = new TextEncoder()
-  function sse(data: object) {
-    return encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
+  let teVerwerken: WinkelRij[] = []
+  let zonderAdres: WinkelRij[] = []
+
+  if (forceBelgium) {
+    const { data } = await supabase.from('winkels').select('id, naam, postcode, straat, huisnummer, stad, land, lat, lng')
+    const belgisch = (data ?? []).filter((w: any) => isBelgischeWinkel(w)) as WinkelRij[]
+    teVerwerken = belgisch.filter(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+    zonderAdres = belgisch.filter(w => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim()))
+  } else {
+    const { data } = await supabase.from('winkels').select('id, naam, postcode, straat, huisnummer, stad, land, lat, lng').or('lat.is.null,lng.is.null')
+    const alle = (data ?? []) as WinkelRij[]
+    teVerwerken = alle.filter(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
+    zonderAdres = alle.filter(w => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim()))
   }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        let teVerwerken: WinkelRij[] = []
-        let zonderAdres: WinkelRij[] = []
-
-        if (forceBelgium) {
-          const { data } = await supabase.from('winkels').select('id, naam, postcode, straat, huisnummer, stad, land, lat, lng')
-          const belgisch = (data ?? []).filter((w: any) => isBelgischeWinkel(w)) as WinkelRij[]
-          teVerwerken = belgisch.filter(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
-          zonderAdres = belgisch.filter(w => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim()))
-        } else {
-          const { data } = await supabase.from('winkels').select('id, naam, postcode, straat, huisnummer, stad, land, lat, lng').or('lat.is.null,lng.is.null')
-          const alle = (data ?? []) as WinkelRij[]
-          teVerwerken = alle.filter(w => w.postcode?.trim() || (w.straat?.trim() && w.stad?.trim()))
-          zonderAdres = alle.filter(w => !w.postcode?.trim() && !(w.straat?.trim() && w.stad?.trim()))
-        }
-
-        const totaal = teVerwerken.length + zonderAdres.length
-        controller.enqueue(sse({ type: 'start', totaal, metAdres: teVerwerken.length, zonderAdres: zonderAdres.length }))
-
-        // Direct rapporteren: winkels zonder adres
-        for (const w of zonderAdres) {
-          controller.enqueue(sse({ type: 'voortgang', naam: w.naam ?? `#${w.id}`, status: 'overgeslagen', reden: 'Geen adres ingevuld' }))
-        }
-
-        let bijgewerkt = 0
-        let mislukt = 0
-
-        for (let i = 0; i < teVerwerken.length; i++) {
-          const w = teVerwerken[i]
-          controller.enqueue(sse({ type: 'bezig', naam: w.naam ?? `#${w.id}`, index: i + 1, totaal: teVerwerken.length }))
-
-          let landVal: 'Belgium' | 'Netherlands' | null = w.land === 'Belgium' || w.land === 'Netherlands' ? w.land : null
-          if (!landVal && forceBelgium && isBelgischeWinkel(w)) landVal = 'Belgium'
-
-          const result = await geocodeMetReden(w.postcode, w.straat, w.stad, landVal, w.huisnummer)
-
-          if (result.coords) {
-            await supabase.from('winkels').update({ lat: result.coords.lat, lng: result.coords.lng }).eq('id', w.id)
-            bijgewerkt++
-            controller.enqueue(sse({ type: 'voortgang', naam: w.naam ?? `#${w.id}`, status: 'ok', index: i + 1 }))
-          } else {
-            mislukt++
-            controller.enqueue(sse({ type: 'voortgang', naam: w.naam ?? `#${w.id}`, status: 'mislukt', reden: result.reden, index: i + 1 }))
-          }
-
-          if (i < teVerwerken.length - 1) {
-            await new Promise(r => setTimeout(r, 1100))
-          }
-        }
-
-        controller.enqueue(sse({ type: 'klaar', bijgewerkt, mislukt, zonderAdres: zonderAdres.length }))
-      } catch (err) {
-        controller.enqueue(sse({ type: 'fout', bericht: err instanceof Error ? err.message : 'Onbekende fout' }))
-      } finally {
-        controller.close()
-      }
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  })
+  return NextResponse.json({ teVerwerken, zonderAdres })
 }
 
-/** POST — batch geocoding zonder streaming (winkels-kaart pagina). */
+/**
+ * POST — geocodeert één winkel (body: {id}) of een batch (geen id, winkels-kaartpagina).
+ */
 export async function POST(request: NextRequest) {
   const rl = withRateLimit(request)
   if (rl) return rl
@@ -159,6 +103,27 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Geen toegang' }, { status: auth.status })
   const { supabase } = auth
 
+  const body = await request.json().catch(() => ({})) as { id?: number }
+
+  // Eén winkel geocoderen (vanuit beheer-pagina client loop)
+  if (body.id) {
+    const { data: winkel } = await supabase
+      .from('winkels')
+      .select('id, naam, postcode, straat, huisnummer, stad, land')
+      .eq('id', body.id)
+      .single()
+    if (!winkel) return NextResponse.json({ ok: false, reden: 'Winkel niet gevonden' })
+    const w = winkel as WinkelRij
+    const landVal: 'Belgium' | 'Netherlands' | null = w.land === 'Belgium' || w.land === 'Netherlands' ? w.land : null
+    const result = await geocodeMetReden(w.postcode, w.straat, w.stad, landVal, w.huisnummer)
+    if (result.coords) {
+      await supabase.from('winkels').update({ lat: result.coords.lat, lng: result.coords.lng }).eq('id', w.id)
+      return NextResponse.json({ ok: true })
+    }
+    return NextResponse.json({ ok: false, reden: result.reden })
+  }
+
+  // Batch (winkels-kaartpagina — bestaand gedrag)
   const { searchParams } = new URL(request.url)
   const forceBelgium = searchParams.get('force_belgium') === '1'
 

@@ -1027,42 +1027,50 @@ export default function BeheerPage() {
     setGeocodeLoading(true)
     setGeocodeVoortgang({ totaal: 0, gedaan: 0, huidig: null, klaar: false, log: [], bijgewerkt: 0, mislukt: 0, zonderAdres: 0 })
     try {
+      // Stap 1: wachtrij ophalen (snelle query, geen timeout-risico)
       const res = await fetch('/api/winkels/geocode', { method: 'GET' })
-      if (!res.body) throw new Error('Geen stream')
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buf = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buf += decoder.decode(value, { stream: true })
-        const regels = buf.split('\n')
-        buf = regels.pop() ?? ''
-        for (const regel of regels) {
-          if (!regel.startsWith('data: ')) continue
-          try {
-            const evt = JSON.parse(regel.slice(6)) as Record<string, unknown>
-            if (evt.type === 'start') {
-              setGeocodeVoortgang(v => v ? { ...v, totaal: (evt.metAdres as number) ?? 0 } : v)
-            } else if (evt.type === 'bezig') {
-              setGeocodeVoortgang(v => v ? { ...v, huidig: evt.naam as string } : v)
-            } else if (evt.type === 'voortgang') {
-              setGeocodeVoortgang(v => {
-                if (!v) return v
-                return {
-                  ...v,
-                  gedaan: v.gedaan + (evt.status !== 'overgeslagen' ? 1 : 0),
-                  huidig: null,
-                  log: [{ naam: evt.naam as string, status: evt.status as 'ok' | 'mislukt' | 'overgeslagen', reden: evt.reden as string | undefined }, ...v.log],
-                }
-              })
-            } else if (evt.type === 'klaar') {
-              setGeocodeVoortgang(v => v ? { ...v, klaar: true, huidig: null, bijgewerkt: evt.bijgewerkt as number, mislukt: evt.mislukt as number, zonderAdres: evt.zonderAdres as number } : v)
-              if ((evt.bijgewerkt as number) > 0) void haalWinkelsOp()
-            }
-          } catch { /* ongeldige JSON overslaan */ }
+      const { teVerwerken = [], zonderAdres = [] } = await res.json() as {
+        teVerwerken: { id: number; naam: string | null }[]
+        zonderAdres: { id: number; naam: string | null }[]
+      }
+
+      setGeocodeVoortgang(v => v ? { ...v, totaal: teVerwerken.length, zonderAdres: zonderAdres.length } : v)
+
+      // Winkels zonder adres direct in log zetten
+      for (const w of zonderAdres) {
+        setGeocodeVoortgang(v => v ? { ...v, log: [{ naam: w.naam ?? `#${w.id}`, status: 'overgeslagen', reden: 'Geen adres ingevuld' }, ...v.log] } : v)
+      }
+
+      // Stap 2: client loopt door de wachtrij, één POST per winkel
+      let bijgewerkt = 0
+      let mislukt = 0
+      for (let i = 0; i < teVerwerken.length; i++) {
+        const w = teVerwerken[i]
+        setGeocodeVoortgang(v => v ? { ...v, huidig: w.naam ?? `#${w.id}` } : v)
+
+        const r = await fetch('/api/winkels/geocode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: w.id }),
+        })
+        const data = await r.json() as { ok: boolean; reden?: string }
+
+        if (data.ok) {
+          bijgewerkt++
+          setGeocodeVoortgang(v => v ? { ...v, gedaan: i + 1, bijgewerkt, huidig: null, log: [{ naam: w.naam ?? `#${w.id}`, status: 'ok' }, ...v.log] } : v)
+        } else {
+          mislukt++
+          setGeocodeVoortgang(v => v ? { ...v, gedaan: i + 1, mislukt, huidig: null, log: [{ naam: w.naam ?? `#${w.id}`, status: 'mislukt', reden: data.reden }, ...v.log] } : v)
+        }
+
+        // Nominatim rate-limit: 1 req/sec — wacht tussen verzoeken (niet na de laatste)
+        if (i < teVerwerken.length - 1) {
+          await new Promise(r => setTimeout(r, 1150))
         }
       }
+
+      setGeocodeVoortgang(v => v ? { ...v, klaar: true, huidig: null } : v)
+      if (bijgewerkt > 0) void haalWinkelsOp()
     } catch {
       setGeocodeVoortgang(v => v ? { ...v, klaar: true, huidig: null } : v)
     }
