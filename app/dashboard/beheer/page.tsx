@@ -62,6 +62,7 @@ type Winkel = {
   vendit_in_dataset?: boolean
   vendit_laatst_datum?: string | null
   cycle_api_checked_at?: string | null
+  lidnummer?: string | null
 }
 type Tab = 'gebruikers' | 'winkels' | 'import' | 'ips' | 'merken' | 'campagnefietsen' | 'nieuws' | 'afbeeldingen' | 'tv'
 
@@ -1743,7 +1744,7 @@ export default function BeheerPage() {
                       <input placeholder="Winkel naam" value={nieuwWinkelNaam} onChange={e => setNieuwWinkelNaam(e.target.value)} className={inputClass} style={inputStyle} required />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dealer nummer *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Kassanummer *</label>
                       <input placeholder="bijv. 12345" value={nieuwWinkelDealer} onChange={e => setNieuwWinkelDealer(e.target.value)} className={inputClass} style={inputStyle} required />
                     </div>
                     <div className="sm:col-span-2">
@@ -1874,8 +1875,12 @@ export default function BeheerPage() {
                       <input value={bewerkWinkel.naam} onChange={e => setBewerkWinkel({ ...bewerkWinkel, naam: e.target.value })} className={inputClass} style={inputStyle} required />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dealer nummer *</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Kassanummer *</label>
                       <input value={bewerkWinkel.kassa_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, kassa_nummer: e.target.value })} className={inputClass} style={inputStyle} required />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Lidnummer</label>
+                      <input value={bewerkWinkel.lidnummer ?? ''} readOnly className={inputClass} style={{ ...inputStyle, opacity: 0.6, cursor: 'default' }} placeholder="—" />
                     </div>
                     <div className="sm:col-span-2">
                       <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Adres (postcode + huisnummer → Haal adres op)</div>
