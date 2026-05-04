@@ -23,7 +23,6 @@ function PakketInstellingenCard() {
   const [bezig, setBezig] = useState(false)
   const [opgeslagen, setOpgeslagen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
-  // Sla lokale invoerwaarden op per pakket (string zodat de input altijd editable is)
   const [lokaal, setLokaal] = useState<Record<string, string>>({})
 
   const serverAantallen = inst?.pakket_instellingen ?? {}
@@ -52,7 +51,7 @@ function PakketInstellingenCard() {
     if (!res.ok) {
       setFout(json.error ?? 'Opslaan mislukt')
     } else {
-      setLokaal({}) // reset: inputs tonen nu server-waarden
+      setLokaal({})
       setOpgeslagen(true)
       setTimeout(() => setOpgeslagen(false), 2500)
     }
@@ -109,7 +108,7 @@ function CopyButton({ value }: { value: string }) {
     <button
       type="button"
       onClick={() => { void navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-      style={{ background: copied ? 'rgba(22,163,74,0.1)' : 'rgba(45,69,124,0.08)', color: copied ? 'var(--drg-success)' : 'var(--drg-ink-2)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F }}
+      style={{ background: copied ? 'rgba(22,163,74,0.1)' : 'rgba(45,69,124,0.08)', color: copied ? 'var(--drg-success)' : 'var(--drg-ink-2)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F, flexShrink: 0 }}
     >
       {copied ? '✓ Gekopieerd' : 'Kopieer'}
     </button>
@@ -138,7 +137,7 @@ function ObserverInstellingenCard() {
   }
 
   const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', fontFamily: F, display: 'block', marginBottom: 6 }
-  const codeStyle: React.CSSProperties = { flex: 1, borderRadius: 8, padding: '8px 12px', fontSize: 12, fontFamily: 'monospace', background: 'rgba(45,69,124,0.05)', color: 'var(--drg-ink-2)', wordBreak: 'break-all' }
+  const codeStyle: React.CSSProperties = { flex: 1, borderRadius: 8, padding: '8px 12px', fontSize: 12, fontFamily: 'monospace', background: 'rgba(45,69,124,0.05)', color: 'var(--drg-ink-2)', wordBreak: 'break-all', minWidth: 0 }
 
   return (
     <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, boxShadow: 'var(--drg-card-shadow)', marginBottom: 24, overflow: 'hidden' }}>
@@ -156,7 +155,7 @@ function ObserverInstellingenCard() {
 
       <div style={{ marginBottom: 14 }}>
         <span style={labelStyle}>Webhook URL</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <code style={codeStyle}>{webhookUrl}</code>
           <CopyButton value={webhookUrl} />
         </div>
@@ -165,11 +164,11 @@ function ObserverInstellingenCard() {
       <div style={{ marginBottom: 14 }}>
         <span style={labelStyle}>Webhook secret</span>
         {inst?.webhook_secret ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <code style={codeStyle}>
               {geheimTonen ? inst.webhook_secret : '••••••••••••••••••••••••••••••••'}
             </code>
-            <button type="button" onClick={() => setGeheimTonen(v => !v)} style={{ background: 'rgba(45,69,124,0.08)', color: 'var(--drg-ink-2)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F }}>
+            <button type="button" onClick={() => setGeheimTonen(v => !v)} style={{ background: 'rgba(45,69,124,0.08)', color: 'var(--drg-ink-2)', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: F, flexShrink: 0 }}>
               {geheimTonen ? 'Verberg' : 'Toon'}
             </button>
             {geheimTonen && <CopyButton value={inst.webhook_secret} />}
@@ -228,10 +227,8 @@ function extractNaamZonderLidnummer(naam: string): string {
 }
 
 function extractWoonplaats(adres: string): string {
-  // Postcode-formaat: 4 cijfers + 2 letters + plaatsnaam (bijv. "3824 ML AMERSFOORT")
   const match = adres.match(/\d{4}\s+[A-Z]{2}\s+([A-Za-z\sÀ-ɏ\-]+)/i)
   if (match?.[1]) return match[1].trim()
-  // Fallback: na de laatste komma
   const idx = adres.lastIndexOf(',')
   return idx >= 0 ? adres.slice(idx + 1).trim() : ''
 }
@@ -290,7 +287,6 @@ type SessionInfo = { isAdmin?: boolean; moduleRollen?: Record<string, string> }
 
 export default function GazellePakketOrders() {
   const { data, isLoading, mutate } = useSWR<GazelleOrder[]>('/api/gazelle-orders', fetcher)
-  // Beschikbaarheid is toegankelijk voor alle gazelle-orders gebruikers (niet admin-only)
   const { data: beschikbaarheidData } = useSWR<Record<string, { aantal: number }>>('/api/gazelle-orders/beschikbaarheid', fetcher)
   const { data: session } = useSWR<SessionInfo>('/api/auth/session-info', fetcher)
   const [uitgebreid, setUitgebreid] = useState<string | null>(null)
@@ -326,7 +322,6 @@ export default function GazellePakketOrders() {
   const huidigePagina = Math.min(pagina, aantalPaginas)
   const paginaOrders = gefilterd.slice((huidigePagina - 1) * PER_PAGINA, huidigePagina * PER_PAGINA)
 
-  // Admin-kaarten alleen tonen voor globale admins of gazelle-orders beheerders
   const isAdmin = session?.isAdmin ?? false
   const moduleRol = session?.moduleRollen?.['gazelle-orders']
   const isGazelleAdmin = isAdmin || moduleRol === 'admin'
@@ -350,22 +345,23 @@ export default function GazellePakketOrders() {
   }
 
   return (
-    <div style={{ padding: '32px 32px 64px', maxWidth: 1100, margin: '0 auto', fontFamily: F }}>
+    <div className="px-4 sm:px-8 py-8 pb-16 max-w-[1100px] mx-auto" style={{ fontFamily: F }}>
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: '0 0 6px', fontFamily: F }}>
           Gazelle
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, letterSpacing: '-0.02em', fontFamily: F, flex: 1 }}>
+        <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 6 }}>
+          <h1 className="flex-1 min-w-0" style={{ fontSize: 22, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, letterSpacing: '-0.02em', fontFamily: F }}>
             Pakket orders
           </h1>
           <a
             href="https://docs.google.com/spreadsheets/d/1EarqsTA86m0uvFUqDPlrES1b4L3fnVQmnGqZ6L1Lid8/edit?gid=0#gid=0"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', textDecoration: 'none', fontFamily: F, flexShrink: 0 }}
+            className="flex items-center gap-1.5 shrink-0"
+            style={{ background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', textDecoration: 'none', fontFamily: F }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
@@ -376,7 +372,8 @@ export default function GazellePakketOrders() {
             <button
               type="button"
               onClick={() => exporteerNaarExcel(orders)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', cursor: 'pointer', fontFamily: F, flexShrink: 0 }}
+              className="flex items-center gap-1.5 shrink-0"
+              style={{ background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', cursor: 'pointer', fontFamily: F }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
@@ -385,7 +382,7 @@ export default function GazellePakketOrders() {
             </button>
           )}
         </div>
-        <p style={{ marginTop: 6, fontSize: 13, color: 'var(--drg-text-3)', margin: '6px 0 0', fontFamily: F }}>
+        <p style={{ fontSize: 13, color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>
           Binnenkomende Gazelle pakket bestellingen via Freshdesk.
         </p>
       </div>
@@ -405,7 +402,6 @@ export default function GazellePakketOrders() {
         </button>
         {workflowOpen && (
           <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--drg-line)' }}>
-            {/* Edit-modus voor admins */}
             {isGazelleAdmin && (
               <div style={{ marginTop: 12, marginBottom: 4, display: 'flex', justifyContent: 'flex-end' }}>
                 {workflowEdit ? (
@@ -430,7 +426,6 @@ export default function GazellePakketOrders() {
             )}
 
             {workflowEdit ? (
-              /* Bewerkmodus: stap-naam + tekst per stap */
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
                 {workflowLokaal.map((s, i) => (
                   <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -450,7 +445,6 @@ export default function GazellePakketOrders() {
                 ))}
               </div>
             ) : (
-              /* Leesmodus */
               <ol style={{ margin: '12px 0 0', paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(workflowData?.workflow ?? []).map((s, i) => (
                   <li key={i} style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.5 }}>
@@ -464,7 +458,7 @@ export default function GazellePakketOrders() {
         )}
       </div>
 
-      {/* Stat-kaarten — altijd zichtbaar voor iedereen met toegang */}
+      {/* Stat-kaarten */}
       {(() => {
         const beschikbaar = beschikbaarheidData ?? {}
         const telPakket = (letter: string) =>
@@ -485,7 +479,7 @@ export default function GazellePakketOrders() {
 
         if (stats.length === 0) return null
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))`, gap: 10, marginBottom: 24 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 mb-6">
             {stats.map(s => {
               const resterend = s.beschikbaar !== null ? s.beschikbaar - s.orders : null
               return (
@@ -535,142 +529,177 @@ export default function GazellePakketOrders() {
       {orders.length > 0 && (
         <>
           {/* Zoekbalk */}
-          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+          <div className="flex items-center gap-2 sm:gap-3 mb-3">
+            <div className="relative flex-1">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--drg-text-3)', pointerEvents: 'none' }} aria-hidden><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input
                 type="search"
                 value={zoek}
                 onChange={e => { setZoek(e.target.value); setPagina(1) }}
-                placeholder="Zoek op naam, bestelnr., pakket, woonplaats…"
-                style={{ width: '100%', paddingLeft: 32, paddingRight: 10, paddingTop: 7, paddingBottom: 7, fontSize: 13, fontFamily: F, color: 'var(--drg-ink-2)', background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 8, outline: 'none' }}
+                placeholder="Zoek op naam, bestelnr., pakket…"
+                className="w-full"
+                style={{ paddingLeft: 32, paddingRight: 10, paddingTop: 7, paddingBottom: 7, fontSize: 13, fontFamily: F, color: 'var(--drg-ink-2)', background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 8, outline: 'none' }}
               />
             </div>
-            <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, whiteSpace: 'nowrap' }}>
+            <span className="text-xs shrink-0" style={{ color: 'var(--drg-text-3)', fontFamily: F }}>
               {gefilterd.length} {gefilterd.length === 1 ? 'order' : 'orders'}
-              {zoek.trim() ? ` gevonden` : ''}
             </span>
           </div>
 
-        <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--drg-card-shadow)' }}>
+          <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--drg-card-shadow)' }}>
 
-          {/* Tabelheader */}
-          <div style={{ display: 'grid', gridTemplateColumns: '130px 110px 1fr 1fr', padding: '10px 16px', borderBottom: '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.03)', gap: 12 }}>
-            {['Ontvangen', 'Bestelnr.', 'Naam', 'Product'].map(h => (
-              <span key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--drg-text-3)', fontFamily: F }}>{h}</span>
-            ))}
-          </div>
+            {/* Tabelheader — alleen op desktop */}
+            <div className="hidden sm:grid" style={{ gridTemplateColumns: '130px 110px 1fr 1fr', padding: '10px 16px', borderBottom: '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.03)', gap: 12 }}>
+              {['Ontvangen', 'Bestelnr.', 'Naam', 'Product'].map(h => (
+                <span key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--drg-text-3)', fontFamily: F }}>{h}</span>
+              ))}
+            </div>
 
-          {paginaOrders.length === 0 && (
-            <p style={{ margin: 0, padding: '20px 16px', fontSize: 13, color: 'var(--drg-text-3)', fontFamily: F }}>Geen orders gevonden.</p>
-          )}
+            {paginaOrders.length === 0 && (
+              <p style={{ margin: 0, padding: '20px 16px', fontSize: 13, color: 'var(--drg-text-3)', fontFamily: F }}>Geen orders gevonden.</p>
+            )}
 
-          {paginaOrders.map((order, i) => {
-            const isOpen = uitgebreid === order.id
-            const isLast = i === paginaOrders.length - 1
-            const hoofdProduct = order.producten?.[0]
-            return (
-              <div key={order.id}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={isOpen}
-                  onClick={() => setUitgebreid(isOpen ? null : order.id)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setUitgebreid(isOpen ? null : order.id) }}
-                  style={{
-                    display: 'grid', gridTemplateColumns: '130px 110px 1fr 1fr',
-                    padding: '12px 16px', cursor: 'pointer', gap: 12,
-                    borderBottom: isLast && !isOpen ? 'none' : '1px solid var(--drg-line)',
-                    background: isOpen ? 'rgba(45,69,124,0.025)' : 'transparent',
-                    transition: 'background 0.15s', alignItems: 'center',
-                    outline: 'none',
-                  }}
-                  onMouseEnter={e => { if (!isOpen) (e.currentTarget as HTMLElement).style.background = 'rgba(45,69,124,0.02)' }}
-                  onMouseLeave={e => { if (!isOpen) (e.currentTarget as HTMLElement).style.background = isOpen ? 'rgba(45,69,124,0.025)' : 'transparent' }}
-                  onFocus={e => { (e.currentTarget as HTMLElement).style.outline = '2px solid rgba(45,69,124,0.35)'; (e.currentTarget as HTMLElement).style.outlineOffset = '-2px' }}
-                  onBlur={e => { (e.currentTarget as HTMLElement).style.outline = 'none' }}
-                >
-                  <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F }}>
-                    {new Date(order.ontvangen_op).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F }}>{order.bestelnummer ?? '—'}</span>
-                  <span style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.naam ?? '—'}</span>
-                  <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {order.producten?.length > 1
-                      ? order.producten.map(p => extractPakket(p.lev_nr)).filter(Boolean).join(', ')
-                      : (hoofdProduct?.omschrijving ?? '—')}
-                  </span>
-                </div>
+            {paginaOrders.map((order, i) => {
+              const isOpen = uitgebreid === order.id
+              const isLast = i === paginaOrders.length - 1
+              const hoofdProduct = order.producten?.[0]
+              const productLabel = order.producten?.length > 1
+                ? order.producten.map(p => extractPakket(p.lev_nr)).filter(Boolean).join(', ')
+                : (hoofdProduct?.omschrijving ?? '—')
+              return (
+                <div key={order.id}>
+                  {/* Desktop rij */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
+                    onClick={() => setUitgebreid(isOpen ? null : order.id)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setUitgebreid(isOpen ? null : order.id) }}
+                    className="hidden sm:grid"
+                    style={{
+                      gridTemplateColumns: '130px 110px 1fr 1fr',
+                      padding: '12px 16px', cursor: 'pointer', gap: 12,
+                      borderBottom: isLast && !isOpen ? 'none' : '1px solid var(--drg-line)',
+                      background: isOpen ? 'rgba(45,69,124,0.025)' : 'transparent',
+                      transition: 'background 0.15s', alignItems: 'center',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={e => { if (!isOpen) (e.currentTarget as HTMLElement).style.background = 'rgba(45,69,124,0.02)' }}
+                    onMouseLeave={e => { if (!isOpen) (e.currentTarget as HTMLElement).style.background = isOpen ? 'rgba(45,69,124,0.025)' : 'transparent' }}
+                    onFocus={e => { (e.currentTarget as HTMLElement).style.outline = '2px solid rgba(45,69,124,0.35)'; (e.currentTarget as HTMLElement).style.outlineOffset = '-2px' }}
+                    onBlur={e => { (e.currentTarget as HTMLElement).style.outline = 'none' }}
+                  >
+                    <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F }}>
+                      {new Date(order.ontvangen_op).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F }}>{order.bestelnummer ?? '—'}</span>
+                    <span style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.naam ?? '—'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{productLabel}</span>
+                  </div>
 
-                {isOpen && (
-                  <div style={{ padding: '20px 20px 24px', borderBottom: isLast ? 'none' : '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.02)', display: 'flex', gap: 40, flexWrap: 'wrap' }}>
+                  {/* Mobiele kaart */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
+                    onClick={() => setUitgebreid(isOpen ? null : order.id)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setUitgebreid(isOpen ? null : order.id) }}
+                    className="flex sm:hidden items-start justify-between gap-3"
+                    style={{
+                      padding: '12px 16px', cursor: 'pointer',
+                      borderBottom: isLast && !isOpen ? 'none' : '1px solid var(--drg-line)',
+                      background: isOpen ? 'rgba(45,69,124,0.025)' : 'transparent',
+                      outline: 'none',
+                    }}
+                    onFocus={e => { (e.currentTarget as HTMLElement).style.outline = '2px solid rgba(45,69,124,0.35)'; (e.currentTarget as HTMLElement).style.outlineOffset = '-2px' }}
+                    onBlur={e => { (e.currentTarget as HTMLElement).style.outline = 'none' }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--drg-ink-2)', fontFamily: F }}>{order.bestelnummer ?? '—'}</span>
+                        <span style={{ fontSize: 11, color: 'var(--drg-text-3)', fontFamily: F }}>
+                          {new Date(order.ontvangen_op).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--drg-ink-2)', fontFamily: F, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.naam ?? '—'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{productLabel}</div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', flexShrink: 0, marginTop: 2, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} aria-hidden>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </div>
 
-                    {/* Klantgegevens */}
-                    <div style={{ minWidth: 220 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>Klantgegevens</p>
-                        {isBewerker && (
-                          <button
-                            type="button"
-                            disabled={reparseBezig === order.id}
-                            onClick={e => { e.stopPropagation(); void herparser(order.id) }}
-                            style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: reparseBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: reparseBezig === order.id ? 0.5 : 1 }}
-                          >
-                            {reparseBezig === order.id ? 'Bezig…' : 'Opnieuw parsen'}
-                          </button>
+                  {isOpen && (
+                    <div style={{ padding: '16px', borderBottom: isLast ? 'none' : '1px solid var(--drg-line)', background: 'rgba(45,69,124,0.02)' }} className="flex flex-col sm:flex-row gap-6 sm:gap-10 flex-wrap">
+
+                      {/* Klantgegevens */}
+                      <div className="sm:min-w-[220px]">
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: 0, fontFamily: F }}>Klantgegevens</p>
+                          {isBewerker && (
+                            <button
+                              type="button"
+                              disabled={reparseBezig === order.id}
+                              onClick={e => { e.stopPropagation(); void herparser(order.id) }}
+                              style={{ fontSize: 10, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.07)', border: '1px solid rgba(45,69,124,0.15)', borderRadius: 5, padding: '2px 8px', cursor: reparseBezig === order.id ? 'default' : 'pointer', fontFamily: F, opacity: reparseBezig === order.id ? 0.5 : 1 }}
+                            >
+                              {reparseBezig === order.id ? 'Bezig…' : 'Opnieuw parsen'}
+                            </button>
+                          )}
+                        </div>
+                        {reparseFout && uitgebreid === order.id && (
+                          <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontFamily: F }}>
+                            {reparseFout}
+                          </div>
+                        )}
+                        <DetailRij label="Naam" waarde={order.naam} />
+                        <DetailRij label="Bedrijfsnaam" waarde={order.bedrijfsnaam} />
+                        <DetailRij label="E-mailadres" waarde={order.emailadres} />
+                        <DetailRij label="Besteldatum" waarde={order.besteldatum} />
+                        <DetailRij label="Bestelnummer" waarde={order.bestelnummer} />
+                        <DetailRij label="Adres" waarde={order.adres} />
+                        <DetailRij label="Referentie" waarde={order.referentie} />
+                        <DetailRij label="Opmerkingen" waarde={order.opmerkingen} />
+                        {order.freshdesk_ticket_id && (
+                          <DetailRij label="Freshdesk ticket" waarde={`#${order.freshdesk_ticket_id}`} />
                         )}
                       </div>
-                      {reparseFout && uitgebreid === order.id && (
-                        <div style={{ fontSize: 11, color: 'var(--drg-danger)', background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontFamily: F }}>
-                          {reparseFout}
+
+                      {/* Producten */}
+                      {order.producten?.length > 0 && (
+                        <div className="flex-1 min-w-0">
+                          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: '0 0 10px', fontFamily: F }}>Bestelde producten</p>
+                          <div className="overflow-x-auto" style={{ borderRadius: 8, border: '1px solid var(--drg-line)' }}>
+                            <div style={{ minWidth: 480 }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px 55px 45px 70px', padding: '7px 12px', background: 'rgba(45,69,124,0.04)', gap: 8 }}>
+                                {['Lev.nr.', 'Omschrijving', 'Leverweek', 'Aantal', 'VE', 'Totaal'].map(h => (
+                                  <span key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--drg-text-3)', fontFamily: F }}>{h}</span>
+                                ))}
+                              </div>
+                              {order.producten.map((p, pi) => (
+                                <div key={pi} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px 55px 45px 70px', padding: '9px 12px', borderTop: '1px solid var(--drg-line)', gap: 8, alignItems: 'start' }}>
+                                  <span style={{ fontSize: 12, color: 'var(--drg-ink-2)', fontFamily: F }}>{p.lev_nr || '—'}</span>
+                                  <span style={{ fontSize: 12, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.4 }}>{p.omschrijving || '—'}</span>
+                                  <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F }}>{p.gewenste_leverweek || '—'}</span>
+                                  <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, textAlign: 'center' }}>{p.aantal || '—'}</span>
+                                  <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, textAlign: 'center' }}>{p.ve || '—'}</span>
+                                  <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, textAlign: 'center' }}>{p.totaal_stuks || '—'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      <DetailRij label="Naam" waarde={order.naam} />
-                      <DetailRij label="Bedrijfsnaam" waarde={order.bedrijfsnaam} />
-                      <DetailRij label="E-mailadres" waarde={order.emailadres} />
-                      <DetailRij label="Besteldatum" waarde={order.besteldatum} />
-                      <DetailRij label="Bestelnummer" waarde={order.bestelnummer} />
-                      <DetailRij label="Adres" waarde={order.adres} />
-                      <DetailRij label="Referentie" waarde={order.referentie} />
-                      <DetailRij label="Opmerkingen" waarde={order.opmerkingen} />
-                      {order.freshdesk_ticket_id && (
-                        <DetailRij label="Freshdesk ticket" waarde={`#${order.freshdesk_ticket_id}`} />
                       )}
                     </div>
-
-                    {/* Producten */}
-                    {order.producten?.length > 0 && (
-                      <div style={{ flex: 1, minWidth: 320 }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--drg-text-3)', margin: '0 0 12px', fontFamily: F }}>Bestelde producten</p>
-                        <div style={{ borderRadius: 8, border: '1px solid var(--drg-line)', overflow: 'hidden' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px 55px 45px 70px', padding: '7px 12px', background: 'rgba(45,69,124,0.04)', gap: 8 }}>
-                            {['Lev.nr.', 'Omschrijving', 'Leverweek', 'Aantal', 'VE', 'Totaal'].map(h => (
-                              <span key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--drg-text-3)', fontFamily: F }}>{h}</span>
-                            ))}
-                          </div>
-                          {order.producten.map((p, pi) => (
-                            <div key={pi} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px 55px 45px 70px', padding: '9px 12px', borderTop: '1px solid var(--drg-line)', gap: 8, alignItems: 'start' }}>
-                              <span style={{ fontSize: 12, color: 'var(--drg-ink-2)', fontFamily: F }}>{p.lev_nr || '—'}</span>
-                              <span style={{ fontSize: 12, color: 'var(--drg-ink-2)', fontFamily: F, lineHeight: 1.4 }}>{p.omschrijving || '—'}</span>
-                              <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F }}>{p.gewenste_leverweek || '—'}</span>
-                              <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, textAlign: 'center' }}>{p.aantal || '—'}</span>
-                              <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, textAlign: 'center' }}>{p.ve || '—'}</span>
-                              <span style={{ fontSize: 12, color: 'var(--drg-text-3)', fontFamily: F, textAlign: 'center' }}>{p.totaal_stuks || '—'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
           {/* Paginering */}
           {aantalPaginas > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, fontFamily: F }}>
+            <div className="flex items-center justify-between mt-3" style={{ fontFamily: F }}>
               <span style={{ fontSize: 12, color: 'var(--drg-text-3)' }}>
                 Pagina {huidigePagina} van {aantalPaginas} · {gefilterd.length} orders
               </span>
