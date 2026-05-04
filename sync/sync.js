@@ -318,6 +318,26 @@ async function main() {
 
   log('─'.repeat(50));
   log(`Sync klaar — ${bijgewerkt} bijgewerkt/aangemaakt, ${overgeslagen} overgeslagen, ${fouten} fouten`);
+
+  // Schrijf sync-timestamp naar Supabase sync_meta tabel
+  try {
+    const { error: metaError } = await supabase
+      .from('sync_meta')
+      .upsert({
+        sync_type: 'sap_ledenlijst',
+        synced_at: new Date().toISOString(),
+        status: fouten === 0 ? 'ok' : 'fout',
+        regels_bijgewerkt: bijgewerkt,
+        fouten,
+      }, { onConflict: 'sync_type' });
+    if (metaError) {
+      log(`⚠️  sync_meta bijwerken mislukt: ${metaError.message}`);
+    } else {
+      log(`✓ sync_meta bijgewerkt`);
+    }
+  } catch (err) {
+    log(`⚠️  sync_meta bijwerken mislukt: ${err.message}`);
+  }
 }
 
 main().catch(err => {

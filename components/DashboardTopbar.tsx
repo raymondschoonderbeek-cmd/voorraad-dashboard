@@ -31,7 +31,7 @@ const PAGINA_TITELS: Record<string, string> = {
   '/dashboard/instellingen/beschikbaarheid': 'Beschikbaarheid',
   '/dashboard/campagne-fietsen': 'Campagnefietsen',
   '/dashboard/brand-groep': 'Merk / Groep',
-  '/dashboard/ftp-koppeling': 'FTP-koppelingen',
+  '/dashboard/ftp-koppeling': 'Integraties & statussen',
   '/dashboard/voorraad': 'Voorraad',
 }
 

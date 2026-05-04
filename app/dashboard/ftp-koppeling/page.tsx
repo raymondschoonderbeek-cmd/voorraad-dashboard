@@ -23,6 +23,11 @@ interface FtpTaak {
   laatste_status: LaatsteStatus | null
 }
 
+interface SyncStatus {
+  vendit_stock: { datum: string | null }
+  sap_ledenlijst: { datum: string | null; status: string | null; regels_bijgewerkt: number | null }
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
     ok:            { bg: '#dcfce7', fg: '#15803d', label: 'Gelukt' },
@@ -39,6 +44,35 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+function formatDatum(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function syncOud(iso: string | null, maxUren: number): boolean {
+  if (!iso) return true
+  return (Date.now() - new Date(iso).getTime()) > maxUren * 60 * 60 * 1000
+}
+
+function SyncStatusKaart({ label, datum, maxUren, extra }: { label: string; datum: string | null; maxUren: number; extra?: string }) {
+  const oud = syncOud(datum, maxUren)
+  const kleur = datum === null ? 'rgba(45,69,124,0.4)' : oud ? '#b91c1c' : '#15803d'
+  const bg = datum === null ? 'rgba(45,69,124,0.06)' : oud ? '#fee2e2' : '#dcfce7'
+  const indicator = datum === null ? '?' : oud ? '!' : '✓'
+  return (
+    <div className="rounded-[10px] px-4 py-3 flex items-center gap-3" style={{ background: bg }}>
+      <span className="text-base font-bold w-5 text-center shrink-0" style={{ color: kleur }}>{indicator}</span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold m-0" style={{ color: kleur, fontFamily: F }}>{label}</p>
+        <p className="text-xs m-0 mt-0.5" style={{ color: kleur, opacity: 0.8, fontFamily: F }}>
+          {datum ? `Laatste sync: ${formatDatum(datum)}` : 'Nog nooit gesynchroniseerd'}
+          {extra ? ` · ${extra}` : ''}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function FtpKoppelingPage() {
   const router = useRouter()
   const [allowed, setAllowed] = useState<boolean | null>(null)
@@ -47,6 +81,7 @@ export default function FtpKoppelingPage() {
   const [verwijderBezig, setVerwijderBezig] = useState<number | null>(null)
   const [kopieerBezig, setKopieerBezig] = useState<number | null>(null)
   const [nieuwBezig, setNieuwBezig] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
 
   const laadTaken = async () => {
     setLaden(true)
@@ -63,6 +98,10 @@ export default function FtpKoppelingPage() {
       if (!info.isAdmin) { setAllowed(false); return }
       setAllowed(true)
       void laadTaken()
+      fetch('/api/admin/sync-status')
+        .then(r => r.json())
+        .then((d: SyncStatus) => setSyncStatus(d))
+        .catch(() => null)
     }
     void check()
   }, [])
@@ -123,9 +162,9 @@ export default function FtpKoppelingPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>FTP-koppelingen</h1>
+            <h1 className="text-xl sm:text-2xl font-bold m-0" style={{ color: 'var(--drg-ink)' }}>Integraties & statussen</h1>
             <p className="text-sm m-0 mt-1" style={{ color: dashboardUi.textMuted }}>
-              Bijlagen van Freshdesk-tickets automatisch uploaden naar FTP.
+              Sync-statussen en FTP-uploadtaken voor externe koppelingen.
             </p>
           </div>
           <button
@@ -138,6 +177,22 @@ export default function FtpKoppelingPage() {
             {nieuwBezig ? 'Aanmaken…' : '+ Nieuwe taak'}
           </button>
         </div>
+
+        {syncStatus && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <SyncStatusKaart
+              label="Vendit stock"
+              datum={syncStatus.vendit_stock.datum}
+              maxUren={36}
+            />
+            <SyncStatusKaart
+              label="SAP ledenlijst"
+              datum={syncStatus.sap_ledenlijst.datum}
+              maxUren={168}
+              extra={syncStatus.sap_ledenlijst.regels_bijgewerkt != null ? `${syncStatus.sap_ledenlijst.regels_bijgewerkt} winkels` : undefined}
+            />
+          </div>
+        )}
 
         {laden ? (
           <p className="text-sm" style={{ color: dashboardUi.textMuted }}>Laden…</p>
