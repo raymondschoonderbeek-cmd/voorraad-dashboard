@@ -8,7 +8,6 @@ import Link from 'next/link'
 
 const INITIAAL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777','#854d0e','#0f766e']
 const RECENT_KEY = 'dynamo_crm_recent'
-const FAV_KEY = 'dynamo_crm_favs'
 const DENSE_KEY = 'dynamo_crm_dense'
 
 function initialen(naam: string) {

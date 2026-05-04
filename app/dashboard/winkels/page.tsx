@@ -8,7 +8,6 @@ import { WinkelDetail } from './WinkelDetail'
 import { WinkelKaart } from '@/components/WinkelKaart'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
-const FAV_KEY = 'dynamo_crm_favs'
 const TAB_KEY = 'dynamo_crm_active_tab'
 
 type Tab = 'overzicht' | 'contact' | 'systemen' | 'financieel' | 'contracten' | 'activiteit' | 'support'
@@ -29,20 +28,7 @@ function WinkelsPageInner() {
   const allowedCountries = sessionData?.allowedCountries ?? null
 
   const { data: favorietenData, mutate: mutateFavorieten } = useSWR<{ winkel_ids: number[] }>('/api/favorieten', fetcher)
-  const serverFavorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
-
-  const [localFavs, setLocalFavs] = useState<number[]>([])
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try { setLocalFavs(JSON.parse(localStorage.getItem(FAV_KEY) ?? '[]')) } catch {
-      // ignore
-    }
-  }, [])
-
-  const favorieten = useMemo(() => {
-    const combined = new Set([...serverFavorieten, ...localFavs])
-    return Array.from(combined)
-  }, [serverFavorieten, localFavs])
+  const favorieten = Array.isArray(favorietenData?.winkel_ids) ? favorietenData.winkel_ids : []
 
   const winkelsVoorGebruiker = useMemo(() => {
     if (!allowedCountries || allowedCountries.length === 0) return winkels
@@ -86,11 +72,10 @@ function WinkelsPageInner() {
   }
 
   async function toggleFavoriet(id: number) {
-    // Optimistisch bijwerken in localStorage
-    const next = localFavs.includes(id) ? localFavs.filter(f => f !== id) : [...localFavs, id]
-    setLocalFavs(next)
-    localStorage.setItem(FAV_KEY, JSON.stringify(next))
-    // Ook server-side
+    const isFav = favorieten.includes(id)
+    const nextIds = isFav ? favorieten.filter(f => f !== id) : [...favorieten, id]
+    // Optimistisch bijwerken zodat de UI direct reageert
+    void mutateFavorieten({ winkel_ids: nextIds }, false)
     await fetch('/api/favorieten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ winkel_id: id }) })
     await mutateFavorieten()
   }
