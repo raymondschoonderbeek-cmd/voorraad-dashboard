@@ -1162,7 +1162,7 @@ export default function Dashboard() {
                           const active = sortKey === k
                           const sticky = stickyEnabled && stickyKey === k
                           return (
-                            <th key={k} scope="col" className="px-4 py-3 text-left" style={{ color: active ? 'white' : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: sticky ? 'sticky' : 'relative', left: sticky ? 0 : undefined, zIndex: sticky ? 20 : 10, minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
+                            <th key={k} scope="col" className="px-4 py-3 text-left" style={{ color: active ? 'white' : 'rgba(255,255,255,0.7)', background: DYNAMO_BLUE, fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: F, position: 'sticky', top: 0, left: sticky ? 0 : undefined, zIndex: sticky ? 20 : 10, minWidth: columnMinWidth(k), whiteSpace: columnMinWidth(k) ? 'normal' : 'nowrap' }}>
                               <button onClick={() => toggleSort(k)} className="flex items-center gap-1 hover:opacity-80 transition">
                                 {columnLabel(k)}
                                 <span style={{ color: active ? 'white' : 'rgba(255,255,255,0.25)' }}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
