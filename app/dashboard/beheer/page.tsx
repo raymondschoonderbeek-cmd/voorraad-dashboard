@@ -43,7 +43,7 @@ type LandFilter = 'alle' | LandCode
 type Winkel = {
   id: number
   naam: string
-  dealer_nummer: string
+  kassa_nummer: string
   postcode?: string
   straat?: string
   huisnummer?: string
@@ -394,7 +394,7 @@ export default function BeheerPage() {
   async function verversCycleApiStatus() {
     const cycleWinkels = gefilterdeWinkels.filter(w =>
       (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) &&
-      w.dealer_nummer?.trim()
+      w.kassa_nummer?.trim()
     )
     if (cycleWinkels.length === 0) return
     setCycleStatusLoading(true)
@@ -402,7 +402,7 @@ export default function BeheerPage() {
       const res = await fetch('/api/voorraad/status/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cycleWinkels.map(w => ({ id: w.id, dealer_nummer: w.dealer_nummer })) }),
+        body: JSON.stringify({ items: cycleWinkels.map(w => ({ id: w.id, kassa_nummer: w.kassa_nummer })) }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.results) {
@@ -676,7 +676,7 @@ export default function BeheerPage() {
     setWinkelLoading(true)
     const payload: Record<string, unknown> = {
       naam: nieuwWinkelNaam,
-      dealer_nummer: nieuwWinkelDealer,
+      kassa_nummer: nieuwWinkelDealer,
       postcode: nieuwWinkelPostcode,
       straat: nieuwWinkelStraat || undefined,
       huisnummer: nieuwWinkelHuisnummer || undefined,
@@ -744,7 +744,7 @@ export default function BeheerPage() {
     const payload = {
       id: bewerkWinkel.id,
       naam: bewerkWinkel.naam,
-      dealer_nummer: bewerkWinkel.dealer_nummer,
+      kassa_nummer: bewerkWinkel.kassa_nummer,
       postcode: bewerkWinkel.postcode,
       straat: bewerkWinkel.straat,
       huisnummer: bewerkHuisnummer?.trim() || null,
@@ -890,10 +890,10 @@ export default function BeheerPage() {
         const parsed = rows.map(r => {
           const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
           const landVal = String(r.land || r.Land || r.LAND || '').trim().toLowerCase()
-          const dealer = String(r.dealer_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
+          const dealer = String(r.kassa_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
           return {
             naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
-            dealer_nummer: dealer,
+            kassa_nummer: dealer,
             postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
             straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
             huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
@@ -901,12 +901,12 @@ export default function BeheerPage() {
             land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
             api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'vendit_api' ? 'vendit_api' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined))),
           }
-        }).filter(r => r.dealer_nummer)
+        }).filter(r => r.kassa_nummer)
         if (parsed.length === 0) {
           const heeftRijen = rows.length > 0
           setImportError(heeftRijen
-            ? 'Geen geldige rijen gevonden. Elke rij moet een dealer_nummer hebben. Kolomnamen: dealer_nummer, Dealer nummer, of DEALER_NUMMER.'
-            : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, dealer_nummer, …) en daarna de data.')
+            ? 'Geen geldige rijen gevonden. Elke rij moet een kassa_nummer hebben. Kolomnamen: kassa_nummer, Dealer nummer, of DEALER_NUMMER.'
+            : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, kassa_nummer, …) en daarna de data.')
         } else {
           setImportData(parsed)
         }
@@ -926,12 +926,12 @@ export default function BeheerPage() {
     const fouten: string[] = []
     for (let i = 0; i < importData.length; i++) {
       const winkel = importData[i]
-      const bestaand = winkels.find(w => String(w.dealer_nummer).trim() === String(winkel.dealer_nummer).trim())
+      const bestaand = winkels.find(w => String(w.kassa_nummer).trim() === String(winkel.kassa_nummer).trim())
       if (bestaand) {
         const payload = {
           id: bestaand.id,
           naam: (winkel.naam?.trim()) ? winkel.naam.trim() : bestaand.naam,
-          dealer_nummer: winkel.dealer_nummer,
+          kassa_nummer: winkel.kassa_nummer,
           postcode: (winkel.postcode?.trim()) ? winkel.postcode.trim() : bestaand.postcode,
           straat: (winkel.straat?.trim()) ? winkel.straat.trim() : bestaand.straat,
           huisnummer: (winkel.huisnummer?.trim()) ? winkel.huisnummer.trim() : bestaand.huisnummer ?? null,
@@ -951,11 +951,11 @@ export default function BeheerPage() {
           bijgewerkt++
         } else {
           const data = await res.json().catch(() => ({}))
-          fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): ${data?.error || res.statusText || res.status}`)
+          fouten.push(`Rij ${i + 1} (${winkel.kassa_nummer}): ${data?.error || res.statusText || res.status}`)
         }
       } else {
         if (!winkel.naam?.trim()) {
-          fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): Naam is verplicht voor nieuwe winkels`)
+          fouten.push(`Rij ${i + 1} (${winkel.kassa_nummer}): Naam is verplicht voor nieuwe winkels`)
         } else {
           const res = await fetch('/api/winkels', {
             method: 'POST',
@@ -966,7 +966,7 @@ export default function BeheerPage() {
             toegevoegd++
           } else {
             const data = await res.json().catch(() => ({}))
-            fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): ${data?.error || res.statusText || res.status}`)
+            fouten.push(`Rij ${i + 1} (${winkel.kassa_nummer}): ${data?.error || res.statusText || res.status}`)
           }
         }
       }
@@ -1075,7 +1075,7 @@ export default function BeheerPage() {
       if (zoek) {
         const naam = String(w.naam ?? '').toLowerCase()
         const stad = String(w.stad ?? '').toLowerCase()
-        const dealer = String(w.dealer_nummer ?? '').toLowerCase()
+        const dealer = String(w.kassa_nummer ?? '').toLowerCase()
         const straat = String(w.straat ?? '').toLowerCase()
         const postcode = String(w.postcode ?? '').toLowerCase()
         const wilmarNaam = String(w.wilmar_store_naam ?? '').toLowerCase()
@@ -1875,7 +1875,7 @@ export default function BeheerPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold mb-1 block" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Dealer nummer *</label>
-                      <input value={bewerkWinkel.dealer_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, dealer_nummer: e.target.value })} className={inputClass} style={inputStyle} required />
+                      <input value={bewerkWinkel.kassa_nummer} onChange={e => setBewerkWinkel({ ...bewerkWinkel, kassa_nummer: e.target.value })} className={inputClass} style={inputStyle} required />
                     </div>
                     <div className="sm:col-span-2">
                       <div className="text-xs font-semibold mb-1" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>Adres (postcode + huisnummer → Haal adres op)</div>
@@ -2169,7 +2169,7 @@ export default function BeheerPage() {
                     )}
                   </select>
                 </div>
-                {winkelFilterSysteem !== 'wilmar' && winkelFilterSysteem !== 'vendit' && winkels.some(w => (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) && w.dealer_nummer) && (
+                {winkelFilterSysteem !== 'wilmar' && winkelFilterSysteem !== 'vendit' && winkels.some(w => (w.api_type === 'cyclesoftware' || (!w.api_type && !w.wilmar_organisation_id && !w.wilmar_branch_id)) && w.kassa_nummer) && (
                   <button onClick={verversCycleApiStatus} disabled={cycleStatusLoading} className="rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 shrink-0" style={{ background: 'rgba(45,69,124,0.06)', color: DYNAMO_BLUE, border: '1px solid rgba(45,69,124,0.1)', fontFamily: F }}>
                     {cycleStatusLoading ? 'Bezig...' : 'Ververs API-status'}
                   </button>
@@ -2207,7 +2207,7 @@ export default function BeheerPage() {
                                 <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.15)', color: '#15803d', fontFamily: F }} title="Winkel staat in vendit_stock dataset">✓ In dataset</span>
                               )}
                               {w.vendit_in_dataset === false && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title={`Geen data beschikbaar: dealer #${w.dealer_nummer ?? ''} komt niet voor in vendit_stock. Controleer of het nummer exact overeenkomt (bijv. 094 ≠ 94).`}>— Niet in dataset</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.2)', color: '#a16207', fontFamily: F }} title={`Geen data beschikbaar: dealer #${w.kassa_nummer ?? ''} komt niet voor in vendit_stock. Controleer of het nummer exact overeenkomt (bijv. 094 ≠ 94).`}>— Niet in dataset</span>
                               )}
                               {w.vendit_in_dataset && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.06)', color: 'rgba(45,69,124,0.55)', fontFamily: F }} title={w.vendit_laatst_datum ? 'Laatste datum voorraad in vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen timestamp-kolom of de kolom is leeg'}>
@@ -2251,7 +2251,7 @@ export default function BeheerPage() {
                           )}
                         </div>
                         <div className="text-xs mt-0.5" style={{ color: 'rgba(45,69,124,0.4)', fontFamily: F }}>
-                          #{w.dealer_nummer}{w.straat ? ` · ${w.straat}${w.huisnummer ? ` ${w.huisnummer}` : ''}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
+                          #{w.kassa_nummer}{w.straat ? ` · ${w.straat}${w.huisnummer ? ` ${w.huisnummer}` : ''}` : ''}{w.stad ? ` · ${w.stad}` : ''}{w.postcode ? ` · ${w.postcode}` : ''}
                         </div>
                       </div>
                       {isAdmin && (

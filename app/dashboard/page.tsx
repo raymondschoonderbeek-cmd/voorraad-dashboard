@@ -324,7 +324,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!geselecteerdeWinkel) return
-    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer)
+    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer)
   }, [geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
@@ -338,7 +338,7 @@ export default function Dashboard() {
     router.replace(`/dashboard?winkel=${winkel.id}`)
     setZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setFoutmelding(null)
-    await haalVoorraadOp(winkel.id, winkel.dealer_nummer)
+    await haalVoorraadOp(winkel.id, winkel.kassa_nummer)
   }
 
   async function uitloggen() { await supabase.auth.signOut(); router.push('/login') }
@@ -389,7 +389,7 @@ export default function Dashboard() {
 
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
-  const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
+  const dealer = geselecteerdeWinkel?.kassa_nummer ?? ''
   const venditLaatstDatum = geselecteerdeWinkel ? (winkelsVoorGebruiker.find(w => w.id === geselecteerdeWinkel!.id)?.vendit_laatst_datum ?? geselecteerdeWinkel.vendit_laatst_datum) : null
   const bron =
     geselecteerdeWinkel?.api_type ??
@@ -961,7 +961,7 @@ export default function Dashboard() {
                         {bron === 'wilmar' ? 'Wilmar' : (bron === 'vendit' || bron === 'vendit_api') ? 'Vendit' : 'CycleSoftware'}
                       </span>
                       {bron === 'vendit' && (
-                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen data voor dit dealer_nummer of de timestamp-kolom is leeg'}>
+                        <span className="shrink-0 text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(45,69,124,0.08)', color: 'rgba(45,69,124,0.7)', fontFamily: F }} title={venditLaatstDatum ? 'Laatste voorraadsync uit vendit_stock' : 'Geen datum beschikbaar: vendit_stock heeft geen data voor dit kassa_nummer of de timestamp-kolom is leeg'}>
                           {venditLaatstDatum ? (() => {
                             const d = new Date(venditLaatstDatum)
                             const dag = d.getUTCDate()
@@ -1066,7 +1066,7 @@ export default function Dashboard() {
                     {geselecteerdeWinkel && (
                       <button
                         type="button"
-                        onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer)}
+                        onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer)}
                         className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition hover:opacity-90"
                         style={{ background: '#dc2626', color: 'white', fontFamily: F }}
                       >

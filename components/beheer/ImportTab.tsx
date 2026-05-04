@@ -8,7 +8,7 @@ const F = "'Outfit', sans-serif"
 type Winkel = {
   id: number
   naam: string
-  dealer_nummer: string
+  kassa_nummer: string
   postcode?: string
   straat?: string
   huisnummer?: string
@@ -66,10 +66,10 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
         const parsed = rows.map(r => {
           const apiVal = String(r.api_type || r['API type'] || r.apiType || '').trim().toLowerCase()
           const landVal = String(r.land || r.Land || r.LAND || '').trim().toLowerCase()
-          const dealer = String(r.dealer_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
+          const dealer = String(r.kassa_nummer || r['Dealer nummer'] || r.dealerNummer || r.DEALER_NUMMER || r.dealer || r.Dealer || '').trim()
           return {
             naam: String(r.naam || r.Naam || r.NAAM || '').trim(),
-            dealer_nummer: dealer,
+            kassa_nummer: dealer,
             postcode: String(r.postcode || r.Postcode || r.POSTCODE || '').trim(),
             straat: String(r.straat || r.Straat || r.STRAAT || r.adres || r.Adres || '').trim(),
             huisnummer: String(r.huisnummer || r.Huisnummer || r.HUISNUMMER || r.nr || '').trim() || undefined,
@@ -77,12 +77,12 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
             land: (landVal === 'belgië' || landVal === 'belgie' || landVal === 'belgium') ? 'Belgium' : ((landVal === 'nederland' || landVal === 'netherlands') ? 'Netherlands' : undefined),
             api_type: apiVal === 'wilmar' ? 'wilmar' : (apiVal === 'vendit' ? 'vendit' : (apiVal === 'vendit_api' ? 'vendit_api' : (apiVal === 'cyclesoftware' ? 'cyclesoftware' : undefined))),
           }
-        }).filter(r => r.dealer_nummer)
+        }).filter(r => r.kassa_nummer)
         if (parsed.length === 0) {
           const heeftRijen = rows.length > 0
           setImportError(heeftRijen
-            ? 'Geen geldige rijen gevonden. Elke rij moet een dealer_nummer hebben. Kolomnamen: dealer_nummer, Dealer nummer, of DEALER_NUMMER.'
-            : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, dealer_nummer, …) en daarna de data.')
+            ? 'Geen geldige rijen gevonden. Elke rij moet een kassa_nummer hebben. Kolomnamen: kassa_nummer, Dealer nummer, of DEALER_NUMMER.'
+            : 'Geen data gevonden. Zorg dat het bestand een eerste rij met kolomnamen heeft (naam, kassa_nummer, …) en daarna de data.')
         } else {
           setImportData(parsed)
         }
@@ -102,12 +102,12 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
     const fouten: string[] = []
     for (let i = 0; i < importData.length; i++) {
       const winkel = importData[i]
-      const bestaand = winkels.find(w => String(w.dealer_nummer).trim() === String(winkel.dealer_nummer).trim())
+      const bestaand = winkels.find(w => String(w.kassa_nummer).trim() === String(winkel.kassa_nummer).trim())
       if (bestaand) {
         const payload = {
           id: bestaand.id,
           naam: (winkel.naam?.trim()) ? winkel.naam.trim() : bestaand.naam,
-          dealer_nummer: winkel.dealer_nummer,
+          kassa_nummer: winkel.kassa_nummer,
           postcode: (winkel.postcode?.trim()) ? winkel.postcode.trim() : bestaand.postcode,
           straat: (winkel.straat?.trim()) ? winkel.straat.trim() : bestaand.straat,
           huisnummer: (winkel.huisnummer?.trim()) ? winkel.huisnummer.trim() : bestaand.huisnummer ?? null,
@@ -127,11 +127,11 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
           bijgewerkt++
         } else {
           const data = await res.json().catch(() => ({}))
-          fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): ${data?.error || res.statusText || res.status}`)
+          fouten.push(`Rij ${i + 1} (${winkel.kassa_nummer}): ${data?.error || res.statusText || res.status}`)
         }
       } else {
         if (!winkel.naam?.trim()) {
-          fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): Naam is verplicht voor nieuwe winkels`)
+          fouten.push(`Rij ${i + 1} (${winkel.kassa_nummer}): Naam is verplicht voor nieuwe winkels`)
         } else {
           const res = await fetch('/api/winkels', {
             method: 'POST',
@@ -142,7 +142,7 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
             toegevoegd++
           } else {
             const data = await res.json().catch(() => ({}))
-            fouten.push(`Rij ${i + 1} (${winkel.dealer_nummer}): ${data?.error || res.statusText || res.status}`)
+            fouten.push(`Rij ${i + 1} (${winkel.kassa_nummer}): ${data?.error || res.statusText || res.status}`)
           }
         }
       }
@@ -202,7 +202,7 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
           </div>
         </div>
         {importType === 'winkels' ? (
-          <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>dealer_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde dealer_nummer worden bijgewerkt.</p>
+          <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>naam</strong>, <strong>kassa_nummer</strong> (verplicht), <strong>postcode</strong>, <strong>straat</strong>, <strong>huisnummer</strong> (optioneel), <strong>stad</strong>, <strong>land</strong> (optioneel: Nederland of België), <strong>api_type</strong> (optioneel: cyclesoftware, wilmar, vendit of vendit_api). Bestaande winkels met hetzelfde kassa_nummer worden bijgewerkt.</p>
         ) : (
           <p className="text-xs mb-5" style={{ color: 'rgba(45,69,124,0.5)', fontFamily: F }}>Upload een .xlsx bestand met kolommen: <strong>email</strong> (verplicht), <strong>naam</strong> (optioneel), <strong>rol</strong> (optioneel: viewer, lunch of admin; standaard viewer). Nieuwe medewerkers krijgen een wachtwoord per e-mail en moeten dit bij eerste inlog wijzigen.</p>
         )}
@@ -248,7 +248,7 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
                     : importData.slice(0, 10).map((r, i) => (
                         <tr key={i} style={{ background: i % 2 === 0 ? 'white' : 'rgba(45,69,124,0.02)', borderBottom: '1px solid rgba(45,69,124,0.05)' }}>
                           <td className="px-3 py-2 font-medium" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{r.naam}</td>
-                          <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.dealer_nummer}</td>
+                          <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.kassa_nummer}</td>
                           <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.postcode || '—'}</td>
                           <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.straat || '—'}</td>
                           <td className="px-3 py-2" style={{ color: 'rgba(45,69,124,0.6)', fontFamily: F }}>{r.huisnummer || '—'}</td>
@@ -278,7 +278,7 @@ export function ImportTab({ winkels, onRefreshGebruikers }: ImportTabProps) {
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(45,69,124,0.08)' }}>
           <table className="w-full text-xs">
             <thead style={{ background: DYNAMO_BLUE }}>
-              <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'dealer_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{h}</th>)}</tr>
+              <tr>{(importType === 'medewerkers' ? ['email', 'naam', 'rol'] : ['naam', 'kassa_nummer', 'postcode', 'straat', 'huisnummer', 'stad', 'land', 'api_type']).map(h => <th key={h} className="px-3 py-2 text-left font-semibold" style={{ color: DYNAMO_BLUE, fontFamily: F }}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {(importType === 'medewerkers'

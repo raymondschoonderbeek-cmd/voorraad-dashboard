@@ -17,7 +17,7 @@ export type CampagneFietsLite = {
 export type WinkelVoorraadBron = {
   id: number
   naam: string
-  dealer_nummer: string | null
+  kassa_nummer: string | null
   api_type: string | null
   wilmar_organisation_id: number | null
   wilmar_branch_id: number | null
@@ -302,8 +302,8 @@ export async function fetchCampagneVoorraadItemsVoorWinkel(
   const bron = resolveVoorraadBron(winkel)
 
   if (bron === 'vendit') {
-    const d = String(winkel.dealer_nummer ?? '').trim()
-    if (!d) return { items: [], err: 'Geen dealer_nummer' }
+    const d = String(winkel.kassa_nummer ?? '').trim()
+    if (!d) return { items: [], err: 'Geen kassa_nummer' }
     return fetchVenditCampagneItems(supabase, d, codes)
   }
 
@@ -319,8 +319,8 @@ export async function fetchCampagneVoorraadItemsVoorWinkel(
     return fetchWilmarItemsForCodes(wilmarToken, org, br, codes)
   }
 
-  const dealer = String(winkel.dealer_nummer ?? '').trim()
-  if (!dealer) return { items: [], err: 'Geen dealer_nummer' }
+  const dealer = String(winkel.kassa_nummer ?? '').trim()
+  if (!dealer) return { items: [], err: 'Geen kassa_nummer' }
   return fetchCycleSoftwareItemsForCodes(dealer, codes)
 }
 

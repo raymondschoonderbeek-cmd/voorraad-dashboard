@@ -236,7 +236,7 @@ export default function VoorraadPagina() {
 
   useEffect(() => {
     if (!geselecteerdeWinkel) return
-    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer)
+    haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer)
   }, [geselecteerdeWinkel, haalVoorraadOp])
 
   async function selecteerWinkel(winkel: Winkel) {
@@ -250,7 +250,7 @@ export default function VoorraadPagina() {
     router.replace(`/dashboard/voorraad?winkel=${winkel.id}`)
     setZoekterm(''); setProducten([]); setKolommen([])
     setSortKey(''); setZoekKolom('ALL'); setKolomPanelOpen(false); setFoutmelding(null)
-    await haalVoorraadOp(winkel.id, winkel.dealer_nummer)
+    await haalVoorraadOp(winkel.id, winkel.kassa_nummer)
   }
 
   function toggleSort(k: string) {
@@ -268,7 +268,7 @@ export default function VoorraadPagina() {
 
   const stickyKey = kolommen.find(isSticky)
   const stickyEnabled = !!stickyKey && zichtbareKolommen.includes(stickyKey)
-  const dealer = geselecteerdeWinkel?.dealer_nummer ?? ''
+  const dealer = geselecteerdeWinkel?.kassa_nummer ?? ''
   const venditLaatstDatum = geselecteerdeWinkel
     ? (winkelsVoorGebruiker.find(w => w.id === geselecteerdeWinkel!.id)?.vendit_laatst_datum ?? geselecteerdeWinkel.vendit_laatst_datum)
     : null
@@ -575,7 +575,7 @@ export default function VoorraadPagina() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.dealer_nummer)}
+                    onClick={() => haalVoorraadOp(geselecteerdeWinkel.id, geselecteerdeWinkel.kassa_nummer)}
                     className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition hover:opacity-90"
                     style={{ background: '#dc2626', color: 'white', fontFamily: F }}
                   >

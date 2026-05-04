@@ -32,7 +32,7 @@ export async function computeCampagneVoorraadLive(
 
   const { data: winkelsRaw, error: wErr } = await supabase
     .from('winkels')
-    .select('id, naam, stad, lat, lng, dealer_nummer, api_type, wilmar_organisation_id, wilmar_branch_id')
+    .select('id, naam, stad, lat, lng, kassa_nummer, api_type, wilmar_organisation_id, wilmar_branch_id')
     .order('naam')
 
   if (wErr) throw new Error(wErr.message)

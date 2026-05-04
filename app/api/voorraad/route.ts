@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Winkel niet gevonden' }, { status: 404 })
       }
 
-      dealerNummer = winkel.dealer_nummer || dealerNummer
+      dealerNummer = winkel.kassa_nummer || dealerNummer
       bron =
         winkel.api_type ??
         (winkel.wilmar_branch_id && winkel.wilmar_organisation_id ? 'wilmar' : 'cyclesoftware')
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
     // Standaard: als geen bron is vastgelegd, ga uit van CycleSoftware
     if (!bron) bron = 'cyclesoftware'
 
-    // Vendit branch: voorraad uit Supabase vendit_stock op basis van dealer_nummer
+    // Vendit branch: voorraad uit Supabase vendit_stock op basis van kassa_nummer
     if (bron === 'vendit') {
       if (!dealerNummer) {
         return NextResponse.json({ error: 'Geen dealer opgegeven' }, { status: 400 })

@@ -20,7 +20,7 @@ export function WinkelModal({ open, onClose, winkels, onSelect, loading = false 
     if (!q) return winkels
     return winkels.filter(w =>
       w.naam.toLowerCase().includes(q) ||
-      w.dealer_nummer.includes(q) ||
+      w.kassa_nummer.includes(q) ||
       (w.stad?.toLowerCase().includes(q))
     )
   }, [winkels, zoek])

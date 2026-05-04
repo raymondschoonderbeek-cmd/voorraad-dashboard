@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   const light = searchParams.get('light') === '1' || searchParams.get('light') === 'true'
 
   const venditDealerNummers = new Set<string>()
-  const venditLaatstPerDealer = new Map<string, string>() // dealer_nummer -> ISO datum
+  const venditLaatstPerDealer = new Map<string, string>() // kassa_nummer -> ISO datum
   const venditWinkels = (winkelsRaw ?? []).filter((w: { api_type?: string }) => w.api_type === 'vendit')
   if (!light && venditWinkels.length > 0) {
     const cachedNumbers = getCachedVenditDealerNumbers()
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
     const { vendit_api_password: _p, ...rest } = w
     const base = rest as any
     if (base.api_type === 'vendit') {
-      const key = String(w.dealer_nummer ?? '').trim()
+      const key = String(w.kassa_nummer ?? '').trim()
       const inDataset = venditDealerNummers.has(key)
       const laatstDatum = venditLaatstPerDealer.get(key) ?? null
       return {

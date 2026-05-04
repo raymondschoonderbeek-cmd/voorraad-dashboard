@@ -479,7 +479,7 @@ export default function VenditApiTesterPage() {
     (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json()),
     { revalidateOnFocus: true }
   )
-  const winkels = (gebruikersData?.winkels ?? []) as { id: number; naam: string; api_type?: string; dealer_nummer?: string; has_vendit_api_credentials?: boolean }[]
+  const winkels = (gebruikersData?.winkels ?? []) as { id: number; naam: string; api_type?: string; kassa_nummer?: string; has_vendit_api_credentials?: boolean }[]
   const venditWinkels = winkels.filter(w => w.api_type === 'vendit_api' && w.has_vendit_api_credentials === true)
 
   const [selectedWinkelId, setSelectedWinkelId] = useState<number | ''>('')
@@ -756,7 +756,7 @@ export default function VenditApiTesterPage() {
               >
                 <option value="">— Selecteer winkel —</option>
                 {venditWinkels.map(w => (
-                  <option key={w.id} value={w.id}>{w.naam} (#{w.dealer_nummer})</option>
+                  <option key={w.id} value={w.id}>{w.naam} (#{w.kassa_nummer})</option>
                 ))}
                 {venditWinkels.length === 0 && (
                   <option value="" disabled>Geen Vendit API-winkels. Sla de winkel op in Beheer en klik op Ververs.</option>

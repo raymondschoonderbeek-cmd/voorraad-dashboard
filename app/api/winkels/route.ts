@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const { vendit_api_password: _p, ...rest } = w
     const base = rest as any
     if (base.api_type === 'vendit') {
-      const key = String(base.dealer_nummer ?? '').trim()
+      const key = String(base.kassa_nummer ?? '').trim()
       const laatstDatum = venditLaatstPerDealer.get(key) ?? null
       return { ...base, vendit_laatst_datum: laatstDatum }
     }
@@ -107,11 +107,11 @@ async function haalCoordsOp(postcode?: string | null, straat?: string | null, st
 const GELDIGE_API_TYPES = ['cyclesoftware', 'wilmar', 'vendit', 'vendit_api'] as const
 
 function valideerWinkelVelden(body: Record<string, unknown>): string | null {
-  const { naam, dealer_nummer, postcode, straat, huisnummer, stad, api_type } = body
+  const { naam, kassa_nummer, postcode, straat, huisnummer, stad, api_type } = body
   if (!naam || typeof naam !== 'string' || naam.trim().length === 0) return 'Naam is verplicht'
   if (naam.length > 100) return 'Naam mag maximaal 100 tekens bevatten'
-  if (!dealer_nummer || typeof dealer_nummer !== 'string' || dealer_nummer.trim().length === 0) return 'Dealer nummer is verplicht'
-  if (dealer_nummer.length > 50) return 'Dealer nummer mag maximaal 50 tekens bevatten'
+  if (!kassa_nummer || typeof kassa_nummer !== 'string' || kassa_nummer.trim().length === 0) return 'Dealer nummer is verplicht'
+  if (kassa_nummer.length > 50) return 'Dealer nummer mag maximaal 50 tekens bevatten'
   if (postcode !== undefined && postcode !== null && typeof postcode === 'string' && postcode.length > 20) return 'Postcode mag maximaal 20 tekens bevatten'
   if (straat !== undefined && straat !== null && typeof straat === 'string' && straat.length > 200) return 'Straat mag maximaal 200 tekens bevatten'
   if (huisnummer !== undefined && huisnummer !== null && typeof huisnummer === 'string' && huisnummer.length > 20) return 'Huisnummer mag maximaal 20 tekens bevatten'
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
   }
   const raw = body as Record<string, unknown>
   const naam = raw.naam as string | undefined
-  const dealer_nummer = raw.dealer_nummer as string | undefined
+  const kassa_nummer = raw.kassa_nummer as string | undefined
   const postcode = raw.postcode as string | null | undefined
   const straat = raw.straat as string | null | undefined
   const huisnummer = raw.huisnummer as string | null | undefined
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 
   const insertData: Record<string, unknown> = {
     naam,
-    dealer_nummer,
+    kassa_nummer,
     postcode: postcode ?? null,
     straat: straat ?? null,
     huisnummer: huisnummer ?? null,
@@ -194,7 +194,7 @@ export async function PUT(request: NextRequest) {
   const rawPut = body as Record<string, unknown>
   const id = rawPut.id
   const naam = rawPut.naam as string | undefined
-  const dealer_nummer = rawPut.dealer_nummer as string | undefined
+  const kassa_nummer = rawPut.kassa_nummer as string | undefined
   const postcode = rawPut.postcode as string | null | undefined
   const straat = rawPut.straat as string | null | undefined
   const huisnummer = rawPut.huisnummer as string | null | undefined
@@ -221,7 +221,7 @@ export async function PUT(request: NextRequest) {
 
   const updateData: any = {
     naam,
-    dealer_nummer,
+    kassa_nummer,
     postcode: postcode || null,
     straat: straat ?? null,
     huisnummer: huisnummer ?? null,

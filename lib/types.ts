@@ -3,7 +3,7 @@
 export type Winkel = {
   id: number
   naam: string
-  dealer_nummer: string
+  kassa_nummer: string
   postcode?: string
   straat?: string
   huisnummer?: string

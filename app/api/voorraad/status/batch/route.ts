@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
       if (typeof item.id !== 'number' || !Number.isFinite(item.id)) {
         return NextResponse.json({ error: 'Elk item vereist een geldig numeriek id' }, { status: 400 })
       }
-      if (typeof item.dealer_nummer !== 'string' || item.dealer_nummer.trim().length === 0) {
-        return NextResponse.json({ error: 'Elk item vereist een dealer_nummer (string)' }, { status: 400 })
+      if (typeof item.kassa_nummer !== 'string' || item.kassa_nummer.trim().length === 0) {
+        return NextResponse.json({ error: 'Elk item vereist een kassa_nummer (string)' }, { status: 400 })
       }
-      if (item.dealer_nummer.length > 50) {
-        return NextResponse.json({ error: 'dealer_nummer mag maximaal 50 tekens bevatten' }, { status: 400 })
+      if (item.kassa_nummer.length > 50) {
+        return NextResponse.json({ error: 'kassa_nummer mag maximaal 50 tekens bevatten' }, { status: 400 })
       }
     }
 
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString()
 
     await Promise.all(
-      items.map(async ({ id, dealer_nummer }: { id: number; dealer_nummer: string }) => {
-        if (!id || !dealer_nummer?.trim()) return
-        const authorized = await checkDealer(dealer_nummer.trim())
+      items.map(async ({ id, kassa_nummer }: { id: number; kassa_nummer: string }) => {
+        if (!id || !kassa_nummer?.trim()) return
+        const authorized = await checkDealer(kassa_nummer.trim())
         results[id] = { authorized }
         await supabase
           .from('winkels')

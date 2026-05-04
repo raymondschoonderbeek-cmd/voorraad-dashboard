@@ -46,7 +46,7 @@ export function WinkelKaartItem({ w, kleur, favoriet, onSelecteer, onToggleFavor
           <div className="min-w-0 flex-1" onClick={() => onSelecteer(w)}>
             <div className="font-semibold text-sm truncate" style={{ color: DYNAMO_BLUE, fontFamily: F, letterSpacing: '-0.01em' }}>{w.naam}</div>
             <div className="flex items-center gap-2">
-              <span style={{ color: 'rgba(45,69,124,0.35)', fontSize: '11px', fontFamily: F }}>#{w.dealer_nummer}</span>
+              <span style={{ color: 'rgba(45,69,124,0.35)', fontSize: '11px', fontFamily: F }}>#{w.kassa_nummer}</span>
               {w.land && (
                 <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: w.land === 'Belgium' ? 'rgba(253,218,36,0.2)' : 'rgba(255,102,0,0.15)', color: w.land === 'Belgium' ? '#a16207' : '#c2410c', fontFamily: F }}>{w.land === 'Belgium' ? '🇧🇪' : '🇳🇱'}</span>
               )}

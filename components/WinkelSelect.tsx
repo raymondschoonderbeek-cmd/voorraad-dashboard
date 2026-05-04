@@ -35,7 +35,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
     if (!q) return winkels
     return winkels.filter(w =>
       w.naam.toLowerCase().includes(q) ||
-      w.dealer_nummer.includes(q) ||
+      w.kassa_nummer.includes(q) ||
       (w.stad?.toLowerCase().includes(q))
     )
   }, [winkels, search])
@@ -96,7 +96,7 @@ export const WinkelSelect = forwardRef<WinkelSelectRef, Props>(function WinkelSe
                   style={{ background: value?.id === w.id ? 'rgba(45,69,124,0.06)' : undefined, color: DYNAMO_BLUE }}
                 >
                   <div className="font-medium truncate">{w.naam}</div>
-                  <div className="text-xs text-gray-500">#{w.dealer_nummer}{w.stad ? ` · ${w.stad}` : ''}</div>
+                  <div className="text-xs text-gray-500">#{w.kassa_nummer}{w.stad ? ` · ${w.stad}` : ''}</div>
                 </button>
               ))
             )}
