@@ -82,8 +82,8 @@ export function WinkelLijst({ winkels, geselecteerdeId, onSelecteer, favorieten,
       if (filterProvincie !== 'alle' && w.provincie !== filterProvincie) return false
       if (filterRegio !== 'alle' && w.regio_manager !== filterRegio) return false
       if (filterFormule !== 'alle' && w.formule !== filterFormule) return false
-      if (filterStatus === 'actief' && (!w.actief || w.geblokkeerd?.trim())) return false
-      if (filterStatus === 'geblokkeerd' && !w.geblokkeerd?.trim()) return false
+      if (filterStatus === 'actief' && w.geblokkeerd?.trim().toLowerCase() === 'ja') return false
+      if (filterStatus === 'geblokkeerd' && w.geblokkeerd?.trim().toLowerCase() !== 'ja') return false
       if (!q) return true
       const blob = [w.naam, w.stad, w.postcode, w.lidnummer, w.cbnr, w.kvk].map(s => String(s ?? '').toLowerCase()).join(' ')
       return blob.includes(q)
@@ -173,7 +173,7 @@ export function WinkelLijst({ winkels, geselecteerdeId, onSelecteer, favorieten,
             {provincies.map(p => <option key={p} value={p}>{p === 'alle' ? 'Alle provincies' : p}</option>)}
           </select>
           <select value={filterRegio} onChange={e => setFilterRegio(e.target.value)} style={selectStyle}>
-            {regios.map(r => <option key={r} value={r}>{r === 'alle' ? 'Alle regio\'s' : r}</option>)}
+            {regios.map(r => <option key={r} value={r}>{r === 'alle' ? 'Alle regiomanagers' : r}</option>)}
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)} style={selectStyle}>
             <option value="alle">Alle statussen</option>

@@ -1,6 +1,6 @@
 'use client'
 export function StatusPill({ actief, geblokkeerd }: { actief: boolean; geblokkeerd: string | null }) {
-  if (geblokkeerd?.trim()) {
+  if (geblokkeerd?.trim().toLowerCase() === 'ja') {
     return <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, fontSize:11, fontWeight:700, background:'#fee2e2', color:'#b91c1c' }}>Geblokkeerd</span>
   }
   if (actief) {

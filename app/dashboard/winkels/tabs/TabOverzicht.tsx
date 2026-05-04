@@ -33,7 +33,6 @@ export function TabOverzicht({ w }: { w: Winkel }) {
           <KvItem label="Aangesloten sinds" value={w.aangesloten_sinds} />
           <KvItem label="VVO" value={w.vvo_m2 ? `${w.vvo_m2} m²` : null} />
           <KvItem label="Regiomanager" value={w.regio_manager} />
-          {w.geblokkeerd?.trim() ? <KvItem label="Geblokkeerd" value={<span style={{color:'#b91c1c',fontWeight:600}}>{w.geblokkeerd}</span>} /> : null}
         </KvList>
       </Card>
     </div>
