@@ -67,7 +67,18 @@ const KOLOM_MAP = {
   'Deelname Lease-contract':         'deelname_lease',
 };
 
-// Land-afkorting → volledige naam (zoals Supabase het verwacht)
+// Kassasysteem → api_type (altijd bijwerken)
+const API_TYPE_MAP = {
+  'vmsii':         'vendit',
+  'cyclesoftware': 'cyclesoftware',
+  'wilmar':        'wilmar',
+  'adsoft':        null,
+  'winfact':       null,
+  'andere':        null,
+  'geen':          null,
+};
+
+// Land-afkorting → volledige naam
 const LAND_MAP = { NL: 'Netherlands', BE: 'Belgium' };
 
 // ── Logging ───────────────────────────────────────────────────────────────────
@@ -81,8 +92,6 @@ function trimLog() {
     if (!fs.existsSync(LOG_PATH)) return;
     const stat = fs.statSync(LOG_PATH);
     if (stat.size <= MAX_LOG_BYTES) return;
-
-    // Bestand te groot: gooi eerste helft weg
     const inhoud = fs.readFileSync(LOG_PATH, 'utf8');
     const helft = Math.floor(inhoud.length / 2);
     const eersteNieuweRegel = inhoud.indexOf('\n', helft);
@@ -110,6 +119,11 @@ function waardSchoonmaken(waarde) {
   if (typeof waarde === 'number') return String(waarde);
   const s = String(waarde).trim();
   return s === '' ? null : s;
+}
+
+function kassaToApiType(kassasysteem) {
+  if (!kassasysteem) return null;
+  return API_TYPE_MAP[kassasysteem.toLowerCase()] ?? null;
 }
 
 // ── Hoofdlogica ───────────────────────────────────────────────────────────────
@@ -205,7 +219,7 @@ async function main() {
 
     const nieuw = [...excelLidnummers].filter(l => !bestaandeSet.has(l));
     const bijwerken = [...excelLidnummers].filter(l => bestaandeSet.has(l));
-    const ontbrekenInExcel = [...bestaandeSet].filter(l => l && !excelLidnummers.has(l));
+    const ontbrekenInExcel = [...bestaandeSet].filter(l => !excelLidnummers.has(l));
 
     log('─'.repeat(50));
     log(`DRY-RUN resultaat:`);
@@ -232,6 +246,26 @@ async function main() {
 
   // ── Echte sync ────────────────────────────────────────────────────────────
 
+  // Haal bestaande kassa_nummers op zodat we ze niet overschrijven
+  log(`Bestaande kassa_nummers ophalen uit Supabase...`);
+  const bestaandeKassaNummers = {};
+  let page = 0;
+  const PAGE_SIZE = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from('winkels')
+      .select('lidnummer, kassa_nummer')
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    if (error) {
+      console.error(`Fout bij ophalen kassa_nummers: ${error.message}`);
+      process.exit(1);
+    }
+    if (!data || data.length === 0) break;
+    data.forEach(r => { bestaandeKassaNummers[r.lidnummer] = r.kassa_nummer; });
+    if (data.length < PAGE_SIZE) break;
+    page++;
+  }
+
   let bijgewerkt = 0;
   let fouten = 0;
   const BATCH = 50;
@@ -252,6 +286,16 @@ async function main() {
         }
         record[veld] = waarde;
       }
+
+      // api_type altijd bijwerken op basis van kassasysteem
+      record.api_type = kassaToApiType(record.kassasysteem);
+
+      // kassa_nummer: alleen invullen als het leeg is in Supabase
+      const bestaandKassa = bestaandeKassaNummers[lidnummer];
+      if (!bestaandKassa) {
+        record.kassa_nummer = lidnummer;
+      }
+
       records.push(record);
     }
 
