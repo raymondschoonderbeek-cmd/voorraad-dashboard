@@ -77,9 +77,15 @@ export function WinkelDetail({ winkelId, activeTab, onTabChange, isAdmin, isFavo
         </div>
         {/* Naam + acties */}
         <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
-          <div style={{ width:44, height:44, borderRadius:10, background:kleur, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:16, fontWeight:700, flexShrink:0 }}>
-            {initialen(winkel.naam)}
-          </div>
+          {/bike\s*totaal/i.test(winkel.naam) ? (
+            <div style={{ width:44, height:44, borderRadius:10, background:'white', border:'1px solid rgba(45,69,124,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden', padding:4 }}>
+              <img src="/bike-totaal-logo.png" alt="Bike Totaal" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+            </div>
+          ) : (
+            <div style={{ width:44, height:44, borderRadius:10, background:kleur, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:16, fontWeight:700, flexShrink:0 }}>
+              {initialen(winkel.naam)}
+            </div>
+          )}
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <h2 style={{ margin:0, fontSize:18, fontWeight:700, color:'var(--drg-ink)' }}>{winkel.naam}</h2>

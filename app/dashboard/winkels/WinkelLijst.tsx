@@ -109,9 +109,15 @@ export function WinkelLijst({ winkels, geselecteerdeId, onSelecteer, favorieten,
         onMouseEnter={e => { if (!geselecteerd) e.currentTarget.style.background = 'rgba(45,69,124,0.03)' }}
         onMouseLeave={e => { if (!geselecteerd) e.currentTarget.style.background = 'transparent' }}
       >
-        <div style={{ width: dense ? 28 : 34, height: dense ? 28 : 34, borderRadius: dense ? 6 : 8, background:kleur, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize: dense ? 11 : 13, fontWeight:700, flexShrink:0 }}>
-          {initialen(w.naam)}
-        </div>
+        {/bike\s*totaal/i.test(w.naam) ? (
+          <div style={{ width: dense ? 28 : 34, height: dense ? 28 : 34, borderRadius: dense ? 6 : 8, background:'white', border:'1px solid rgba(45,69,124,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden', padding:2 }}>
+            <img src="/bike-totaal-logo.png" alt="Bike Totaal" style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+          </div>
+        ) : (
+          <div style={{ width: dense ? 28 : 34, height: dense ? 28 : 34, borderRadius: dense ? 6 : 8, background:kleur, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize: dense ? 11 : 13, fontWeight:700, flexShrink:0 }}>
+            {initialen(w.naam)}
+          </div>
+        )}
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize: dense ? 12 : 13, fontWeight:600, color:'var(--drg-ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{w.naam}</div>
           {!dense && <div style={{ fontSize:11, color:'var(--drg-text-3)', marginTop:1 }}>{[w.lidnummer, w.stad].filter(Boolean).join(' · ')}</div>}
