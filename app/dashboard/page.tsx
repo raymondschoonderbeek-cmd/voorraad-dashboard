@@ -1156,7 +1156,7 @@ export default function Dashboard() {
                   style={{ maxHeight: 'calc(100vh - 320px)', minHeight: '240px', WebkitOverflowScrolling: 'touch' }}
                 >
                   <table className="w-full text-sm min-w-[600px] [border-collapse:separate] [border-spacing:0]">
-                    <thead className="sticky top-0" style={{ background: DYNAMO_BLUE }}>
+                    <thead style={{ background: DYNAMO_BLUE }}>
                       <tr>
                         {zichtbareKolommen.map(k => {
                           const active = sortKey === k
