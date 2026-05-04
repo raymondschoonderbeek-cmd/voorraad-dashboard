@@ -11,7 +11,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 const FAV_KEY = 'dynamo_crm_favs'
 const TAB_KEY = 'dynamo_crm_active_tab'
 
-type Tab = 'overzicht' | 'contact' | 'systemen' | 'financieel' | 'contracten' | 'activiteit'
+type Tab = 'overzicht' | 'contact' | 'systemen' | 'financieel' | 'contracten' | 'activiteit' | 'support'
 const DYNAMO_BLUE = '#2D457C'
 
 function WinkelsPageInner() {

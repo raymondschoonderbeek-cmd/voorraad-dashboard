@@ -11,9 +11,10 @@ import { TabSystemen } from './tabs/TabSystemen'
 import { TabFinancieel } from './tabs/TabFinancieel'
 import { TabContracten } from './tabs/TabContracten'
 import { TabActiviteit } from './tabs/TabActiviteit'
+import { TabFreshdesk } from './tabs/TabFreshdesk'
 import { IconArrowLeft, IconPhone, IconMail, IconStar } from '@/components/DashboardIcons'
 
-type Tab = 'overzicht' | 'contact' | 'systemen' | 'financieel' | 'contracten' | 'activiteit'
+type Tab = 'overzicht' | 'contact' | 'systemen' | 'financieel' | 'contracten' | 'activiteit' | 'support'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overzicht', label: 'Overzicht' },
   { id: 'contact', label: 'Contact' },
@@ -21,6 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'financieel', label: 'Financieel' },
   { id: 'contracten', label: 'Contracten' },
   { id: 'activiteit', label: 'Activiteit' },
+  { id: 'support', label: 'Support' },
 ]
 
 const INITIAAL_KLEUREN = ['#2D457C','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#65a30d','#db2777','#854d0e','#0f766e']
@@ -125,6 +127,7 @@ export function WinkelDetail({ winkelId, activeTab, onTabChange, isAdmin, isFavo
         {activeTab === 'financieel' && <TabFinancieel w={winkel} />}
         {activeTab === 'contracten' && <TabContracten w={winkel} />}
         {activeTab === 'activiteit' && <TabActiviteit winkelId={winkel.id} />}
+        {activeTab === 'support' && <TabFreshdesk winkelId={winkel.id} />}
       </div>
     </div>
   )
