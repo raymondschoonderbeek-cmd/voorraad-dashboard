@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       datum: item.pubDate ?? null,
     }))
 
-    return NextResponse.json({ items }, { headers: { 'Cache-Control': 'public, s-maxage=300' } })
+    return NextResponse.json({ items }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: unknown) {
     const msg = e instanceof Error && e.name === 'AbortError' ? 'RSS-timeout' : 'RSS ophalen mislukt'
     return NextResponse.json({ items: [], error: msg }, { status: 502 })

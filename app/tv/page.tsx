@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import TvClient from './TvClient'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRoomAvailability } from '@/lib/joan'

@@ -25,7 +25,7 @@ export async function GET() {
       datum: item.pubDate ?? null,
     }))
 
-    return NextResponse.json({ items }, { headers: { 'Cache-Control': 'public, s-maxage=300' } })
+    return NextResponse.json({ items }, { headers: { 'Cache-Control': 'no-store' } })
   } catch {
     return NextResponse.json({ items: [] })
   }
