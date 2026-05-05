@@ -74,6 +74,49 @@ export async function GET() {
   return NextResponse.json(data)
 }
 
+export async function POST(request: NextRequest) {
+  const auth = await requireGazelleAccess()
+  if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: auth.status })
+  if (!auth.isAdmin) return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
+
+  const body = await request.json() as { freshdesk_ticket_id?: string }
+  const ticketId = body.freshdesk_ticket_id?.trim()
+  if (!ticketId) return NextResponse.json({ error: 'freshdesk_ticket_id vereist' }, { status: 400 })
+
+  if (!hasAdminKey()) return NextResponse.json({ error: 'Configuratiefout' }, { status: 500 })
+  const admin = createAdminClient()
+
+  const html = await haalFreshdeskBeschrijvingOp(ticketId)
+  if (!html) {
+    return NextResponse.json({
+      error: 'Ticket niet gevonden of FRESHDESK_API_KEY / FRESHDESK_DOMAIN niet ingesteld.',
+    }, { status: 422 })
+  }
+
+  const parsed = parseGazelleDescription(html)
+  const { error } = await admin
+    .from('gazelle_pakket_orders')
+    .upsert(
+      {
+        freshdesk_ticket_id: ticketId,
+        besteldatum: parsed.besteldatum,
+        bestelnummer: parsed.bestelnummer,
+        naam: parsed.naam,
+        bedrijfsnaam: parsed.bedrijfsnaam,
+        emailadres: parsed.emailadres,
+        referentie: parsed.referentie,
+        opmerkingen: parsed.opmerkingen,
+        adres: parsed.adres,
+        producten: parsed.producten,
+        raw_description: html,
+      },
+      { onConflict: 'freshdesk_ticket_id', ignoreDuplicates: false }
+    )
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true, bestelnummer: parsed.bestelnummer })
+}
+
 export async function PATCH(request: NextRequest) {
   const auth = await requireGazelleAccess()
   if (!auth.ok) return NextResponse.json({ error: 'Geen toegang' }, { status: auth.status })

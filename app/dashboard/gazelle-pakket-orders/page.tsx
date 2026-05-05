@@ -115,6 +115,78 @@ function CopyButton({ value }: { value: string }) {
   )
 }
 
+function HandmatigImporterenCard({ onImported }: { onImported: () => void }) {
+  const [ingeklapt, setIngeklapt] = useState(true)
+  const [ticketId, setTicketId] = useState('')
+  const [bezig, setBezig] = useState(false)
+  const [resultaat, setResultaat] = useState<{ ok: boolean; bericht: string } | null>(null)
+
+  async function importeer() {
+    if (!ticketId.trim()) return
+    setBezig(true)
+    setResultaat(null)
+    const res = await fetch('/api/gazelle-orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ freshdesk_ticket_id: ticketId.trim() }),
+    })
+    const json = await res.json() as { ok?: boolean; error?: string; bestelnummer?: string }
+    setBezig(false)
+    if (!res.ok) {
+      setResultaat({ ok: false, bericht: json.error ?? 'Onbekende fout' })
+    } else {
+      setResultaat({ ok: true, bericht: `Ticket #${ticketId} geïmporteerd${json.bestelnummer ? ` · bestelnummer ${json.bestelnummer}` : ''}.` })
+      setTicketId('')
+      onImported()
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--drg-card-bg)', border: '1px solid var(--drg-card-border)', borderRadius: 10, boxShadow: 'var(--drg-card-shadow)', marginBottom: 24, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setIngeklapt(v => !v)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--drg-ink-2)', margin: 0, fontFamily: F }}>Ticket handmatig importeren</h2>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--drg-text-3)', flexShrink: 0, transform: ingeklapt ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} aria-hidden>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {!ingeklapt && (
+        <div style={{ padding: '0 20px 20px' }}>
+          <p style={{ fontSize: 12, color: 'var(--drg-text-3)', margin: '0 0 14px', fontFamily: F, lineHeight: 1.5 }}>
+            Vul een Freshdesk ticket-ID in om een order die de webhook heeft gemist alsnog te importeren.
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={ticketId}
+              onChange={e => { setTicketId(e.target.value); setResultaat(null) }}
+              onKeyDown={e => { if (e.key === 'Enter') void importeer() }}
+              placeholder="bijv. 709246"
+              style={{ width: 160, fontSize: 13, fontFamily: F, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.05)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 6, padding: '6px 10px', outline: 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => void importeer()}
+              disabled={bezig || !ticketId.trim()}
+              style={{ fontSize: 12, fontWeight: 600, color: 'var(--drg-ink-2)', background: 'rgba(45,69,124,0.08)', border: '1px solid rgba(45,69,124,0.2)', borderRadius: 8, padding: '7px 16px', cursor: bezig || !ticketId.trim() ? 'default' : 'pointer', fontFamily: F, opacity: bezig || !ticketId.trim() ? 0.5 : 1, transition: 'opacity 0.15s' }}
+            >
+              {bezig ? 'Bezig…' : 'Importeren'}
+            </button>
+          </div>
+          {resultaat && (
+            <div style={{ marginTop: 10, fontSize: 12, fontFamily: F, color: resultaat.ok ? 'var(--drg-success)' : 'var(--drg-danger)', background: resultaat.ok ? 'rgba(22,163,74,0.07)' : 'rgba(220,38,38,0.07)', border: `1px solid ${resultaat.ok ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.15)'}`, borderRadius: 6, padding: '7px 12px' }}>
+              {resultaat.bericht}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ObserverInstellingenCard() {
   const { data: inst, mutate } = useSWR<ObserverInstellingen>('/api/admin/gazelle-observer', fetcher)
   const [ingeklapt, setIngeklapt] = useState(true)
@@ -508,6 +580,7 @@ export default function GazellePakketOrders() {
       })()}
 
       {isGazelleAdmin && <ObserverInstellingenCard />}
+      {isGazelleAdmin && <HandmatigImporterenCard onImported={() => void mutate()} />}
       {isGazelleAdmin && <PakketInstellingenCard />}
 
       {isLoading && (
