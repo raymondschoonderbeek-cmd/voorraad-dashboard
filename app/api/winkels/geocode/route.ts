@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth'
 import { withRateLimit } from '@/lib/api-middleware'
 
 function bepaalLand(postcode?: string | null, stad?: string | null): 'Belgium' | 'Netherlands' {
-  const pc = (postcode ?? '').replace(/\s/g, '')
+  const pc = (postcode ?? '').replace(/\s/g, '').replace(/^B-/i, '').replace(/^BE-/i, '')
   if (/^\d{4}$/.test(pc)) return 'Belgium'
   const stadLower = (stad ?? '').toLowerCase()
   if (['brussel', 'brussels', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège', 'liege', 'luik', 'charleroi', 'brugge', 'bruges', 'namur', 'namen', 'leuven', 'mons', 'bergen', 'aalst', 'mechelen', 'kortrijk', 'hasselt', 'sint-niklaas', 'genk', 'roeselare', 'dendermonde', 'turnhout', 'dilbeek', 'heist-op-den-berg', 'lokeren', 'vilvoorde', 'sint-truiden', 'mouscron', 'la louvière', 'louvière', 'waregem', 'geel', 'braine-l\'alleud', 'louvain-la-neuve', 'oostende', 'ostend', 'nieuwpoort', 'knokke', 'heist', 'wavre', 'nivelles', 'waterloo', 'seraing', 'verviers'].some(s => stadLower.includes(s))) return 'Belgium'
@@ -19,9 +19,10 @@ async function geocodeMetReden(
   land?: 'Netherlands' | 'Belgium' | null,
   huisnummer?: string | null,
 ): Promise<GeoResult> {
+  const postcodeSchoon = (postcode ?? '').replace(/\s/g, '').replace(/^B-/i, '').replace(/^BE-/i, '').replace(/^NL-/i, '')
   const parts: string[] = []
   if (straat?.trim()) parts.push(huisnummer?.trim() ? `${straat.trim()} ${huisnummer.trim()}` : straat.trim())
-  if (postcode?.trim()) parts.push(postcode.replace(/\s/g, ''))
+  if (postcodeSchoon) parts.push(postcodeSchoon)
   if (stad?.trim()) parts.push(stad.trim())
   if (parts.length === 0) return { coords: null, reden: 'Geen adres ingevuld' }
 
@@ -47,7 +48,7 @@ async function geocodeMetReden(
 }
 
 function isBelgischePostcode(postcode?: string | null): boolean {
-  const pc = (postcode ?? '').replace(/\s/g, '')
+  const pc = (postcode ?? '').replace(/\s/g, '').replace(/^B-/i, '').replace(/^BE-/i, '')
   if (/^\d{4}$/.test(pc)) return true
   const digits = pc.replace(/\D/g, '')
   return digits.length === 4 && /^\d{4}$/.test(digits)
