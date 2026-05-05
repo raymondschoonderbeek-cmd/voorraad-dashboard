@@ -26,10 +26,11 @@ async function geocodeMetReden(
   if (parts.length === 0) return { coords: null, reden: 'Geen adres ingevuld' }
 
   const landStr = land ?? bepaalLand(postcode, stad)
-  const q = parts.join(', ') + `, ${landStr}`
+  const countryCode = landStr === 'Belgium' ? 'be' : 'nl'
+  const q = parts.join(', ')
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycode=${countryCode}&addressdetails=0`,
       { headers: { 'User-Agent': 'DRGPortal/1.0' } }
     )
     if (!res.ok) return { coords: null, reden: `Nominatim HTTP ${res.status}` }
@@ -39,7 +40,7 @@ async function geocodeMetReden(
       const lng = parseFloat(data[0].lon)
       if (Number.isFinite(lat) && Number.isFinite(lng)) return { coords: { lat, lng }, reden: null }
     }
-    return { coords: null, reden: `Adres niet gevonden: "${q}"` }
+    return { coords: null, reden: `Adres niet gevonden: "${q}" (${countryCode.toUpperCase()})` }
   } catch (e) {
     return { coords: null, reden: `Netwerkfout: ${e instanceof Error ? e.message : 'onbekend'}` }
   }
